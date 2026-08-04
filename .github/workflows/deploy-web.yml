@@ -2,8 +2,14 @@ name: Déploiement web (GitHub Pages)
 
 # Compile la cible web à chaque push sur `main` et publie le résultat sur
 # GitHub Pages. Le déclencheur manuel sert à republier sans nouveau commit.
+#
+# Les pull requests déclenchent le même job `build` — format, analyse, tests et
+# compilation — mais pas la publication : sans cela, une PR pourrait être
+# fusionnée sans qu'aucune vérification n'ait été exécutée.
 on:
   push:
+    branches: [main]
+  pull_request:
     branches: [main]
   workflow_dispatch:
 
@@ -13,11 +19,11 @@ permissions:
   pages: write
   id-token: write
 
-# Une seule publication à la fois ; les exécutions en cours ne sont pas
-# annulées afin qu'un déploiement déjà démarré aille à son terme.
+# Un déploiement en cours va toujours à son terme ; en revanche une nouvelle
+# exécution de PR annule la précédente, devenue caduque.
 concurrency:
-  group: pages
-  cancel-in-progress: false
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   FLUTTER_VERSION: 3.44.8
@@ -60,10 +66,14 @@ jobs:
         # résout ensuite la route côté client.
         run: cp build/web/index.html build/web/404.html
 
+      # Les étapes Pages ne concernent que la publication : sur une PR, elles
+      # échoueraient faute d'environnement `github-pages` accessible.
       - name: Configurer Pages
+        if: github.event_name != 'pull_request'
         uses: actions/configure-pages@v5
 
       - name: Téléverser l'artefact
+        if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
           path: build/web
@@ -71,6 +81,7 @@ jobs:
   deploy:
     name: Publier sur GitHub Pages
     needs: build
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

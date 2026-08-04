@@ -1,0 +1,49 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/date_symbol_data_local.dart';
+
+import 'core/core.dart';
+import 'router/app_router.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Charge les symboles de date français avant le premier rendu : sans cela,
+  // `DateFormat(..., 'fr_FR')` lève une exception au premier appel.
+  await initializeDateFormatting(AppDates.locale);
+
+  runApp(const ProviderScope(child: JelvoApp()));
+}
+
+class JelvoApp extends ConsumerWidget {
+  const JelvoApp({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final GoRouter router = ref.watch(routerProvider);
+
+    return MaterialApp.router(
+      title: 'Jelvo',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.light,
+      // L'application ne propose qu'un thème clair pour l'instant.
+      themeMode: ThemeMode.light,
+      routerConfig: router,
+      builder: (BuildContext context, Widget? child) {
+        // Neutralise la mise à l'échelle extrême du texte : au-delà de 1,3 la
+        // barre de navigation et les cartes cassent leur mise en page.
+        final MediaQueryData data = MediaQuery.of(context);
+        return MediaQuery(
+          data: data.copyWith(
+            textScaler: data.textScaler.clamp(
+              minScaleFactor: 1,
+              maxScaleFactor: 1.3,
+            ),
+          ),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
+    );
+  }
+}

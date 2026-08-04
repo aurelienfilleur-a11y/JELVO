@@ -1,0 +1,35 @@
+{
+    "name": "Jelvo",
+    "short_name": "Jelvo",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#F7F7FB",
+    "theme_color": "#5B2EFF",
+    "description": "Jelvo - gestion d'emploi du temps personnel et de groupe",
+    "orientation": "portrait-primary",
+    "prefer_related_applications": false,
+    "icons": [
+        {
+            "src": "icons/Icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-maskable-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "icons/Icon-maskable-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
+}

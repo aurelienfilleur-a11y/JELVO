@@ -1,0 +1,92 @@
+name: Déploiement web (GitHub Pages)
+
+# Compile la cible web à chaque push sur `main` et publie le résultat sur
+# GitHub Pages. Le déclencheur manuel sert à republier sans nouveau commit.
+#
+# Les pull requests déclenchent le même job `build` — format, analyse, tests et
+# compilation — mais pas la publication : sans cela, une PR pourrait être
+# fusionnée sans qu'aucune vérification n'ait été exécutée.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Permissions minimales requises par `actions/deploy-pages`.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Un déploiement en cours va toujours à son terme ; en revanche une nouvelle
+# exécution de PR annule la précédente, devenue caduque.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  FLUTTER_VERSION: 3.44.8
+
+jobs:
+  build:
+    name: Compiler la version web
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Installer Flutter ${{ env.FLUTTER_VERSION }}
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Installer les dépendances
+        run: flutter pub get
+
+      - name: Vérifier le formatage
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Analyser le code
+        run: flutter analyze
+
+      - name: Lancer les tests
+        run: flutter test
+
+      - name: Compiler la version web
+        # GitHub Pages sert le site depuis /<nom-du-dépôt>/ : sans ce base-href,
+        # les ressources sont demandées à la racine du domaine et renvoient 404.
+        run: flutter build web --release --base-href "/${{ github.event.repository.name }}/"
+
+      - name: Ajouter un fallback SPA pour les routes GoRouter
+        # Pages renvoie 404.html pour toute URL inconnue. En y copiant
+        # index.html, un accès direct à /calendrier charge l'application, qui
+        # résout ensuite la route côté client.
+        run: cp build/web/index.html build/web/404.html
+
+      # Les étapes Pages ne concernent que la publication : sur une PR, elles
+      # échoueraient faute d'environnement `github-pages` accessible.
+      - name: Configurer Pages
+        if: github.event_name != 'pull_request'
+        uses: actions/configure-pages@v5
+
+      - name: Téléverser l'artefact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  deploy:
+    name: Publier sur GitHub Pages
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Déployer
+        id: deployment
+        uses: actions/deploy-pages@v4

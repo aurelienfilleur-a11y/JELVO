@@ -8,6 +8,7 @@ import '../../../router/app_routes.dart';
 import '../models/auth_failure.dart';
 import '../providers/auth_providers.dart';
 import '../providers/signup_providers.dart';
+import '../repository/auth_repository.dart';
 import '../widgets/auth_scaffold.dart';
 import '../widgets/avatar_picker.dart';
 
@@ -145,9 +146,13 @@ class _SignUpIdentityScreenState extends ConsumerState<SignUpIdentityScreen> {
         .setIdentity(firstName: firstName, lastName: lastName);
     final SignUpDraft draft = ref.read(signUpDraftProvider);
 
+    // Capturé avant les `await` : la garde du routeur peut avoir quitté cet
+    // écran d'ici là, alors que le messager, lui, vit à la racine.
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+
     setState(() => _submitting = true);
     try {
-      await ref
+      final SignUpOutcome outcome = await ref
           .read(authRepositoryProvider)
           .signUp(
             email: draft.email,
@@ -156,8 +161,28 @@ class _SignUpIdentityScreenState extends ConsumerState<SignUpIdentityScreen> {
             firstName: firstName,
             lastName: lastName,
           );
-      if (!mounted) return;
-      context.pushNamed(AppRoutes.verifyEmail);
+
+      if (outcome == SignUpOutcome.codeSent) {
+        if (!mounted) return;
+        context.pushNamed(AppRoutes.verifyEmail);
+        return;
+      }
+
+      // Confirmation d'e-mail désactivée : la session est déjà ouverte, on
+      // enchaîne sur le profil et la garde du routeur mène à l'accueil.
+      final String? warning = await ref
+          .read(signUpActionsProvider)
+          .completeProfile();
+      if (warning != null) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              'Compte créé, mais le profil n’a pas pu être enregistré : '
+              '$warning',
+            ),
+          ),
+        );
+      }
     } catch (error) {
       if (!mounted) return;
       setState(() => _errorMessage = AuthFailure.from(error).message);

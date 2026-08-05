@@ -7,6 +7,7 @@ import 'package:jelvo/data/clock.dart';
 import 'package:jelvo/data/data_providers.dart';
 import 'package:jelvo/features/auth/models/auth_failure.dart';
 import 'package:jelvo/features/auth/providers/auth_providers.dart';
+import 'package:jelvo/features/auth/repository/auth_repository.dart';
 import 'package:jelvo/features/profile/providers/profile_providers.dart';
 import 'package:jelvo/main.dart';
 
@@ -18,6 +19,7 @@ Future<FakeAuthRepository> _pumpApp(
   WidgetTester tester, {
   required bool signedIn,
   Set<String> pseudosTaken = const <String>{},
+  SignUpOutcome signUpOutcome = SignUpOutcome.codeSent,
 }) async {
   tester.view.physicalSize = const Size(420, 1600);
   tester.view.devicePixelRatio = 1;
@@ -27,6 +29,7 @@ Future<FakeAuthRepository> _pumpApp(
   final FakeAuthRepository auth = FakeAuthRepository(
     signedIn: signedIn,
     pseudosTaken: pseudosTaken,
+    signUpOutcome: signUpOutcome,
   );
   addTearDown(auth.dispose);
 
@@ -150,6 +153,61 @@ void main() {
     await tester.pumpAndSettle(const Duration(seconds: 1));
 
     expect(find.text('Ce pseudo est disponible.'), findsOneWidget);
+  });
+
+  testWidgets('sans confirmation d’e-mail, l’inscription mène à l’accueil', (
+    WidgetTester tester,
+  ) async {
+    final FakeAuthRepository auth = await _pumpApp(
+      tester,
+      signedIn: false,
+      signUpOutcome: SignUpOutcome.sessionOpened,
+    );
+
+    await tester.tap(find.text("S'inscrire"));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField).first, 'nouveau.pseudo');
+    await tester.enterText(find.byType(TextField).at(1), 'nouveau@example.com');
+    await tester.enterText(find.byType(TextField).at(2), 'Motdepasse1');
+    await tester.pumpAndSettle(const Duration(seconds: 1));
+
+    await tester.tap(find.text('Continuer'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField).first, 'Camille');
+    await tester.enterText(find.byType(TextField).at(1), 'Rousseau');
+    await tester.tap(find.text('Créer mon compte'));
+    await tester.pumpAndSettle();
+
+    // L'écran de saisie du code reste en place mais n'est pas traversé.
+    expect(find.text('Vérifiez votre e-mail'), findsNothing);
+    expect(auth.completeSignUpCalled, isTrue);
+    expect(find.text('Brunch chez les parents'), findsOneWidget);
+  });
+
+  testWidgets('avec confirmation d’e-mail, le code reste demandé', (
+    WidgetTester tester,
+  ) async {
+    await _pumpApp(tester, signedIn: false);
+
+    await tester.tap(find.text("S'inscrire"));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField).first, 'nouveau.pseudo');
+    await tester.enterText(find.byType(TextField).at(1), 'nouveau@example.com');
+    await tester.enterText(find.byType(TextField).at(2), 'Motdepasse1');
+    await tester.pumpAndSettle(const Duration(seconds: 1));
+
+    await tester.tap(find.text('Continuer'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField).first, 'Camille');
+    await tester.enterText(find.byType(TextField).at(1), 'Rousseau');
+    await tester.tap(find.text('Créer mon compte'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Vérifiez votre e-mail'), findsOneWidget);
   });
 
   testWidgets('la déconnexion ramène à l’écran de connexion', (

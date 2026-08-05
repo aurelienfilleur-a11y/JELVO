@@ -9,6 +9,22 @@ import '../models/credentials_rules.dart';
 /// Disponibilité d'un pseudo, telle qu'affichée pendant la saisie.
 enum PseudoAvailability { available, taken, unknown }
 
+/// Ce que l'inscription a réellement produit côté serveur.
+///
+/// La confirmation d'adresse e-mail est un réglage du projet Supabase, pas du
+/// code : lorsqu'elle est désactivée, `signUp` ouvre immédiatement une session
+/// et n'envoie aucun code. Le parcours se règle donc sur la réponse du serveur
+/// plutôt que sur une constante de compilation — réactiver la confirmation dans
+/// Supabase suffit à faire réapparaître l'écran de saisie du code, sans
+/// toucher à l'application.
+enum SignUpOutcome {
+  /// Une session est ouverte : l'inscription peut se terminer tout de suite.
+  sessionOpened,
+
+  /// Un code à six chiffres a été envoyé : il reste à le vérifier.
+  codeSent,
+}
+
 /// Accès à l'authentification et au compte.
 ///
 /// L'interface est séparée de l'implémentation Supabase pour que les tests de
@@ -34,11 +50,15 @@ abstract interface class AuthRepository {
   /// Connexion par pseudo **ou** adresse e-mail.
   Future<void> signIn({required String identifier, required String password});
 
-  /// Crée le compte et déclenche l'envoi du code de vérification.
+  /// Crée le compte.
   ///
-  /// Aucune session n'est ouverte tant que l'adresse n'est pas vérifiée : la
-  /// ligne `profiles` est donc créée plus tard, par [completeSignUp].
-  Future<void> signUp({
+  /// Renvoie [SignUpOutcome.codeSent] si Supabase attend la vérification de
+  /// l'adresse — aucune session n'est alors ouverte et la ligne `profiles` ne
+  /// peut être créée qu'après [verifySignUpCode]. Renvoie
+  /// [SignUpOutcome.sessionOpened] si la confirmation est désactivée sur le
+  /// projet : la session existe déjà et [completeSignUp] peut suivre
+  /// directement.
+  Future<SignUpOutcome> signUp({
     required String email,
     required String password,
     required String pseudo,
@@ -153,7 +173,7 @@ class SupabaseAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<void> signUp({
+  Future<SignUpOutcome> signUp({
     required String email,
     required String password,
     required String pseudo,
@@ -161,7 +181,7 @@ class SupabaseAuthRepository implements AuthRepository {
     required String lastName,
   }) async {
     try {
-      await _auth.signUp(
+      final AuthResponse response = await _auth.signUp(
         email: email.trim(),
         password: password,
         // Ces métadonnées permettent à un éventuel trigger `handle_new_user`
@@ -172,6 +192,11 @@ class SupabaseAuthRepository implements AuthRepository {
           'last_name': lastName,
         },
       );
+      // Une session dans la réponse signifie que la confirmation d'e-mail est
+      // désactivée sur le projet : il n'y a pas de code à attendre.
+      return response.session == null
+          ? SignUpOutcome.codeSent
+          : SignUpOutcome.sessionOpened;
     } catch (error) {
       throw AuthFailure.from(error);
     }

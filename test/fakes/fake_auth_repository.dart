@@ -14,7 +14,11 @@ class FakeAuthRepository implements AuthRepository {
   FakeAuthRepository({
     this._signedIn = false,
     this.pseudosTaken = const <String>{},
+    this.signUpOutcome = SignUpOutcome.codeSent,
   });
+
+  /// Réglage de confirmation d'e-mail simulé côté projet Supabase.
+  final SignUpOutcome signUpOutcome;
 
   final StreamController<bool> _controller = StreamController<bool>.broadcast();
   bool _signedIn;
@@ -61,7 +65,7 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<void> signUp({
+  Future<SignUpOutcome> signUp({
     required String email,
     required String password,
     required String pseudo,
@@ -69,6 +73,8 @@ class FakeAuthRepository implements AuthRepository {
     required String lastName,
   }) async {
     lastSignUpEmail = email;
+    if (signUpOutcome == SignUpOutcome.sessionOpened) setSignedIn(true);
+    return signUpOutcome;
   }
 
   @override

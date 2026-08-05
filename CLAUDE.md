@@ -243,9 +243,32 @@ seuls états de `AuthStatus`, sans `unknown`.
   elle, PostgREST répond `PGRST202` et l'écran invite à se connecter par e-mail.
 - La vérification par code à 6 chiffres suppose que le modèle d'e-mail Supabase
   émet `{{ .Token }}` et non `{{ .ConfirmationURL }}`.
-- La ligne `profiles` ne peut être écrite qu'**après** `verifyOTP` : c'est cette
-  étape qui ouvre la session, donc RLS. D'où l'ordre inscription → code →
-  `completeSignUp`.
+- La ligne `profiles` ne peut être écrite qu'**une fois la session ouverte** :
+  c'est elle qui satisfait RLS. D'où la finalisation par `completeSignUp`, en
+  dernier.
+
+### Confirmation d'e-mail activée ou non
+
+La confirmation d'adresse est un réglage du **projet Supabase**, pas du code.
+`signUp` renvoie donc un `SignUpOutcome` décrivant ce que le serveur a fait :
+
+| Réponse Supabase        | `SignUpOutcome`  | Parcours                              |
+| ----------------------- | ---------------- | ------------------------------------- |
+| session dans la réponse | `sessionOpened`  | profil créé aussitôt, puis accueil    |
+| aucune session          | `codeSent`       | écran de code, puis profil, puis accueil |
+
+En développement la confirmation est **désactivée** : l'inscription mène
+directement à l'accueil. `VerifyEmailScreen` et sa route restent en place, mais
+court-circuités ; réactiver la confirmation côté Supabase les remet dans le
+parcours **sans toucher à l'application**. Ne pas remplacer ce test par un
+drapeau de compilation : le serveur est seul à connaître son réglage.
+
+Les deux chemins finissent par `signUpActionsProvider.completeProfile()`, qui
+crée le profil, téléverse la photo, vide le brouillon et renvoie un message
+d'avertissement au lieu de lever : un profil non enregistré ne doit pas barrer
+l'entrée dans l'application. Les deux écrans capturent leur
+`ScaffoldMessenger` **avant** les `await`, la garde du routeur pouvant les avoir
+déjà quittés au moment d'afficher la `SnackBar`.
 - La colonne du pseudo s'appelle `pseudo` (pas `username`) et `profiles` ne
   porte pas d'`email` : l'adresse vient de la session (`currentEmailProvider`).
 

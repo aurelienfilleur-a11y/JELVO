@@ -1,6 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/auth_failure.dart';
+import 'auth_providers.dart';
+
 /// Saisie d'inscription en cours, partagée entre les étapes.
 ///
 /// L'état vit dans un provider plutôt que dans le `State` des écrans : les
@@ -89,4 +92,47 @@ class SignUpDraftNotifier extends Notifier<SignUpDraft> {
   void removeAvatar() => state = state.copyWith(clearAvatar: true);
 
   void reset() => state = const SignUpDraft();
+}
+
+/// Écritures liées à l'inscription.
+final Provider<SignUpActions> signUpActionsProvider = Provider<SignUpActions>(
+  SignUpActions.new,
+);
+
+class SignUpActions {
+  const SignUpActions(this._ref);
+
+  final Ref _ref;
+
+  /// Crée la ligne `profiles`, téléverse la photo puis vide le brouillon.
+  ///
+  /// Appelée depuis les deux points d'arrivée de l'inscription : après la
+  /// vérification du code, ou directement quand la confirmation d'e-mail est
+  /// désactivée sur le projet Supabase. Suppose une session déjà ouverte, sans
+  /// quoi RLS refuse l'écriture.
+  ///
+  /// Renvoie `null` en cas de succès, sinon le message à afficher : un profil
+  /// non enregistré ne doit pas barrer l'entrée dans l'application, l'écran
+  /// Profil permettant de le compléter ensuite.
+  Future<String?> completeProfile() async {
+    final SignUpDraft draft = _ref.read(signUpDraftProvider);
+
+    String? warning;
+    try {
+      await _ref
+          .read(authRepositoryProvider)
+          .completeSignUp(
+            pseudo: draft.pseudo,
+            firstName: draft.firstName,
+            lastName: draft.lastName,
+            avatarBytes: draft.avatarBytes,
+            avatarFileExtension: draft.avatarExtension,
+          );
+    } catch (error) {
+      warning = AuthFailure.from(error).message;
+    }
+
+    _ref.read(signUpDraftProvider.notifier).reset();
+    return warning;
+  }
 }

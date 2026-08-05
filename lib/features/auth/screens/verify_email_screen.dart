@@ -123,6 +123,10 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
       return;
     }
 
+    // Capturé avant les `await` : la garde du routeur peut avoir quitté cet
+    // écran d'ici là, alors que le messager, lui, vit à la racine.
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+
     setState(() {
       _submitting = true;
       _errorMessage = null;
@@ -135,32 +139,16 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
           .verifySignUpCode(email: draft.email, code: code);
 
       // La session existe désormais : on peut créer le profil et téléverser la
-      // photo. Un échec ici ne doit pas bloquer l'entrée dans l'application,
-      // le profil restant modifiable depuis l'écran Profil.
-      String? profileWarning;
-      try {
-        await ref
-            .read(authRepositoryProvider)
-            .completeSignUp(
-              pseudo: draft.pseudo,
-              firstName: draft.firstName,
-              lastName: draft.lastName,
-              avatarBytes: draft.avatarBytes,
-              avatarFileExtension: draft.avatarExtension,
-            );
-      } catch (error) {
-        profileWarning = AuthFailure.from(error).message;
-      }
-
-      if (!mounted) return;
-      ref.read(signUpDraftProvider.notifier).reset();
-
-      if (profileWarning != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
+      // photo.
+      final String? warning = await ref
+          .read(signUpActionsProvider)
+          .completeProfile();
+      if (warning != null) {
+        messenger.showSnackBar(
           SnackBar(
             content: Text(
               'Compte créé, mais le profil n’a pas pu être enregistré : '
-              '$profileWarning',
+              '$warning',
             ),
           ),
         );

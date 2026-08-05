@@ -3,11 +3,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/core.dart';
+import '../features/auth/providers/auth_providers.dart';
+import '../features/auth/screens/forgot_password_screen.dart';
+import '../features/auth/screens/login_screen.dart';
+import '../features/auth/screens/reset_password_screen.dart';
+import '../features/auth/screens/signup_credentials_screen.dart';
+import '../features/auth/screens/signup_identity_screen.dart';
+import '../features/auth/screens/verify_email_screen.dart';
 import '../features/calendar/screens/calendar_screen.dart';
 import '../features/contacts/screens/contacts_screen.dart';
 import '../features/create/screens/create_screen.dart';
 import '../features/groups/screens/groups_screen.dart';
 import '../features/home/screens/home_screen.dart';
+import '../features/profile/screens/profile_screen.dart';
+import '../features/profile/screens/settings_screen.dart';
 import 'app_routes.dart';
 import 'app_shell.dart';
 
@@ -24,6 +33,20 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
     navigatorKey: _rootNavigatorKey,
     initialLocation: AppRoutes.homePath,
     debugLogDiagnostics: false,
+    // Rejoue la redirection à chaque connexion, déconnexion ou restauration de
+    // session : GoRouter ne sait pas observer un provider tout seul.
+    refreshListenable: ref.watch(authRefreshProvider),
+    redirect: (BuildContext context, GoRouterState state) {
+      final AuthStatus status = ref.read(authStatusProvider);
+      final String location = state.matchedLocation;
+      final bool isPublic = AppRoutes.publicPaths.contains(location);
+
+      if (status == AuthStatus.signedOut) {
+        return isPublic ? null : AppRoutes.loginPath;
+      }
+      // Connecté : les écrans d'authentification n'ont plus lieu d'être.
+      return isPublic ? AppRoutes.homePath : null;
+    },
     routes: <RouteBase>[
       // Les quatre onglets vivent dans un IndexedStack : chacun garde son état.
       StatefulShellRoute.indexedStack(
@@ -85,6 +108,67 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
         parentNavigatorKey: _rootNavigatorKey,
         builder: (BuildContext context, GoRouterState state) =>
             const CreateScreen(),
+      ),
+
+      GoRoute(
+        path: AppRoutes.profilePath,
+        name: AppRoutes.profile,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (BuildContext context, GoRouterState state) =>
+            const ProfileScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.settingsPath,
+        name: AppRoutes.settings,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (BuildContext context, GoRouterState state) =>
+            const SettingsScreen(),
+      ),
+
+      // Parcours d'authentification : hors du shell, donc sans barre de
+      // navigation. L'inscription est une pile, pour que le retour arrière
+      // revienne à l'étape précédente sans perdre la saisie.
+      GoRoute(
+        path: AppRoutes.loginPath,
+        name: AppRoutes.login,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (BuildContext context, GoRouterState state) =>
+            const LoginScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.signUpPath,
+        name: AppRoutes.signUp,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (BuildContext context, GoRouterState state) =>
+            const SignUpCredentialsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.signUpIdentityPath,
+        name: AppRoutes.signUpIdentity,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (BuildContext context, GoRouterState state) =>
+            const SignUpIdentityScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.verifyEmailPath,
+        name: AppRoutes.verifyEmail,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (BuildContext context, GoRouterState state) =>
+            const VerifyEmailScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.forgotPasswordPath,
+        name: AppRoutes.forgotPassword,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (BuildContext context, GoRouterState state) =>
+            const ForgotPasswordScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.resetPasswordPath,
+        name: AppRoutes.resetPassword,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (BuildContext context, GoRouterState state) =>
+            const ResetPasswordScreen(),
       ),
     ],
     errorBuilder: (BuildContext context, GoRouterState state) =>

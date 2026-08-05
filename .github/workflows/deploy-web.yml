@@ -27,6 +27,11 @@ concurrency:
 
 env:
   FLUTTER_VERSION: 3.44.8
+  # L'URL et la clé « publishable » de Supabase sont publiques par conception :
+  # elles voyagent dans chaque requête du client et la sécurité repose sur les
+  # politiques RLS. Elles figurent ici en clair, comme dans `AppConfig`.
+  SUPABASE_URL: https://xndvxxcknchanqpnrkjc.supabase.co
+  SUPABASE_ANON_KEY: sb_publishable_Z3fcuavUcuSYIRimt2T6iQ_OUbDRKj9
 
 jobs:
   build:
@@ -58,7 +63,11 @@ jobs:
       - name: Compiler la version web
         # GitHub Pages sert le site depuis /<nom-du-dépôt>/ : sans ce base-href,
         # les ressources sont demandées à la racine du domaine et renvoient 404.
-        run: flutter build web --release --base-href "/${{ github.event.repository.name }}/"
+        run: |
+          flutter build web --release \
+            --base-href "/${{ github.event.repository.name }}/" \
+            --dart-define=SUPABASE_URL="${{ env.SUPABASE_URL }}" \
+            --dart-define=SUPABASE_ANON_KEY="${{ env.SUPABASE_ANON_KEY }}"
 
       - name: Ajouter un fallback SPA pour les routes GoRouter
         # Pages renvoie 404.html pour toute URL inconnue. En y copiant

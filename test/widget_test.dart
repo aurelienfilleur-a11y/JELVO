@@ -5,13 +5,24 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:jelvo/core/core.dart';
 import 'package:jelvo/data/clock.dart';
 import 'package:jelvo/data/data_providers.dart';
+import 'package:jelvo/features/auth/providers/auth_providers.dart';
+import 'package:jelvo/features/profile/providers/profile_providers.dart';
 import 'package:jelvo/main.dart';
+
+import 'fakes/fake_auth_repository.dart';
 
 /// Date figée : les libellés « Aujourd'hui » / « Demain » et le jeu de données
 /// de démonstration sont tous calculés à partir de l'horloge.
 final DateTime _testNow = DateTime(2026, 8, 3, 9);
 
-Future<void> _pumpApp(WidgetTester tester) async {
+/// Lance l'application avec des dépôts simulés.
+///
+/// L'authentification et le profil sont surchargés : sans cela, les providers
+/// iraient chercher `Supabase.instance`, qui n'est pas initialisé en test.
+Future<FakeAuthRepository> _pumpApp(
+  WidgetTester tester, {
+  bool signedIn = true,
+}) async {
   // La surface de test par défaut (800 × 600) place la moitié des écrans sous
   // la ligne de flottaison ; on prend un viewport haut pour que les listes
   // soient entièrement construites.
@@ -20,14 +31,22 @@ Future<void> _pumpApp(WidgetTester tester) async {
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
 
+  final FakeAuthRepository auth = FakeAuthRepository(signedIn: signedIn);
+  addTearDown(auth.dispose);
+
   await tester.pumpWidget(
     ProviderScope(
       // `Override` n'est pas exporté par Riverpod 3 : on laisse l'inférence.
-      overrides: [clockProvider.overrideWithValue(FixedClock(_testNow))],
+      overrides: [
+        clockProvider.overrideWithValue(FixedClock(_testNow)),
+        authRepositoryProvider.overrideWithValue(auth),
+        profileRepositoryProvider.overrideWithValue(FakeProfileRepository()),
+      ],
       child: const JelvoApp(),
     ),
   );
   await tester.pumpAndSettle();
+  return auth;
 }
 
 void main() {

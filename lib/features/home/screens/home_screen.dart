@@ -33,10 +33,9 @@ class HomeScreen extends ConsumerWidget {
       title: ref.watch(greetingProvider),
       subtitle: 'Voici votre journée en un coup d’œil.',
       headerAction: AppScreenAction(
-        icon: Icons.notifications_none_rounded,
-        tooltip: 'Notifications',
-        badged: true,
-        onPressed: () => _showComingSoon(context, 'Les notifications'),
+        icon: Icons.person_outline_rounded,
+        tooltip: 'Profil',
+        onPressed: () => context.pushNamed(AppRoutes.profile),
       ),
       slivers: <Widget>[
         SliverPadding(
@@ -155,12 +154,6 @@ class HomeScreen extends ConsumerWidget {
         itemBuilder: builder,
       ),
     );
-  }
-
-  static void _showComingSoon(BuildContext context, String feature) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('$feature arrive bientôt.')));
   }
 }
 

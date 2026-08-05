@@ -244,7 +244,11 @@ seuls états de `AuthStatus`, sans `unknown`.
   `AuthFailure.from(Object)` couvre `AuthException`, `PostgrestException`
   (`23505` pseudo pris, `42501` RLS), `StorageException` et les pannes réseau.
   **Aucun message technique brut ne doit atteindre l'écran** : un `catch` qui
-  affiche `error.toString()` est un bug.
+  affiche `error.toString()` est un bug. Seule exception, temporaire et
+  explicite : `--dart-define=JELVO_DIAGNOSTIC=true` accole l'erreur brute —
+  SQLSTATE, message, détail, indice — sous le message français, et la consigne
+  dans la console. `AuthFailure.technical` est toujours renseigné ; seul son
+  affichage dépend du drapeau. À remettre à `false` dès le diagnostic fini.
 - `repository/auth_repository.dart` — l'interface expose `bool isSignedIn` et
   `Stream<bool> watchSignedIn()` plutôt que les types gotrue, ce qui permet de
   tester toute la pile sans `Supabase.initialize`.

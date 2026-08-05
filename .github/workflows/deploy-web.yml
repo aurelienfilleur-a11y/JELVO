@@ -32,6 +32,11 @@ env:
   # politiques RLS. Elles figurent ici en clair, comme dans `AppConfig`.
   SUPABASE_URL: https://xndvxxcknchanqpnrkjc.supabase.co
   SUPABASE_ANON_KEY: sb_publishable_Z3fcuavUcuSYIRimt2T6iQ_OUbDRKj9
+  # TEMPORAIRE — accole l'erreur PostgreSQL brute au message affiché, le temps
+  # d'identifier l'échec de l'invitation nominative. À repasser à `false` une
+  # fois la cause connue : un message technique à l'écran n'a rien à faire en
+  # production.
+  JELVO_DIAGNOSTIC: 'true'
 
 jobs:
   build:
@@ -67,7 +72,8 @@ jobs:
           flutter build web --release \
             --base-href "/${{ github.event.repository.name }}/" \
             --dart-define=SUPABASE_URL="${{ env.SUPABASE_URL }}" \
-            --dart-define=SUPABASE_ANON_KEY="${{ env.SUPABASE_ANON_KEY }}"
+            --dart-define=SUPABASE_ANON_KEY="${{ env.SUPABASE_ANON_KEY }}" \
+            --dart-define=JELVO_DIAGNOSTIC="${{ env.JELVO_DIAGNOSTIC }}"
 
       - name: Ajouter un fallback SPA pour les routes GoRouter
         # Pages renvoie 404.html pour toute URL inconnue. En y copiant

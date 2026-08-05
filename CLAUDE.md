@@ -42,6 +42,8 @@ lib/
 ├── data/                     # infrastructure partagée, sans connaissance métier
 │   ├── clock.dart            # Clock / SystemClock / FixedClock
 │   ├── in_memory_collection.dart  # collection observable indexée par id
+│   ├── app_config.dart       # configuration de compilation (--dart-define)
+│   ├── supabase_providers.dart    # supabaseClientProvider
 │   └── data_providers.dart   # clockProvider, nowProvider
 ├── features/<feature>/
 │   ├── models/               # classes immuables du domaine (== sur l'id)
@@ -50,10 +52,13 @@ lib/
 │   ├── screens/              # écrans complets
 │   └── widgets/              # widgets propres à la feature
 └── router/                   # GoRouter, coque et barre de navigation
+
+supabase/                     # SQL à exécuter sur le projet Supabase
 ```
 
-Features existantes : `home`, `groups`, `calendar`, `contacts`, `tasks`
-(sans écran propre, exposée dans `home` et `groups`), `create`.
+Features existantes : `auth`, `profile`, `home`, `groups`, `calendar`,
+`contacts`, `tasks` (sans écran propre, exposée dans `home` et `groups`),
+`create`.
 
 ### Sens des dépendances
 
@@ -181,6 +186,69 @@ de feature (voir `avatarsForContactIdsProvider`).
   `index.html` en `404.html` pour que l'accès direct à `/calendrier` fonctionne
   sur GitHub Pages.
 
+### Garde d'authentification
+
+`routerProvider` combine `refreshListenable: ref.watch(authRefreshProvider)` et
+un `redirect` qui lit `authStatusProvider` de façon **synchrone** :
+
+- session absente → tout chemin hors `AppRoutes.publicPaths` renvoie vers
+  `/connexion` ;
+- session présente → un chemin public renvoie vers `/`.
+
+`AuthRefreshNotifier` est un `ChangeNotifier` alimenté par un `ref.listen` :
+GoRouter ne sait pas observer un provider, il faut ce pont. Le statut est un
+`Notifier` et non un `StreamProvider` parce qu'une redirection ne peut pas
+attendre un `AsyncValue`.
+
+---
+
+## Authentification et Supabase
+
+Seuls **l'authentification et le profil** sont branchés sur Supabase. Les
+groupes, événements, tâches et contacts restent en mémoire.
+
+### Configuration
+
+`data/app_config.dart` lit l'URL et la clé publiable via `String.fromEnvironment`
+avec des valeurs par défaut. Ces deux valeurs sont publiques par conception et
+peuvent figurer dans un dépôt public, mais elles se surchargent à la compilation :
+
+```bash
+flutter build web --release \
+  --dart-define=SUPABASE_URL=… --dart-define=SUPABASE_ANON_KEY=…
+```
+
+Le workflow les injecte depuis son bloc `env`. Toute nouvelle valeur de
+configuration passe par `AppConfig`, jamais par une constante disséminée.
+
+`main()` attend `Supabase.initialize(url:, publishableKey:)` avant `runApp` :
+la session persistée est donc déjà restaurée au premier `build` — d'où les deux
+seuls états de `AuthStatus`, sans `unknown`.
+
+### Feature `auth`
+
+- `models/credentials_rules.dart` — validation pure, sans dépendance Flutter :
+  pseudo `^[a-z0-9.]{3,20}$`, mot de passe de 8 caractères avec une majuscule et
+  un chiffre.
+- `models/auth_failure.dart` — **le seul endroit** qui traduit une erreur.
+  `AuthFailure.from(Object)` couvre `AuthException`, `PostgrestException`
+  (`23505` pseudo pris, `42501` RLS), `StorageException` et les pannes réseau.
+  **Aucun message technique brut ne doit atteindre l'écran** : un `catch` qui
+  affiche `error.toString()` est un bug.
+- `repository/auth_repository.dart` — l'interface expose `bool isSignedIn` et
+  `Stream<bool> watchSignedIn()` plutôt que les types gotrue, ce qui permet de
+  tester toute la pile sans `Supabase.initialize`.
+- La connexion par pseudo appelle la fonction SQL `email_pour_pseudo`, livrée
+  dans `supabase/email_pour_pseudo.sql` et **à exécuter sur le projet**. Sans
+  elle, PostgREST répond `PGRST202` et l'écran invite à se connecter par e-mail.
+- La vérification par code à 6 chiffres suppose que le modèle d'e-mail Supabase
+  émet `{{ .Token }}` et non `{{ .ConfirmationURL }}`.
+- La ligne `profiles` ne peut être écrite qu'**après** `verifyOTP` : c'est cette
+  étape qui ouvre la session, donc RLS. D'où l'ordre inscription → code →
+  `completeSignUp`.
+- La colonne du pseudo s'appelle `pseudo` (pas `username`) et `profiles` ne
+  porte pas d'`email` : l'adresse vient de la session (`currentEmailProvider`).
+
 ---
 
 ## Conventions
@@ -208,16 +276,27 @@ de feature (voir `avatarsForContactIdsProvider`).
   écrans doivent tenir à partir de 360 dp de large.
 - **Commentaires** : expliquer *pourquoi*, pas *quoi*. Un commentaire qui
   paraphrase la ligne suivante est à supprimer.
+- **Univers des données de démonstration** : Jelvo s'adresse à la sphère
+  personnelle. Les jeux `demo…` restent dans un registre **familial et amical**
+  — famille, amis, colocation, voyage, sport. Le registre professionnel
+  (réunion, sprint, point hebdo, syndic, copropriété) est **hors périmètre
+  produit** et ne doit pas réapparaître, pas plus dans les libellés que dans les
+  énumérations : c'est la raison pour laquelle `ContactRelation` propose `Coloc`
+  et non `Travail`.
 
 ---
 
 ## Tests
 
-`test/widget_test.dart` couvre le parcours principal : accueil, navigation
-entre les quatre onglets, ouverture de `/creer`, validation du formulaire et
-filtrage des contacts.
+- `test/widget_test.dart` couvre le parcours principal : accueil, navigation
+  entre les quatre onglets, ouverture de `/creer`, validation du formulaire et
+  filtrage des contacts.
+- `test/auth_flow_test.dart` couvre la garde de navigation, les erreurs de
+  connexion, la disponibilité du pseudo et la déconnexion.
+- `test/credentials_rules_test.dart` couvre les règles de validation, sans
+  widget.
 
-Deux points à respecter dans tout nouveau test de widget :
+Trois points à respecter dans tout nouveau test de widget :
 
 1. Surcharger l'horloge — les données de démonstration et les libellés
    « Aujourd'hui »/« Demain » en dépendent :
@@ -234,13 +313,28 @@ Deux points à respecter dans tout nouveau test de widget :
    tester.view.physicalSize = const Size(420, 1600);
    tester.view.devicePixelRatio = 1;
    ```
+3. Surcharger l'authentification et le profil. Sans cela, les providers
+   cherchent `Supabase.instance`, qui n'est pas initialisé en test, et l'écran
+   reste bloqué sur la connexion :
+   ```dart
+   overrides: [
+     authRepositoryProvider.overrideWithValue(FakeAuthRepository(signedIn: true)),
+     profileRepositoryProvider.overrideWithValue(FakeProfileRepository()),
+   ]
+   ```
+   Les deux faux dépôts vivent dans `test/fakes/fake_auth_repository.dart`.
 
 ---
 
 ## État actuel et limites connues
 
-- Les données sont **en mémoire** et regénérées à chaque démarrage : aucune
-  persistance, aucun backend, aucune authentification.
+- **Authentification et profil** sont branchés sur Supabase et persistés. Tout
+  le reste — groupes, événements, tâches, contacts — est **en mémoire** et
+  regénéré à chaque démarrage.
+- Deux prérequis côté projet Supabase, non vérifiables depuis le code :
+  exécuter `supabase/email_pour_pseudo.sql` pour la connexion par pseudo, et
+  faire émettre `{{ .Token }}` au modèle d'e-mail de confirmation pour le code
+  à 6 chiffres.
 - L'écran `/creer` **valide** le titre mais **n'enregistre pas** encore : il
   affiche une `SnackBar`. Le câblage vers les dépôts reste à faire.
 - Le partage d'un événement avec un groupe et le choix des participants ne sont

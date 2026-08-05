@@ -38,6 +38,9 @@ class InMemoryEventRepository implements EventRepository {
 
   /// Agenda de démonstration, positionné autour d'[anchor] pour que l'écran
   /// d'accueil ait toujours quelque chose à montrer, quelle que soit la date.
+  ///
+  /// Univers familial et amical : repas de famille, sport, anniversaires,
+  /// voyage et colocation. L'univers professionnel est hors périmètre produit.
   static List<CalendarEvent> demoEvents(DateTime anchor) {
     final DateTime today = DateTime(anchor.year, anchor.month, anchor.day);
     DateTime at(int dayOffset, int hour, [int minute = 0]) => today
@@ -47,12 +50,12 @@ class InMemoryEventRepository implements EventRepository {
     return <CalendarEvent>[
       CalendarEvent(
         id: 'e1',
-        title: 'Point hebdo produit',
+        title: 'Brunch chez les parents',
         start: at(0, 9, 30),
-        end: at(0, 10, 15),
-        location: 'Salle Mercure',
-        groupId: 'g2',
-        participantIds: <String>['c2', 'c5', 'c4'],
+        end: at(0, 11, 30),
+        location: 'Chez Papi et Mamie',
+        groupId: 'g1',
+        participantIds: <String>['c1', 'c3', 'c7'],
       ),
       CalendarEvent(
         id: 'e2',
@@ -65,11 +68,12 @@ class InMemoryEventRepository implements EventRepository {
       ),
       CalendarEvent(
         id: 'e3',
-        title: 'Rétrospective de sprint',
+        title: 'Match de foot des enfants',
         start: at(0, 16),
         end: at(0, 17),
-        groupId: 'g2',
-        participantIds: <String>['c2', 'c5'],
+        location: 'Stade municipal',
+        groupId: 'g1',
+        participantIds: <String>['c3', 'c7'],
         status: EventStatus.conflict,
         notes: 'Chevauche le créneau de garde des enfants',
       ),
@@ -108,12 +112,23 @@ class InMemoryEventRepository implements EventRepository {
       ),
       CalendarEvent(
         id: 'e8',
-        title: 'Réunion de copropriété',
+        title: 'Soirée jeux à la coloc',
         start: at(6, 18, 30),
         end: at(6, 20),
+        location: 'Coloc Bastille',
         groupId: 'g4',
         participantIds: <String>['c6', 'c4'],
         status: EventStatus.draft,
+      ),
+      CalendarEvent(
+        id: 'e9',
+        title: 'Départ pour la Corse',
+        start: at(9, 7),
+        end: at(9, 14),
+        location: 'Port de Toulon',
+        groupId: 'g2',
+        participantIds: <String>['c2', 'c5', 'c4'],
+        status: EventStatus.pending,
       ),
     ];
   }

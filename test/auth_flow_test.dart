@@ -64,7 +64,7 @@ void main() {
     await _pumpApp(tester, signedIn: true);
 
     expect(find.text('Content de vous revoir'), findsNothing);
-    expect(find.text('Point hebdo produit'), findsOneWidget);
+    expect(find.text('Brunch chez les parents'), findsOneWidget);
   });
 
   testWidgets('un champ vide est signalé en français', (
@@ -115,7 +115,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(auth.lastSignInIdentifier, 'camille.rousseau');
-    expect(find.text('Point hebdo produit'), findsOneWidget);
+    expect(find.text('Brunch chez les parents'), findsOneWidget);
   });
 
   testWidgets('l’inscription signale un pseudo déjà pris', (

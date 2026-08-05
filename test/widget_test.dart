@@ -58,7 +58,7 @@ void main() {
     await _pumpApp(tester);
 
     expect(find.textContaining('Bonjour'), findsOneWidget);
-    expect(find.text('Point hebdo produit'), findsOneWidget);
+    expect(find.text('Brunch chez les parents'), findsOneWidget);
     // « Aujourd'hui » titre la section agenda et sert aussi de pastille
     // d'échéance sur les tâches du jour.
     expect(find.text("Aujourd'hui"), findsWidgets);

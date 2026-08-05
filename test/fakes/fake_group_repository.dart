@@ -41,6 +41,7 @@ class FakeGroupRepository implements GroupRepository {
   String? lastPromotedUserId;
   String? lastRemovedUserId;
   String? lastInvitedUserId;
+  String? lastCreatedName;
 
   static const List<Group> demoGroups = <Group>[
     Group(
@@ -98,6 +99,7 @@ class FakeGroupRepository implements GroupRepository {
     String? photoExtension,
     bool isPrivate = true,
   }) async {
+    lastCreatedName = name;
     final Group group = Group(
       id: 'g${_groups.length + 1}',
       name: name,

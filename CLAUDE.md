@@ -319,10 +319,28 @@ signifie « sans terme ». **Toute lecture de `group_members` filtre les adhési
 adhésion échue laisse sa ligne : les fonctions d'adhésion la suppriment avant de
 réinsérer, la clé primaire étant le couple groupe / utilisateur.
 
-### Migration à exécuter
+### Le `returning` d'une insertion passe par la politique SELECT
 
-**`supabase/tranche2_groupes_et_invitations.sql`**, en une fois, dans l'éditeur
-SQL du projet. Idempotente. Elle apporte les favoris personnels, `expires_at`,
+Piège coûteux, rencontré sur la création de groupe. `groups_select` exige
+`is_group_member(id)`, et **PostgreSQL applique les politiques SELECT au
+`returning` d'un `insert`**. Un `insert(...).select()` sur `groups` échoue donc
+en `42501` : à cet instant, le créateur n'est pas encore dans `group_members`,
+sa propre ligne lui est invisible.
+
+Un déclencheur `after insert` qui inscrirait le créateur n'y change rien : les
+déclencheurs `after row` s'exécutent en fin d'instruction, après le contrôle de
+visibilité. D'où `creer_groupe`, fonction `security definer` qui insère le
+groupe et l'adhésion admin dans la même transaction.
+
+**Règle générale** : sur une table dont la politique SELECT dépend d'une ligne
+créée *ensuite*, ne pas utiliser `insert(...).select()` — passer par une
+fonction. Cela vaut aussi pour toute future table de ce genre.
+
+### Migrations à exécuter
+
+**`supabase/tranche2_groupes_et_invitations.sql`**, puis
+**`supabase/correctif_creation_groupe.sql`**, dans cet ordre, dans l'éditeur
+SQL du projet. Idempotentes. Elle apporte les favoris personnels, `expires_at`,
 la table `group_invite_links` avec ses politiques, et les fonctions ci-dessous.
 
 | Fonction | Rôle |
@@ -335,6 +353,7 @@ la table `group_invite_links` avec ses politiques, et les fonctions ci-dessous.
 | `rejoindre_groupe_par_jeton` | valide le jeton et insère le membre |
 | `quitter_groupe` | départ, promotion, suppression — en une transaction |
 | `mes_invitations`, `inviter_dans_groupe`, `accepter_invitation`, `refuser_invitation` | invitations nominatives |
+| `creer_groupe` | groupe + adhésion admin en une transaction (voir ci-dessus) |
 
 **Pourquoi tant de fonctions plutôt que des requêtes directes.** Deux raisons,
 et une seule suffirait :
@@ -474,11 +493,12 @@ icône : viser un bouton d'en-tête par `find.byTooltip`, pas par `find.byIcon`.
   `groupByIdProvider` renvoie donc `null` pour eux — pas de pastille de groupe
   sur ces cartes, plutôt qu'un plantage. Le recâblage viendra avec leur passage
   sur Supabase.
-- Trois prérequis côté projet Supabase, non vérifiables depuis le code :
+- Quatre prérequis côté projet Supabase, non vérifiables depuis le code :
   exécuter `supabase/email_pour_pseudo.sql` pour la connexion par pseudo,
-  exécuter `supabase/tranche2_groupes_et_invitations.sql` pour les groupes et
-  les invitations, et faire émettre `{{ .Token }}` au modèle d'e-mail de
-  confirmation pour le code à 6 chiffres.
+  `supabase/tranche2_groupes_et_invitations.sql` pour les groupes et les
+  invitations, `supabase/correctif_creation_groupe.sql` pour la création de
+  groupe, et faire émettre `{{ .Token }}` au modèle d'e-mail de confirmation
+  pour le code à 6 chiffres.
 - Le scan de QR code demande une caméra : il est désactivé proprement sur le web
   et sur ordinateur, où l'écran renvoie vers la recherche par pseudo. Les cibles
   Android et iOS n'ont pas pu être compilées ici — `mobile_scanner` embarque du

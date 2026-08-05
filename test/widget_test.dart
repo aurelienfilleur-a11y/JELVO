@@ -89,12 +89,46 @@ void main() {
     expect(find.text('Léa Marchand'), findsOneWidget);
   });
 
-  testWidgets('le bouton « + » ouvre l’écran de création', (
+  testWidgets('le bouton « + » est contextuel', (WidgetTester tester) async {
+    await _pumpApp(tester);
+
+    // Depuis l'accueil comme depuis Groupes, il crée un groupe.
+    expect(find.byTooltip('Nouveau groupe'), findsOneWidget);
+    await tester.tap(find.text('Groupes'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Nouveau groupe'), findsNWidgets(2));
+
+    await tester.tap(find.text('Calendrier'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Nouvel événement'), findsOneWidget);
+
+    await tester.tap(find.text('Contacts'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Ajouter un contact'), findsWidgets);
+  });
+
+  testWidgets('le « + » de l’accueil ouvre la création de groupe', (
     WidgetTester tester,
   ) async {
     await _pumpApp(tester);
 
-    await tester.tap(find.byIcon(Icons.add_rounded).first);
+    await tester.tap(find.byTooltip('Nouveau groupe'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Nouveau groupe'), findsWidgets);
+    expect(find.text('Créer le groupe'), findsOneWidget);
+  });
+
+  testWidgets('le « + » du calendrier ouvre l’écran de création', (
+    WidgetTester tester,
+  ) async {
+    await _pumpApp(tester);
+
+    // L'écran Calendrier porte le même mot en H1 que son onglet : on vise le
+    // libellé de la barre, qui vient après le contenu dans l'arbre.
+    await tester.tap(find.text('Calendrier').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Nouvel événement'));
     await tester.pumpAndSettle();
 
     expect(find.text('Que voulez-vous créer ?'), findsOneWidget);
@@ -106,7 +140,11 @@ void main() {
   ) async {
     await _pumpApp(tester);
 
-    await tester.tap(find.byIcon(Icons.add_rounded).first);
+    // L'écran Calendrier porte le même mot en H1 que son onglet : on vise le
+    // libellé de la barre, qui vient après le contenu dans l'arbre.
+    await tester.tap(find.text('Calendrier').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Nouvel événement'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Créer l’événement'));

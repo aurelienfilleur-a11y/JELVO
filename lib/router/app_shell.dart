@@ -31,8 +31,32 @@ class AppShell extends ConsumerWidget {
           // sur iOS comme sur Android.
           initialLocation: index == navigationShell.currentIndex,
         ),
-        onCreatePressed: () => context.pushNamed(AppRoutes.create),
+        createLabel: _createAction(navigationShell.currentIndex).label,
+        onCreatePressed: () => context.pushNamed(
+          _createAction(navigationShell.currentIndex).routeName,
+        ),
       ),
     );
   }
+
+  /// Ce que crée le bouton central, selon l'onglet ouvert.
+  ///
+  /// Le « + » n'est pas un onglet mais une action : la faire dépendre du
+  /// contexte évite de demander à chaque fois ce que l'on veut créer, alors que
+  /// l'écran ouvert le dit déjà.
+  static _CreateAction _createAction(int index) => switch (index) {
+    // Accueil et Groupes mènent tous deux à la création de groupe : c'est
+    // l'objet principal de l'application.
+    0 || 1 => const _CreateAction(AppRoutes.groupCreate, 'Nouveau groupe'),
+    2 => const _CreateAction(AppRoutes.create, 'Nouvel événement'),
+    _ => const _CreateAction(AppRoutes.addContact, 'Ajouter un contact'),
+  };
+}
+
+/// Destination du bouton central et libellé lu par les lecteurs d'écran.
+class _CreateAction {
+  const _CreateAction(this.routeName, this.label);
+
+  final String routeName;
+  final String label;
 }

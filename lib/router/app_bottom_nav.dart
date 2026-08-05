@@ -28,6 +28,7 @@ class AppBottomNav extends StatelessWidget {
     required this.onDestinationSelected,
     required this.onCreatePressed,
     this.badges = const <int>[0, 0, 0, 0],
+    this.createLabel = 'Créer',
   });
 
   /// Index de l'onglet actif, de 0 à 3 (le bouton « + » n'en a pas).
@@ -41,6 +42,10 @@ class AppBottomNav extends StatelessWidget {
   /// Une valeur nulle ou négative n'affiche aucune pastille : un compteur à
   /// zéro ne doit pas laisser de rond vide derrière lui.
   final List<int> badges;
+
+  /// Ce que crée le bouton central depuis l'onglet courant. Sert d'infobulle et
+  /// d'étiquette d'accessibilité : l'icône seule ne dit pas ce qui va s'ouvrir.
+  final String createLabel;
 
   static const List<NavDestination> destinations = <NavDestination>[
     NavDestination(
@@ -81,7 +86,12 @@ class AppBottomNav extends StatelessWidget {
             children: <Widget>[
               _tab(0),
               _tab(1),
-              Expanded(child: _CreateButton(onPressed: onCreatePressed)),
+              Expanded(
+                child: _CreateButton(
+                  onPressed: onCreatePressed,
+                  label: createLabel,
+                ),
+              ),
               _tab(2),
               _tab(3),
             ],
@@ -162,16 +172,16 @@ class _NavTab extends StatelessWidget {
 
 /// Bouton d'action central, en dégradé violet.
 class _CreateButton extends StatelessWidget {
-  const _CreateButton({required this.onPressed});
+  const _CreateButton({required this.onPressed, required this.label});
 
   final VoidCallback onPressed;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Semantics(
-        button: true,
-        label: 'Créer',
+      child: Tooltip(
+        message: label,
         child: GestureDetector(
           onTap: onPressed,
           child: Container(

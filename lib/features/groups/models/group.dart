@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
+import 'group_member.dart';
 
 /// Couleur d'identité d'un groupe.
 ///
-/// On stocke un enum plutôt qu'une `Color` brute : c'est sérialisable tel quel
-/// et cela garantit que tout groupe reste dans la palette.
+/// `groups` ne porte ni couleur ni icône : l'accent est dérivé de l'identifiant
+/// plutôt que stocké. Deux appareils affichent ainsi le même groupe de la même
+/// couleur, sans colonne supplémentaire ni tirage aléatoire.
 enum GroupAccent {
   violet(AppColors.primary),
   indigo(AppColors.primaryDark),
@@ -17,67 +19,105 @@ enum GroupAccent {
   const GroupAccent(this.color);
 
   final Color color;
+
+  static GroupAccent forId(String id) =>
+      GroupAccent.values[_stableHash(id) % GroupAccent.values.length];
 }
 
-/// Un groupe partagé : famille, colocation, équipe, association…
+/// Icônes possibles, choisies elles aussi d'après l'identifiant.
+const List<IconData> _groupIcons = <IconData>[
+  Icons.groups_rounded,
+  Icons.home_rounded,
+  Icons.terrain_rounded,
+  Icons.luggage_rounded,
+  Icons.apartment_rounded,
+  Icons.celebration_rounded,
+];
+
+/// Somme de contrôle stable d'une chaîne.
+///
+/// `String.hashCode` varie d'une exécution à l'autre en Dart : il ne peut pas
+/// servir à choisir une couleur qui doit rester la même entre deux lancements.
+int _stableHash(String value) {
+  int hash = 0;
+  for (final int unit in value.codeUnits) {
+    hash = (hash * 31 + unit) & 0x7fffffff;
+  }
+  return hash;
+}
+
+/// Un groupe partagé : famille, colocation, amis, voyage…
 @immutable
 class Group {
   const Group({
     required this.id,
     required this.name,
-    required this.memberIds,
     this.description,
-    this.accent = GroupAccent.violet,
-    this.icon = Icons.groups_rounded,
-    this.upcomingEventCount = 0,
-    this.openTaskCount = 0,
+    this.photoUrl,
+    this.isPrivate = true,
+    this.createdBy,
+    this.createdAt,
+    this.myRole = GroupRole.member,
+    this.memberCount = 0,
   });
+
+  factory Group.fromRow(
+    Map<String, dynamic> row, {
+    GroupRole myRole = GroupRole.member,
+    int memberCount = 0,
+  }) {
+    return Group(
+      id: row['id'] as String,
+      name: (row['name'] as String?) ?? 'Groupe',
+      description: row['description'] as String?,
+      photoUrl: row['photo_url'] as String?,
+      isPrivate: (row['is_private'] as bool?) ?? true,
+      createdBy: row['created_by'] as String?,
+      createdAt: DateTime.tryParse((row['created_at'] as String?) ?? ''),
+      myRole: myRole,
+      memberCount: memberCount,
+    );
+  }
 
   final String id;
   final String name;
   final String? description;
+  final String? photoUrl;
+  final bool isPrivate;
+  final String? createdBy;
+  final DateTime? createdAt;
 
-  /// Identifiants des contacts membres, résolus via `contactProviders`.
-  final List<String> memberIds;
+  /// Rôle de l'utilisateur courant dans ce groupe.
+  final GroupRole myRole;
 
-  final GroupAccent accent;
-  final IconData icon;
+  final int memberCount;
 
-  /// Compteurs dénormalisés, affichés sur la carte sans recharger l'agenda.
-  final int upcomingEventCount;
-  final int openTaskCount;
+  bool get isAdmin => myRole == GroupRole.admin;
 
-  int get memberCount => memberIds.length;
+  GroupAccent get accent => GroupAccent.forId(id);
 
-  /// Résumé affiché à droite de la carte, p. ex. « 2 événements · 3 tâches ».
-  String get activityLabel {
-    final List<String> parts = <String>[
-      if (upcomingEventCount > 0)
-        '$upcomingEventCount événement${upcomingEventCount > 1 ? 's' : ''}',
-      if (openTaskCount > 0)
-        '$openTaskCount tâche${openTaskCount > 1 ? 's' : ''}',
-    ];
-    return parts.isEmpty ? 'Rien de prévu' : parts.join(' · ');
-  }
+  IconData get icon => _groupIcons[_stableHash(id) % _groupIcons.length];
+
+  String get memberLabel => '$memberCount membre${memberCount > 1 ? 's' : ''}';
 
   Group copyWith({
     String? name,
     String? description,
-    List<String>? memberIds,
-    GroupAccent? accent,
-    IconData? icon,
-    int? upcomingEventCount,
-    int? openTaskCount,
+    String? photoUrl,
+    bool? isPrivate,
+    GroupRole? myRole,
+    int? memberCount,
   }) {
     return Group(
       id: id,
       name: name ?? this.name,
       description: description ?? this.description,
-      memberIds: memberIds ?? this.memberIds,
-      accent: accent ?? this.accent,
-      icon: icon ?? this.icon,
-      upcomingEventCount: upcomingEventCount ?? this.upcomingEventCount,
-      openTaskCount: openTaskCount ?? this.openTaskCount,
+      photoUrl: photoUrl ?? this.photoUrl,
+      isPrivate: isPrivate ?? this.isPrivate,
+      createdBy: createdBy,
+      createdAt: createdAt,
+      myRole: myRole ?? this.myRole,
+      memberCount: memberCount ?? this.memberCount,
     );
   }
 

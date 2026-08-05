@@ -23,6 +23,28 @@ abstract final class AppConfig {
   /// Bucket Storage des photos de profil.
   static const String avatarsBucket = 'avatars';
 
+  /// Bucket Storage des photos de groupe.
+  static const String groupPhotosBucket = 'group-photos';
+
   /// Délai avant de pouvoir redemander un code de vérification.
   static const Duration resendCodeDelay = Duration(seconds: 45);
+
+  /// Adresse publique de l'application, utilisée pour composer les liens
+  /// d'invitation partagés hors de l'application (SMS, messagerie, e-mail).
+  ///
+  /// À surcharger pour un déploiement sur un autre domaine :
+  /// `--dart-define=JELVO_WEB_URL=https://mon-domaine.fr`.
+  static const String webBaseUrl = String.fromEnvironment(
+    'JELVO_WEB_URL',
+    defaultValue: 'https://aurelienfilleur-a11y.github.io/JELVO',
+  );
+
+  /// Durée de validité d'un lien d'invitation, alignée sur le défaut SQL.
+  static const Duration inviteLinkLifetime = Duration(days: 30);
+
+  /// Longueur du jeton d'invitation, en octets tirés au sort.
+  static const int inviteTokenBytes = 16;
+
+  /// Lien partageable menant à la page publique d'un groupe.
+  static String inviteUrl(String token) => '$webBaseUrl/rejoindre/$token';
 }

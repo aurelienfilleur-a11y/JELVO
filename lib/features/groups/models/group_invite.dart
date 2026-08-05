@@ -1,0 +1,248 @@
+import 'package:flutter/foundation.dart';
+
+/// État d'un lien d'invitation, tel que le renvoie `apercu_groupe_par_jeton`.
+enum InviteLinkStatus {
+  valide,
+  invalide,
+  expire,
+  revoque,
+  epuise;
+
+  static InviteLinkStatus fromDb(String? value) => switch (value) {
+    'valide' => InviteLinkStatus.valide,
+    'expire' => InviteLinkStatus.expire,
+    'revoque' => InviteLinkStatus.revoque,
+    'epuise' => InviteLinkStatus.epuise,
+    _ => InviteLinkStatus.invalide,
+  };
+
+  /// Message affiché sur la page publique quand le lien ne vaut plus.
+  String get message => switch (this) {
+    InviteLinkStatus.valide => '',
+    InviteLinkStatus.invalide =>
+      'Ce lien d’invitation n’existe pas ou n’est plus valable.',
+    InviteLinkStatus.expire =>
+      'Ce lien d’invitation a expiré. Demandez-en un nouveau au groupe.',
+    InviteLinkStatus.revoque =>
+      'Ce lien d’invitation a été révoqué par le groupe.',
+    InviteLinkStatus.epuise => 'Ce lien a déjà servi au nombre de fois prévu.',
+  };
+}
+
+/// Résultat d'une tentative d'adhésion, par lien ou par invitation nominative.
+enum JoinOutcome {
+  rejoint,
+  dejaMembre,
+  invalide,
+  expire,
+  revoque,
+  epuise,
+  nonConnecte;
+
+  static JoinOutcome fromDb(String? value) => switch (value) {
+    'rejoint' => JoinOutcome.rejoint,
+    'deja_membre' => JoinOutcome.dejaMembre,
+    'expire' => JoinOutcome.expire,
+    'revoque' => JoinOutcome.revoque,
+    'epuise' => JoinOutcome.epuise,
+    'non_connecte' => JoinOutcome.nonConnecte,
+    _ => JoinOutcome.invalide,
+  };
+
+  bool get isSuccess =>
+      this == JoinOutcome.rejoint || this == JoinOutcome.dejaMembre;
+
+  String get message => switch (this) {
+    JoinOutcome.rejoint => 'Vous avez rejoint le groupe.',
+    JoinOutcome.dejaMembre => 'Vous faites déjà partie de ce groupe.',
+    JoinOutcome.invalide =>
+      'Ce lien d’invitation n’existe pas ou n’est plus valable.',
+    JoinOutcome.expire => 'Ce lien d’invitation a expiré.',
+    JoinOutcome.revoque => 'Ce lien d’invitation a été révoqué.',
+    JoinOutcome.epuise => 'Ce lien a déjà servi au nombre de fois prévu.',
+    JoinOutcome.nonConnecte => 'Connectez-vous pour rejoindre ce groupe.',
+  };
+}
+
+/// Ce que devient un groupe quand on le quitte.
+enum LeaveOutcome {
+  parti,
+  adminTransmis,
+  groupeSupprime,
+  nonMembre;
+
+  static LeaveOutcome fromDb(String? value) => switch (value) {
+    'parti' => LeaveOutcome.parti,
+    'admin_transmis' => LeaveOutcome.adminTransmis,
+    'groupe_supprime' => LeaveOutcome.groupeSupprime,
+    _ => LeaveOutcome.nonMembre,
+  };
+
+  String get message => switch (this) {
+    LeaveOutcome.parti => 'Vous avez quitté le groupe.',
+    LeaveOutcome.adminTransmis =>
+      'Vous avez quitté le groupe. Le plus ancien membre en devient admin.',
+    LeaveOutcome.groupeSupprime =>
+      'Vous étiez le dernier membre : le groupe a été supprimé.',
+    LeaveOutcome.nonMembre => 'Vous ne faites pas partie de ce groupe.',
+  };
+}
+
+/// Aperçu public d'un groupe, affiché avant d'accepter une invitation.
+@immutable
+class GroupInvitePreview {
+  const GroupInvitePreview({
+    required this.status,
+    this.groupId,
+    this.name,
+    this.description,
+    this.photoUrl,
+    this.memberCount = 0,
+  });
+
+  factory GroupInvitePreview.fromRow(Map<String, dynamic> row) {
+    return GroupInvitePreview(
+      status: InviteLinkStatus.fromDb(row['statut'] as String?),
+      groupId: row['group_id'] as String?,
+      name: row['nom'] as String?,
+      description: row['description'] as String?,
+      photoUrl: row['photo_url'] as String?,
+      memberCount: (row['nombre_membres'] as int?) ?? 0,
+    );
+  }
+
+  final InviteLinkStatus status;
+  final String? groupId;
+  final String? name;
+  final String? description;
+  final String? photoUrl;
+  final int memberCount;
+
+  bool get isJoinable => status == InviteLinkStatus.valide && groupId != null;
+}
+
+/// Un lien de partage créé par un membre.
+@immutable
+class GroupInviteLink {
+  const GroupInviteLink({
+    required this.id,
+    required this.groupId,
+    required this.token,
+    required this.expiresAt,
+    this.maxUses,
+    this.usesCount = 0,
+    this.revokedAt,
+    this.createdAt,
+  });
+
+  factory GroupInviteLink.fromRow(Map<String, dynamic> row) {
+    return GroupInviteLink(
+      id: row['id'] as String,
+      groupId: row['group_id'] as String,
+      token: row['token'] as String,
+      expiresAt:
+          DateTime.tryParse((row['expires_at'] as String?) ?? '') ??
+          DateTime.now(),
+      maxUses: row['max_uses'] as int?,
+      usesCount: (row['uses_count'] as int?) ?? 0,
+      revokedAt: DateTime.tryParse((row['revoked_at'] as String?) ?? ''),
+      createdAt: DateTime.tryParse((row['created_at'] as String?) ?? ''),
+    );
+  }
+
+  final String id;
+  final String groupId;
+  final String token;
+  final DateTime expiresAt;
+  final int? maxUses;
+  final int usesCount;
+  final DateTime? revokedAt;
+  final DateTime? createdAt;
+
+  bool isActive(DateTime now) =>
+      revokedAt == null &&
+      expiresAt.isAfter(now) &&
+      (maxUses == null || usesCount < maxUses!);
+
+  /// Résumé affiché sous le lien : « 2 utilisations sur 5 ».
+  String get usesLabel {
+    final int? max = maxUses;
+    if (max == null) {
+      return usesCount == 0
+          ? 'Jamais utilisé'
+          : '$usesCount utilisation${usesCount > 1 ? 's' : ''}';
+    }
+    return '$usesCount utilisation${usesCount > 1 ? 's' : ''} sur $max';
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) || (other is GroupInviteLink && other.id == id);
+
+  @override
+  int get hashCode => id.hashCode;
+}
+
+/// Invitation nominative reçue, prête à être affichée.
+@immutable
+class GroupInvitation {
+  const GroupInvitation({
+    required this.id,
+    required this.groupId,
+    required this.groupName,
+    required this.senderName,
+    this.description,
+    this.photoUrl,
+    this.senderAvatarUrl,
+    this.memberCount = 0,
+    this.memberNames = const <String>[],
+    this.createdAt,
+    this.expiresAt,
+  });
+
+  factory GroupInvitation.fromRow(Map<String, dynamic> row) {
+    return GroupInvitation(
+      id: row['id'] as String,
+      groupId: row['group_id'] as String,
+      groupName: (row['nom'] as String?) ?? 'Groupe',
+      senderName: (row['emetteur'] as String?) ?? 'Un membre',
+      description: row['description'] as String?,
+      photoUrl: row['photo_url'] as String?,
+      senderAvatarUrl: row['emetteur_avatar'] as String?,
+      memberCount: (row['nombre_membres'] as int?) ?? 0,
+      memberNames:
+          (row['membres_apercu'] as List<dynamic>?)
+              ?.whereType<String>()
+              .toList() ??
+          const <String>[],
+      createdAt: DateTime.tryParse((row['created_at'] as String?) ?? ''),
+      expiresAt: DateTime.tryParse((row['expires_at'] as String?) ?? ''),
+    );
+  }
+
+  final String id;
+  final String groupId;
+  final String groupName;
+  final String senderName;
+  final String? description;
+  final String? photoUrl;
+  final String? senderAvatarUrl;
+  final int memberCount;
+
+  /// Quelques prénoms, pour situer le groupe avant d'accepter.
+  final List<String> memberNames;
+
+  final DateTime? createdAt;
+  final DateTime? expiresAt;
+
+  String get memberLabel => '$memberCount membre${memberCount > 1 ? 's' : ''}';
+
+  bool isExpired(DateTime now) => expiresAt != null && !expiresAt!.isAfter(now);
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) || (other is GroupInvitation && other.id == id);
+
+  @override
+  int get hashCode => id.hashCode;
+}

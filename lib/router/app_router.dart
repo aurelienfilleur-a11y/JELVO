@@ -11,9 +11,16 @@ import '../features/auth/screens/signup_credentials_screen.dart';
 import '../features/auth/screens/signup_identity_screen.dart';
 import '../features/auth/screens/verify_email_screen.dart';
 import '../features/calendar/screens/calendar_screen.dart';
+import '../features/contacts/screens/add_contact_screen.dart';
 import '../features/contacts/screens/contacts_screen.dart';
+import '../features/contacts/screens/my_qr_code_screen.dart';
+import '../features/contacts/screens/scan_contact_screen.dart';
 import '../features/create/screens/create_screen.dart';
+import '../features/groups/screens/group_detail_screen.dart';
+import '../features/groups/screens/group_form_screen.dart';
 import '../features/groups/screens/groups_screen.dart';
+import '../features/groups/screens/invitation_screen.dart';
+import '../features/groups/screens/join_group_screen.dart';
 import '../features/home/screens/home_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
 import '../features/profile/screens/settings_screen.dart';
@@ -39,13 +46,16 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
     redirect: (BuildContext context, GoRouterState state) {
       final AuthStatus status = ref.read(authStatusProvider);
       final String location = state.matchedLocation;
-      final bool isPublic = AppRoutes.publicPaths.contains(location);
 
       if (status == AuthStatus.signedOut) {
-        return isPublic ? null : AppRoutes.loginPath;
+        return AppRoutes.isPublic(location) ? null : AppRoutes.loginPath;
       }
-      // Connecté : les écrans d'authentification n'ont plus lieu d'être.
-      return isPublic ? AppRoutes.homePath : null;
+      // Connecté : seuls les écrans d'authentification n'ont plus lieu d'être.
+      // Un lien d'invitation, lui, reste ouvrable avec une session — c'est même
+      // le cas courant quand un membre teste son propre lien.
+      return AppRoutes.publicPaths.contains(location)
+          ? AppRoutes.homePath
+          : null;
     },
     routes: <RouteBase>[
       // Les quatre onglets vivent dans un IndexedStack : chacun garde son état.
@@ -74,6 +84,36 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
                 name: AppRoutes.groups,
                 builder: (BuildContext context, GoRouterState state) =>
                     const GroupsScreen(),
+                routes: <RouteBase>[
+                  // Déclaré avant `:id`, sinon « nouveau » serait pris pour un
+                  // identifiant de groupe.
+                  GoRoute(
+                    path: 'nouveau',
+                    name: AppRoutes.groupCreate,
+                    parentNavigatorKey: _rootNavigatorKey,
+                    builder: (BuildContext context, GoRouterState state) =>
+                        const GroupFormScreen(),
+                  ),
+                  GoRoute(
+                    path: ':id',
+                    name: AppRoutes.groupDetail,
+                    builder: (BuildContext context, GoRouterState state) =>
+                        GroupDetailScreen(
+                          groupId: state.pathParameters['id'] ?? '',
+                        ),
+                    routes: <RouteBase>[
+                      GoRoute(
+                        path: 'modifier',
+                        name: AppRoutes.groupEdit,
+                        parentNavigatorKey: _rootNavigatorKey,
+                        builder: (BuildContext context, GoRouterState state) =>
+                            GroupFormScreen(
+                              groupId: state.pathParameters['id'],
+                            ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ],
           ),
@@ -94,6 +134,22 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
                 name: AppRoutes.contacts,
                 builder: (BuildContext context, GoRouterState state) =>
                     const ContactsScreen(),
+                routes: <RouteBase>[
+                  GoRoute(
+                    path: 'ajouter',
+                    name: AppRoutes.addContact,
+                    parentNavigatorKey: _rootNavigatorKey,
+                    builder: (BuildContext context, GoRouterState state) =>
+                        const AddContactScreen(),
+                  ),
+                  GoRoute(
+                    path: 'scanner',
+                    name: AppRoutes.scanContact,
+                    parentNavigatorKey: _rootNavigatorKey,
+                    builder: (BuildContext context, GoRouterState state) =>
+                        const ScanContactScreen(),
+                  ),
+                ],
               ),
             ],
           ),
@@ -123,6 +179,42 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
         parentNavigatorKey: _rootNavigatorKey,
         builder: (BuildContext context, GoRouterState state) =>
             const SettingsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.myQrCodePath,
+        name: AppRoutes.myQrCode,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (BuildContext context, GoRouterState state) =>
+            const MyQrCodeScreen(),
+      ),
+
+      GoRoute(
+        path: AppRoutes.invitationsPath,
+        name: AppRoutes.invitations,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (BuildContext context, GoRouterState state) =>
+            const InvitationsScreen(),
+        routes: <RouteBase>[
+          GoRoute(
+            path: ':id',
+            name: AppRoutes.invitation,
+            parentNavigatorKey: _rootNavigatorKey,
+            builder: (BuildContext context, GoRouterState state) =>
+                InvitationScreen(
+                  invitationId: state.pathParameters['id'] ?? '',
+                ),
+          ),
+        ],
+      ),
+
+      // Page publique d'un lien de partage : elle doit s'ouvrir sans session,
+      // c'est toute la raison d'être du lien.
+      GoRoute(
+        path: AppRoutes.joinGroupPath,
+        name: AppRoutes.joinGroup,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (BuildContext context, GoRouterState state) =>
+            JoinGroupScreen(token: state.pathParameters['jeton'] ?? ''),
       ),
 
       // Parcours d'authentification : hors du shell, donc sans barre de

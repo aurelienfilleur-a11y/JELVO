@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../groups/providers/group_providers.dart';
 import '../models/auth_failure.dart';
 import 'auth_providers.dart';
 
@@ -133,6 +134,11 @@ class SignUpActions {
     }
 
     _ref.read(signUpDraftProvider.notifier).reset();
+
+    // Inscription venue d'un lien d'invitation : le jeton attendait la fin du
+    // parcours pour que le groupe soit rejoint sans nouvelle manipulation.
+    await _ref.read(groupActionsProvider).joinPendingInvite();
+
     return warning;
   }
 }

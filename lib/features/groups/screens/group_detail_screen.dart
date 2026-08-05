@@ -1,0 +1,563 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../core/core.dart';
+import '../../../router/app_routes.dart';
+import '../../auth/models/auth_failure.dart';
+import '../../auth/providers/auth_providers.dart';
+import '../../contacts/models/contact.dart';
+import '../../contacts/providers/contact_providers.dart';
+import '../models/group.dart';
+import '../models/group_invite.dart';
+import '../models/group_member.dart';
+import '../providers/group_providers.dart';
+import '../widgets/group_banner.dart';
+import '../widgets/invite_link_sheet.dart';
+import '../widgets/member_tile.dart';
+
+/// Écran d'un groupe : bandeau photo, description, membres et actions.
+///
+/// Les actions dépendent du rôle : un membre peut inviter et quitter, un admin
+/// peut en plus modifier, gérer les membres et supprimer.
+class GroupDetailScreen extends ConsumerWidget {
+  const GroupDetailScreen({super.key, required this.groupId});
+
+  final String groupId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AsyncValue<Group?> groupAsync = ref.watch(
+      groupDetailProvider(groupId),
+    );
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: groupAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (Object error, _) => SafeArea(
+          child: EmptyState(
+            icon: Icons.cloud_off_rounded,
+            title: 'Groupe indisponible',
+            message: AuthFailure.from(error).message,
+            actionLabel: 'Réessayer',
+            onActionPressed: () => ref.invalidate(groupDetailProvider(groupId)),
+          ),
+        ),
+        data: (Group? group) {
+          if (group == null) {
+            return SafeArea(
+              child: EmptyState(
+                icon: Icons.group_off_outlined,
+                title: 'Groupe introuvable',
+                message:
+                    'Ce groupe a été supprimé, ou vous n’en faites plus '
+                    'partie.',
+                actionLabel: 'Revenir aux groupes',
+                onActionPressed: () => context.goNamed(AppRoutes.groups),
+              ),
+            );
+          }
+          return _GroupView(group: group);
+        },
+      ),
+    );
+  }
+}
+
+class _GroupView extends ConsumerWidget {
+  const _GroupView({required this.group});
+
+  final Group group;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AsyncValue<List<GroupMember>> membersAsync = ref.watch(
+      groupMembersProvider(group.id),
+    );
+    final List<GroupMember> members =
+        membersAsync.value ?? const <GroupMember>[];
+    final String? myId = ref.watch(currentUserIdProvider);
+
+    return CustomScrollView(
+      slivers: <Widget>[
+        SliverAppBar(
+          pinned: true,
+          expandedHeight: 200,
+          backgroundColor: AppColors.surface,
+          foregroundColor: Colors.white,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded),
+            tooltip: 'Retour',
+            onPressed: () => _goBack(context),
+          ),
+          actions: <Widget>[
+            if (group.isAdmin)
+              IconButton(
+                icon: const Icon(Icons.edit_outlined),
+                tooltip: 'Modifier le groupe',
+                onPressed: () => context.pushNamed(
+                  AppRoutes.groupEdit,
+                  pathParameters: <String, String>{'id': group.id},
+                ),
+              ),
+            PopupMenuButton<_GroupAction>(
+              tooltip: 'Actions',
+              icon: const Icon(Icons.more_vert_rounded),
+              onSelected: (_GroupAction action) => switch (action) {
+                _GroupAction.leave => _confirmLeave(context, ref),
+                _GroupAction.delete => _confirmDelete(context, ref),
+              },
+              itemBuilder: (BuildContext context) =>
+                  <PopupMenuEntry<_GroupAction>>[
+                    const PopupMenuItem<_GroupAction>(
+                      value: _GroupAction.leave,
+                      child: Text('Quitter le groupe'),
+                    ),
+                    if (group.isAdmin)
+                      const PopupMenuItem<_GroupAction>(
+                        value: _GroupAction.delete,
+                        child: Text('Supprimer le groupe'),
+                      ),
+                  ],
+            ),
+          ],
+          flexibleSpace: FlexibleSpaceBar(
+            background: GroupBanner(
+              name: group.name,
+              subtitle: group.memberLabel,
+              accentColor: group.accent.color,
+              icon: group.icon,
+              photoUrl: group.photoUrl,
+              height: 200,
+            ),
+          ),
+        ),
+
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.screenMargin,
+            AppSpacing.lg,
+            AppSpacing.screenMargin,
+            0,
+          ),
+          sliver: SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                if (group.description != null &&
+                    group.description!.isNotEmpty) ...<Widget>[
+                  Text(group.description!, style: AppTypography.bodyMuted),
+                  AppSpacing.gapLg,
+                ],
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: PrimaryButton(
+                        label: 'Inviter',
+                        icon: Icons.person_add_alt_rounded,
+                        onPressed: () => _openInviteSheet(context),
+                      ),
+                    ),
+                    AppSpacing.hGapMd,
+                    Expanded(
+                      child: SecondaryButton(
+                        label: 'Partager un lien',
+                        icon: Icons.link_rounded,
+                        onPressed: () => _openLinkSheet(context),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.screenMargin,
+            AppSpacing.xl,
+            AppSpacing.screenMargin,
+            AppSpacing.md,
+          ),
+          sliver: SliverToBoxAdapter(
+            child: SectionHeader(title: 'Membres', subtitle: group.memberLabel),
+          ),
+        ),
+
+        if (membersAsync.isLoading && members.isEmpty)
+          const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.all(AppSpacing.xl),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          )
+        else if (members.isEmpty)
+          const SliverToBoxAdapter(
+            child: EmptyState(
+              icon: Icons.person_outline_rounded,
+              title: 'Aucun membre à afficher',
+              message:
+                  'La liste des membres n’a pas pu être chargée. Réessayez '
+                  'dans un instant.',
+            ),
+          )
+        else
+          SliverPadding(
+            padding: AppSpacing.screenHorizontal,
+            sliver: SliverList.separated(
+              itemCount: members.length,
+              separatorBuilder: (_, _) => AppSpacing.gapSm,
+              itemBuilder: (BuildContext context, int index) {
+                final GroupMember member = members[index];
+                return MemberTile(
+                  member: member,
+                  isMe: member.userId == myId,
+                  canManage: group.isAdmin,
+                  onPromote: () => _promote(context, ref, member),
+                  onRemove: () => _remove(context, ref, member),
+                );
+              },
+            ),
+          ),
+
+        const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xxl)),
+      ],
+    );
+  }
+
+  void _goBack(BuildContext context) {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.goNamed(AppRoutes.groups);
+    }
+  }
+
+  void _openLinkSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => InviteLinkSheet(group: group),
+    );
+  }
+
+  void _openInviteSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => _InviteMemberSheet(group: group),
+    );
+  }
+
+  Future<void> _promote(
+    BuildContext context,
+    WidgetRef ref,
+    GroupMember member,
+  ) async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref
+          .read(groupActionsProvider)
+          .promote(groupId: group.id, userId: member.userId);
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('${member.shortName} est désormais administrateur.'),
+        ),
+      );
+    } catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(AuthFailure.from(error).message)),
+      );
+    }
+  }
+
+  Future<void> _remove(
+    BuildContext context,
+    WidgetRef ref,
+    GroupMember member,
+  ) async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    final bool confirmed = await _confirm(
+      context,
+      title: 'Retirer ce membre',
+      message:
+          '${member.displayName} n’aura plus accès au groupe. Vous pourrez '
+          'l’inviter à nouveau plus tard.',
+      confirmLabel: 'Retirer',
+    );
+    if (!confirmed) return;
+
+    try {
+      await ref
+          .read(groupActionsProvider)
+          .removeMember(groupId: group.id, userId: member.userId);
+      messenger.showSnackBar(
+        SnackBar(content: Text('${member.shortName} a été retiré du groupe.')),
+      );
+    } catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(AuthFailure.from(error).message)),
+      );
+    }
+  }
+
+  Future<void> _confirmLeave(BuildContext context, WidgetRef ref) async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    final GoRouter router = GoRouter.of(context);
+    final bool confirmed = await _confirm(
+      context,
+      title: 'Quitter le groupe',
+      message:
+          'Vous ne verrez plus « ${group.name} ». Si vous en êtes le dernier '
+          'administrateur, le plus ancien membre prendra le relais.',
+      confirmLabel: 'Quitter',
+    );
+    if (!confirmed) return;
+
+    try {
+      final LeaveOutcome outcome = await ref
+          .read(groupActionsProvider)
+          .leave(group.id);
+      messenger.showSnackBar(SnackBar(content: Text(outcome.message)));
+      router.goNamed(AppRoutes.groups);
+    } catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(AuthFailure.from(error).message)),
+      );
+    }
+  }
+
+  Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    final GoRouter router = GoRouter.of(context);
+    final bool confirmed = await _confirm(
+      context,
+      title: 'Supprimer le groupe',
+      message:
+          '« ${group.name} » disparaîtra pour tous ses membres. Cette action '
+          'ne peut pas être annulée depuis l’application.',
+      confirmLabel: 'Supprimer',
+    );
+    if (!confirmed) return;
+
+    try {
+      await ref.read(groupActionsProvider).delete(group.id);
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Le groupe a été supprimé.')),
+      );
+      router.goNamed(AppRoutes.groups);
+    } catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(AuthFailure.from(error).message)),
+      );
+    }
+  }
+
+  static Future<bool> _confirm(
+    BuildContext context, {
+    required String title,
+    required String message,
+    required String confirmLabel,
+  }) async {
+    final bool? answer = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+            child: Text(confirmLabel),
+          ),
+        ],
+      ),
+    );
+    return answer ?? false;
+  }
+}
+
+enum _GroupAction { leave, delete }
+
+/// Invitation nominative : recherche d'un pseudo déjà inscrit.
+class _InviteMemberSheet extends ConsumerStatefulWidget {
+  const _InviteMemberSheet({required this.group});
+
+  final Group group;
+
+  @override
+  ConsumerState<_InviteMemberSheet> createState() => _InviteMemberSheetState();
+}
+
+class _InviteMemberSheetState extends ConsumerState<_InviteMemberSheet> {
+  final TextEditingController _controller = TextEditingController();
+  String _term = '';
+  String? _message;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        0,
+        AppSpacing.lg,
+        AppSpacing.xl + MediaQuery.viewInsetsOf(context).bottom,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text('Inviter un membre', style: AppTypography.h2),
+          AppSpacing.gapSm,
+          Text(
+            'Cherchez la personne par son pseudo. Elle recevra une invitation '
+            'à accepter.',
+            style: AppTypography.bodyMuted,
+          ),
+          AppSpacing.gapXl,
+          AppTextField(
+            controller: _controller,
+            hint: 'pseudo',
+            prefixIcon: Icons.alternate_email_rounded,
+            autofocus: true,
+            onChanged: (String value) => setState(() {
+              _term = value;
+              _message = null;
+            }),
+          ),
+          AppSpacing.gapLg,
+          if (_message != null)
+            Text(
+              _message!,
+              style: AppTypography.caption.copyWith(color: AppColors.primary),
+            ),
+          _Results(term: _term, onPick: _invite),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _invite(String userId, String name) async {
+    try {
+      final String outcome = await ref
+          .read(groupActionsProvider)
+          .invite(groupId: widget.group.id, userId: userId);
+      if (!mounted) return;
+      setState(() {
+        _message = switch (outcome) {
+          'invite' => '$name a reçu votre invitation.',
+          'deja_membre' => '$name fait déjà partie du groupe.',
+          'deja_invite' => '$name a déjà une invitation en attente.',
+          _ => 'Seuls les membres du groupe peuvent inviter.',
+        };
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _message = AuthFailure.from(error).message);
+    }
+  }
+}
+
+class _Results extends ConsumerWidget {
+  const _Results({required this.term, required this.onPick});
+
+  final String term;
+  final Future<void> Function(String userId, String name) onPick;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (term.trim().length < 2) {
+      return Text(
+        'Saisissez au moins deux caractères.',
+        style: AppTypography.caption,
+      );
+    }
+
+    final AsyncValue<List<ProfileSummary>> results = ref.watch(
+      pseudoSearchProvider(term),
+    );
+
+    return results.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.all(AppSpacing.lg),
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      error: (Object error, _) => Text(
+        AuthFailure.from(error).message,
+        style: AppTypography.caption.copyWith(color: AppColors.danger),
+      ),
+      data: (List<ProfileSummary> profiles) {
+        if (profiles.isEmpty) {
+          return Text(
+            'Aucun pseudo ne commence par « $term ».',
+            style: AppTypography.caption,
+          );
+        }
+        return Column(
+          children: <Widget>[
+            for (final ProfileSummary profile in profiles) ...<Widget>[
+              AppCard(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
+                ),
+                child: Row(
+                  children: <Widget>[
+                    AvatarStack(
+                      avatars: <AvatarData>[
+                        AvatarData(
+                          name: profile.fullName,
+                          imageUrl: profile.avatarUrl,
+                        ),
+                      ],
+                      size: 36,
+                    ),
+                    AppSpacing.hGapMd,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            profile.fullName,
+                            style: AppTypography.body,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            profile.pseudoHandle,
+                            style: AppTypography.caption,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => onPick(profile.id, profile.fullName),
+                      child: const Text('Inviter'),
+                    ),
+                  ],
+                ),
+              ),
+              AppSpacing.gapSm,
+            ],
+          ],
+        );
+      },
+    );
+  }
+}

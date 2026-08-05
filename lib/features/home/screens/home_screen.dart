@@ -284,21 +284,23 @@ class _TaskTile extends ConsumerWidget {
 }
 
 /// Carte de groupe câblée sur le domaine.
-class _GroupTile extends ConsumerWidget {
+class _GroupTile extends StatelessWidget {
   const _GroupTile({required this.group});
 
   final Group group;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     return GroupCard(
       name: group.name,
       description: group.description,
       icon: group.icon,
       accentColor: group.accent.color,
-      members: ref.watch(avatarsForContactIdsProvider)(group.memberIds),
-      trailingLabel: group.activityLabel,
-      onTap: () => context.goNamed(AppRoutes.groups),
+      trailingLabel: group.memberLabel,
+      onTap: () => context.pushNamed(
+        AppRoutes.groupDetail,
+        pathParameters: <String, String>{'id': group.id},
+      ),
     );
   }
 }

@@ -182,6 +182,11 @@ de feature (voir `avatarsForContactIdsProvider`).
   le bouton central ne rentre pas dans le modèle « un index par destination ».
 - Naviguer avec `context.goNamed(AppRoutes.calendar)` / `pushNamed`, jamais avec
   une chaîne littérale. Les chemins vivent dans `router/app_routes.dart`.
+- Le détail d'un groupe (`/groupes/:id`) vit **dans la branche Groupes** : la
+  barre de navigation reste visible. Création, modification, invitations, QR et
+  scanner sont empilés sur le navigateur racine et la recouvrent. `/groupes/nouveau`
+  est déclaré **avant** `/groupes/:id`, sans quoi « nouveau » passerait pour un
+  identifiant.
 - Sur le web, une URL inconnue affiche `_RouteErrorScreen`. Le workflow copie
   `index.html` en `404.html` pour que l'accès direct à `/calendrier` fonctionne
   sur GitHub Pages.
@@ -274,6 +279,107 @@ déjà quittés au moment d'afficher la `SnackBar`.
 
 ---
 
+## Groupes, contacts et invitations
+
+Ces trois domaines lisent et écrivent Supabase. Le schéma étant **préexistant**,
+le code s'y plie plutôt que l'inverse — d'où les noms de colonnes et les valeurs
+d'énumération ci-dessous, qui ne sont pas négociables côté application.
+
+### Schéma utilisé
+
+| Table | Colonnes |
+| --- | --- |
+| `groups` | `id`, `name`, `description`, `photo_url`, `is_private`, `created_by`, `created_at`, `deleted_at` |
+| `group_members` | `group_id`, `user_id`, `role`, `joined_at`, `expires_at` — **pas de colonne `id`** |
+| `contacts` | `requester_id`, `addressee_id`, `status`, `favorite_requester`, `favorite_addressee`, `created_at` — **pas de colonne `id`** |
+| `invitations` | `id`, `group_id`, `inviter_id`, `invitee_id`, `status`, `created_at`, `expires_at` |
+| `group_invite_links` | créée par la migration : `id`, `group_id`, `created_by`, `token`, `expires_at`, `max_uses`, `uses_count`, `revoked_at` |
+
+Trois types énumérés, dont les valeurs exactes comptent :
+
+- `member_role` : `admin`, `member` — rien d'autre ;
+- `contact_status` : `pending`, `accepted` — **il n'existe pas de `declined`**,
+  d'où le refus d'une demande **par suppression de la ligne** ;
+- `invitation_status` : `pending`, `accepted`, `declined`, `expired`.
+
+Deux conséquences de forme :
+
+- `groups` ne porte ni couleur ni icône : `GroupAccent.forId` et l'icône sont
+  **dérivées de l'identifiant** par une somme de contrôle stable. Ne pas
+  utiliser `String.hashCode`, qui change d'une exécution à l'autre.
+- Le favori est **personnel** : une seule ligne par relation, mais deux colonnes.
+  L'application écrit `favorite_requester` ou `favorite_addressee` selon le bout
+  où se trouve l'utilisateur ; `mes_contacts()` renvoie déjà le bon.
+
+### `expires_at` sur `group_members`
+
+Prépare l'adhésion temporaire — un membre invité le temps d'un voyage. `null`
+signifie « sans terme ». **Toute lecture de `group_members` filtre les adhésions
+échues**, en SQL comme côté client (`_activeMembership` dans le dépôt). Une
+adhésion échue laisse sa ligne : les fonctions d'adhésion la suppriment avant de
+réinsérer, la clé primaire étant le couple groupe / utilisateur.
+
+### Migration à exécuter
+
+**`supabase/tranche2_groupes_et_invitations.sql`**, en une fois, dans l'éditeur
+SQL du projet. Idempotente. Elle apporte les favoris personnels, `expires_at`,
+la table `group_invite_links` avec ses politiques, et les fonctions ci-dessous.
+
+| Fonction | Rôle |
+| --- | --- |
+| `est_membre_du_groupe`, `est_admin_du_groupe` | prédicats `security definer`, pour écrire les politiques sans récursion `group_members` → `group_members` |
+| `membres_du_groupe` | membres + profil, réservé aux membres |
+| `mes_contacts` | carnet + profil d'en face + favori du bon côté |
+| `chercher_profils_par_pseudo` | recherche par début de pseudo |
+| `apercu_groupe_par_jeton` | aperçu public d'un lien |
+| `rejoindre_groupe_par_jeton` | valide le jeton et insère le membre |
+| `quitter_groupe` | départ, promotion, suppression — en une transaction |
+| `mes_invitations`, `inviter_dans_groupe`, `accepter_invitation`, `refuser_invitation` | invitations nominatives |
+
+**Pourquoi tant de fonctions plutôt que des requêtes directes.** Deux raisons,
+et une seule suffirait :
+
+1. Rien ne garantit qu'un utilisateur puisse lire la ligne `profiles` d'un autre.
+   Passer par une fonction `security definer` fait marcher membres, contacts et
+   recherche **quelle que soit la politique RLS de `profiles`**, sans l'assouplir.
+2. Un arrivant n'est pas encore membre : il ne peut pas s'insérer lui-même dans
+   `group_members`. L'adhésion **doit** passer par une fonction.
+
+`quitter_groupe` relève d'un troisième motif : trois écritures dépendantes —
+retrait, promotion du plus ancien membre, suppression douce du groupe — qui,
+enchaînées depuis le client, laisseraient un groupe sans administrateur en cas
+d'échec au milieu.
+
+### Invitations : deux mécanismes distincts
+
+**Nominative** (`invitations`) — pour quelqu'un **déjà inscrit**. L'écran
+d'invitation montre l'émetteur, le groupe, sa description, quelques membres, et
+les deux seules réponses possibles. Accepter crée la ligne `group_members`.
+
+**Par lien** (`group_invite_links`) — pour quelqu'un **sans compte**. Un membre
+génère le lien depuis l'écran du groupe et le partage par `share_plus`. Le
+destinataire ouvre `/rejoindre/<jeton>`, route **publique**.
+
+- Sans session, le jeton est retenu par `pendingInviteTokenProvider` et
+  l'inscription prend le relais ; le groupe est rejoint à la fin, dans
+  `SignUpActions.completeProfile()` comme après une connexion.
+- Cinq états couverts, chacun avec son message : **valide, invalide, expiré,
+  révoqué, épuisé** — plus « déjà membre » à l'adhésion.
+- La lecture anonyme de `group_invite_links` est restreinte **par un `grant`
+  de colonnes** à `(token, group_id)` : le reste de la ligne — auteur, compteur
+  d'usage, échéance — n'est visible que des membres.
+- Le jeton est tiré côté client avec `Random.secure()`, 16 octets en base64 URL.
+
+### Garde de navigation
+
+`AppRoutes.isPublic` ajoute une comparaison **par préfixe** à `publicPaths` : un
+lien d'invitation porte un jeton variable. Attention à la dissymétrie du
+`redirect` — un utilisateur connecté est renvoyé à l'accueil depuis un écran
+d'authentification, **mais pas depuis `/rejoindre/…`**, qu'il doit pouvoir
+ouvrir. C'est même le cas courant : un membre qui teste son propre lien.
+
+---
+
 ## Conventions
 
 - **Langue** : identifiants, commentaires et documentation en français ; le
@@ -300,12 +406,11 @@ déjà quittés au moment d'afficher la `SnackBar`.
 - **Commentaires** : expliquer *pourquoi*, pas *quoi*. Un commentaire qui
   paraphrase la ligne suivante est à supprimer.
 - **Univers des données de démonstration** : Jelvo s'adresse à la sphère
-  personnelle. Les jeux `demo…` restent dans un registre **familial et amical**
-  — famille, amis, colocation, voyage, sport. Le registre professionnel
-  (réunion, sprint, point hebdo, syndic, copropriété) est **hors périmètre
-  produit** et ne doit pas réapparaître, pas plus dans les libellés que dans les
-  énumérations : c'est la raison pour laquelle `ContactRelation` propose `Coloc`
-  et non `Travail`.
+  personnelle. Les jeux `demo…` — désormais réduits aux tâches et aux
+  événements — restent dans un registre **familial et amical** : famille, amis,
+  colocation, voyage, sport. Le registre professionnel (réunion, sprint, point
+  hebdo, syndic, copropriété) est **hors périmètre produit** et ne doit
+  réapparaître ni dans les libellés, ni dans les énumérations.
 
 ---
 
@@ -318,8 +423,11 @@ déjà quittés au moment d'afficher la `SnackBar`.
   connexion, la disponibilité du pseudo et la déconnexion.
 - `test/credentials_rules_test.dart` couvre les règles de validation, sans
   widget.
+- `test/groups_contacts_test.dart` couvre la liste et le détail d'un groupe, la
+  création, le départ, les cinq états d'un lien d'invitation, les demandes de
+  contact et l'encodage du QR code.
 
-Trois points à respecter dans tout nouveau test de widget :
+Quatre points à respecter dans tout nouveau test de widget :
 
 1. Surcharger l'horloge — les données de démonstration et les libellés
    « Aujourd'hui »/« Demain » en dépendent :
@@ -346,18 +454,39 @@ Trois points à respecter dans tout nouveau test de widget :
    ]
    ```
    Les deux faux dépôts vivent dans `test/fakes/fake_auth_repository.dart`.
+4. Surcharger les groupes et les contacts, pour la même raison :
+   `groupRepositoryProvider` et `contactRepositoryProvider`, avec
+   `test/fakes/fake_group_repository.dart` et
+   `test/fakes/fake_contact_repository.dart`.
+
+Le `+` central de la barre et le bouton « Nouveau groupe » portent la même
+icône : viser un bouton d'en-tête par `find.byTooltip`, pas par `find.byIcon`.
 
 ---
 
 ## État actuel et limites connues
 
-- **Authentification et profil** sont branchés sur Supabase et persistés. Tout
-  le reste — groupes, événements, tâches, contacts — est **en mémoire** et
-  regénéré à chaque démarrage.
-- Deux prérequis côté projet Supabase, non vérifiables depuis le code :
-  exécuter `supabase/email_pour_pseudo.sql` pour la connexion par pseudo, et
-  faire émettre `{{ .Token }}` au modèle d'e-mail de confirmation pour le code
-  à 6 chiffres.
+- **Authentification, profil, groupes, contacts et invitations** sont branchés
+  sur Supabase et persistés. **Événements, tâches et calendrier** restent
+  **en mémoire** et regénérés à chaque démarrage.
+- Conséquence du point précédent : les tâches et événements de démonstration
+  citent les groupes `g1`…`g4`, qui n'existent plus côté Supabase.
+  `groupByIdProvider` renvoie donc `null` pour eux — pas de pastille de groupe
+  sur ces cartes, plutôt qu'un plantage. Le recâblage viendra avec leur passage
+  sur Supabase.
+- Trois prérequis côté projet Supabase, non vérifiables depuis le code :
+  exécuter `supabase/email_pour_pseudo.sql` pour la connexion par pseudo,
+  exécuter `supabase/tranche2_groupes_et_invitations.sql` pour les groupes et
+  les invitations, et faire émettre `{{ .Token }}` au modèle d'e-mail de
+  confirmation pour le code à 6 chiffres.
+- Le scan de QR code demande une caméra : il est désactivé proprement sur le web
+  et sur ordinateur, où l'écran renvoie vers la recherche par pseudo. Les cibles
+  Android et iOS n'ont pas pu être compilées ici — `mobile_scanner` embarque du
+  natif, et ni le SDK Android ni la chaîne iOS ne sont disponibles dans
+  l'environnement de développement utilisé.
+- L'adhésion temporaire n'a pas d'interface : la colonne
+  `group_members.expires_at` existe et **toute lecture filtre déjà les adhésions
+  échues**, mais rien ne permet encore de fixer un terme depuis l'application.
 - L'écran `/creer` **valide** le titre mais **n'enregistre pas** encore : il
   affiche une `SnackBar`. Le câblage vers les dépôts reste à faire.
 - Le partage d'un événement avec un groupe et le choix des participants ne sont

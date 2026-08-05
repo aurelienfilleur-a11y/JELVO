@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/core.dart';
+import '../../../router/app_routes.dart';
+import '../../auth/models/auth_failure.dart';
 import '../models/contact.dart';
 import '../providers/contact_providers.dart';
 import '../widgets/contact_tile.dart';
 
-/// Écran Contacts : recherche, favoris et carnet complet.
+/// Écran Contacts : demandes reçues, favoris épinglés et carnet alphabétique.
 class ContactsScreen extends ConsumerStatefulWidget {
   const ContactsScreen({super.key});
 
@@ -27,8 +30,9 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final AsyncValue<List<Contact>> contactsAsync = ref.watch(contactsProvider);
     final List<Contact> contacts = ref.watch(filteredContactsProvider);
-    final List<Contact> favorites = ref.watch(favoriteContactsProvider);
+    final List<Contact> requests = ref.watch(incomingRequestsProvider);
     final String query = ref.watch(contactQueryProvider);
 
     return AppScreen(
@@ -36,8 +40,8 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
       subtitle: 'Invitez vos proches à partager leurs disponibilités.',
       headerAction: AppScreenAction(
         icon: Icons.person_add_alt_rounded,
-        tooltip: 'Inviter un contact',
-        onPressed: _showInviteSheet,
+        tooltip: 'Ajouter un contact',
+        onPressed: () => context.pushNamed(AppRoutes.addContact),
       ),
       slivers: <Widget>[
         SliverPadding(
@@ -45,7 +49,7 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
           sliver: SliverToBoxAdapter(
             child: AppTextField(
               controller: _searchController,
-              hint: 'Rechercher un contact',
+              hint: 'Rechercher dans mes contacts',
               prefixIcon: Icons.search_rounded,
               textInputAction: TextInputAction.search,
               onChanged: ref.read(contactQueryProvider.notifier).update,
@@ -63,84 +67,91 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
           ),
         ),
 
-        if (favorites.isNotEmpty && query.isEmpty) ...<Widget>[
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.screenMargin,
-              AppSpacing.xl,
-              AppSpacing.screenMargin,
-              AppSpacing.md,
-            ),
-            sliver: SliverToBoxAdapter(
-              child: SectionHeader(
-                title: 'Favoris',
-                subtitle:
-                    '${favorites.length} contact'
-                    '${favorites.length > 1 ? 's' : ''} épinglé'
-                    '${favorites.length > 1 ? 's' : ''}',
-              ),
-            ),
+        if (requests.isNotEmpty && query.isEmpty) ...<Widget>[
+          _sectionHeader(
+            title: 'Demandes reçues',
+            subtitle:
+                '${requests.length} personne'
+                '${requests.length > 1 ? 's' : ''} souhaite'
+                '${requests.length > 1 ? 'nt' : ''} vous ajouter',
           ),
           SliverPadding(
             padding: AppSpacing.screenHorizontal,
-            sliver: SliverToBoxAdapter(
-              child: AppCard(
-                child: Row(
-                  children: <Widget>[
-                    AvatarStack(
-                      avatars: favorites
-                          .map(
-                            (Contact c) => AvatarData(
-                              name: c.fullName,
-                              imageUrl: c.avatarUrl,
-                            ),
-                          )
-                          .toList(),
-                      size: 36,
-                    ),
-                    AppSpacing.hGapMd,
-                    Expanded(
-                      child: Text(
-                        favorites.map((Contact c) => c.firstName).join(', '),
-                        style: AppTypography.caption,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+            sliver: SliverList.separated(
+              itemCount: requests.length,
+              separatorBuilder: (_, _) => AppSpacing.gapSm,
+              itemBuilder: (BuildContext context, int index) {
+                final Contact request = requests[index];
+                return ContactTile(
+                  contact: request,
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      IconButton(
+                        onPressed: () => _decline(request),
+                        tooltip: 'Refuser',
+                        visualDensity: VisualDensity.compact,
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          size: 20,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
+                      IconButton(
+                        onPressed: () => _accept(request),
+                        tooltip: 'Accepter',
+                        visualDensity: VisualDensity.compact,
+                        icon: const Icon(
+                          Icons.check_circle_rounded,
+                          size: 22,
+                          color: AppColors.success,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
           ),
         ],
 
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.screenMargin,
-            AppSpacing.xl,
-            AppSpacing.screenMargin,
-            AppSpacing.md,
-          ),
-          sliver: SliverToBoxAdapter(
-            child: SectionHeader(
-              title: query.isEmpty ? 'Tous les contacts' : 'Résultats',
-              subtitle:
-                  '${contacts.length} contact'
-                  '${contacts.length > 1 ? 's' : ''}',
-            ),
-          ),
+        _sectionHeader(
+          title: query.isEmpty ? 'Mes contacts' : 'Résultats',
+          subtitle:
+              '${contacts.length} contact${contacts.length > 1 ? 's' : ''}',
         ),
 
-        if (contacts.isEmpty)
+        if (contactsAsync.isLoading && contacts.isEmpty)
+          const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.all(AppSpacing.xl),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          )
+        else if (contactsAsync.hasError && contacts.isEmpty)
+          SliverToBoxAdapter(
+            child: EmptyState(
+              icon: Icons.cloud_off_rounded,
+              title: 'Carnet indisponible',
+              message: AuthFailure.from(contactsAsync.error!).message,
+              actionLabel: 'Réessayer',
+              onActionPressed: () =>
+                  ref.read(contactsProvider.notifier).refresh(),
+            ),
+          )
+        else if (contacts.isEmpty)
           SliverToBoxAdapter(
             child: EmptyState(
               icon: Icons.person_search_rounded,
               title: query.isEmpty ? 'Carnet vide' : 'Aucun résultat',
               message: query.isEmpty
-                  ? 'Invitez vos proches pour commencer à planifier ensemble.'
+                  ? 'Ajoutez vos proches par leur pseudo ou en scannant leur '
+                        'QR code pour planifier ensemble.'
                   : 'Aucun contact ne correspond à « $query ».',
-              actionLabel: query.isEmpty ? 'Inviter un contact' : null,
-              onActionPressed: query.isEmpty ? _showInviteSheet : null,
+              actionLabel: query.isEmpty ? 'Ajouter un contact' : null,
+              onActionPressed: query.isEmpty
+                  ? () => context.pushNamed(AppRoutes.addContact)
+                  : null,
             ),
           )
         else
@@ -153,9 +164,7 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
                 final Contact contact = contacts[index];
                 return ContactTile(
                   contact: contact,
-                  onFavoriteToggled: () => ref
-                      .read(contactRepositoryProvider)
-                      .toggleFavorite(contact.id),
+                  onFavoriteToggled: () => _toggleFavorite(contact),
                 );
               },
             ),
@@ -164,57 +173,45 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
     );
   }
 
-  void _showInviteSheet() {
-    final TextEditingController emailController = TextEditingController();
-
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (BuildContext sheetContext) => Padding(
-        padding: EdgeInsets.fromLTRB(
-          AppSpacing.lg,
-          0,
-          AppSpacing.lg,
-          // Remonte la feuille au-dessus du clavier.
-          AppSpacing.xl + MediaQuery.viewInsetsOf(sheetContext).bottom,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text('Inviter un contact', style: AppTypography.h2),
-            AppSpacing.gapSm,
-            Text(
-              'Envoyez une invitation par e-mail pour partager vos '
-              'disponibilités.',
-              style: AppTypography.bodyMuted,
-            ),
-            AppSpacing.gapXl,
-            AppTextField(
-              label: 'Adresse e-mail',
-              hint: 'prenom.nom@example.com',
-              controller: emailController,
-              keyboardType: TextInputType.emailAddress,
-              prefixIcon: Icons.mail_outline_rounded,
-              autofocus: true,
-            ),
-            AppSpacing.gapXl,
-            PrimaryButton(
-              label: "Envoyer l'invitation",
-              icon: Icons.send_rounded,
-              onPressed: () {
-                Navigator.of(sheetContext).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Les invitations arrivent bientôt.'),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
+  Widget _sectionHeader({required String title, required String subtitle}) {
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screenMargin,
+        AppSpacing.xl,
+        AppSpacing.screenMargin,
+        AppSpacing.md,
       ),
-    ).whenComplete(emailController.dispose);
+      sliver: SliverToBoxAdapter(
+        child: SectionHeader(title: title, subtitle: subtitle),
+      ),
+    );
+  }
+
+  Future<void> _accept(Contact contact) => _run(
+    () => ref.read(contactActionsProvider).accept(contact.id),
+    success: '${contact.shortName} fait maintenant partie de vos contacts.',
+  );
+
+  Future<void> _decline(Contact contact) => _run(
+    () => ref.read(contactActionsProvider).decline(contact.id),
+    success: 'Demande refusée.',
+  );
+
+  Future<void> _toggleFavorite(Contact contact) =>
+      _run(() => ref.read(contactActionsProvider).toggleFavorite(contact));
+
+  /// Exécute une écriture et traduit toute erreur en message français.
+  Future<void> _run(Future<void> Function() action, {String? success}) async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    try {
+      await action();
+      if (success != null) {
+        messenger.showSnackBar(SnackBar(content: Text(success)));
+      }
+    } catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(AuthFailure.from(error).message)),
+      );
+    }
   }
 }

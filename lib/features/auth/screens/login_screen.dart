@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/core.dart';
 import '../../../router/app_routes.dart';
+import '../../groups/providers/group_providers.dart';
 import '../models/auth_failure.dart';
 import '../providers/auth_providers.dart';
 import '../providers/signup_providers.dart';
@@ -147,6 +148,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       await ref
           .read(authRepositoryProvider)
           .signIn(identifier: identifier, password: password);
+      // Connexion venue d'un lien d'invitation : le jeton mis de côté avant le
+      // détour par la connexion est consommé maintenant.
+      await ref.read(groupActionsProvider).joinPendingInvite();
       // La redirection est prise en charge par la garde du routeur, déclenchée
       // par le changement de session.
     } catch (error) {

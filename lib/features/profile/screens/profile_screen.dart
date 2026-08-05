@@ -54,6 +54,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ),
         actions: <Widget>[
           IconButton(
+            icon: const Icon(Icons.qr_code_rounded),
+            tooltip: 'Mon QR code',
+            onPressed: () => context.pushNamed(AppRoutes.myQrCode),
+          ),
+          IconButton(
             icon: const Icon(Icons.settings_outlined),
             tooltip: 'Paramètres',
             onPressed: () => context.pushNamed(AppRoutes.settings),

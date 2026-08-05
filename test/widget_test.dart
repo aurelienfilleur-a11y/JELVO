@@ -6,10 +6,14 @@ import 'package:jelvo/core/core.dart';
 import 'package:jelvo/data/clock.dart';
 import 'package:jelvo/data/data_providers.dart';
 import 'package:jelvo/features/auth/providers/auth_providers.dart';
+import 'package:jelvo/features/contacts/providers/contact_providers.dart';
+import 'package:jelvo/features/groups/providers/group_providers.dart';
 import 'package:jelvo/features/profile/providers/profile_providers.dart';
 import 'package:jelvo/main.dart';
 
 import 'fakes/fake_auth_repository.dart';
+import 'fakes/fake_contact_repository.dart';
+import 'fakes/fake_group_repository.dart';
 
 /// Date figée : les libellés « Aujourd'hui » / « Demain » et le jeu de données
 /// de démonstration sont tous calculés à partir de l'horloge.
@@ -41,6 +45,8 @@ Future<FakeAuthRepository> _pumpApp(
         clockProvider.overrideWithValue(FixedClock(_testNow)),
         authRepositoryProvider.overrideWithValue(auth),
         profileRepositoryProvider.overrideWithValue(FakeProfileRepository()),
+        groupRepositoryProvider.overrideWithValue(FakeGroupRepository()),
+        contactRepositoryProvider.overrideWithValue(FakeContactRepository()),
       ],
       child: const JelvoApp(),
     ),
@@ -80,7 +86,7 @@ void main() {
 
     await tester.tap(find.text('Contacts'));
     await tester.pumpAndSettle();
-    expect(find.text('Camille Rousseau'), findsOneWidget);
+    expect(find.text('Léa Marchand'), findsOneWidget);
   });
 
   testWidgets('le bouton « + » ouvre l’écran de création', (
@@ -121,6 +127,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Yanis Bertrand'), findsOneWidget);
-    expect(find.text('Camille Rousseau'), findsNothing);
+    expect(find.text('Léa Marchand'), findsNothing);
   });
 }

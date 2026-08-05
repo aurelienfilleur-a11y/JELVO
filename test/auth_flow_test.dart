@@ -8,10 +8,14 @@ import 'package:jelvo/data/data_providers.dart';
 import 'package:jelvo/features/auth/models/auth_failure.dart';
 import 'package:jelvo/features/auth/providers/auth_providers.dart';
 import 'package:jelvo/features/auth/repository/auth_repository.dart';
+import 'package:jelvo/features/contacts/providers/contact_providers.dart';
+import 'package:jelvo/features/groups/providers/group_providers.dart';
 import 'package:jelvo/features/profile/providers/profile_providers.dart';
 import 'package:jelvo/main.dart';
 
 import 'fakes/fake_auth_repository.dart';
+import 'fakes/fake_contact_repository.dart';
+import 'fakes/fake_group_repository.dart';
 
 final DateTime _testNow = DateTime(2026, 8, 3, 9);
 
@@ -39,6 +43,8 @@ Future<FakeAuthRepository> _pumpApp(
         clockProvider.overrideWithValue(FixedClock(_testNow)),
         authRepositoryProvider.overrideWithValue(auth),
         profileRepositoryProvider.overrideWithValue(FakeProfileRepository()),
+        groupRepositoryProvider.overrideWithValue(FakeGroupRepository()),
+        contactRepositoryProvider.overrideWithValue(FakeContactRepository()),
       ],
       child: const JelvoApp(),
     ),

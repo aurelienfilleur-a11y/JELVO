@@ -27,6 +27,7 @@ class AppBottomNav extends StatelessWidget {
     required this.currentIndex,
     required this.onDestinationSelected,
     required this.onCreatePressed,
+    this.badges = const <int>[0, 0, 0, 0],
   });
 
   /// Index de l'onglet actif, de 0 à 3 (le bouton « + » n'en a pas).
@@ -34,6 +35,12 @@ class AppBottomNav extends StatelessWidget {
 
   final ValueChanged<int> onDestinationSelected;
   final VoidCallback onCreatePressed;
+
+  /// Nombre d'éléments non lus par onglet, dans l'ordre de [destinations].
+  ///
+  /// Une valeur nulle ou négative n'affiche aucune pastille : un compteur à
+  /// zéro ne doit pas laisser de rond vide derrière lui.
+  final List<int> badges;
 
   static const List<NavDestination> destinations = <NavDestination>[
     NavDestination(
@@ -89,6 +96,7 @@ class AppBottomNav extends StatelessWidget {
       child: _NavTab(
         destination: destinations[index],
         selected: index == currentIndex,
+        badge: index < badges.length ? badges[index] : 0,
         onTap: () => onDestinationSelected(index),
       ),
     );
@@ -99,11 +107,13 @@ class _NavTab extends StatelessWidget {
   const _NavTab({
     required this.destination,
     required this.selected,
+    required this.badge,
     required this.onTap,
   });
 
   final NavDestination destination;
   final bool selected;
+  final int badge;
   final VoidCallback onTap;
 
   @override
@@ -113,17 +123,22 @@ class _NavTab extends StatelessWidget {
     return Semantics(
       selected: selected,
       button: true,
-      label: destination.label,
+      label: badge > 0
+          ? '${destination.label}, $badge non lu${badge > 1 ? 's' : ''}'
+          : destination.label,
       child: InkWell(
         onTap: onTap,
         borderRadius: AppRadii.buttonRadius,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            Icon(
-              selected ? destination.selectedIcon : destination.icon,
-              size: 24,
-              color: color,
+            NavBadge(
+              count: badge,
+              child: Icon(
+                selected ? destination.selectedIcon : destination.icon,
+                size: 24,
+                color: color,
+              ),
             ),
             const SizedBox(height: 2),
             Text(

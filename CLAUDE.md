@@ -176,9 +176,13 @@ de feature (voir `avatarsForContactIdsProvider`).
 - `StatefulShellRoute.indexedStack` avec **quatre branches** : `/` (Accueil),
   `/groupes`, `/calendrier`, `/contacts`. Chaque onglet garde son historique et
   sa position de défilement.
-- Le bouton central **[+]** n'est pas un onglet : il empile `/creer` sur le
+- Le bouton central **[+]** n'est pas un onglet mais une action, empilée sur le
   navigateur racine (`parentNavigatorKey: _rootNavigatorKey`), ce qui recouvre
-  la barre de navigation.
+  la barre de navigation. Il est **contextuel** — `AppShell._createAction` :
+  Accueil et Groupes créent un groupe, Calendrier ouvre `/creer`, Contacts mène
+  à l'ajout de contact. L'écran ouvert dit déjà ce que l'on veut créer ; le
+  demander serait une question de trop. Son infobulle nomme l'action, l'icône
+  seule ne disant pas ce qui va s'ouvrir.
 - La barre est un widget maison (`AppBottomNav`) et non un `NavigationBar` :
   le bouton central ne rentre pas dans le modèle « un index par destination ».
 - Naviguer avec `context.goNamed(AppRoutes.calendar)` / `pushNamed`, jamais avec
@@ -340,9 +344,10 @@ fonction. Cela vaut aussi pour toute future table de ce genre.
 ### Migrations à exécuter
 
 **`supabase/tranche2_groupes_et_invitations.sql`**,
-**`supabase/correctif_creation_groupe.sql`**, puis
-**`supabase/notifications.sql`**, dans cet ordre, dans l'éditeur SQL du projet.
-Idempotentes. Elle apporte les favoris personnels, `expires_at`,
+**`supabase/correctif_creation_groupe.sql`**,
+**`supabase/notifications.sql`**, puis
+**`supabase/correctif_notifications.sql`**, dans cet ordre, dans l'éditeur SQL
+du projet. Idempotentes. Elle apporte les favoris personnels, `expires_at`,
 la table `group_invite_links` avec ses politiques, et les fonctions ci-dessous.
 
 | Fonction | Rôle |
@@ -421,6 +426,13 @@ donc par des déclencheurs `security definer`, livrés dans
 Les trois derniers ne sont pas du confort : sans eux, une invitation acceptée
 laisserait sa pastille allumée indéfiniment. **Un compteur doit refléter ce qui
 reste à faire, pas ce qui est arrivé un jour.**
+
+**Une notification est un effet de bord, elle ne doit jamais faire échouer
+l'écriture principale.** Les cinq déclencheurs attrapent donc toute erreur, la
+consignent en `warning` et laissent passer. Une invitation impossible à envoyer
+parce que la notification a été refusée est un défaut bien plus grave qu'un
+compteur qui ne s'allume pas. Tout nouveau déclencheur sur ces tables doit
+suivre la même règle.
 
 `type` est du **texte libre** côté base, pas un type énuméré :
 `NotificationType.fromDb` fait donc tomber tout type inconnu dans `autre`

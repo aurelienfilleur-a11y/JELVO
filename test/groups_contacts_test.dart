@@ -160,7 +160,7 @@ void main() {
       await tester.pumpAndSettle();
       // Le « + » central de la barre porte la même icône : on vise le bouton
       // d'en-tête par son infobulle.
-      await tester.tap(find.byTooltip('Nouveau groupe'));
+      await tester.tap(find.byTooltip('Nouveau groupe').first);
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Créer le groupe'));
@@ -178,7 +178,7 @@ void main() {
 
       await tester.tap(find.text('Groupes'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Nouveau groupe'));
+      await tester.tap(find.byTooltip('Nouveau groupe').first);
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byType(TextField).first, 'Coloc Bastille');

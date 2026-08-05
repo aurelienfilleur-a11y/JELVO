@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_radii.dart';
@@ -32,6 +33,9 @@ class AppTextField extends StatelessWidget {
     this.onSubmitted,
     this.onTap,
     this.focusNode,
+    this.inputFormatters,
+    this.autofillHints,
+    this.textCapitalization = TextCapitalization.none,
   });
 
   final String? label;
@@ -58,6 +62,14 @@ class AppTextField extends StatelessWidget {
   final ValueChanged<String>? onSubmitted;
   final VoidCallback? onTap;
   final FocusNode? focusNode;
+
+  /// Filtres de saisie, p. ex. pour restreindre un pseudo aux minuscules.
+  final List<TextInputFormatter>? inputFormatters;
+
+  /// Indices de remplissage automatique (gestionnaires de mots de passe).
+  final Iterable<String>? autofillHints;
+
+  final TextCapitalization textCapitalization;
 
   @override
   Widget build(BuildContext context) {
@@ -91,6 +103,9 @@ class AppTextField extends StatelessWidget {
           onChanged: onChanged,
           onSubmitted: onSubmitted,
           onTap: onTap,
+          inputFormatters: inputFormatters,
+          autofillHints: autofillHints,
+          textCapitalization: textCapitalization,
           cursorColor: AppColors.primary,
           style: AppTypography.body.copyWith(
             color: enabled ? AppColors.midnight : AppColors.textSecondary,

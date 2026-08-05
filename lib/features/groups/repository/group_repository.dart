@@ -34,6 +34,8 @@ class InMemoryGroupRepository implements GroupRepository {
   @override
   void remove(String id) => _collection.remove(id);
 
+  /// Groupes de démonstration : famille, voyage entre amis, sport et
+  /// colocation. L'univers professionnel est hors périmètre produit.
   static const List<Group> demoGroups = <Group>[
     Group(
       id: 'g1',
@@ -47,11 +49,11 @@ class InMemoryGroupRepository implements GroupRepository {
     ),
     Group(
       id: 'g2',
-      name: 'Équipe produit',
-      description: 'Sprints, points hebdo et rétrospectives',
+      name: 'Vacances en Corse',
+      description: 'Billets, location et programme du séjour',
       memberIds: <String>['c2', 'c5', 'c4'],
       accent: GroupAccent.indigo,
-      icon: Icons.work_outline_rounded,
+      icon: Icons.luggage_rounded,
       upcomingEventCount: 5,
       openTaskCount: 4,
     ),

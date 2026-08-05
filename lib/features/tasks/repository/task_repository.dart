@@ -52,6 +52,9 @@ class InMemoryTaskRepository implements TaskRepository {
   @override
   void remove(String id) => _collection.remove(id);
 
+  /// Tâches de démonstration : intendance familiale, préparatifs de voyage,
+  /// sport et vie en colocation. L'univers professionnel est hors périmètre
+  /// produit.
   static List<Task> demoTasks(DateTime anchor) {
     final DateTime today = DateTime(anchor.year, anchor.month, anchor.day);
     DateTime day(int offset, [int hour = 18]) =>
@@ -68,8 +71,8 @@ class InMemoryTaskRepository implements TaskRepository {
       ),
       Task(
         id: 't2',
-        title: 'Préparer la présentation du sprint',
-        notes: 'Reprendre les métriques de la semaine dernière',
+        title: 'Réserver les billets pour la Corse',
+        notes: 'Comparer les horaires du ferry avant de valider',
         groupId: 'g2',
         assigneeId: 'c2',
         dueDate: day(1, 9),
@@ -83,8 +86,9 @@ class InMemoryTaskRepository implements TaskRepository {
       ),
       Task(
         id: 't4',
-        title: 'Relancer le syndic',
+        title: 'Récupérer le colis à la Poste',
         groupId: 'g4',
+        assigneeId: 'c6',
         dueDate: day(-1),
         priority: TaskPriority.high,
       ),

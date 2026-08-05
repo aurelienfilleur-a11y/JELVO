@@ -57,7 +57,8 @@ class InMemoryContactRepository implements ContactRepository {
   void remove(String id) => _collection.remove(id);
 
   /// Jeu de données de démonstration, affiché tant qu'aucun backend n'est
-  /// branché.
+  /// branché. Univers familial et amical : proches, colocataires et amis de
+  /// rando ou de voyage.
   static const List<Contact> demoContacts = <Contact>[
     Contact(
       id: 'c1',
@@ -72,7 +73,7 @@ class InMemoryContactRepository implements ContactRepository {
       id: 'c2',
       fullName: 'Yanis Bertrand',
       email: 'yanis.bertrand@example.com',
-      relation: ContactRelation.work,
+      relation: ContactRelation.friend,
       sharesCalendar: true,
     ),
     Contact(
@@ -87,19 +88,19 @@ class InMemoryContactRepository implements ContactRepository {
       id: 'c4',
       fullName: 'Noah Delacroix',
       email: 'noah.delacroix@example.com',
-      relation: ContactRelation.friend,
+      relation: ContactRelation.roommate,
     ),
     Contact(
       id: 'c5',
       fullName: 'Inès Fontaine',
       email: 'ines.fontaine@example.com',
-      relation: ContactRelation.work,
+      relation: ContactRelation.family,
       sharesCalendar: true,
     ),
     Contact(
       id: 'c6',
       fullName: 'Théo Lambert',
-      relation: ContactRelation.friend,
+      relation: ContactRelation.roommate,
     ),
     Contact(
       id: 'c7',

@@ -1,10 +1,13 @@
 import 'package:flutter/foundation.dart';
 
 /// Lien entre l'utilisateur et un contact.
+///
+/// Jelvo s'adresse à la sphère personnelle : les relations couvrent la
+/// famille, les amis et la colocation, jamais le cadre professionnel.
 enum ContactRelation {
   friend('Ami'),
   family('Famille'),
-  work('Travail'),
+  roommate('Coloc'),
   other('Autre');
 
   const ContactRelation(this.label);

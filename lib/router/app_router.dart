@@ -22,6 +22,7 @@ import '../features/groups/screens/groups_screen.dart';
 import '../features/groups/screens/invitation_screen.dart';
 import '../features/groups/screens/join_group_screen.dart';
 import '../features/home/screens/home_screen.dart';
+import '../features/notifications/screens/notifications_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
 import '../features/profile/screens/settings_screen.dart';
 import 'app_routes.dart';
@@ -179,6 +180,13 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
         parentNavigatorKey: _rootNavigatorKey,
         builder: (BuildContext context, GoRouterState state) =>
             const SettingsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.notificationsPath,
+        name: AppRoutes.notifications,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (BuildContext context, GoRouterState state) =>
+            const NotificationsScreen(),
       ),
       GoRoute(
         path: AppRoutes.myQrCodePath,

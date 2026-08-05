@@ -237,26 +237,29 @@ class SupabaseGroupRepository implements GroupRepository {
     }
 
     try {
-      final Map<String, dynamic> created = await _client
-          .from('groups')
-          .insert(<String, dynamic>{
-            'name': name.trim(),
-            'description': ?_trimmedOrNull(description),
-            'is_private': isPrivate,
-            'created_by': userId,
-          })
-          .select()
-          .single();
+      // Création par fonction plutôt que par `insert(...).select()` : la
+      // politique de lecture de `groups` exige d'être membre, et PostgreSQL
+      // applique les politiques SELECT au `returning` d'une insertion. Le
+      // créateur n'étant pas encore membre à cet instant, la relecture échouait
+      // en 42501. `creer_groupe` insère le groupe et l'adhésion admin dans la
+      // même transaction ; voir supabase/correctif_creation_groupe.sql.
+      final Object? result = await _client.rpc<Object?>(
+        'creer_groupe',
+        params: <String, dynamic>{
+          'p_name': name.trim(),
+          'p_description': _trimmedOrNull(description),
+          'p_is_private': isPrivate,
+        },
+      );
 
+      final List<Map<String, dynamic>> rows = _asRows(result);
+      if (rows.isEmpty) {
+        throw const AuthFailure(
+          'Le groupe n’a pas pu être créé. Réessayez dans un instant.',
+        );
+      }
+      final Map<String, dynamic> created = rows.first;
       final String groupId = created['id'] as String;
-
-      // L'auteur devient administrateur : sans cette ligne, il ne serait même
-      // pas membre de son propre groupe.
-      await _client.from('group_members').insert(<String, dynamic>{
-        'group_id': groupId,
-        'user_id': userId,
-        'role': GroupRole.admin.dbValue,
-      });
 
       String? photoUrl;
       if (photoBytes != null) {

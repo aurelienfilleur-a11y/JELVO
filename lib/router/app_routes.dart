@@ -64,6 +64,10 @@ abstract final class AppRoutes {
   static const String settings = 'settings';
   static const String settingsPath = '/parametres';
 
+  /// Boîte de notifications, ouverte par la cloche de l'accueil.
+  static const String notifications = 'notifications';
+  static const String notificationsPath = '/notifications';
+
   // Parcours d'authentification, hors du shell : la barre de navigation ne
   // doit pas apparaître tant que l'utilisateur n'est pas connecté.
   static const String login = 'login';

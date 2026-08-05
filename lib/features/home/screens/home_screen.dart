@@ -10,6 +10,7 @@ import '../../calendar/providers/calendar_providers.dart';
 import '../../contacts/providers/contact_providers.dart';
 import '../../groups/models/group.dart';
 import '../../groups/providers/group_providers.dart';
+import '../../notifications/providers/notification_providers.dart';
 import '../../tasks/models/task.dart';
 import '../../tasks/providers/task_providers.dart';
 import '../providers/home_providers.dart';
@@ -32,10 +33,24 @@ class HomeScreen extends ConsumerWidget {
       // manquant s'affiche en carré « tofu » au tout premier écran.
       title: ref.watch(greetingProvider),
       subtitle: 'Voici votre journée en un coup d’œil.',
-      headerAction: AppScreenAction(
-        icon: Icons.person_outline_rounded,
-        tooltip: 'Profil',
-        onPressed: () => context.pushNamed(AppRoutes.profile),
+      headerAction: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          NavBadge(
+            count: ref.watch(unreadCountProvider),
+            child: AppScreenAction(
+              icon: Icons.notifications_none_rounded,
+              tooltip: 'Notifications',
+              onPressed: () => context.pushNamed(AppRoutes.notifications),
+            ),
+          ),
+          AppSpacing.hGapSm,
+          AppScreenAction(
+            icon: Icons.person_outline_rounded,
+            tooltip: 'Profil',
+            onPressed: () => context.pushNamed(AppRoutes.profile),
+          ),
+        ],
       ),
       slivers: <Widget>[
         SliverPadding(

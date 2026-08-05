@@ -170,6 +170,28 @@ void main() {
       expect(fakes.groups.lastDeletedGroupId, isNull);
     });
 
+    testWidgets('créer un groupe mène à son écran', (
+      WidgetTester tester,
+    ) async {
+      final ({FakeContactRepository contacts, FakeGroupRepository groups})
+      fakes = await _pumpApp(tester);
+
+      await tester.tap(find.text('Groupes'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Nouveau groupe'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField).first, 'Coloc Bastille');
+      await tester.tap(find.text('Créer le groupe'));
+      await tester.pumpAndSettle();
+
+      expect(fakes.groups.lastCreatedName, 'Coloc Bastille');
+      // L'écran du groupe remplace le formulaire, qui ne doit pas se rouvrir
+      // par un retour arrière.
+      expect(find.text('Créer le groupe'), findsNothing);
+      expect(find.text('Membres'), findsOneWidget);
+    });
+
     testWidgets('quitter un groupe passe par une confirmation', (
       WidgetTester tester,
     ) async {

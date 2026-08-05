@@ -57,8 +57,8 @@ supabase/                     # SQL à exécuter sur le projet Supabase
 ```
 
 Features existantes : `auth`, `profile`, `home`, `groups`, `calendar`,
-`contacts`, `tasks` (sans écran propre, exposée dans `home` et `groups`),
-`create`.
+`contacts`, `notifications`, `tasks` (sans écran propre, exposée dans `home` et
+`groups`), `create`.
 
 ### Sens des dépendances
 
@@ -158,6 +158,7 @@ halo violet du bouton central. Ne pas utiliser l'`elevation` Material.
 | `SectionHeader`               | titre de section H3 + action « Tout voir »        |
 | `EmptyState`                  | état vide : icône, titre, message, action         |
 | `StatusDot`                   | pastille de statut (`StatusTone`), option `filled`|
+| `NavBadge`                    | compteur rouge posé sur une icône, masqué à zéro  |
 | `AppCard`                     | conteneur de base des cartes (surface + ombre)    |
 | `AppScreen` / `AppScreenAction` | gabarit d'écran d'onglet (en-tête H1 + slivers) |
 
@@ -319,10 +320,29 @@ signifie « sans terme ». **Toute lecture de `group_members` filtre les adhési
 adhésion échue laisse sa ligne : les fonctions d'adhésion la suppriment avant de
 réinsérer, la clé primaire étant le couple groupe / utilisateur.
 
-### Migration à exécuter
+### Le `returning` d'une insertion passe par la politique SELECT
 
-**`supabase/tranche2_groupes_et_invitations.sql`**, en une fois, dans l'éditeur
-SQL du projet. Idempotente. Elle apporte les favoris personnels, `expires_at`,
+Piège coûteux, rencontré sur la création de groupe. `groups_select` exige
+`is_group_member(id)`, et **PostgreSQL applique les politiques SELECT au
+`returning` d'un `insert`**. Un `insert(...).select()` sur `groups` échoue donc
+en `42501` : à cet instant, le créateur n'est pas encore dans `group_members`,
+sa propre ligne lui est invisible.
+
+Un déclencheur `after insert` qui inscrirait le créateur n'y change rien : les
+déclencheurs `after row` s'exécutent en fin d'instruction, après le contrôle de
+visibilité. D'où `creer_groupe`, fonction `security definer` qui insère le
+groupe et l'adhésion admin dans la même transaction.
+
+**Règle générale** : sur une table dont la politique SELECT dépend d'une ligne
+créée *ensuite*, ne pas utiliser `insert(...).select()` — passer par une
+fonction. Cela vaut aussi pour toute future table de ce genre.
+
+### Migrations à exécuter
+
+**`supabase/tranche2_groupes_et_invitations.sql`**,
+**`supabase/correctif_creation_groupe.sql`**, puis
+**`supabase/notifications.sql`**, dans cet ordre, dans l'éditeur SQL du projet.
+Idempotentes. Elle apporte les favoris personnels, `expires_at`,
 la table `group_invite_links` avec ses politiques, et les fonctions ci-dessous.
 
 | Fonction | Rôle |
@@ -335,6 +355,7 @@ la table `group_invite_links` avec ses politiques, et les fonctions ci-dessous.
 | `rejoindre_groupe_par_jeton` | valide le jeton et insère le membre |
 | `quitter_groupe` | départ, promotion, suppression — en une transaction |
 | `mes_invitations`, `inviter_dans_groupe`, `accepter_invitation`, `refuser_invitation` | invitations nominatives |
+| `creer_groupe` | groupe + adhésion admin en une transaction (voir ci-dessus) |
 
 **Pourquoi tant de fonctions plutôt que des requêtes directes.** Deux raisons,
 et une seule suffirait :
@@ -377,6 +398,49 @@ lien d'invitation porte un jeton variable. Attention à la dissymétrie du
 `redirect` — un utilisateur connecté est renvoyé à l'accueil depuis un écran
 d'authentification, **mais pas depuis `/rejoindre/…`**, qu'il doit pouvoir
 ouvrir. C'est même le cas courant : un membre qui teste son propre lien.
+
+---
+
+## Notifications et pastilles
+
+La table `notifications` — `id`, `user_id`, `type`, `payload`, `read_at`,
+`created_at` — porte deux politiques : lecture et mise à jour de ses propres
+lignes. **Il n'y a volontairement aucune politique d'insertion** : personne ne
+doit pouvoir écrire dans la boîte de quelqu'un d'autre. L'alimentation passe
+donc par des déclencheurs `security definer`, livrés dans
+`supabase/notifications.sql`.
+
+| Déclencheur | Effet |
+| --- | --- |
+| `after insert on invitations` | notification `group_invitation` pour l'invité |
+| `after insert on contacts` | notification `contact_request` pour le destinataire |
+| `after update on invitations` | referme la notification dès que l'invitation quitte `pending` |
+| `after update on contacts` (accepté) | referme la notification de demande |
+| `after delete on contacts` | referme la notification d'une demande refusée |
+
+Les trois derniers ne sont pas du confort : sans eux, une invitation acceptée
+laisserait sa pastille allumée indéfiniment. **Un compteur doit refléter ce qui
+reste à faire, pas ce qui est arrivé un jour.**
+
+`type` est du **texte libre** côté base, pas un type énuméré :
+`NotificationType.fromDb` fait donc tomber tout type inconnu dans `autre`
+plutôt que de lever.
+
+Le `payload` porte de quoi afficher la ligne — nom du groupe, nom de
+l'émetteur, avatar, identifiants — pour que l'écran ne fasse qu'**une seule
+lecture**, sans jointure ni requête de complément.
+
+### Répartition des pastilles
+
+`NotificationType.navIndex` associe chaque type à **un seul** onglet :
+`group_invitation` → Groupes, `contact_request` → Contacts, le reste → Accueil.
+Un élément n'est donc jamais compté deux fois, et le total de la cloche reste
+exactement la somme des pastilles. Ajouter un type impose de lui choisir un
+onglet — c'est voulu.
+
+`unreadByTabProvider` renvoie les quatre compteurs dans l'ordre de
+`AppBottomNav.destinations` ; `AppShell` les lui passe. `NavBadge` ne peint rien
+quand le compteur vaut zéro.
 
 ---
 
@@ -426,6 +490,8 @@ ouvrir. C'est même le cas courant : un membre qui teste son propre lien.
 - `test/groups_contacts_test.dart` couvre la liste et le détail d'un groupe, la
   création, le départ, les cinq états d'un lien d'invitation, les demandes de
   contact et l'encodage du QR code.
+- `test/notifications_test.dart` couvre la cloche, la répartition des pastilles
+  par onglet, leur extinction, la liste et le marquage comme lu.
 
 Quatre points à respecter dans tout nouveau test de widget :
 
@@ -454,10 +520,9 @@ Quatre points à respecter dans tout nouveau test de widget :
    ]
    ```
    Les deux faux dépôts vivent dans `test/fakes/fake_auth_repository.dart`.
-4. Surcharger les groupes et les contacts, pour la même raison :
-   `groupRepositoryProvider` et `contactRepositoryProvider`, avec
-   `test/fakes/fake_group_repository.dart` et
-   `test/fakes/fake_contact_repository.dart`.
+4. Surcharger les groupes, les contacts et les notifications, pour la même
+   raison : `groupRepositoryProvider`, `contactRepositoryProvider` et
+   `notificationRepositoryProvider`, avec les faux dépôts de `test/fakes/`.
 
 Le `+` central de la barre et le bouton « Nouveau groupe » portent la même
 icône : viser un bouton d'en-tête par `find.byTooltip`, pas par `find.byIcon`.
@@ -466,19 +531,24 @@ icône : viser un bouton d'en-tête par `find.byTooltip`, pas par `find.byIcon`.
 
 ## État actuel et limites connues
 
-- **Authentification, profil, groupes, contacts et invitations** sont branchés
-  sur Supabase et persistés. **Événements, tâches et calendrier** restent
-  **en mémoire** et regénérés à chaque démarrage.
+- **Authentification, profil, groupes, contacts, invitations et notifications**
+  sont branchés sur Supabase et persistés. **Événements, tâches et calendrier**
+  restent **en mémoire** et regénérés à chaque démarrage.
+- Les notifications sont **relues à la demande**, pas poussées : la liste se
+  rafraîchit à l'ouverture de l'écran, au geste de traction et après chaque
+  action. Le temps réel et les notifications système (`push_tokens`) ne sont pas
+  au périmètre.
 - Conséquence du point précédent : les tâches et événements de démonstration
   citent les groupes `g1`…`g4`, qui n'existent plus côté Supabase.
   `groupByIdProvider` renvoie donc `null` pour eux — pas de pastille de groupe
   sur ces cartes, plutôt qu'un plantage. Le recâblage viendra avec leur passage
   sur Supabase.
-- Trois prérequis côté projet Supabase, non vérifiables depuis le code :
+- Cinq prérequis côté projet Supabase, non vérifiables depuis le code :
   exécuter `supabase/email_pour_pseudo.sql` pour la connexion par pseudo,
-  exécuter `supabase/tranche2_groupes_et_invitations.sql` pour les groupes et
-  les invitations, et faire émettre `{{ .Token }}` au modèle d'e-mail de
-  confirmation pour le code à 6 chiffres.
+  `supabase/tranche2_groupes_et_invitations.sql` pour les groupes et les
+  invitations, `supabase/correctif_creation_groupe.sql` pour la création de
+  groupe, `supabase/notifications.sql` pour les notifications, et faire émettre
+  `{{ .Token }}` au modèle d'e-mail de confirmation pour le code à 6 chiffres.
 - Le scan de QR code demande une caméra : il est désactivé proprement sur le web
   et sur ordinateur, où l'écran renvoie vers la recherche par pseudo. Les cibles
   Android et iOS n'ont pas pu être compilées ici — `mobile_scanner` embarque du

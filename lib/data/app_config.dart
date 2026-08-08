@@ -47,4 +47,19 @@ abstract final class AppConfig {
 
   /// Lien partageable menant à la page publique d'un groupe.
   static String inviteUrl(String token) => '$webBaseUrl/rejoindre/$token';
+
+  /// Mode diagnostic : ajoute l'erreur technique brute sous le message en
+  /// français, et la consigne dans la console.
+  ///
+  /// **Temporaire.** La règle « aucun message technique brut à l'écran » reste
+  /// la règle ; ce drapeau existe pour identifier une erreur serveur qu'on ne
+  /// peut pas reproduire autrement :
+  ///
+  /// ```bash
+  /// flutter run -d chrome --dart-define=JELVO_DIAGNOSTIC=true
+  /// ```
+  ///
+  /// Il est délibérément absent de `kDebugMode` : les tests de widget
+  /// tournent en debug et assertent sur les messages exacts.
+  static const bool diagnosticErrors = bool.fromEnvironment('JELVO_DIAGNOSTIC');
 }

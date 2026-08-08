@@ -176,9 +176,13 @@ de feature (voir `avatarsForContactIdsProvider`).
 - `StatefulShellRoute.indexedStack` avec **quatre branches** : `/` (Accueil),
   `/groupes`, `/calendrier`, `/contacts`. Chaque onglet garde son historique et
   sa position de défilement.
-- Le bouton central **[+]** n'est pas un onglet : il empile `/creer` sur le
+- Le bouton central **[+]** n'est pas un onglet mais une action, empilée sur le
   navigateur racine (`parentNavigatorKey: _rootNavigatorKey`), ce qui recouvre
-  la barre de navigation.
+  la barre de navigation. Il est **contextuel** — `AppShell._createAction` :
+  Accueil et Groupes créent un groupe, Calendrier ouvre `/creer`, Contacts mène
+  à l'ajout de contact. L'écran ouvert dit déjà ce que l'on veut créer ; le
+  demander serait une question de trop. Son infobulle nomme l'action, l'icône
+  seule ne disant pas ce qui va s'ouvrir.
 - La barre est un widget maison (`AppBottomNav`) et non un `NavigationBar` :
   le bouton central ne rentre pas dans le modèle « un index par destination ».
 - Naviguer avec `context.goNamed(AppRoutes.calendar)` / `pushNamed`, jamais avec
@@ -191,6 +195,28 @@ de feature (voir `avatarsForContactIdsProvider`).
 - Sur le web, une URL inconnue affiche `_RouteErrorScreen`. Le workflow copie
   `index.html` en `404.html` pour que l'accès direct à `/calendrier` fonctionne
   sur GitHub Pages.
+
+### Liens externes et stratégie d'URL
+
+L'application **n'appelle pas `usePathUrlStrategy()`** : Flutter web place donc
+les routes **après le fragment**. Une URL partagée hors de l'application doit
+porter le `#` — `AppConfig.inviteUrl` s'en charge :
+
+```
+https://…/JELVO/#/rejoindre/<jeton>
+```
+
+Sans lui, GitHub Pages ne trouve pas le chemin, sert `404.html` (une copie
+d'`index.html`), et l'application démarre avec un fragment vide : GoRouter voit
+`/`, affiche l'accueil, **sans message ni erreur**. Le jeton disparaît en
+silence — panne d'autant plus pénible qu'elle ne laisse aucune trace.
+
+Les chemins internes (`AppRoutes.*Path`, `context.goNamed`) restent **sans
+`#`** : GoRouter raisonne en chemins, c'est la couche web qui ajoute le
+fragment. Le `#` ne concerne que les liens sortants.
+
+Le jour où le site aura son propre domaine, passer en stratégie par chemin
+donnera des liens plus propres et fera disparaître ce `#`.
 
 ### Garde d'authentification
 
@@ -240,7 +266,11 @@ seuls états de `AuthStatus`, sans `unknown`.
   `AuthFailure.from(Object)` couvre `AuthException`, `PostgrestException`
   (`23505` pseudo pris, `42501` RLS), `StorageException` et les pannes réseau.
   **Aucun message technique brut ne doit atteindre l'écran** : un `catch` qui
-  affiche `error.toString()` est un bug.
+  affiche `error.toString()` est un bug. Seule exception, temporaire et
+  explicite : `--dart-define=JELVO_DIAGNOSTIC=true` accole l'erreur brute —
+  SQLSTATE, message, détail, indice — sous le message français, et la consigne
+  dans la console. `AuthFailure.technical` est toujours renseigné ; seul son
+  affichage dépend du drapeau. À remettre à `false` dès le diagnostic fini.
 - `repository/auth_repository.dart` — l'interface expose `bool isSignedIn` et
   `Stream<bool> watchSignedIn()` plutôt que les types gotrue, ce qui permet de
   tester toute la pile sans `Supabase.initialize`.
@@ -340,9 +370,10 @@ fonction. Cela vaut aussi pour toute future table de ce genre.
 ### Migrations à exécuter
 
 **`supabase/tranche2_groupes_et_invitations.sql`**,
-**`supabase/correctif_creation_groupe.sql`**, puis
-**`supabase/notifications.sql`**, dans cet ordre, dans l'éditeur SQL du projet.
-Idempotentes. Elle apporte les favoris personnels, `expires_at`,
+**`supabase/correctif_creation_groupe.sql`**,
+**`supabase/notifications.sql`**, puis
+**`supabase/correctif_notifications.sql`**, dans cet ordre, dans l'éditeur SQL
+du projet. Idempotentes. Elle apporte les favoris personnels, `expires_at`,
 la table `group_invite_links` avec ses politiques, et les fonctions ci-dessous.
 
 | Fonction | Rôle |
@@ -421,6 +452,13 @@ donc par des déclencheurs `security definer`, livrés dans
 Les trois derniers ne sont pas du confort : sans eux, une invitation acceptée
 laisserait sa pastille allumée indéfiniment. **Un compteur doit refléter ce qui
 reste à faire, pas ce qui est arrivé un jour.**
+
+**Une notification est un effet de bord, elle ne doit jamais faire échouer
+l'écriture principale.** Les cinq déclencheurs attrapent donc toute erreur, la
+consignent en `warning` et laissent passer. Une invitation impossible à envoyer
+parce que la notification a été refusée est un défaut bien plus grave qu'un
+compteur qui ne s'allume pas. Tout nouveau déclencheur sur ces tables doit
+suivre la même règle.
 
 `type` est du **texte libre** côté base, pas un type énuméré :
 `NotificationType.fromDb` fait donc tomber tout type inconnu dans `autre`

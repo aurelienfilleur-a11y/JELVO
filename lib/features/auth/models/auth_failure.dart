@@ -1,46 +1,85 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../../data/app_config.dart';
 
 /// Échec d'authentification traduit en message affichable.
 ///
 /// Toute la couche d'accès lève cette exception : les écrans n'ont jamais à
 /// interpréter un `AuthException`, un code PostgREST ou une `SocketException`,
 /// et aucun message technique brut ne peut donc atteindre l'utilisateur.
+///
+/// Exception à cette règle : `AppConfig.diagnosticErrors`, drapeau de
+/// compilation qui accole l'erreur brute au message français. Il sert à
+/// identifier une erreur serveur qu'on ne peut pas reproduire depuis un poste
+/// de développement, et n'est jamais actif par défaut.
 class AuthFailure implements Exception {
-  const AuthFailure(this.message, {this.kind = AuthFailureKind.unknown});
+  const AuthFailure(
+    this._message, {
+    this.kind = AuthFailureKind.unknown,
+    this.technical,
+  });
 
-  /// Message en français, destiné à être affiché tel quel.
-  final String message;
+  final String _message;
+
+  /// Erreur brute — code et texte du serveur —, conservée en toutes
+  /// circonstances mais affichée seulement en mode diagnostic.
+  final String? technical;
 
   final AuthFailureKind kind;
+
+  /// Message en français, destiné à être affiché tel quel.
+  String get message {
+    final String? raw = technical;
+    if (!AppConfig.diagnosticErrors || raw == null) return _message;
+    return '$_message\n\n[diagnostic] $raw';
+  }
 
   /// Traduit une erreur quelconque remontée par Supabase ou par le réseau.
   factory AuthFailure.from(Object error) {
     if (error is AuthFailure) return error;
 
+    if (AppConfig.diagnosticErrors) {
+      debugPrint('[jelvo:diagnostic] ${error.runtimeType} — $error');
+    }
+
     if (_isNetworkError(error)) {
-      return const AuthFailure(
+      return AuthFailure(
         'Connexion indisponible. Vérifiez votre accès à Internet, puis '
         'réessayez.',
         kind: AuthFailureKind.network,
+        technical: _describe(error),
       );
     }
 
-    if (error is AuthException) return _fromAuthException(error);
+    if (error is AuthException) {
+      return _fromAuthException(error)._withTechnical(
+        'AuthException code=${error.code} '
+        'statusCode=${error.statusCode} — ${error.message}',
+      );
+    }
     if (error is PostgrestException) return _fromPostgrest(error);
     if (error is StorageException) {
-      return const AuthFailure(
+      return AuthFailure(
         "L'envoi de la photo a échoué. Réessayez dans un instant.",
         kind: AuthFailureKind.storage,
+        technical: 'StorageException ${error.statusCode} — ${error.message}',
       );
     }
 
-    return const AuthFailure(
+    return AuthFailure(
       'Une erreur est survenue. Réessayez dans un instant.',
+      technical: _describe(error),
     );
   }
+
+  static String _describe(Object error) => '${error.runtimeType} — $error';
+
+  AuthFailure _withTechnical(String value) =>
+      AuthFailure(_message, kind: kind, technical: value);
 
   static bool _isNetworkError(Object error) {
     // `AuthRetryableFetchException` est levée par gotrue quand la requête n'a
@@ -135,24 +174,35 @@ class AuthFailure implements Exception {
   }
 
   static AuthFailure _fromPostgrest(PostgrestException error) {
+    // Le détail complet renvoyé par PostgREST : c'est lui qui nomme la
+    // contrainte, la colonne ou la politique en cause.
+    final String technical =
+        'PostgrestException code=${error.code} '
+        'message=${error.message} '
+        'details=${error.details} '
+        'hint=${error.hint}';
+
     // 23505 = violation de contrainte d'unicité. Sur `profiles`, seul le
     // pseudo est unique : deux inscriptions simultanées peuvent viser le même,
     // et la vérification de disponibilité en direct ne suffit donc pas.
     if (error.code == '23505') {
-      return const AuthFailure(
+      return AuthFailure(
         'Ce pseudo vient d’être pris. Choisissez-en un autre.',
         kind: AuthFailureKind.pseudoTaken,
+        technical: technical,
       );
     }
     if (error.code == '42501' ||
         error.message.toLowerCase().contains('row-level security')) {
-      return const AuthFailure(
+      return AuthFailure(
         'Vous n’avez pas les droits nécessaires pour cette action.',
         kind: AuthFailureKind.forbidden,
+        technical: technical,
       );
     }
-    return const AuthFailure(
+    return AuthFailure(
       'Les données n’ont pas pu être enregistrées. Réessayez dans un instant.',
+      technical: technical,
     );
   }
 

@@ -316,6 +316,19 @@ Ces trois domaines lisent et écrivent Supabase. Le schéma étant **préexistan
 le code s'y plie plutôt que l'inverse — d'où les noms de colonnes et les valeurs
 d'énumération ci-dessous, qui ne sont pas négociables côté application.
 
+> **Le schéma initial fait autorité.** Avant de livrer une fonction SQL ou une
+> requête qui écrit dans une table, vérifier ses colonnes **réelles** :
+> colonnes obligatoires sans valeur par défaut, contraintes `check`, clés
+> étrangères, valeurs d'énumération. Ne pas les deviner, ni les déduire de ce
+> que l'application croit savoir.
+>
+> Cette règle vient d'une panne : `inviter_dans_groupe` ne renseignait pas
+> `invitations.type`, colonne `not null` du schéma initial, et l'invitation
+> échouait en `23502`. La colonne avait échappé à un sondage de noms candidats
+> — une méthode qui ne voit que ce qu'elle a pensé à chercher. La requête de
+> vérification vit en fin de `supabase/correctif_invitations_type.sql` :
+> lancez-la après toute nouvelle fonction d'écriture.
+
 ### Schéma utilisé
 
 | Table | Colonnes |
@@ -323,15 +336,28 @@ d'énumération ci-dessous, qui ne sont pas négociables côté application.
 | `groups` | `id`, `name`, `description`, `photo_url`, `is_private`, `created_by`, `created_at`, `deleted_at` |
 | `group_members` | `group_id`, `user_id`, `role`, `joined_at`, `expires_at` — **pas de colonne `id`** |
 | `contacts` | `requester_id`, `addressee_id`, `status`, `favorite_requester`, `favorite_addressee`, `created_at` — **pas de colonne `id`** |
-| `invitations` | `id`, `group_id`, `inviter_id`, `invitee_id`, `status`, `created_at`, `expires_at` |
+| `invitations` | `id`, **`type`**, `group_id`, `event_id`, `task_id`, `inviter_id`, `invitee_id`, `status`, `created_at`, `expires_at` |
 | `group_invite_links` | créée par la migration : `id`, `group_id`, `created_by`, `token`, `expires_at`, `max_uses`, `uses_count`, `revoked_at` |
 
-Trois types énumérés, dont les valeurs exactes comptent :
+Quatre types énumérés, dont les valeurs exactes comptent :
 
 - `member_role` : `admin`, `member` — rien d'autre ;
 - `contact_status` : `pending`, `accepted` — **il n'existe pas de `declined`**,
   d'où le refus d'une demande **par suppression de la ligne** ;
-- `invitation_status` : `pending`, `accepted`, `declined`, `expired`.
+- `invitation_status` : `pending`, `accepted`, `declined`, `expired` ;
+- `invitation_type` : `group`, `event`, `task`.
+
+### `invitations` sert trois sortes d'invitation
+
+Une seule table pour les groupes, les événements et les tâches. `type` est
+**obligatoire** et discrimine ; une seule des trois clés `group_id`,
+`event_id`, `task_id` est renseignée en conséquence.
+
+Toute écriture dans `invitations` doit donc renseigner `type`, et toute lecture
+destinée aux groupes doit filtrer `type = 'group'` — la jointure sur `groups`
+suffirait par accident, ce qui n'est pas une raison de s'en remettre à elle.
+`accepter_invitation` refuse explicitement un autre type : elle ne sait insérer
+que dans `group_members`.
 
 Deux conséquences de forme :
 
@@ -371,9 +397,13 @@ fonction. Cela vaut aussi pour toute future table de ce genre.
 
 **`supabase/tranche2_groupes_et_invitations.sql`**,
 **`supabase/correctif_creation_groupe.sql`**,
-**`supabase/notifications.sql`**, puis
-**`supabase/correctif_notifications.sql`**, dans cet ordre, dans l'éditeur SQL
-du projet. Idempotentes. Elle apporte les favoris personnels, `expires_at`,
+**`supabase/notifications.sql`**,
+**`supabase/correctif_notifications.sql`**, puis
+**`supabase/correctif_invitations_type.sql`**, dans cet ordre, dans l'éditeur
+SQL du projet. Idempotentes.
+
+`supabase/diagnostic_invitation.sql` n'est pas une migration : il rejoue un
+appel dans une transaction annulée, pour faire remonter une erreur serveur. Elle apporte les favoris personnels, `expires_at`,
 la table `group_invite_links` avec ses politiques, et les fonctions ci-dessous.
 
 | Fonction | Rôle |
@@ -387,6 +417,10 @@ la table `group_invite_links` avec ses politiques, et les fonctions ci-dessous.
 | `quitter_groupe` | départ, promotion, suppression — en une transaction |
 | `mes_invitations`, `inviter_dans_groupe`, `accepter_invitation`, `refuser_invitation` | invitations nominatives |
 | `creer_groupe` | groupe + adhésion admin en une transaction (voir ci-dessus) |
+
+`supabase/correctif_invitations_type.sql` renseigne `invitations.type` dans
+`inviter_dans_groupe` et restreint `accepter_invitation` et `mes_invitations`
+au type `group`. Il porte aussi la requête de vérification du schéma.
 
 **Pourquoi tant de fonctions plutôt que des requêtes directes.** Deux raisons,
 et une seule suffirait :

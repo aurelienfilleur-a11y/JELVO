@@ -584,6 +584,7 @@ as $$
   join public.groups g on g.id = i.group_id and g.deleted_at is null
   left join public.profiles e on e.id = i.inviter_id
   where i.invitee_id = auth.uid()
+    and i.type = 'group'
     and i.status = 'pending'
   order by i.created_at desc;
 $$;
@@ -615,16 +616,20 @@ begin
     select 1 from public.invitations i
     where i.group_id = p_group_id
       and i.invitee_id = p_invitee
+      and i.type = 'group'
       and i.status = 'pending'
       and i.expires_at > now()
   ) then
     return 'deja_invite';
   end if;
 
+  -- `type` est obligatoire : une seule table sert les invitations de groupe,
+  -- d'événement et de tâche, discriminées par cette colonne.
   insert into public.invitations
-    (group_id, inviter_id, invitee_id, status, expires_at)
+    (type, group_id, inviter_id, invitee_id, status, expires_at)
   values
-    (p_group_id, auth.uid(), p_invitee, 'pending', now() + interval '30 days');
+    ('group', p_group_id, auth.uid(), p_invitee, 'pending',
+     now() + interval '30 days');
 
   return 'invite';
 end;
@@ -653,6 +658,11 @@ begin
   for update;
 
   if not found or inv.status <> 'pending' then
+    return 'invalide';
+  end if;
+
+  -- Cette fonction ne sait faire adhérer qu'à un groupe.
+  if inv.type <> 'group' or inv.group_id is null then
     return 'invalide';
   end if;
 

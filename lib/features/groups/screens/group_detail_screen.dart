@@ -3,11 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/core.dart';
+import '../../../data/data_providers.dart';
 import '../../../router/app_routes.dart';
 import '../../auth/models/auth_failure.dart';
 import '../../auth/providers/auth_providers.dart';
+import '../../calendar/models/calendar_event.dart';
+import '../../calendar/providers/calendar_providers.dart';
 import '../../contacts/models/contact.dart';
 import '../../contacts/providers/contact_providers.dart';
+import '../../tasks/models/task.dart';
+import '../../tasks/providers/task_providers.dart';
 import '../models/group.dart';
 import '../models/group_invite.dart';
 import '../models/group_member.dart';
@@ -174,6 +179,9 @@ class _GroupView extends ConsumerWidget {
           ),
         ),
 
+        ..._agendaSlivers(context, ref, group),
+        ..._tachesSlivers(context, ref, group),
+
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(
             AppSpacing.screenMargin,
@@ -224,6 +232,139 @@ class _GroupView extends ConsumerWidget {
 
         const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xxl)),
       ],
+    );
+  }
+
+  /// Section « À venir » : les événements du groupe encore devant nous.
+  List<Widget> _agendaSlivers(
+    BuildContext context,
+    WidgetRef ref,
+    Group group,
+  ) {
+    final DateTime now = ref.watch(nowProvider);
+    final List<CalendarEvent> events =
+        ref
+            .watch(eventsForGroupProvider(group.id))
+            .where((CalendarEvent e) => e.end.isAfter(now))
+            .toList()
+          ..sort(
+            (CalendarEvent a, CalendarEvent b) => a.start.compareTo(b.start),
+          );
+
+    return <Widget>[
+      _header(
+        title: 'À venir',
+        subtitle: events.isEmpty
+            ? 'Rien de prévu'
+            : '${events.length} événement${events.length > 1 ? 's' : ''}',
+      ),
+      if (events.isEmpty)
+        const SliverToBoxAdapter(
+          child: EmptyState(
+            icon: Icons.event_available_rounded,
+            title: 'Aucun événement',
+            message: 'Proposez une date au groupe depuis le bouton « + ».',
+          ),
+        )
+      else
+        SliverPadding(
+          padding: AppSpacing.screenHorizontal,
+          sliver: SliverList.separated(
+            itemCount: events.length > 3 ? 3 : events.length,
+            separatorBuilder: (_, _) => AppSpacing.gapMd,
+            itemBuilder: (BuildContext context, int index) {
+              final CalendarEvent event = events[index];
+              return EventCard(
+                title: event.title,
+                timeLabel:
+                    '${AppDates.relativeDay(event.start, now: now)} · '
+                    '${AppDates.timeRange(event.start, event.end)}',
+                location: event.location,
+                accentColor: group.accent.color,
+                participants: event.avatars,
+                statusTone: event.myResponse == EventResponse.yes
+                    ? null
+                    : event.myResponse.tone,
+                statusLabel: event.myResponse.label,
+              );
+            },
+          ),
+        ),
+    ];
+  }
+
+  /// Section « Tâches à faire » : les tâches ouvertes du groupe.
+  List<Widget> _tachesSlivers(
+    BuildContext context,
+    WidgetRef ref,
+    Group group,
+  ) {
+    final DateTime now = ref.watch(nowProvider);
+    final List<Task> tasks = ref
+        .watch(tasksForGroupProvider(group.id))
+        .where((Task t) => !t.isDone)
+        .toList();
+
+    return <Widget>[
+      _header(
+        title: 'Tâches à faire',
+        subtitle: tasks.isEmpty
+            ? 'Tout est à jour'
+            : '${tasks.length} tâche${tasks.length > 1 ? 's' : ''} ouverte'
+                  '${tasks.length > 1 ? 's' : ''}',
+      ),
+      if (tasks.isEmpty)
+        const SliverToBoxAdapter(
+          child: EmptyState(
+            icon: Icons.task_alt_rounded,
+            title: 'Aucune tâche ouverte',
+            message: 'Répartissez ce qu’il y a à faire depuis le bouton « + ».',
+          ),
+        )
+      else
+        SliverPadding(
+          padding: AppSpacing.screenHorizontal,
+          sliver: SliverToBoxAdapter(
+            child: AppCard(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+              child: Column(
+                children: <Widget>[
+                  for (int i = 0; i < tasks.length; i++)
+                    TaskRow(
+                      title: tasks[i].title,
+                      subtitle: tasks[i].hasList
+                          ? '${tasks[i].checkedCount} sur '
+                                '${tasks[i].itemCount} articles'
+                          : tasks[i].notes,
+                      done: tasks[i].isDone,
+                      dueLabel: tasks[i].dueDate == null
+                          ? null
+                          : AppDates.relativeDay(tasks[i].dueDate!, now: now),
+                      dueTone: tasks[i].toneFor(now),
+                      showDivider: i < tasks.length - 1,
+                      onToggle: (_) => ref
+                          .read(taskActionsProvider)
+                          .toggleDone(tasks[i].id, done: !tasks[i].isDone),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+    ];
+  }
+
+  static Widget _header({required String title, required String subtitle}) {
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screenMargin,
+        AppSpacing.xl,
+        AppSpacing.screenMargin,
+        AppSpacing.md,
+      ),
+      sliver: SliverToBoxAdapter(
+        child: SectionHeader(title: title, subtitle: subtitle),
+      ),
     );
   }
 

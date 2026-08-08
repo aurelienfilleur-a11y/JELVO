@@ -60,6 +60,8 @@ Features existantes : `auth`, `profile`, `home`, `groups`, `calendar`,
 `contacts`, `notifications`, `tasks` (sans écran propre, exposée dans `home` et
 `groups`), `create`.
 
+`lib/l10n/` porte les fichiers ARB et la classe `AppTexts` générée.
+
 ### Sens des dépendances
 
 ```
@@ -398,9 +400,10 @@ fonction. Cela vaut aussi pour toute future table de ce genre.
 **`supabase/tranche2_groupes_et_invitations.sql`**,
 **`supabase/correctif_creation_groupe.sql`**,
 **`supabase/notifications.sql`**,
-**`supabase/correctif_notifications.sql`**, puis
-**`supabase/correctif_invitations_type.sql`**, dans cet ordre, dans l'éditeur
-SQL du projet. Idempotentes.
+**`supabase/correctif_notifications.sql`**,
+**`supabase/correctif_invitations_type.sql`**, puis
+**`supabase/tranche3_taches_et_evenements.sql`**, dans cet ordre, dans
+l'éditeur SQL du projet. Idempotentes.
 
 `supabase/diagnostic_invitation.sql` n'est pas une migration : il rejoue un
 appel dans une transaction annulée, pour faire remonter une erreur serveur. Elle apporte les favoris personnels, `expires_at`,
@@ -463,6 +466,62 @@ lien d'invitation porte un jeton variable. Attention à la dissymétrie du
 `redirect` — un utilisateur connecté est renvoyé à l'accueil depuis un écran
 d'authentification, **mais pas depuis `/rejoindre/…`**, qu'il doit pouvoir
 ouvrir. C'est même le cas courant : un membre qui teste son propre lien.
+
+---
+
+## Tâches et événements
+
+Même principe qu'en tranche 2 : le schéma initial fait autorité, et les
+écritures passent par des fonctions `security definer`.
+
+| Table | Colonnes |
+| --- | --- |
+| `tasks` | `id`, `group_id`, `created_by`, `title`, `description`, `due_at`, `priority`, `reminder_at`, `rrule`, `completed_at`, `created_at`, `deleted_at` |
+| `task_assignees` | `task_id`, `user_id`, `status` — **pas de colonne `id`** |
+| `task_list_items` | `id`, `task_id`, `label`, `position`, `checked_at`, `checked_by`, `created_at` |
+| `events` | `id`, `group_id`, `owner_id`, `title`, `description`, `starts_at`, `ends_at`, `location`, `rrule`, `image_url`, `reminder_minutes`, `created_at`, `deleted_at` |
+| `event_participants` | `event_id`, `user_id`, `response`, `responded_at` — **pas de colonne `id`** |
+
+Trois énumérations de plus : `task_priority` (`low`, `medium`, `high`),
+`assignee_status` (`pending`, `accepted`, `declined`, `done`) et
+`event_response` (`yes`, `no`, `maybe`, `pending`).
+
+**`completed_at` est la seule source du statut d'une tâche** : terminée si
+renseigné, en retard si l'échéance est passée, à faire sinon. Aucun état n'est
+stocké en double, donc rien ne peut se contredire.
+
+`tasks` porte `reminder_at` — un instant — et `events` `reminder_minutes` — un
+délai avant le début. L'asymétrie vient du schéma initial ; l'application s'y
+plie plutôt que de l'uniformiser.
+
+**Ni `tasks`, ni `events`, ni `task_assignees`, ni `event_participants` n'ont
+de politique DELETE.** Supprimer une tâche est donc une suppression douce, et
+changer la liste des assignés passe obligatoirement par
+`definir_assignes_tache` : sans elle, on ne pourrait qu'ajouter.
+
+Les fonctions de lecture — `mes_taches`, `mon_agenda` — renvoient les assignés
+et les participants **agrégés en JSON**, profil compris. Un écran ne fait donc
+qu'une seule lecture, sans jointure ni requête de complément, comme pour les
+notifications.
+
+Un événement sans `group_id` est un rendez-vous personnel : seul son
+propriétaire le voit. Un événement de groupe convie par défaut tous les
+membres actifs.
+
+---
+
+## Internationalisation
+
+Les textes vivent dans `lib/l10n/app_fr.arb` et sont exposés par la classe
+générée `AppTexts` (`l10n.yaml`). `main()` branche
+`AppTexts.localizationsDelegates` et `AppTexts.supportedLocales`.
+
+Les délégués de Material et de Cupertino ne sont pas décoratifs : sans eux, un
+`showDatePicker(locale: Locale('fr'))` reste en anglais quand il ne lève pas.
+
+**Ajouter une langue = déposer `app_<code>.arb` à côté et le remplir.** Aucun
+code à modifier. La migration des chaînes est **partielle** : voir les limites
+connues.
 
 ---
 
@@ -565,6 +624,11 @@ quand le compteur vaut zéro.
 - `test/notifications_test.dart` couvre la cloche, la répartition des pastilles
   par onglet, leur extinction, la liste et le marquage comme lu.
 
+Six faux dépôts vivent dans `test/fakes/` : authentification, profil, groupes,
+contacts, notifications, tâches et agenda. Les quatre fichiers de test les
+surchargent tous — un provider oublié tombe sur `Supabase.instance`, absent en
+test.
+
 Quatre points à respecter dans tout nouveau test de widget :
 
 1. Surcharger l'horloge — les données de démonstration et les libellés
@@ -603,18 +667,24 @@ icône : viser un bouton d'en-tête par `find.byTooltip`, pas par `find.byIcon`.
 
 ## État actuel et limites connues
 
-- **Authentification, profil, groupes, contacts, invitations et notifications**
-  sont branchés sur Supabase et persistés. **Événements, tâches et calendrier**
-  restent **en mémoire** et regénérés à chaque démarrage.
+- **Tout le domaine est branché sur Supabase** : authentification, profil,
+  groupes, contacts, invitations, notifications, tâches et événements. Il n'y a
+  plus aucun jeu de données de démonstration dans `lib/` — les seuls restants
+  vivent dans `test/fakes/`.
 - Les notifications sont **relues à la demande**, pas poussées : la liste se
   rafraîchit à l'ouverture de l'écran, au geste de traction et après chaque
   action. Le temps réel et les notifications système (`push_tokens`) ne sont pas
   au périmètre.
-- Conséquence du point précédent : les tâches et événements de démonstration
-  citent les groupes `g1`…`g4`, qui n'existent plus côté Supabase.
-  `groupByIdProvider` renvoie donc `null` pour eux — pas de pastille de groupe
-  sur ces cartes, plutôt qu'un plantage. Le recâblage viendra avec leur passage
-  sur Supabase.
+- **La migration des chaînes vers l'ARB est partielle.** L'infrastructure est
+  complète et `app_fr.arb` couvre la navigation, l'accueil, l'écran de groupe,
+  la création, les statuts et les erreurs. Les écrans d'authentification, de
+  contacts, de notifications et d'invitation portent encore leurs chaînes en
+  ligne : elles restent à déplacer, sans changement de code autre que
+  l'appel à `AppTexts.of(context)`.
+- **Tâches et événements n'ont pas encore d'écran dédié.** Le SQL et la couche
+  de données couvrent l'acceptation d'un assigné, la liste de courses cochable,
+  les réponses Oui / Peut-être / Non, le rappel et la récurrence ; l'interface
+  se limite pour l'instant à la création, à la case à cocher et à l'affichage.
 - Six prérequis côté projet Supabase, non vérifiables depuis le code :
   exécuter `supabase/email_pour_pseudo.sql` pour la connexion par pseudo,
   `supabase/tranche2_groupes_et_invitations.sql` pour les groupes et les
@@ -632,10 +702,12 @@ icône : viser un bouton d'en-tête par `find.byTooltip`, pas par `find.byIcon`.
 - L'adhésion temporaire n'a pas d'interface : la colonne
   `group_members.expires_at` existe et **toute lecture filtre déjà les adhésions
   échues**, mais rien ne permet encore de fixer un terme depuis l'application.
-- L'écran `/creer` **valide** le titre mais **n'enregistre pas** encore : il
-  affiche une `SnackBar`. Le câblage vers les dépôts reste à faire.
-- Le partage d'un événement avec un groupe et le choix des participants ne sont
-  pas implémentés.
+- L'écran `/creer` enregistre désormais pour de bon : événement ou tâche, avec
+  choix du groupe — ou « Personnel » — et de la date. Le choix « Groupe »
+  redirige vers l'écran de création dédié.
+- Le choix nominatif des participants d'un événement et des assignés d'une
+  tâche n'a pas d'interface : la valeur par défaut s'applique — tous les
+  membres pour un événement, l'auteur pour une tâche.
 - Le mode sombre n'est pas au périmètre : `themeMode` est figé sur
   `ThemeMode.light`.
 - `google_fonts` télécharge Inter au premier lancement. Pour un fonctionnement

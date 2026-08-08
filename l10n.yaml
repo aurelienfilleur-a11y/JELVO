@@ -1,0 +1,10 @@
+# Configuration de la génération des traductions.
+#
+# Une seule langue pour l'instant : le français. Ajouter une langue revient à
+# déposer `app_<code>.arb` à côté de `app_fr.arb` et à le remplir — aucun code
+# à modifier.
+arb-dir: lib/l10n
+template-arb-file: app_fr.arb
+output-localization-file: app_localizations.dart
+output-class: AppTexts
+nullable-getter: false

@@ -1,15 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:go_router/go_router.dart';
+
 import '../../../core/core.dart';
+import '../../../data/data_providers.dart';
+import '../../../router/app_routes.dart';
+import '../../auth/models/auth_failure.dart';
+import '../../calendar/providers/calendar_providers.dart';
+import '../../groups/models/group.dart';
+import '../../groups/providers/group_providers.dart';
+import '../../tasks/providers/task_providers.dart';
 import '../models/creation_kind.dart';
 import '../providers/create_providers.dart';
 import '../widgets/creation_kind_selector.dart';
 
 /// Écran de création, ouvert par le bouton central « + ».
 ///
-/// Le formulaire est encore une maquette : la validation vérifie le titre, mais
-/// l'enregistrement n'écrit pas encore dans les dépôts.
+/// Événements et tâches sont enregistrés pour de bon ; le choix « Groupe »
+/// renvoie vers l'écran dédié, plus riche.
 class CreateScreen extends ConsumerStatefulWidget {
   const CreateScreen({super.key});
 
@@ -22,6 +31,11 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
   final TextEditingController _detailController = TextEditingController();
 
   String? _titleError;
+  String? _errorMessage;
+  String? _groupId;
+  DateTime? _date;
+  TimeOfDay? _heure;
+  bool _submitting = false;
 
   @override
   void dispose() {
@@ -99,32 +113,35 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
               helperText: 'Optionnel',
             ),
 
-            AppSpacing.gapXl,
-            AppCard(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: Row(
-                children: <Widget>[
-                  const Icon(
-                    Icons.info_outline_rounded,
-                    size: 20,
-                    color: AppColors.textSecondary,
+            if (kind != CreationKind.group) ...<Widget>[
+              AppSpacing.gapLg,
+              _selecteurDeGroupe(kind),
+              AppSpacing.gapLg,
+              _selecteurDeDate(kind),
+            ],
+
+            if (_errorMessage != null) ...<Widget>[
+              AppSpacing.gapLg,
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: AppColors.dangerSoft,
+                  borderRadius: AppRadii.fieldRadius,
+                ),
+                child: Text(
+                  _errorMessage!,
+                  style: AppTypography.caption.copyWith(
+                    color: AppColors.danger,
                   ),
-                  AppSpacing.hGapMd,
-                  Expanded(
-                    child: Text(
-                      'Le partage avec un groupe et le choix des participants '
-                      'arriveront dans une prochaine version.',
-                      style: AppTypography.caption,
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
+            ],
 
             AppSpacing.gapXxl,
             PrimaryButton(
               label: 'Créer ${_articleFor(kind)}${kind.label.toLowerCase()}',
               icon: Icons.check_rounded,
+              isLoading: _submitting,
               onPressed: _submit,
             ),
             AppSpacing.gapMd,
@@ -138,22 +155,159 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
     );
   }
 
-  void _submit() {
+  /// Groupe de rattachement. « Personnel » reste possible : un rendez-vous
+  /// chez le dentiste ne regarde personne d'autre.
+  Widget _selecteurDeGroupe(CreationKind kind) {
+    final List<Group> groups = ref.watch(activeGroupsProvider);
+
+    return AppCard(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      child: DropdownButtonFormField<String?>(
+        initialValue: _groupId,
+        isExpanded: true,
+        decoration: const InputDecoration(
+          labelText: 'Groupe',
+          border: InputBorder.none,
+        ),
+        items: <DropdownMenuItem<String?>>[
+          const DropdownMenuItem<String?>(
+            child: Text('Personnel — visible de vous seul'),
+          ),
+          for (final Group group in groups)
+            DropdownMenuItem<String?>(
+              value: group.id,
+              child: Text(group.name, overflow: TextOverflow.ellipsis),
+            ),
+        ],
+        onChanged: _submitting
+            ? null
+            : (String? value) => setState(() => _groupId = value),
+      ),
+    );
+  }
+
+  /// Date et heure. Pour une tâche, l'heure reste facultative : une échéance
+  /// « samedi » se passe d'un horaire.
+  Widget _selecteurDeDate(CreationKind kind) {
+    final bool event = kind == CreationKind.event;
+    final DateTime now = ref.watch(nowProvider);
+
+    return Row(
+      children: <Widget>[
+        Expanded(
+          child: SecondaryButton(
+            label: _date == null
+                ? (event ? 'Choisir la date' : 'Échéance')
+                : AppDates.shortDate(_date!),
+            icon: Icons.calendar_today_rounded,
+            onPressed: _submitting
+                ? null
+                : () async {
+                    final DateTime? choisie = await showDatePicker(
+                      context: context,
+                      initialDate: _date ?? now,
+                      firstDate: DateTime(now.year - 1),
+                      lastDate: DateTime(now.year + 5),
+                      locale: const Locale('fr'),
+                    );
+                    if (choisie != null) setState(() => _date = choisie);
+                  },
+          ),
+        ),
+        AppSpacing.hGapMd,
+        Expanded(
+          child: SecondaryButton(
+            label: _heure == null ? 'Heure' : _heure!.format(context),
+            icon: Icons.schedule_rounded,
+            onPressed: _submitting
+                ? null
+                : () async {
+                    final TimeOfDay? choisie = await showTimePicker(
+                      context: context,
+                      initialTime:
+                          _heure ?? const TimeOfDay(hour: 9, minute: 0),
+                    );
+                    if (choisie != null) setState(() => _heure = choisie);
+                  },
+          ),
+        ),
+      ],
+    );
+  }
+
+  DateTime? get _instant {
+    final DateTime? jour = _date;
+    if (jour == null) return null;
+    final TimeOfDay heure = _heure ?? const TimeOfDay(hour: 9, minute: 0);
+    return DateTime(jour.year, jour.month, jour.day, heure.hour, heure.minute);
+  }
+
+  Future<void> _submit() async {
     final String title = _titleController.text.trim();
-    if (title.isEmpty) {
-      setState(() => _titleError = 'Ce champ est obligatoire.');
+    final CreationKind kind = ref.read(selectedCreationKindProvider);
+
+    setState(() {
+      _titleError = title.isEmpty ? 'Ce champ est obligatoire.' : null;
+      _errorMessage = null;
+    });
+    if (_titleError != null) return;
+
+    if (kind == CreationKind.group) {
+      // La création d'un groupe a son propre écran, plus riche.
+      if (!mounted) return;
+      context.pushReplacementNamed(AppRoutes.groupCreate);
       return;
     }
 
-    final CreationKind kind = ref.read(selectedCreationKindProvider);
-    Navigator.of(context).maybePop();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '${kind.label} « $title » : l’enregistrement arrive bientôt.',
+    if (kind == CreationKind.event && _instant == null) {
+      setState(() => _errorMessage = 'Choisissez la date de l’événement.');
+      return;
+    }
+
+    final String? description = _detailController.text.trim().isEmpty
+        ? null
+        : _detailController.text.trim();
+    final NavigatorState navigator = Navigator.of(context);
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+
+    setState(() => _submitting = true);
+    try {
+      if (kind == CreationKind.event) {
+        await ref
+            .read(eventActionsProvider)
+            .create(
+              title: title,
+              startsAt: _instant!,
+              groupId: _groupId,
+              description: description,
+            );
+      } else {
+        await ref
+            .read(taskActionsProvider)
+            .create(
+              title: title,
+              groupId: _groupId,
+              description: description,
+              dueAt: _instant,
+            );
+      }
+      navigator.maybePop();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            '${kind.label} « $title » créé${kind == CreationKind.task ? 'e' : ''}.',
+          ),
         ),
-      ),
-    );
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _errorMessage = AuthFailure.from(error).message);
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
   }
 
   static String _titleLabel(CreationKind kind) => switch (kind) {

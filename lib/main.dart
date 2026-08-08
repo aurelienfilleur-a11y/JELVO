@@ -5,6 +5,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/core.dart';
+import 'l10n/app_localizations.dart';
 import 'data/app_config.dart';
 import 'router/app_router.dart';
 
@@ -33,11 +34,16 @@ class JelvoApp extends ConsumerWidget {
     final GoRouter router = ref.watch(routerProvider);
 
     return MaterialApp.router(
-      title: 'Jelvo',
+      onGenerateTitle: (BuildContext context) => AppTexts.of(context).appTitle,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       // L'application ne propose qu'un thème clair pour l'instant.
       themeMode: ThemeMode.light,
+      // Une seule langue pour l'instant. Les délégués de Material et de
+      // Cupertino sont néanmoins nécessaires : sans eux, les sélecteurs de
+      // date et d'heure restent en anglais — quand ils ne lèvent pas.
+      localizationsDelegates: AppTexts.localizationsDelegates,
+      supportedLocales: AppTexts.supportedLocales,
       routerConfig: router,
       builder: (BuildContext context, Widget? child) {
         // Neutralise la mise à l'échelle extrême du texte : au-delà de 1,3 la

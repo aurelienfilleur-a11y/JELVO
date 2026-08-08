@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../../../core/core.dart';
 import '../../../data/data_providers.dart';
 import '../../../router/app_routes.dart';
-import '../../contacts/providers/contact_providers.dart';
 import '../../groups/models/group.dart';
 import '../../groups/providers/group_providers.dart';
 import '../models/calendar_event.dart';

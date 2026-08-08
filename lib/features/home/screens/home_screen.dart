@@ -7,7 +7,6 @@ import '../../../data/data_providers.dart';
 import '../../../router/app_routes.dart';
 import '../../calendar/models/calendar_event.dart';
 import '../../calendar/providers/calendar_providers.dart';
-import '../../contacts/providers/contact_providers.dart';
 import '../../groups/models/group.dart';
 import '../../groups/providers/group_providers.dart';
 import '../../notifications/providers/notification_providers.dart';

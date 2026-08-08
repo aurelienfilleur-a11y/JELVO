@@ -1,0 +1,96 @@
+{
+  "@@locale": "fr",
+
+  "appTitle": "Jelvo",
+  "@appTitle": { "description": "Nom de l'application" },
+
+  "navHome": "Accueil",
+  "navGroups": "Groupes",
+  "navCalendar": "Calendrier",
+  "navContacts": "Contacts",
+
+  "createNewGroup": "Nouveau groupe",
+  "createNewEvent": "Nouvel événement",
+  "createAddContact": "Ajouter un contact",
+  "createTitle": "Créer",
+  "createQuestion": "Que voulez-vous créer ?",
+  "createIntro": "Choisissez un type, puis renseignez l’essentiel. Vous pourrez compléter les détails plus tard.",
+  "createDetails": "Détails",
+  "createGroupField": "Groupe",
+  "createPersonalOption": "Personnel — visible de vous seul",
+  "createPickDate": "Choisir la date",
+  "createDueDate": "Échéance",
+  "createTime": "Heure",
+  "createMissingDate": "Choisissez la date de l’événement.",
+
+  "commonCancel": "Annuler",
+  "commonBack": "Retour",
+  "commonClose": "Fermer",
+  "commonRetry": "Réessayer",
+  "commonSave": "Enregistrer",
+  "commonDelete": "Supprimer",
+  "commonRequiredField": "Ce champ est obligatoire.",
+  "commonOptional": "Optionnel",
+
+  "homeSubtitle": "Voici votre journée en un coup d’œil.",
+  "homeToday": "Aujourd’hui",
+  "homeNoEventTitle": "Journée libre",
+  "homeNoEventMessage": "Rien n’est encore planifié pour aujourd’hui.",
+  "homeSoon": "À faire bientôt",
+  "homeNothingUrgent": "Rien d’urgent",
+  "homeAllUpToDateTitle": "Tout est à jour",
+  "homeAllUpToDateMessage": "Aucune tâche n’arrive à échéance dans les 48 heures.",
+  "homeMyGroups": "Mes groupes",
+  "homeMostActive": "Les plus actifs en ce moment",
+  "homeSeeAll": "Tout voir",
+  "homeEventCount": "{count, plural, =0{Aucun événement} =1{1 événement} other{{count} événements}}",
+  "@homeEventCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "homeTaskCount": "{count, plural, =0{Aucune tâche} =1{1 tâche à échéance proche} other{{count} tâches à échéance proche}}",
+  "@homeTaskCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+
+  "groupUpcoming": "À venir",
+  "groupNothingPlanned": "Rien de prévu",
+  "groupNoEventTitle": "Aucun événement",
+  "groupNoEventMessage": "Proposez une date au groupe depuis le bouton « + ».",
+  "groupTasksToDo": "Tâches à faire",
+  "groupNoTaskTitle": "Aucune tâche ouverte",
+  "groupNoTaskMessage": "Répartissez ce qu’il y a à faire depuis le bouton « + ».",
+  "groupMembers": "Membres",
+  "groupMemberCount": "{count, plural, =0{Aucun membre} =1{1 membre} other{{count} membres}}",
+  "@groupMemberCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+
+  "taskStatusTodo": "À faire",
+  "taskStatusDone": "Terminée",
+  "taskStatusOverdue": "En retard",
+  "taskPriorityLow": "Basse",
+  "taskPriorityMedium": "Normale",
+  "taskPriorityHigh": "Haute",
+  "taskAssigneePending": "En attente",
+  "taskAssigneeAccepted": "Acceptée",
+  "taskAssigneeDeclined": "Refusée",
+  "taskAccept": "Accepter",
+  "taskDecline": "Refuser",
+  "taskListProgress": "{checked} sur {total} articles",
+  "@taskListProgress": {
+    "placeholders": {
+      "checked": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+
+  "eventAnswerYes": "Oui",
+  "eventAnswerMaybe": "Peut-être",
+  "eventAnswerNo": "Non",
+  "eventAnswerPending": "En attente",
+
+  "errorGeneric": "Une erreur est survenue. Réessayez dans un instant.",
+  "errorNetwork": "Connexion indisponible. Vérifiez votre accès à Internet, puis réessayez.",
+  "errorForbidden": "Vous n’avez pas les droits nécessaires pour cette action.",
+  "errorNotSaved": "Les données n’ont pas pu être enregistrées. Réessayez dans un instant."
+}

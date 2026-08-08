@@ -196,6 +196,28 @@ de feature (voir `avatarsForContactIdsProvider`).
   `index.html` en `404.html` pour que l'accès direct à `/calendrier` fonctionne
   sur GitHub Pages.
 
+### Liens externes et stratégie d'URL
+
+L'application **n'appelle pas `usePathUrlStrategy()`** : Flutter web place donc
+les routes **après le fragment**. Une URL partagée hors de l'application doit
+porter le `#` — `AppConfig.inviteUrl` s'en charge :
+
+```
+https://…/JELVO/#/rejoindre/<jeton>
+```
+
+Sans lui, GitHub Pages ne trouve pas le chemin, sert `404.html` (une copie
+d'`index.html`), et l'application démarre avec un fragment vide : GoRouter voit
+`/`, affiche l'accueil, **sans message ni erreur**. Le jeton disparaît en
+silence — panne d'autant plus pénible qu'elle ne laisse aucune trace.
+
+Les chemins internes (`AppRoutes.*Path`, `context.goNamed`) restent **sans
+`#`** : GoRouter raisonne en chemins, c'est la couche web qui ajoute le
+fragment. Le `#` ne concerne que les liens sortants.
+
+Le jour où le site aura son propre domaine, passer en stratégie par chemin
+donnera des liens plus propres et fera disparaître ce `#`.
+
 ### Garde d'authentification
 
 `routerProvider` combine `refreshListenable: ref.watch(authRefreshProvider)` et

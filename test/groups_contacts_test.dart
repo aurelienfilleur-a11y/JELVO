@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:jelvo/core/core.dart';
+import 'package:jelvo/data/app_config.dart';
 import 'package:jelvo/data/clock.dart';
 import 'package:jelvo/data/data_providers.dart';
 import 'package:jelvo/features/contacts/providers/contact_providers.dart';
@@ -359,6 +360,18 @@ void main() {
 
       expect(fakes.contacts.lastRequestedUserId, 'u5');
       expect(find.text('Demande envoyée.'), findsOneWidget);
+    });
+  });
+
+  group('Lien partagé', () {
+    test('le lien porte le fragment attendu par le routage web', () {
+      final String url = AppConfig.inviteUrl('jeton-abc');
+
+      // Sans `usePathUrlStrategy()`, la route vit après le `#`. Un lien sans
+      // fragment tombe sur le 404 de GitHub Pages, qui sert `index.html` :
+      // l'application démarre alors sur l'accueil et le jeton est perdu.
+      expect(url, endsWith('/#/rejoindre/jeton-abc'));
+      expect(url, startsWith(AppConfig.webBaseUrl));
     });
   });
 

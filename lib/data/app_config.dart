@@ -46,7 +46,17 @@ abstract final class AppConfig {
   static const int inviteTokenBytes = 16;
 
   /// Lien partageable menant à la page publique d'un groupe.
-  static String inviteUrl(String token) => '$webBaseUrl/rejoindre/$token';
+  ///
+  /// Le `#` n'est pas décoratif : l'application n'appelle pas
+  /// `usePathUrlStrategy()`, donc Flutter web place la route **après le
+  /// fragment**. Sans lui, GitHub Pages ne trouve pas `/JELVO/rejoindre/<jeton>`,
+  /// sert `404.html` — une copie d'`index.html` — et l'application démarre avec
+  /// un fragment vide : GoRouter voit `/` et affiche l'accueil, sans message ni
+  /// erreur. Le jeton est perdu en silence.
+  ///
+  /// À revoir le jour où le site aura son propre domaine : la stratégie par
+  /// chemin donnera des liens plus propres, et ce `#` disparaîtra.
+  static String inviteUrl(String token) => '$webBaseUrl/#/rejoindre/$token';
 
   /// Mode diagnostic : ajoute l'erreur technique brute sous le message en
   /// français, et la consigne dans la console.

@@ -615,12 +615,15 @@ icône : viser un bouton d'en-tête par `find.byTooltip`, pas par `find.byIcon`.
   `groupByIdProvider` renvoie donc `null` pour eux — pas de pastille de groupe
   sur ces cartes, plutôt qu'un plantage. Le recâblage viendra avec leur passage
   sur Supabase.
-- Cinq prérequis côté projet Supabase, non vérifiables depuis le code :
+- Six prérequis côté projet Supabase, non vérifiables depuis le code :
   exécuter `supabase/email_pour_pseudo.sql` pour la connexion par pseudo,
   `supabase/tranche2_groupes_et_invitations.sql` pour les groupes et les
   invitations, `supabase/correctif_creation_groupe.sql` pour la création de
-  groupe, `supabase/notifications.sql` pour les notifications, et faire émettre
-  `{{ .Token }}` au modèle d'e-mail de confirmation pour le code à 6 chiffres.
+  groupe, `supabase/notifications.sql` puis
+  `supabase/correctif_notifications.sql` pour les notifications,
+  `supabase/correctif_invitations_type.sql` pour l'invitation nominative, et
+  faire émettre `{{ .Token }}` au modèle d'e-mail de confirmation pour le code
+  à 6 chiffres.
 - Le scan de QR code demande une caméra : il est désactivé proprement sur le web
   et sur ordinateur, où l'écran renvoie vers la recherche par pseudo. Les cibles
   Android et iOS n'ont pas pu être compilées ici — `mobile_scanner` embarque du

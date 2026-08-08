@@ -32,11 +32,11 @@ env:
   # politiques RLS. Elles figurent ici en clair, comme dans `AppConfig`.
   SUPABASE_URL: https://xndvxxcknchanqpnrkjc.supabase.co
   SUPABASE_ANON_KEY: sb_publishable_Z3fcuavUcuSYIRimt2T6iQ_OUbDRKj9
-  # TEMPORAIRE — accole l'erreur PostgreSQL brute au message affiché, le temps
-  # d'identifier l'échec de l'invitation nominative. À repasser à `false` une
-  # fois la cause connue : un message technique à l'écran n'a rien à faire en
-  # production.
-  JELVO_DIAGNOSTIC: 'true'
+  # Accole l'erreur PostgreSQL brute au message affiché. Reste à `false` : un
+  # message technique à l'écran n'a rien à faire en production. À basculer le
+  # temps d'identifier une erreur serveur qu'on ne peut pas reproduire
+  # autrement, puis à remettre à `false` aussitôt.
+  JELVO_DIAGNOSTIC: 'false'
 
 jobs:
   build:

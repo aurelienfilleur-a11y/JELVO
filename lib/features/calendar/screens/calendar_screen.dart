@@ -128,19 +128,17 @@ class CalendarScreen extends ConsumerWidget {
 
                 return EventCard(
                   title: event.title,
-                  timeLabel: event.isAllDay
-                      ? 'Toute la journée'
-                      : AppDates.timeRange(event.start, event.end),
+                  timeLabel: AppDates.timeRange(event.start, event.end),
                   location: event.location,
                   groupName: group?.name,
                   accentColor: group?.accent.color ?? AppColors.primary,
-                  participants: ref.watch(avatarsForContactIdsProvider)(
-                    event.participantIds,
-                  ),
-                  statusTone: event.status == EventStatus.confirmed
+                  participants: event.avatars,
+                  // Une réponse « oui » n'a pas besoin d'être signalée : c'est
+                  // le cas attendu.
+                  statusTone: event.myResponse == EventResponse.yes
                       ? null
-                      : event.status.tone,
-                  statusLabel: event.status.label,
+                      : event.myResponse.tone,
+                  statusLabel: event.myResponse.label,
                   onTap: () {},
                 );
               },

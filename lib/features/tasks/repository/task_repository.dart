@@ -1,116 +1,186 @@
-import '../../../data/in_memory_collection.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../auth/models/auth_failure.dart';
 import '../models/task.dart';
 
+/// Accès aux tâches, à leurs assignés et à leur liste de courses.
+///
+/// Toutes les écritures passent par des fonctions SQL : `tasks` et
+/// `task_assignees` n'ont pas de politique DELETE, et le `returning` d'une
+/// insertion repasserait par la politique SELECT. Voir
+/// `supabase/tranche3_taches_et_evenements.sql`.
 abstract interface class TaskRepository {
-  Stream<List<Task>> watchTasks();
+  /// Tâches visibles, toutes ou celles d'un seul groupe.
+  Future<List<Task>> fetchTasks({String? groupId});
 
-  Task? findById(String id);
+  Future<Task> createTask({
+    required String title,
+    String? groupId,
+    String? description,
+    DateTime? dueAt,
+    TaskPriority priority,
+    DateTime? reminderAt,
+    String? rrule,
+    List<String>? assignees,
+    List<String>? items,
+  });
 
-  void toggleDone(String id);
+  /// L'assigné accepte ou refuse.
+  Future<void> respond({
+    required String taskId,
+    required AssigneeStatus status,
+  });
 
-  void upsert(Task task);
+  Future<void> setDone({required String taskId, required bool done});
 
-  void remove(String id);
+  Future<void> setAssignees({
+    required String taskId,
+    required List<String> assignees,
+  });
+
+  Future<void> deleteTask(String taskId);
+
+  Future<List<TaskListItem>> fetchItems(String taskId);
+
+  Future<void> checkItem({required String itemId, required bool checked});
+
+  Future<void> addItem({required String taskId, required String label});
+
+  Future<void> removeItem(String itemId);
 }
 
-class InMemoryTaskRepository implements TaskRepository {
-  InMemoryTaskRepository({Iterable<Task>? seed, DateTime? anchor})
-    : _collection = InMemoryCollection<Task>(
-        idOf: (Task t) => t.id,
-        seed: seed ?? demoTasks(anchor ?? DateTime.now()),
-      );
+class SupabaseTaskRepository implements TaskRepository {
+  const SupabaseTaskRepository(this._client);
 
-  final InMemoryCollection<Task> _collection;
+  final SupabaseClient _client;
+
+  bool get _signedIn => _client.auth.currentUser != null;
 
   @override
-  Stream<List<Task>> watchTasks() => _collection.watch().map(
-    // `items` est non modifiable : on trie une copie.
-    (List<Task> tasks) => List<Task>.of(tasks)
-      ..sort((Task a, Task b) {
-        // Ouvertes d'abord, puis par échéance ; les tâches sans date
-        // ferment la marche plutôt que de remonter en tête.
-        if (a.isDone != b.isDone) return a.isDone ? 1 : -1;
-        final DateTime? da = a.dueDate;
-        final DateTime? db = b.dueDate;
-        if (da == null && db == null) return 0;
-        if (da == null) return 1;
-        if (db == null) return -1;
-        return da.compareTo(db);
-      }),
+  Future<List<Task>> fetchTasks({String? groupId}) async {
+    if (!_signedIn) return const <Task>[];
+    try {
+      final Object? result = await _client.rpc<Object?>(
+        'mes_taches',
+        params: <String, dynamic>{'p_group_id': groupId},
+      );
+      return _rows(result).map(Task.fromRow).toList();
+    } catch (error) {
+      throw AuthFailure.from(error);
+    }
+  }
+
+  @override
+  Future<Task> createTask({
+    required String title,
+    String? groupId,
+    String? description,
+    DateTime? dueAt,
+    TaskPriority priority = TaskPriority.medium,
+    DateTime? reminderAt,
+    String? rrule,
+    List<String>? assignees,
+    List<String>? items,
+  }) async {
+    try {
+      final Object? result = await _client.rpc<Object?>(
+        'creer_tache',
+        params: <String, dynamic>{
+          'p_title': title,
+          'p_group_id': groupId,
+          'p_description': description,
+          'p_due_at': dueAt?.toUtc().toIso8601String(),
+          'p_priority': priority.dbValue,
+          'p_reminder_at': reminderAt?.toUtc().toIso8601String(),
+          'p_rrule': rrule,
+          'p_assignees': assignees,
+          'p_items': items,
+        },
+      );
+      final List<Map<String, dynamic>> rows = _rows(result);
+      if (rows.isEmpty) {
+        throw const AuthFailure(
+          'La tâche n’a pas pu être créée. Réessayez dans un instant.',
+        );
+      }
+      return Task.fromRow(rows.first);
+    } catch (error) {
+      throw AuthFailure.from(error);
+    }
+  }
+
+  @override
+  Future<void> respond({
+    required String taskId,
+    required AssigneeStatus status,
+  }) => _call('repondre_tache', <String, dynamic>{
+    'p_task_id': taskId,
+    'p_statut': status.dbValue,
+  });
+
+  @override
+  Future<void> setDone({required String taskId, required bool done}) => _call(
+    'terminer_tache',
+    <String, dynamic>{'p_task_id': taskId, 'p_terminee': done},
   );
 
   @override
-  Task? findById(String id) => _collection.findById(id);
+  Future<void> setAssignees({
+    required String taskId,
+    required List<String> assignees,
+  }) => _call('definir_assignes_tache', <String, dynamic>{
+    'p_task_id': taskId,
+    'p_assignees': assignees,
+  });
 
   @override
-  void toggleDone(String id) =>
-      _collection.mutate(id, (Task t) => t.copyWith(isDone: !t.isDone));
+  Future<void> deleteTask(String taskId) =>
+      _call('supprimer_tache', <String, dynamic>{'p_task_id': taskId});
 
   @override
-  void upsert(Task task) => _collection.upsert(task);
+  Future<List<TaskListItem>> fetchItems(String taskId) async {
+    try {
+      final Object? result = await _client.rpc<Object?>(
+        'articles_de_tache',
+        params: <String, dynamic>{'p_task_id': taskId},
+      );
+      return _rows(result).map(TaskListItem.fromRow).toList();
+    } catch (error) {
+      throw AuthFailure.from(error);
+    }
+  }
 
   @override
-  void remove(String id) => _collection.remove(id);
+  Future<void> checkItem({required String itemId, required bool checked}) =>
+      _call('cocher_article', <String, dynamic>{
+        'p_item_id': itemId,
+        'p_coche': checked,
+      });
 
-  /// Tâches de démonstration : intendance familiale, préparatifs de voyage,
-  /// sport et vie en colocation. L'univers professionnel est hors périmètre
-  /// produit.
-  static List<Task> demoTasks(DateTime anchor) {
-    final DateTime today = DateTime(anchor.year, anchor.month, anchor.day);
-    DateTime day(int offset, [int hour = 18]) =>
-        today.add(Duration(days: offset, hours: hour));
+  @override
+  Future<void> addItem({required String taskId, required String label}) =>
+      _call('ajouter_article', <String, dynamic>{
+        'p_task_id': taskId,
+        'p_label': label,
+      });
 
-    return <Task>[
-      Task(
-        id: 't1',
-        title: 'Réserver le restaurant pour samedi',
-        groupId: 'g1',
-        assigneeId: 'c1',
-        dueDate: day(0),
-        priority: TaskPriority.high,
-      ),
-      Task(
-        id: 't2',
-        title: 'Réserver les billets pour la Corse',
-        notes: 'Comparer les horaires du ferry avant de valider',
-        groupId: 'g2',
-        assigneeId: 'c2',
-        dueDate: day(1, 9),
-        priority: TaskPriority.high,
-      ),
-      Task(
-        id: 't3',
-        title: 'Acheter le cadeau de Léa',
-        groupId: 'g1',
-        dueDate: day(1, 12),
-      ),
-      Task(
-        id: 't4',
-        title: 'Récupérer le colis à la Poste',
-        groupId: 'g4',
-        assigneeId: 'c6',
-        dueDate: day(-1),
-        priority: TaskPriority.high,
-      ),
-      Task(
-        id: 't5',
-        title: 'Vérifier le matériel de rando',
-        groupId: 'g3',
-        assigneeId: 'c4',
-        dueDate: day(2),
-      ),
-      Task(
-        id: 't6',
-        title: 'Payer la facture d’électricité',
-        groupId: 'g4',
-        dueDate: day(5),
-        isDone: true,
-      ),
-      Task(
-        id: 't7',
-        title: 'Renouveler le passeport',
-        priority: TaskPriority.low,
-      ),
-    ];
+  @override
+  Future<void> removeItem(String itemId) =>
+      _call('supprimer_article', <String, dynamic>{'p_item_id': itemId});
+
+  Future<void> _call(String fonction, Map<String, dynamic> params) async {
+    try {
+      await _client.rpc<Object?>(fonction, params: params);
+    } catch (error) {
+      throw AuthFailure.from(error);
+    }
+  }
+
+  static List<Map<String, dynamic>> _rows(Object? result) {
+    if (result is List) {
+      return result.whereType<Map<String, dynamic>>().toList();
+    }
+    if (result is Map<String, dynamic>) return <Map<String, dynamic>>[result];
+    return const <Map<String, dynamic>>[];
   }
 }

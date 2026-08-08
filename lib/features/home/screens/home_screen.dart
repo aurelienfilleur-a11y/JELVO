@@ -184,9 +184,7 @@ class _EventTile extends ConsumerWidget {
     final Group? group = event.groupId == null
         ? null
         : ref.watch(groupByIdProvider(event.groupId!));
-    final List<AvatarData> participants = ref.watch(
-      avatarsForContactIdsProvider,
-    )(event.participantIds);
+    final List<AvatarData> participants = event.avatars;
 
     return EventCard(
       title: event.title,
@@ -195,10 +193,10 @@ class _EventTile extends ConsumerWidget {
       groupName: group?.name,
       accentColor: group?.accent.color ?? AppColors.primary,
       participants: participants,
-      statusTone: event.status == EventStatus.confirmed
+      statusTone: event.myResponse == EventResponse.yes
           ? null
-          : event.status.tone,
-      statusLabel: event.status.label,
+          : event.myResponse.tone,
+      statusLabel: event.myResponse.label,
       onTap: () => _showDetail(context, event, group),
     );
   }
@@ -293,7 +291,8 @@ class _TaskTile extends ConsumerWidget {
           : AppDates.relativeDay(task.dueDate!, now: now),
       dueTone: task.toneFor(now),
       showDivider: showDivider,
-      onToggle: (_) => ref.read(taskActionsProvider).toggleDone(task.id),
+      onToggle: (_) =>
+          ref.read(taskActionsProvider).toggleDone(task.id, done: !task.isDone),
     );
   }
 }

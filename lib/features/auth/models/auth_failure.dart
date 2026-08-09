@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../data/app_config.dart';
+import '../../../data/diagnostic_mode.dart';
 
 /// Échec d'authentification traduit en message affichable.
 ///
@@ -12,10 +12,10 @@ import '../../../data/app_config.dart';
 /// interpréter un `AuthException`, un code PostgREST ou une `SocketException`,
 /// et aucun message technique brut ne peut donc atteindre l'utilisateur.
 ///
-/// Exception à cette règle : `AppConfig.diagnosticErrors`, drapeau de
-/// compilation qui accole l'erreur brute au message français. Il sert à
-/// identifier une erreur serveur qu'on ne peut pas reproduire depuis un poste
-/// de développement, et n'est jamais actif par défaut.
+/// Exception à cette règle : `DiagnosticMode.isActive`, qui accole l'erreur
+/// brute au message français. Il sert à identifier une erreur serveur qu'on ne
+/// peut pas reproduire depuis un poste de développement, n'est jamais actif par
+/// défaut, et s'allume par l'URL — `?diag=1` — sans nouvelle livraison.
 class AuthFailure implements Exception {
   const AuthFailure(
     this._message, {
@@ -34,7 +34,7 @@ class AuthFailure implements Exception {
   /// Message en français, destiné à être affiché tel quel.
   String get message {
     final String? raw = technical;
-    if (!AppConfig.diagnosticErrors || raw == null) return _message;
+    if (!DiagnosticMode.isActive || raw == null) return _message;
     return '$_message\n\n[diagnostic] $raw';
   }
 
@@ -42,7 +42,7 @@ class AuthFailure implements Exception {
   factory AuthFailure.from(Object error) {
     if (error is AuthFailure) return error;
 
-    if (AppConfig.diagnosticErrors) {
+    if (DiagnosticMode.isActive) {
       debugPrint('[jelvo:diagnostic] ${error.runtimeType} — $error');
     }
 

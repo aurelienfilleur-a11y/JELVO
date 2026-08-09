@@ -19,8 +19,15 @@ import '../widgets/creation_kind_selector.dart';
 ///
 /// Événements et tâches sont enregistrés pour de bon ; le choix « Groupe »
 /// renvoie vers l'écran dédié, plus riche.
+///
+/// [groupId] et [kind] viennent de l'URL : ouvert depuis l'écran d'un groupe,
+/// l'écran s'affiche déjà réglé sur ce groupe et sur le bon type. Les deux
+/// restent modifiables — pré-remplir n'est pas verrouiller.
 class CreateScreen extends ConsumerStatefulWidget {
-  const CreateScreen({super.key});
+  const CreateScreen({super.key, this.groupId, this.kind});
+
+  final String? groupId;
+  final CreationKind? kind;
 
   @override
   ConsumerState<CreateScreen> createState() => _CreateScreenState();
@@ -37,6 +44,22 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
   TimeOfDay? _heure;
   bool _submitting = false;
 
+  /// Type en cours d'édition.
+  ///
+  /// Distinct du provider, qui retient le dernier type *choisi à la main* et
+  /// sert de valeur par défaut d'une ouverture à l'autre : quand l'URL impose
+  /// un type, c'est elle qui gagne, sans effacer cette préférence. Le provider
+  /// ne peut de toute façon pas être écrit ici — Riverpod 3 interdit de
+  /// modifier un provider depuis un cycle de vie du widget.
+  late CreationKind _kind;
+
+  @override
+  void initState() {
+    super.initState();
+    _groupId = widget.groupId;
+    _kind = widget.kind ?? ref.read(selectedCreationKindProvider);
+  }
+
   @override
   void dispose() {
     _titleController.dispose();
@@ -46,7 +69,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final CreationKind kind = ref.watch(selectedCreationKindProvider);
+    final CreationKind kind = _kind;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -80,8 +103,11 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
               selected: kind,
               onSelected: (CreationKind value) {
                 ref.read(selectedCreationKindProvider.notifier).select(value);
-                // Une erreur affichée pour un autre type n'a plus de sens.
-                setState(() => _titleError = null);
+                setState(() {
+                  _kind = value;
+                  // Une erreur affichée pour un autre type n'a plus de sens.
+                  _titleError = null;
+                });
               },
             ),
 
@@ -160,13 +186,22 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
   Widget _selecteurDeGroupe(CreationKind kind) {
     final List<Group> groups = ref.watch(activeGroupsProvider);
 
+    // Le groupe pré-rempli par l'URL peut ne pas encore figurer dans la liste,
+    // qui arrive de façon asynchrone. Sans cette garde, le `Dropdown` lèverait
+    // pour une valeur absente de ses entrées ; la clé, elle, force la
+    // ré-initialisation du champ dès que le groupe apparaît, sinon la
+    // sélection resterait invisible alors même qu'elle serait enregistrée.
+    final bool connu = groups.any((Group group) => group.id == _groupId);
+    final String? valeur = connu ? _groupId : null;
+
     return AppCard(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
         vertical: AppSpacing.sm,
       ),
       child: DropdownButtonFormField<String?>(
-        initialValue: _groupId,
+        key: ValueKey<String?>(valeur),
+        initialValue: valeur,
         isExpanded: true,
         decoration: const InputDecoration(
           labelText: 'Groupe',
@@ -247,7 +282,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
 
   Future<void> _submit() async {
     final String title = _titleController.text.trim();
-    final CreationKind kind = ref.read(selectedCreationKindProvider);
+    final CreationKind kind = _kind;
 
     setState(() {
       _titleError = title.isEmpty ? 'Ce champ est obligatoire.' : null;

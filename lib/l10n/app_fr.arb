@@ -55,10 +55,18 @@
   "groupUpcoming": "À venir",
   "groupNothingPlanned": "Rien de prévu",
   "groupNoEventTitle": "Aucun événement",
-  "groupNoEventMessage": "Proposez une date au groupe depuis le bouton « + ».",
+  "groupNoEventMessage": "Proposez une date au groupe : chacun répondra oui, peut-être ou non.",
+  "groupProposeDate": "Proposer une date",
   "groupTasksToDo": "Tâches à faire",
   "groupNoTaskTitle": "Aucune tâche ouverte",
-  "groupNoTaskMessage": "Répartissez ce qu’il y a à faire depuis le bouton « + ».",
+  "groupNoTaskMessage": "Répartissez ce qu’il y a à faire : chacun verra sa part.",
+  "groupAddTask": "Ajouter une tâche",
+  "groupAdd": "Ajouter",
+  "groupAddToGroup": "Ajouter au groupe",
+  "groupCreationSheetIntro": "Ce que vous créez ici sera partagé avec « {name} ».",
+  "@groupCreationSheetIntro": {
+    "placeholders": { "name": { "type": "String" } }
+  },
   "groupMembers": "Membres",
   "groupMemberCount": "{count, plural, =0{Aucun membre} =1{1 membre} other{{count} membres}}",
   "@groupMemberCount": {

@@ -15,6 +15,7 @@ import '../features/contacts/screens/add_contact_screen.dart';
 import '../features/contacts/screens/contacts_screen.dart';
 import '../features/contacts/screens/my_qr_code_screen.dart';
 import '../features/contacts/screens/scan_contact_screen.dart';
+import '../features/create/models/creation_kind.dart';
 import '../features/create/screens/create_screen.dart';
 import '../features/groups/screens/group_detail_screen.dart';
 import '../features/groups/screens/group_form_screen.dart';
@@ -66,7 +67,13 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
               BuildContext context,
               GoRouterState state,
               StatefulNavigationShell navigationShell,
-            ) => AppShell(navigationShell: navigationShell),
+            ) => AppShell(
+              navigationShell: navigationShell,
+              // `state.uri` porte l'emplacement complet, y compris l'écran
+              // empilé dans la branche active — c'est ce dont le bouton « + »
+              // a besoin pour être vraiment contextuel.
+              location: state.uri.path,
+            ),
         branches: <StatefulShellBranch>[
           StatefulShellBranch(
             routes: <RouteBase>[
@@ -163,8 +170,13 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
         path: AppRoutes.createPath,
         name: AppRoutes.create,
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (BuildContext context, GoRouterState state) =>
-            const CreateScreen(),
+        builder: (BuildContext context, GoRouterState state) {
+          final Map<String, String> parametres = state.uri.queryParameters;
+          return CreateScreen(
+            groupId: parametres[AppRoutes.createGroupParam],
+            kind: CreationKind.fromParam(parametres[AppRoutes.createKindParam]),
+          );
+        },
       ),
 
       GoRoute(

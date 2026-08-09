@@ -17,6 +17,7 @@ import 'package:jelvo/features/groups/screens/join_group_screen.dart';
 import 'package:jelvo/features/auth/providers/auth_providers.dart';
 import 'package:jelvo/features/profile/providers/profile_providers.dart';
 import 'package:jelvo/main.dart';
+import 'package:jelvo/router/app_routes.dart';
 
 import 'fakes/fake_auth_repository.dart';
 import 'fakes/fake_contact_repository.dart';
@@ -368,6 +369,88 @@ void main() {
 
       expect(fakes.contacts.lastRequestedUserId, 'u5');
       expect(find.text('Demande envoyée.'), findsOneWidget);
+    });
+  });
+
+  group('Bouton « + » contextuel', () {
+    test('l’identifiant de groupe se lit dans le chemin', () {
+      expect(AppRoutes.groupIdIn('/groupes/g1'), 'g1');
+      expect(AppRoutes.groupIdIn('/groupes/g1/modifier'), 'g1');
+      // « nouveau » est l'écran de création, pas un groupe : sinon le « + »
+      // proposerait d'ajouter au groupe qu'on est en train de créer.
+      expect(AppRoutes.groupIdIn(AppRoutes.groupCreatePath), isNull);
+      expect(AppRoutes.groupIdIn('/groupes'), isNull);
+      expect(AppRoutes.groupIdIn('/calendrier'), isNull);
+    });
+
+    testWidgets('depuis un groupe, il ne propose plus d’en créer un', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester);
+
+      await tester.tap(find.text('Groupes'));
+      await tester.pumpAndSettle();
+      // Sur la liste, le « + » crée bien un groupe.
+      expect(find.byTooltip('Nouveau groupe'), findsWidgets);
+
+      await tester.tap(find.text('Famille Rousseau'));
+      await tester.pumpAndSettle();
+
+      // Dans un groupe déjà créé, il n'y a plus de groupe à créer.
+      expect(find.byTooltip('Nouveau groupe'), findsNothing);
+      expect(find.byTooltip('Ajouter au groupe'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Ajouter au groupe'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Nouvel événement'), findsOneWidget);
+      expect(find.text('Nouvelle tâche'), findsOneWidget);
+    });
+
+    testWidgets('la feuille ouvre la création déjà réglée sur le groupe', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester);
+
+      await tester.tap(find.text('Groupes'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Famille Rousseau'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Ajouter au groupe'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Nouvelle tâche'));
+      await tester.pumpAndSettle();
+
+      // Le type est pré-sélectionné : l'écran s'ouvre sur « Tâche ».
+      expect(find.text('Créer la tâche'), findsOneWidget);
+      // Et le groupe aussi : c'est ce qui manquait pour tester la tranche 3.
+      final DropdownButtonFormField<String?> champ = tester.widget(
+        find.byType(DropdownButtonFormField<String?>),
+      );
+      expect(champ.initialValue, 'g1');
+    });
+
+    testWidgets('l’écran de groupe offre un chemin visible sans le « + »', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester);
+
+      await tester.tap(find.text('Groupes'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Famille Rousseau'));
+      await tester.pumpAndSettle();
+
+      // Une action par section : le « + » de la barre n'est pas le seul accès.
+      expect(find.text('Ajouter'), findsNWidgets(2));
+
+      await tester.tap(find.text('Ajouter').first);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Créer l’événement'), findsOneWidget);
+      final DropdownButtonFormField<String?> champ = tester.widget(
+        find.byType(DropdownButtonFormField<String?>),
+      );
+      expect(champ.initialValue, 'g1');
     });
   });
 

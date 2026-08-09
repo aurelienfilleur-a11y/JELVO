@@ -208,11 +208,10 @@ de feature (voir `avatarsForContactIdsProvider`).
   sa position de défilement.
 - Le bouton central **[+]** n'est pas un onglet mais une action, empilée sur le
   navigateur racine (`parentNavigatorKey: _rootNavigatorKey`), ce qui recouvre
-  la barre de navigation. Il est **contextuel** — `AppShell._createAction` :
-  Accueil et Groupes créent un groupe, Calendrier ouvre `/creer`, Contacts mène
-  à l'ajout de contact. L'écran ouvert dit déjà ce que l'on veut créer ; le
-  demander serait une question de trop. Son infobulle nomme l'action, l'icône
-  seule ne disant pas ce qui va s'ouvrir.
+  la barre de navigation. Il est **contextuel** — `AppShell._createAction`.
+  L'écran ouvert dit déjà ce que l'on veut créer ; le demander serait une
+  question de trop. Son infobulle nomme l'action, l'icône seule ne disant pas
+  ce qui va s'ouvrir.
 - La barre est un widget maison (`AppBottomNav`) et non un `NavigationBar` :
   le bouton central ne rentre pas dans le modèle « un index par destination ».
 - Naviguer avec `context.goNamed(AppRoutes.calendar)` / `pushNamed`, jamais avec
@@ -225,6 +224,38 @@ de feature (voir `avatarsForContactIdsProvider`).
 - Sur le web, une URL inconnue affiche `_RouteErrorScreen`. Le workflow copie
   `index.html` en `404.html` pour que l'accès direct à `/calendrier` fonctionne
   sur GitHub Pages.
+
+### Le « + » se règle sur la route, pas sur l'onglet
+
+`AppShell` reçoit `location: state.uri.path` — le chemin **réellement
+affiché** — et non le seul `navigationShell.currentIndex`. La distinction n'est
+pas théorique : une branche peut empiler plusieurs écrans sans changer
+d'onglet. Depuis `/groupes/<id>` on est toujours dans l'onglet Groupes, et un
+« + » indexé sur l'onglet y proposait donc de créer *un groupe de plus* — sans
+issue vers les tâches et les événements de ce groupe.
+
+| Écran affiché | Action du « + » |
+| --- | --- |
+| `/groupes/<id>` | feuille « Ajouter au groupe » → événement ou tâche **dans ce groupe** |
+| Accueil, liste des groupes | création de groupe |
+| Calendrier | `/creer` |
+| Contacts | ajout de contact |
+
+`AppRoutes.groupIdIn(location)` extrait l'identifiant et écarte
+`/groupes/nouveau`, qui est un écran de création et non un groupe. La règle
+vaut pour la suite : **un nouvel écran empilé dans une branche doit se demander
+si le « + » a encore le bon sens à cet endroit.**
+
+Le contexte se transmet ensuite par l'URL — `/creer?type=task&groupe=<id>`,
+clés dans `AppRoutes.createKindParam` et `createGroupParam`. Un `extra` aurait
+suffi sur mobile mais se perd au rafraîchissement du web ; l'URL, elle, reste
+rechargeable. `CreateScreen` pré-remplit sans verrouiller : les deux champs
+restent modifiables.
+
+Le « + » n'est jamais le **seul** chemin. Les sections « À venir » et « Tâches
+à faire » de l'écran de groupe portent leur propre action « Ajouter », et leurs
+états vides une action pleine. Une fonctionnalité qui n'est atteignable que par
+un bouton d'icône dans une barre est, en pratique, intestable.
 
 ### Liens externes et stratégie d'URL
 
@@ -679,7 +710,9 @@ quand le compteur vaut zéro.
   widget.
 - `test/groups_contacts_test.dart` couvre la liste et le détail d'un groupe, la
   création, le départ, les cinq états d'un lien d'invitation, les demandes de
-  contact et l'encodage du QR code.
+  contact, l'encodage du QR code, et le « + » contextuel : depuis l'écran d'un
+  groupe il n'offre plus d'en créer un, sa feuille ouvre `/creer` déjà réglée
+  sur ce groupe, et les deux sections portent leur propre action « Ajouter ».
 - `test/notifications_test.dart` couvre la cloche, la répartition des pastilles
   par onglet, leur extinction, la liste et le marquage comme lu.
 
@@ -721,6 +754,8 @@ Quatre points à respecter dans tout nouveau test de widget :
 
 Le `+` central de la barre et le bouton « Nouveau groupe » portent la même
 icône : viser un bouton d'en-tête par `find.byTooltip`, pas par `find.byIcon`.
+L'infobulle du `+` change avec l'écran, ce qui en fait aussi le moyen le plus
+sûr d'éprouver son caractère contextuel.
 
 ---
 
@@ -768,7 +803,8 @@ icône : viser un bouton d'en-tête par `find.byTooltip`, pas par `find.byIcon`.
   échues**, mais rien ne permet encore de fixer un terme depuis l'application.
 - L'écran `/creer` enregistre désormais pour de bon : événement ou tâche, avec
   choix du groupe — ou « Personnel » — et de la date. Le choix « Groupe »
-  redirige vers l'écran de création dédié.
+  redirige vers l'écran de création dédié. Ouvert depuis un groupe, il arrive
+  pré-rempli par l'URL (`?type=…&groupe=…`).
 - Le choix nominatif des participants d'un événement et des assignés d'une
   tâche n'a pas d'interface : la valeur par défaut s'applique — tous les
   membres pour un événement, l'auteur pour une tâche.

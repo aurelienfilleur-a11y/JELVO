@@ -18,7 +18,7 @@ enum CreationKind {
   ),
   group(
     label: 'Groupe',
-    description: 'Un espace partagé avec vos proches ou vos collègues',
+    description: 'Un espace partagé avec vos proches ou vos amis',
     icon: Icons.groups_rounded,
     color: AppColors.warning,
   );
@@ -34,4 +34,16 @@ enum CreationKind {
   final String description;
   final IconData icon;
   final Color color;
+
+  /// Type porté par le paramètre d'URL de `/creer`.
+  ///
+  /// Une valeur absente ou inconnue renvoie `null` plutôt que de lever : une
+  /// URL saisie à la main ne doit pas casser l'écran, elle doit seulement
+  /// perdre sa pré-sélection.
+  static CreationKind? fromParam(String? value) => switch (value) {
+    'event' => CreationKind.event,
+    'task' => CreationKind.task,
+    'group' => CreationKind.group,
+    _ => null,
+  };
 }

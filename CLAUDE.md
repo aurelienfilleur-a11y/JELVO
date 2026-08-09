@@ -14,11 +14,39 @@ flutter test                     # tests (widget tests dans test/)
 flutter analyze                  # analyse statique — doit rester vide
 dart format .                    # formatage — vérifié en CI
 flutter build web --release --base-href /jelvo/
+
+supabase/verification/rejouer.sh # compile le SQL — voir plus bas
 ```
 
 La CI (`.github/workflows/deploy-web.yml`) exécute `dart format
 --set-exit-if-changed`, `flutter analyze`, `flutter test` puis `flutter build
 web`. Ces quatre commandes doivent passer avant tout push sur `main`.
+
+### Le SQL n'est vérifié par aucune de ces commandes
+
+**Une CI verte ne dit rien des fichiers de `supabase/`.** La chaîne Flutter ne
+lit pas ce dossier : les quatre commandes ci-dessus passeraient sur un fichier
+SQL vide comme sur un fichier qui ne se parse pas. Le SQL livré n'est donc, par
+construction, jamais exécuté par la CI, et il ne l'a jamais été contre la vraie
+base — c'est vous qui le collez dans l'éditeur SQL du projet, et c'est là qu'il
+échoue le cas échéant.
+
+Le coût s'est déjà payé deux fois : `invitations.type` oubliée (`23502`), puis
+`articles_de_tache` livrée avec un `position` non cité (`42601`), une erreur
+purement syntaxique qu'un simple parseur aurait vue.
+
+D'où `supabase/verification/rejouer.sh` : il monte un cluster PostgreSQL
+jetable, y pose le décor minimal de `supabase/verification/schema_factice.sql`
+— tables, types et `auth.uid()` factices — puis rejoue tous les fichiers de
+`supabase/` dans l'ordre. **À lancer avant de livrer une migration.**
+
+Sa portée est celle du parseur, et pas un pas de plus : il prouve que chaque
+fichier se compile et que chaque fonction résout les noms qu'elle emploie. Il
+ne prouve **rien** du schéma réel, puisque son décor est recopié de cette même
+documentation — la connaissance faillible qui avait laissé passer
+`invitations.type`. Les colonnes obligatoires, les contraintes et les valeurs
+d'énumération restent à vérifier contre le projet (voir « Le schéma initial
+fait autorité »).
 
 Version de Flutter attendue : **3.44.8** (Dart 3.12). Elle est épinglée dans
 `env.FLUTTER_VERSION` du workflow ; toute montée de version doit y être
@@ -405,9 +433,14 @@ fonction. Cela vaut aussi pour toute future table de ce genre.
 **`supabase/tranche3_taches_et_evenements.sql`**, dans cet ordre, dans
 l'éditeur SQL du projet. Idempotentes.
 
-`supabase/diagnostic_invitation.sql` n'est pas une migration : il rejoue un
-appel dans une transaction annulée, pour faire remonter une erreur serveur. Elle apporte les favoris personnels, `expires_at`,
-la table `group_invite_links` avec ses politiques, et les fonctions ci-dessous.
+Deux entrées de `supabase/` ne sont **pas** des migrations et n'ont rien à
+faire dans l'éditeur SQL du projet : `diagnostic_invitation.sql`, qui rejoue un
+appel dans une transaction annulée pour faire remonter une erreur serveur, et
+le dossier `verification/`, qui sert au contrôle local décrit en tête de
+document.
+
+La tranche 2 apporte les favoris personnels, `expires_at`, la table
+`group_invite_links` avec ses politiques, et les fonctions ci-dessous.
 
 | Fonction | Rôle |
 | --- | --- |
@@ -507,6 +540,32 @@ notifications.
 Un événement sans `group_id` est un rendez-vous personnel : seul son
 propriétaire le voit. Un événement de groupe convie par défaut tous les
 membres actifs.
+
+### `task_list_items.position` s'écrit entre guillemets — parfois
+
+`POSITION` est un `col_name_keyword` de PostgreSQL, un mot dont la grammaire
+accepte l'usage à certaines places et pas à d'autres :
+
+| Contexte | Règle grammaticale | `position` nu |
+| --- | --- | --- |
+| colonne d'un `create table` | `ColId` | accepté |
+| liste de colonnes d'un `insert` | `ColId` | accepté |
+| référence qualifiée `i.position` | `ColId` | accepté |
+| colonne de sortie d'un `returns table` | `type_function_name` | **refusé** |
+| nom d'argument de fonction | `type_function_name` | **refusé** |
+
+`type_function_name` exclut les `col_name_keyword` ; `ColId` les admet. D'où le
+`"position"` cité dans la déclaration d'`articles_de_tache` : sans lui, la
+fonction ne se crée pas (`42601: syntax error at or near "position"`). Les
+guillemets ne renomment rien — la colonne reste `position` en minuscules, donc
+`row['position']` côté Dart ne bouge pas.
+
+Le piège est asymétrique : le mot passe partout ailleurs dans le fichier, y
+compris dans les insertions juste au-dessus. C'est la seule occurrence
+concernée de tout `supabase/` — vérifié en confrontant les noms de sortie de
+chaque `returns table` et les noms d'argument de chaque fonction à la liste
+`col_name_keyword`. Un nouveau nom à surveiller de la même façon : `time`,
+`timestamp`, `row`, `values`, `interval`, `char`, `precision`, `setof`, `out`.
 
 ---
 
@@ -694,6 +753,11 @@ icône : viser un bouton d'en-tête par `find.byTooltip`, pas par `find.byIcon`.
   `supabase/correctif_invitations_type.sql` pour l'invitation nominative, et
   faire émettre `{{ .Token }}` au modèle d'e-mail de confirmation pour le code
   à 6 chiffres.
+- **Aucun fichier de `supabase/` n'a jamais été exécuté contre la base réelle
+  depuis ce dépôt** : la CI ne compile que le Flutter, et le seul contrôle
+  disponible ici est le rejeu local sur schéma factice
+  (`supabase/verification/rejouer.sh`), qui s'arrête à la syntaxe. Un `flutter
+  build` vert ne dit rien de la validité d'une migration.
 - Le scan de QR code demande une caméra : il est désactivé proprement sur le web
   et sur ordinateur, où l'écran renvoie vers la recherche par pseudo. Les cibles
   Android et iOS n'ont pas pu être compilées ici — `mobile_scanner` embarque du

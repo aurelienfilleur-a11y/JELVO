@@ -1,0 +1,163 @@
+-- Schéma factice — NE PAS EXÉCUTER SUR LE PROJET SUPABASE.
+--
+-- Ce fichier n'est pas une migration. Il reconstitue, sur une base PostgreSQL
+-- jetable et locale, le décor minimal dont les fichiers de `supabase/` ont
+-- besoin pour être *compilés* : les tables et les types décrits dans
+-- CLAUDE.md, un `auth.uid()` factice, et les deux prédicats de la tranche 2
+-- réduits à leur signature.
+--
+-- Ce qu'il prouve : que les fichiers livrés se parsent et que chaque fonction
+-- résout les noms qu'elle emploie. C'est exactement ce qui manquait le jour où
+-- `articles_de_tache` a été livrée avec un `position` non cité.
+--
+-- Ce qu'il ne prouve pas : que le schéma réel ressemble à celui-ci. Les
+-- colonnes ci-dessous sont recopiées de la documentation, donc d'une
+-- connaissance faillible — c'est ainsi qu'`invitations.type` était passée
+-- inaperçue. Le schéma initial reste seul juge des colonnes obligatoires, des
+-- contraintes et des valeurs d'énumération.
+--
+-- Usage : voir `supabase/verification/rejouer.sh`.
+
+do $r$ begin create role authenticated; exception when duplicate_object then null; end $r$;
+do $r$ begin create role anon; exception when duplicate_object then null; end $r$;
+create schema if not exists auth;
+
+-- Renvoie toujours nul : on ne joue aucun scénario, on compile.
+create function auth.uid() returns uuid language sql stable as $$ select null::uuid $$;
+
+create type public.member_role      as enum ('admin', 'member');
+create type public.task_priority    as enum ('low', 'medium', 'high');
+create type public.assignee_status  as enum ('pending', 'accepted', 'declined', 'done');
+create type public.event_response   as enum ('yes', 'no', 'maybe', 'pending');
+
+create table public.profiles (
+  id         uuid primary key,
+  pseudo     text,
+  first_name text,
+  last_name  text,
+  avatar_url text
+);
+
+create table public.groups (
+  id          uuid primary key default gen_random_uuid(),
+  name        text not null,
+  description text,
+  photo_url   text,
+  is_private  boolean not null default true,
+  created_by  uuid,
+  created_at  timestamptz not null default now(),
+  deleted_at  timestamptz
+);
+
+create table public.group_members (
+  group_id   uuid not null references public.groups(id),
+  user_id    uuid not null,
+  role       public.member_role not null default 'member',
+  joined_at  timestamptz not null default now(),
+  expires_at timestamptz,
+  primary key (group_id, user_id)
+);
+
+create table public.tasks (
+  id           uuid primary key default gen_random_uuid(),
+  group_id     uuid references public.groups(id),
+  created_by   uuid not null,
+  title        text not null,
+  description  text,
+  due_at       timestamptz,
+  priority     public.task_priority not null default 'medium',
+  reminder_at  timestamptz,
+  rrule        text,
+  completed_at timestamptz,
+  created_at   timestamptz not null default now(),
+  deleted_at   timestamptz
+);
+
+create table public.task_assignees (
+  task_id uuid not null references public.tasks(id),
+  user_id uuid not null,
+  status  public.assignee_status not null default 'pending',
+  primary key (task_id, user_id)
+);
+
+create table public.task_list_items (
+  id         uuid primary key default gen_random_uuid(),
+  task_id    uuid not null references public.tasks(id),
+  label      text not null,
+  position   integer not null default 0,
+  checked_at timestamptz,
+  checked_by uuid,
+  created_at timestamptz not null default now()
+);
+
+create table public.events (
+  id               uuid primary key default gen_random_uuid(),
+  group_id         uuid references public.groups(id),
+  owner_id         uuid not null,
+  title            text not null,
+  description      text,
+  starts_at        timestamptz not null,
+  ends_at          timestamptz,
+  location         text,
+  rrule            text,
+  image_url        text,
+  reminder_minutes integer,
+  created_at       timestamptz not null default now(),
+  deleted_at       timestamptz
+);
+
+create table public.event_participants (
+  event_id     uuid not null references public.events(id),
+  user_id      uuid not null,
+  response     public.event_response not null default 'pending',
+  responded_at timestamptz,
+  primary key (event_id, user_id)
+);
+
+-- Fournies par la tranche 2 ; simplifiées ici, seule leur signature compte.
+create function public.est_membre_du_groupe(p_group_id uuid, p_user_id uuid)
+returns boolean language sql stable as $$ select true $$;
+
+create function public.est_admin_du_groupe(p_group_id uuid, p_user_id uuid)
+returns boolean language sql stable as $$ select true $$;
+
+-- Complément pour rejouer aussi les fichiers des tranches précédentes.
+create table auth.users (
+  id    uuid primary key,
+  email text
+);
+
+create type public.contact_status    as enum ('pending', 'accepted');
+create type public.invitation_status as enum ('pending', 'accepted', 'declined', 'expired');
+create type public.invitation_type   as enum ('group', 'event', 'task');
+
+create table public.contacts (
+  requester_id       uuid not null,
+  addressee_id       uuid not null,
+  status             public.contact_status not null default 'pending',
+  is_favorite        boolean not null default false,
+  created_at         timestamptz not null default now(),
+  primary key (requester_id, addressee_id)
+);
+
+create table public.invitations (
+  id         uuid primary key default gen_random_uuid(),
+  type       public.invitation_type not null,
+  group_id   uuid references public.groups(id),
+  event_id   uuid references public.events(id),
+  task_id    uuid references public.tasks(id),
+  inviter_id uuid not null,
+  invitee_id uuid not null,
+  status     public.invitation_status not null default 'pending',
+  created_at timestamptz not null default now(),
+  expires_at timestamptz
+);
+
+create table public.notifications (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null,
+  type       text not null,
+  payload    jsonb not null default '{}'::jsonb,
+  read_at    timestamptz,
+  created_at timestamptz not null default now()
+);

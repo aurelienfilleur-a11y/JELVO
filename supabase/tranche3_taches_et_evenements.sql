@@ -389,11 +389,20 @@ grant execute on function public.supprimer_tache(uuid) to authenticated;
 -- `checked_by` retient qui a coché : dans une colocation, savoir qui a pris le
 -- pain évite de le prendre en double.
 
+-- `"position"` est cité à dessein : ne pas retirer les guillemets. POSITION est
+-- un `col_name_keyword` de PostgreSQL. La grammaire l'accepte comme nom de
+-- colonne dans un `create table` ou une liste d'insertion (règle `ColId`), mais
+-- pas comme nom de colonne de sortie d'un `returns table` ni comme nom
+-- d'argument de fonction : ces deux positions sont bâties sur
+-- `type_function_name`, qui exclut les `col_name_keyword`. Sans les guillemets,
+-- la création de la fonction échoue en `42601: syntax error at or near
+-- "position"`. Les guillemets ne changent pas le nom exposé — il reste
+-- `position` en minuscules, donc la clé JSON lue côté Flutter ne bouge pas.
 create or replace function public.articles_de_tache(p_task_id uuid)
 returns table (
   id           uuid,
   label        text,
-  position     integer,
+  "position"   integer,
   checked_at   timestamptz,
   checked_by   uuid,
   coche_par    text

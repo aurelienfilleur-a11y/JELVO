@@ -58,16 +58,15 @@ abstract final class AppConfig {
   /// chemin donnera des liens plus propres, et ce `#` disparaîtra.
   static String inviteUrl(String token) => '$webBaseUrl/#/rejoindre/$token';
 
-  /// Mode diagnostic : ajoute l'erreur technique brute sous le message en
-  /// français, et la consigne dans la console.
-  ///
-  /// **Temporaire.** La règle « aucun message technique brut à l'écran » reste
-  /// la règle ; ce drapeau existe pour identifier une erreur serveur qu'on ne
-  /// peut pas reproduire autrement :
+  /// Valeur **par défaut** du mode diagnostic, fixée à la compilation :
   ///
   /// ```bash
   /// flutter run -d chrome --dart-define=JELVO_DIAGNOSTIC=true
   /// ```
+  ///
+  /// L'état réellement consulté est `DiagnosticMode.isActive`, que le paramètre
+  /// d'URL `?diag=1` peut activer sans recompiler ni redéployer. Ne pas lire ce
+  /// drapeau directement : il ne connaît pas l'URL.
   ///
   /// Il est délibérément absent de `kDebugMode` : les tests de widget
   /// tournent en debug et assertent sur les messages exacts.

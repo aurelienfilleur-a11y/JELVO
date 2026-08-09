@@ -37,16 +37,23 @@ purement syntaxique qu'un simple parseur aurait vue.
 
 D'où `supabase/verification/rejouer.sh` : il monte un cluster PostgreSQL
 jetable, y pose le décor minimal de `supabase/verification/schema_factice.sql`
-— tables, types et `auth.uid()` factices — puis rejoue tous les fichiers de
-`supabase/` dans l'ordre. **À lancer avant de livrer une migration.**
+— tables, types et `auth.uid()` factices —, rejoue tous les fichiers de
+`supabase/` dans l'ordre, puis lance `verification/fumee.sql`, qui **appelle**
+les quatorze fonctions de la tranche 3. **À lancer avant de livrer une
+migration.**
 
-Sa portée est celle du parseur, et pas un pas de plus : il prouve que chaque
-fichier se compile et que chaque fonction résout les noms qu'elle emploie. Il
-ne prouve **rien** du schéma réel, puisque son décor est recopié de cette même
-documentation — la connaissance faillible qui avait laissé passer
+Les deux étapes ne font pas double emploi : `create function` ne vérifie que la
+syntaxe du corps, et les instructions d'une fonction plpgsql ne sont préparées
+qu'au premier appel. Le rejeu seul passait au vert sur des `case` qui faisaient
+échouer toute création de tâche (voir « Toute valeur d'énumération écrite porte
+une conversion explicite »).
+
+Ce qu'il ne prouve **toujours pas** : le schéma réel. Son décor est recopié de
+cette même documentation — la connaissance faillible qui avait laissé passer
 `invitations.type`. Les colonnes obligatoires, les contraintes et les valeurs
-d'énumération restent à vérifier contre le projet (voir « Le schéma initial
-fait autorité »).
+d'énumération restent à vérifier contre le projet, et c'est l'objet de la
+PARTIE A de `supabase/diagnostic_taches_evenements.sql` (voir « Le schéma
+initial fait autorité »).
 
 Version de Flutter attendue : **3.44.8** (Dart 3.12). Elle est épinglée dans
 `env.FLUTTER_VERSION` du workflow ; toute montée de version doit y être
@@ -327,11 +334,10 @@ seuls états de `AuthStatus`, sans `unknown`.
   `AuthFailure.from(Object)` couvre `AuthException`, `PostgrestException`
   (`23505` pseudo pris, `42501` RLS), `StorageException` et les pannes réseau.
   **Aucun message technique brut ne doit atteindre l'écran** : un `catch` qui
-  affiche `error.toString()` est un bug. Seule exception, temporaire et
-  explicite : `--dart-define=JELVO_DIAGNOSTIC=true` accole l'erreur brute —
-  SQLSTATE, message, détail, indice — sous le message français, et la consigne
-  dans la console. `AuthFailure.technical` est toujours renseigné ; seul son
-  affichage dépend du drapeau. À remettre à `false` dès le diagnostic fini.
+  affiche `error.toString()` est un bug. Seule exception, explicite et
+  signalée : le **mode diagnostic** décrit ci-dessous.
+  `AuthFailure.technical` est toujours renseigné ; seul son affichage en
+  dépend.
 - `repository/auth_repository.dart` — l'interface expose `bool isSignedIn` et
   `Stream<bool> watchSignedIn()` plutôt que les types gotrue, ce qui permet de
   tester toute la pile sans `Supabase.initialize`.
@@ -343,6 +349,39 @@ seuls états de `AuthStatus`, sans `unknown`.
 - La ligne `profiles` ne peut être écrite qu'**une fois la session ouverte** :
   c'est elle qui satisfait RLS. D'où la finalisation par `completeSignUp`, en
   dernier.
+
+### Mode diagnostic — `?diag=1`, sans redéployer
+
+`DiagnosticMode` (`data/diagnostic_mode.dart`) accole l'erreur technique brute
+— SQLSTATE, message, détail, indice — sous le message français, et la consigne
+dans la console. Un bandeau rouge « DIAGNOSTIC » couvre l'écran tant qu'il est
+actif : un mode silencieux resterait allumé sans qu'on le sache.
+
+Il s'active **par l'URL**, donc sans nouvelle livraison :
+
+```
+https://…/JELVO/?diag=1#/            ← à préférer
+https://…/JELVO/#/groupes/<id>?diag=1
+```
+
+Les deux formes marchent, mais la première seule survit à la navigation :
+l'application n'appelant pas `usePathUrlStrategy()`, GoRouter réécrit le
+fragment et emporterait un paramètre qui y serait collé. `?diag` nu vaut
+« oui » ; `?diag=0` éteint. Pour sortir du mode, recharger sans le paramètre.
+
+La lecture n'a lieu **qu'une fois**, dans `main()`, avant
+`Supabase.initialize` — une panne d'initialisation doit déjà être lisible.
+L'état est ensuite stable pour toute la session.
+
+`--dart-define=JELVO_DIAGNOSTIC=true` reste la valeur **par défaut** au
+démarrage (le workflow la fixe à `false`), mais ne plus le lire directement :
+`AppConfig.diagnosticErrors` ne connaît pas l'URL, seul
+`DiagnosticMode.isActive` fait autorité.
+
+Ce paramètre existe parce que la voie précédente — un drapeau de compilation —
+imposait un cycle livraison / déploiement complet pour voir une seule erreur
+serveur, et a coûté plusieurs jours sur `invitations.type`. **Un diagnostic que
+seul le développeur peut déclencher n'est pas un diagnostic.**
 
 ### Confirmation d'e-mail activée ou non
 
@@ -389,6 +428,14 @@ d'énumération ci-dessous, qui ne sont pas négociables côté application.
 > — une méthode qui ne voit que ce qu'elle a pensé à chercher. La requête de
 > vérification vit en fin de `supabase/correctif_invitations_type.sql` :
 > lancez-la après toute nouvelle fonction d'écriture.
+>
+> **Inverser le sens de la comparaison supprime l'angle mort.** La requête A0
+> de `supabase/diagnostic_taches_evenements.sql` ne part pas d'une liste de
+> noms à chercher : elle part du catalogue de PostgreSQL et lui confronte, une
+> ligne par site d'insertion, les colonnes que le code renseigne. Toute colonne
+> obligatoire sans valeur par défaut qu'une insertion oublie ressort, y compris
+> celle à laquelle personne n'a pensé. C'est le modèle à reprendre pour toute
+> nouvelle table.
 
 ### Schéma utilisé
 
@@ -464,11 +511,18 @@ fonction. Cela vaut aussi pour toute future table de ce genre.
 **`supabase/tranche3_taches_et_evenements.sql`**, dans cet ordre, dans
 l'éditeur SQL du projet. Idempotentes.
 
-Deux entrées de `supabase/` ne sont **pas** des migrations et n'ont rien à
-faire dans l'éditeur SQL du projet : `diagnostic_invitation.sql`, qui rejoue un
-appel dans une transaction annulée pour faire remonter une erreur serveur, et
-le dossier `verification/`, qui sert au contrôle local décrit en tête de
-document.
+Trois entrées de `supabase/` ne sont **pas** des migrations : elles n'écrivent
+rien et ne changent rien.
+
+| Entrée | Rôle |
+| --- | --- |
+| `diagnostic_invitation.sql` | rejoue l'invitation nominative sous `authenticated`, dans une transaction annulée |
+| `diagnostic_taches_evenements.sql` | même chose pour les tâches et les événements, précédé de l'audit du schéma (PARTIE A) |
+| `verification/` | contrôle local sur base jetable, décrit en tête de document |
+
+Les deux fichiers de diagnostic **peuvent** être collés dans l'éditeur SQL du
+projet : leur PARTIE A est en lecture seule, leur PARTIE B se termine par un
+`rollback`. Ils ne sont simplement pas à rejouer comme les migrations.
 
 La tranche 2 apporte les favoris personnels, `expires_at`, la table
 `group_invite_links` avec ses politiques, et les fonctions ci-dessous.
@@ -571,6 +625,50 @@ notifications.
 Un événement sans `group_id` est un rendez-vous personnel : seul son
 propriétaire le voit. Un événement de groupe convie par défaut tous les
 membres actifs.
+
+### Toute valeur d'énumération écrite porte une conversion explicite
+
+```sql
+insert into public.task_assignees (task_id, user_id, status)
+values (nouvelle.id, assigne,
+        (case when assigne = utilisateur then 'accepted' else 'pending'
+         end)::assignee_status)
+```
+
+Le `::assignee_status` n'est pas décoratif. Un littéral **seul** est de type
+`unknown` et se laisse convertir vers la colonne visée ; dès qu'il entre dans
+une expression — un `case`, un `coalesce` —, la résolution de type s'applique
+d'abord, et deux littéraux `unknown` donnent du `text`. Or il n'existe **pas**
+de conversion implicite de `text` vers un type énuméré. D'où :
+
+```
+42804: column "status" is of type assignee_status but expression is of type text
+```
+
+La tranche 3 a été livrée avec ce défaut sur quatre sites : toute création de
+tâche et tout événement de groupe échouaient. Rien ne l'avait vu, parce que
+rien ne pouvait le voir — voir ci-dessous.
+
+**Règle** : convertir explicitement dès qu'une valeur d'énumération est écrite,
+y compris pour un littéral seul, pour que la règle n'ait pas d'exception à
+retenir.
+
+### Créer une fonction ne prouve pas qu'elle s'exécute
+
+`create function` ne contrôle que la **syntaxe** du corps d'une fonction
+plpgsql. Les instructions SQL qu'elle contient ne sont préparées qu'au premier
+appel : erreurs de typage, colonnes inexistantes et conversions manquantes ne
+se manifestent qu'à l'exécution. Le rejeu de `rejouer.sh` passait au vert sur
+les quatre `case` fautifs ci-dessus.
+
+D'où `supabase/verification/fumee.sql`, lancé par `rejouer.sh` après les sept
+fichiers : il pose un décor minimal — deux comptes, un groupe, deux adhésions —
+puis **appelle réellement les quatorze fonctions** de la tranche 3 sous le rôle
+`authenticated`, avec des `assert` sur ce qu'elles renvoient, et annule tout
+par un `rollback`. C'est lui qui a trouvé le défaut, et lui seul le pouvait.
+
+Il ne couvre pas encore les fonctions des tranches précédentes, éprouvées par
+l'usage en production. Les y étendre est la suite naturelle.
 
 ### `task_list_items.position` s'écrit entre guillemets — parfois
 
@@ -785,14 +883,19 @@ sûr d'éprouver son caractère contextuel.
   invitations, `supabase/correctif_creation_groupe.sql` pour la création de
   groupe, `supabase/notifications.sql` puis
   `supabase/correctif_notifications.sql` pour les notifications,
-  `supabase/correctif_invitations_type.sql` pour l'invitation nominative, et
-  faire émettre `{{ .Token }}` au modèle d'e-mail de confirmation pour le code
-  à 6 chiffres.
+  `supabase/correctif_invitations_type.sql` pour l'invitation nominative,
+  `supabase/tranche3_taches_et_evenements.sql` pour les tâches et les
+  événements, et faire émettre `{{ .Token }}` au modèle d'e-mail de
+  confirmation pour le code à 6 chiffres.
 - **Aucun fichier de `supabase/` n'a jamais été exécuté contre la base réelle
   depuis ce dépôt** : la CI ne compile que le Flutter, et le seul contrôle
-  disponible ici est le rejeu local sur schéma factice
-  (`supabase/verification/rejouer.sh`), qui s'arrête à la syntaxe. Un `flutter
-  build` vert ne dit rien de la validité d'une migration.
+  disponible ici est `supabase/verification/rejouer.sh`, sur schéma factice. Il
+  compile *et* appelle désormais les fonctions de la tranche 3, mais son décor
+  reste recopié de cette documentation : il ne peut rien dire des colonnes
+  obligatoires, contraintes et énumérations réelles. Un `flutter build` vert ne
+  dit toujours rien de la validité d'une migration.
+- Le test de fumée ne couvre que la tranche 3. Les fonctions des tranches
+  précédentes ne sont éprouvées que par l'usage en production.
 - Le scan de QR code demande une caméra : il est désactivé proprement sur le web
   et sur ordinateur, où l'écran renvoie vers la recherche par pseudo. Les cibles
   Android et iOS n'ont pas pu être compilées ici — `mobile_scanner` embarque du

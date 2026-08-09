@@ -162,7 +162,8 @@ begin
   loop
     insert into public.task_assignees (task_id, user_id, status)
     values (nouvelle.id, assigne,
-            case when assigne = utilisateur then 'accepted' else 'pending' end)
+            (case when assigne = utilisateur then 'accepted' else 'pending'
+             end)::assignee_status)
     on conflict do nothing;
   end loop;
 
@@ -315,7 +316,8 @@ begin
   -- Le statut de l'assigné suit : une tâche terminée ne reste pas « en
   -- attente » dans sa liste.
   update public.task_assignees
-  set status = case when p_terminee then 'done' else 'accepted' end
+  set status = (case when p_terminee then 'done' else 'accepted'
+                end)::assignee_status
   where task_id = p_task_id and user_id = auth.uid();
 
   return quand;
@@ -349,7 +351,7 @@ begin
   foreach assigne in array coalesce(p_assignees, array[]::uuid[])
   loop
     insert into public.task_assignees (task_id, user_id, status)
-    values (p_task_id, assigne, 'pending')
+    values (p_task_id, assigne, 'pending'::assignee_status)
     on conflict do nothing;
     total := total + 1;
   end loop;
@@ -580,13 +582,15 @@ begin
     foreach participant in array p_participants loop
       insert into public.event_participants (event_id, user_id, response)
       values (nouveau.id, participant,
-              case when participant = utilisateur then 'yes' else 'pending' end)
+              (case when participant = utilisateur then 'yes' else 'pending'
+               end)::event_response)
       on conflict do nothing;
     end loop;
   elsif p_group_id is not null then
     insert into public.event_participants (event_id, user_id, response)
     select nouveau.id, m.user_id,
-           case when m.user_id = utilisateur then 'yes' else 'pending' end
+           (case when m.user_id = utilisateur then 'yes' else 'pending'
+            end)::event_response
     from public.group_members m
     where m.group_id = p_group_id
       and (m.expires_at is null or m.expires_at > now())

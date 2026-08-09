@@ -22,8 +22,15 @@ do $r$ begin create role authenticated; exception when duplicate_object then nul
 do $r$ begin create role anon; exception when duplicate_object then null; end $r$;
 create schema if not exists auth;
 
--- Renvoie toujours nul : on ne joue aucun scénario, on compile.
-create function auth.uid() returns uuid language sql stable as $$ select null::uuid $$;
+-- Même définition que chez Supabase : le sujet du jeton, ou nul hors session.
+-- Le rejeu ordinaire ne pose aucun jeton et obtient donc nul, mais
+-- `diagnostic_taches_evenements.sql` en pose un — autant que le décor sache le
+-- lire, sinon la PARTIE B de ce script ne pourrait pas être éprouvée ici.
+create function auth.uid() returns uuid language sql stable as $$
+  select nullif(
+    current_setting('request.jwt.claims', true)::json ->> 'sub', ''
+  )::uuid;
+$$;
 
 create type public.member_role      as enum ('admin', 'member');
 create type public.task_priority    as enum ('low', 'medium', 'high');

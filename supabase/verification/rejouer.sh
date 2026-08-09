@@ -71,4 +71,15 @@ for fichier in "${FICHIERS[@]}"; do
   fi
 done
 
+# Le rejeu ne prouve que la compilation. Les instructions SQL d'une fonction
+# plpgsql ne sont préparées qu'au premier appel : il faut donc appeler.
+if [ "$echec" -eq 0 ]; then
+  if $psql -f "$VERIFICATION/fumee.sql"; then
+    printf 'OK    verification/fumee.sql\n'
+  else
+    printf 'ÉCHEC verification/fumee.sql\n'
+    echec=1
+  fi
+fi
+
 exit "$echec"

@@ -57,6 +57,14 @@ abstract final class AppRoutes {
   static const String create = 'create';
   static const String createPath = '/creer';
 
+  /// Paramètres d'URL de `/creer` : type pré-sélectionné (`event`, `task`,
+  /// `group`) et groupe de rattachement.
+  ///
+  /// Ils passent par l'URL et non par `extra` pour que le lien reste
+  /// rechargeable sur le web — un `extra` disparaît au rafraîchissement.
+  static const String createKindParam = 'type';
+  static const String createGroupParam = 'groupe';
+
   // Profil et réglages, empilés sur le navigateur racine.
   static const String profile = 'profile';
   static const String profilePath = '/profil';
@@ -108,5 +116,24 @@ abstract final class AppRoutes {
   static bool isPublic(String location) {
     if (publicPaths.contains(location)) return true;
     return publicPrefixes.any(location.startsWith);
+  }
+
+  /// Identifiant du groupe affiché par [location], ou `null` si l'écran
+  /// courant n'est pas celui d'un groupe.
+  ///
+  /// Sert au bouton « + » de la barre, qui doit se régler sur l'écran
+  /// réellement affiché et non sur l'onglet actif : depuis `/groupes/<id>`,
+  /// l'onglet reste « Groupes » alors que l'action attendue a changé.
+  static String? groupIdIn(String location) {
+    const String prefixe = '$groupsPath/';
+    if (!location.startsWith(prefixe)) return null;
+
+    final String reste = location.substring(prefixe.length);
+    final int barre = reste.indexOf('/');
+    final String id = barre == -1 ? reste : reste.substring(0, barre);
+
+    if (id.isEmpty) return null;
+    // « /groupes/nouveau » est l'écran de création : ce n'est pas un groupe.
+    return '$groupsPath/$id' == groupCreatePath ? null : id;
   }
 }

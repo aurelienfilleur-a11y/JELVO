@@ -11,6 +11,7 @@ import '../../calendar/models/calendar_event.dart';
 import '../../calendar/providers/calendar_providers.dart';
 import '../../contacts/models/contact.dart';
 import '../../contacts/providers/contact_providers.dart';
+import '../../create/models/creation_kind.dart';
 import '../../tasks/models/task.dart';
 import '../../tasks/providers/task_providers.dart';
 import '../models/group.dart';
@@ -18,6 +19,7 @@ import '../models/group_invite.dart';
 import '../models/group_member.dart';
 import '../providers/group_providers.dart';
 import '../widgets/group_banner.dart';
+import '../widgets/group_creation_sheet.dart';
 import '../widgets/invite_link_sheet.dart';
 import '../widgets/member_tile.dart';
 
@@ -257,13 +259,27 @@ class _GroupView extends ConsumerWidget {
         subtitle: events.isEmpty
             ? 'Rien de prévu'
             : '${events.length} événement${events.length > 1 ? 's' : ''}',
+        actionLabel: 'Ajouter',
+        onActionPressed: () => ouvrirCreation(
+          context,
+          groupId: group.id,
+          kind: CreationKind.event,
+        ),
       ),
       if (events.isEmpty)
-        const SliverToBoxAdapter(
+        SliverToBoxAdapter(
           child: EmptyState(
             icon: Icons.event_available_rounded,
             title: 'Aucun événement',
-            message: 'Proposez une date au groupe depuis le bouton « + ».',
+            message:
+                'Proposez une date au groupe : chacun répondra oui, '
+                'peut-être ou non.',
+            actionLabel: 'Proposer une date',
+            onActionPressed: () => ouvrirCreation(
+              context,
+              groupId: group.id,
+              kind: CreationKind.event,
+            ),
           ),
         )
       else
@@ -312,13 +328,22 @@ class _GroupView extends ConsumerWidget {
             ? 'Tout est à jour'
             : '${tasks.length} tâche${tasks.length > 1 ? 's' : ''} ouverte'
                   '${tasks.length > 1 ? 's' : ''}',
+        actionLabel: 'Ajouter',
+        onActionPressed: () =>
+            ouvrirCreation(context, groupId: group.id, kind: CreationKind.task),
       ),
       if (tasks.isEmpty)
-        const SliverToBoxAdapter(
+        SliverToBoxAdapter(
           child: EmptyState(
             icon: Icons.task_alt_rounded,
             title: 'Aucune tâche ouverte',
-            message: 'Répartissez ce qu’il y a à faire depuis le bouton « + ».',
+            message: 'Répartissez ce qu’il y a à faire : chacun verra sa part.',
+            actionLabel: 'Ajouter une tâche',
+            onActionPressed: () => ouvrirCreation(
+              context,
+              groupId: group.id,
+              kind: CreationKind.task,
+            ),
           ),
         )
       else
@@ -354,7 +379,12 @@ class _GroupView extends ConsumerWidget {
     ];
   }
 
-  static Widget _header({required String title, required String subtitle}) {
+  static Widget _header({
+    required String title,
+    required String subtitle,
+    String? actionLabel,
+    VoidCallback? onActionPressed,
+  }) {
     return SliverPadding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.screenMargin,
@@ -363,7 +393,12 @@ class _GroupView extends ConsumerWidget {
         AppSpacing.md,
       ),
       sliver: SliverToBoxAdapter(
-        child: SectionHeader(title: title, subtitle: subtitle),
+        child: SectionHeader(
+          title: title,
+          subtitle: subtitle,
+          actionLabel: actionLabel,
+          onActionPressed: onActionPressed,
+        ),
       ),
     );
   }

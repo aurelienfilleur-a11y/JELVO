@@ -157,7 +157,10 @@ class AppTextsFr extends AppTexts {
 
   @override
   String get groupNoEventMessage =>
-      'Proposez une date au groupe depuis le bouton « + ».';
+      'Proposez une date au groupe : chacun répondra oui, peut-être ou non.';
+
+  @override
+  String get groupProposeDate => 'Proposer une date';
 
   @override
   String get groupTasksToDo => 'Tâches à faire';
@@ -167,7 +170,21 @@ class AppTextsFr extends AppTexts {
 
   @override
   String get groupNoTaskMessage =>
-      'Répartissez ce qu’il y a à faire depuis le bouton « + ».';
+      'Répartissez ce qu’il y a à faire : chacun verra sa part.';
+
+  @override
+  String get groupAddTask => 'Ajouter une tâche';
+
+  @override
+  String get groupAdd => 'Ajouter';
+
+  @override
+  String get groupAddToGroup => 'Ajouter au groupe';
+
+  @override
+  String groupCreationSheetIntro(String name) {
+    return 'Ce que vous créez ici sera partagé avec « $name ».';
+  }
 
   @override
   String get groupMembers => 'Membres';

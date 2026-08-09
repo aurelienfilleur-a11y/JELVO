@@ -348,8 +348,14 @@ abstract class AppTexts {
   /// No description provided for @groupNoEventMessage.
   ///
   /// In fr, this message translates to:
-  /// **'Proposez une date au groupe depuis le bouton « + ».'**
+  /// **'Proposez une date au groupe : chacun répondra oui, peut-être ou non.'**
   String get groupNoEventMessage;
+
+  /// No description provided for @groupProposeDate.
+  ///
+  /// In fr, this message translates to:
+  /// **'Proposer une date'**
+  String get groupProposeDate;
 
   /// No description provided for @groupTasksToDo.
   ///
@@ -366,8 +372,32 @@ abstract class AppTexts {
   /// No description provided for @groupNoTaskMessage.
   ///
   /// In fr, this message translates to:
-  /// **'Répartissez ce qu’il y a à faire depuis le bouton « + ».'**
+  /// **'Répartissez ce qu’il y a à faire : chacun verra sa part.'**
   String get groupNoTaskMessage;
+
+  /// No description provided for @groupAddTask.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ajouter une tâche'**
+  String get groupAddTask;
+
+  /// No description provided for @groupAdd.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ajouter'**
+  String get groupAdd;
+
+  /// No description provided for @groupAddToGroup.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ajouter au groupe'**
+  String get groupAddToGroup;
+
+  /// No description provided for @groupCreationSheetIntro.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ce que vous créez ici sera partagé avec « {name} ».'**
+  String groupCreationSheetIntro(String name);
 
   /// No description provided for @groupMembers.
   ///

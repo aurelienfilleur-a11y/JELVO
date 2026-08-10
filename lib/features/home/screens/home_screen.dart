@@ -12,6 +12,7 @@ import '../../groups/providers/group_providers.dart';
 import '../../notifications/providers/notification_providers.dart';
 import '../../tasks/models/task.dart';
 import '../../tasks/providers/task_providers.dart';
+import '../../tasks/widgets/task_tile.dart';
 import '../providers/home_providers.dart';
 import '../widgets/summary_banner.dart';
 
@@ -58,6 +59,9 @@ class HomeScreen extends ConsumerWidget {
             child: SummaryBanner(
               summary: summary,
               dateLabel: AppDates.fullDate(now),
+              onEventsPressed: () => context.goNamed(AppRoutes.calendar),
+              onTasksPressed: () => context.pushNamed(AppRoutes.tasks),
+              onGroupsPressed: () => context.goNamed(AppRoutes.groups),
             ),
           ),
         ),
@@ -114,7 +118,7 @@ class HomeScreen extends ConsumerWidget {
                 child: Column(
                   children: <Widget>[
                     for (int i = 0; i < focusTasks.length; i++)
-                      _TaskTile(
+                      _TacheDAccueil(
                         task: focusTasks[i],
                         now: now,
                         showDivider: i < focusTasks.length - 1,
@@ -183,7 +187,6 @@ class _EventTile extends ConsumerWidget {
     final Group? group = event.groupId == null
         ? null
         : ref.watch(groupByIdProvider(event.groupId!));
-    final List<AvatarData> participants = event.avatars;
 
     return EventCard(
       title: event.title,
@@ -191,81 +194,22 @@ class _EventTile extends ConsumerWidget {
       location: event.location,
       groupName: group?.name,
       accentColor: group?.accent.color ?? AppColors.primary,
-      participants: participants,
+      participants: event.avatars,
       statusTone: event.myResponse == EventResponse.yes
           ? null
           : event.myResponse.tone,
       statusLabel: event.myResponse.label,
-      onTap: () => _showDetail(context, event, group),
-    );
-  }
-
-  void _showDetail(BuildContext context, CalendarEvent event, Group? group) {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.lg,
-          0,
-          AppSpacing.lg,
-          AppSpacing.xl,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(event.title, style: AppTypography.h2),
-            AppSpacing.gapSm,
-            Text(
-              '${AppDates.fullDate(event.start)} · '
-              '${AppDates.timeRange(event.start, event.end)}',
-              style: AppTypography.bodyMuted,
-            ),
-            if (event.location != null) ...<Widget>[
-              AppSpacing.gapSm,
-              Row(
-                children: <Widget>[
-                  const Icon(
-                    Icons.place_outlined,
-                    size: 16,
-                    color: AppColors.textSecondary,
-                  ),
-                  AppSpacing.hGapSm,
-                  Expanded(
-                    child: Text(
-                      event.location!,
-                      style: AppTypography.body,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-            if (group != null) ...<Widget>[
-              AppSpacing.gapSm,
-              StatusDot(tone: StatusTone.info, label: group.name, filled: true),
-            ],
-            if (event.notes != null) ...<Widget>[
-              AppSpacing.gapLg,
-              Text(event.notes!, style: AppTypography.bodyMuted),
-            ],
-            AppSpacing.gapXl,
-            SecondaryButton(
-              label: 'Fermer',
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ],
-        ),
+      onTap: () => context.pushNamed(
+        AppRoutes.eventDetail,
+        pathParameters: <String, String>{'id': event.id},
       ),
     );
   }
 }
 
-/// Ligne de tâche câblée sur le domaine.
-class _TaskTile extends ConsumerWidget {
-  const _TaskTile({
+/// Ligne de tâche de l'accueil : le nom du groupe en sous-titre.
+class _TacheDAccueil extends ConsumerWidget {
+  const _TacheDAccueil({
     required this.task,
     required this.now,
     required this.showDivider,
@@ -281,17 +225,11 @@ class _TaskTile extends ConsumerWidget {
         ? null
         : ref.watch(groupByIdProvider(task.groupId!));
 
-    return TaskRow(
-      title: task.title,
-      subtitle: group?.name,
-      done: task.isDone,
-      dueLabel: task.dueDate == null
-          ? null
-          : AppDates.relativeDay(task.dueDate!, now: now),
-      dueTone: task.toneFor(now),
+    return TaskTile(
+      task: task,
+      now: now,
+      groupName: group?.name,
       showDivider: showDivider,
-      onToggle: (_) =>
-          ref.read(taskActionsProvider).toggleDone(task.id, done: !task.isDone),
     );
   }
 }

@@ -153,10 +153,15 @@ void main() {
     await tester.tap(find.byTooltip('Nouvel événement'));
     await tester.pumpAndSettle();
 
+    // Depuis le calendrier, le « + » ouvre le choix du type ; l'événement
+    // ouvre ensuite son formulaire en feuille.
+    await tester.tap(find.text('Événement'));
+    await tester.pumpAndSettle();
+
     await tester.tap(find.text('Créer l’événement'));
     await tester.pump();
 
-    expect(find.text('Ce champ est obligatoire.'), findsOneWidget);
+    expect(find.text('Donnez un titre à l’événement.'), findsOneWidget);
   });
 
   testWidgets('la recherche filtre la liste des contacts', (

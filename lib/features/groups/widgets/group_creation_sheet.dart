@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/core.dart';
 import '../../../router/app_routes.dart';
+import '../../calendar/widgets/event_form_sheet.dart';
 import '../../create/models/creation_kind.dart';
+import '../../tasks/widgets/task_form_sheet.dart';
 import '../models/group.dart';
 import '../providers/group_providers.dart';
 
@@ -97,17 +99,20 @@ class GroupCreationSheet extends ConsumerWidget {
     );
   }
 
-  /// Referme la feuille avant d'empiler l'écran : sans cela, le retour depuis
-  /// la création retomberait sur une feuille restée ouverte.
+  /// Referme la feuille de choix avant d'ouvrir le formulaire : deux feuilles
+  /// empilées obligeraient à fermer deux fois.
+  ///
+  /// Le `Navigator` racine est capturé avant le `pop` — ensuite, le contexte
+  /// de cette feuille n'est plus rattaché à l'arbre.
   void _choisir(BuildContext context, CreationKind kind) {
-    // Le routeur est capturé avant le `pop` : ensuite, le contexte de la
-    // feuille n'est plus rattaché à l'arbre et sa recherche échouerait.
-    final GoRouter router = GoRouter.of(context);
+    final NavigatorState racine = Navigator.of(context, rootNavigator: true);
     Navigator.of(context).pop();
-    router.pushNamed(
-      AppRoutes.create,
-      queryParameters: _parametresDeCreation(groupId, kind),
-    );
+
+    if (kind == CreationKind.task) {
+      ouvrirFormulaireDeTache(racine.context, groupId: groupId);
+    } else {
+      ouvrirFormulaireDEvenement(racine.context, groupId: groupId);
+    }
   }
 }
 

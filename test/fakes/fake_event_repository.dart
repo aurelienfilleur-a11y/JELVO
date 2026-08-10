@@ -14,6 +14,8 @@ class FakeEventRepository implements EventRepository {
   /// Dernier appel reçu, pour les assertions.
   String? lastCreatedTitle;
   String? lastRespondedId;
+  String? lastUpdatedTitle;
+  String? lastDeletedId;
   EventResponse? lastResponse;
 
   static List<CalendarEvent> demoEvents() => <CalendarEvent>[
@@ -90,6 +92,47 @@ class FakeEventRepository implements EventRepository {
   }
 
   @override
+  Future<CalendarEvent> updateEvent({
+    required String eventId,
+    required String title,
+    required DateTime startsAt,
+    DateTime? endsAt,
+    String? description,
+    String? location,
+    String? rrule,
+    String? imageUrl,
+    int? reminderMinutes,
+  }) async {
+    lastUpdatedTitle = title;
+    final int index = _events.indexWhere((CalendarEvent e) => e.id == eventId);
+    final DateTime fin = endsAt ?? startsAt.add(const Duration(hours: 1));
+    final CalendarEvent ancien = index == -1
+        ? CalendarEvent(id: eventId, title: title, start: startsAt, end: fin)
+        : _events[index];
+    final CalendarEvent modifie = CalendarEvent(
+      id: eventId,
+      title: title,
+      start: startsAt,
+      end: fin,
+      notes: description,
+      location: location,
+      groupId: ancien.groupId,
+      ownerId: ancien.ownerId,
+      rrule: rrule,
+      imageUrl: imageUrl,
+      reminderMinutes: reminderMinutes,
+      myResponse: ancien.myResponse,
+      participants: ancien.participants,
+    );
+    if (index == -1) {
+      _events.add(modifie);
+    } else {
+      _events[index] = modifie;
+    }
+    return modifie;
+  }
+
+  @override
   Future<void> respond({
     required String eventId,
     required EventResponse response,
@@ -99,6 +142,8 @@ class FakeEventRepository implements EventRepository {
   }
 
   @override
-  Future<void> deleteEvent(String eventId) async =>
-      _events.removeWhere((CalendarEvent e) => e.id == eventId);
+  Future<void> deleteEvent(String eventId) async {
+    lastDeletedId = eventId;
+    _events.removeWhere((CalendarEvent e) => e.id == eventId);
+  }
 }

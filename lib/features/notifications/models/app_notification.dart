@@ -10,6 +10,7 @@ import '../../../core/theme/app_colors.dart';
 enum NotificationType {
   groupInvitation('group_invitation'),
   contactRequest('contact_request'),
+  eventInvitation('event_invitation'),
   autre('autre');
 
   const NotificationType(this.dbValue);
@@ -19,6 +20,7 @@ enum NotificationType {
   static NotificationType fromDb(String? value) => switch (value) {
     'group_invitation' => NotificationType.groupInvitation,
     'contact_request' => NotificationType.contactRequest,
+    'event_invitation' => NotificationType.eventInvitation,
     _ => NotificationType.autre,
   };
 
@@ -28,18 +30,21 @@ enum NotificationType {
   int get navIndex => switch (this) {
     NotificationType.groupInvitation => 1,
     NotificationType.contactRequest => 3,
+    NotificationType.eventInvitation => 2,
     NotificationType.autre => 0,
   };
 
   IconData get icon => switch (this) {
     NotificationType.groupInvitation => Icons.groups_rounded,
     NotificationType.contactRequest => Icons.person_add_alt_rounded,
+    NotificationType.eventInvitation => Icons.event_rounded,
     NotificationType.autre => Icons.notifications_none_rounded,
   };
 
   Color get accent => switch (this) {
     NotificationType.groupInvitation => AppColors.primary,
     NotificationType.contactRequest => AppColors.success,
+    NotificationType.eventInvitation => AppColors.warning,
     NotificationType.autre => AppColors.textSecondary,
   };
 }
@@ -85,12 +90,14 @@ class AppNotification {
   String get senderName => switch (type) {
     NotificationType.groupInvitation => _text('inviter_name') ?? 'Un membre',
     NotificationType.contactRequest => _text('name') ?? 'Quelqu’un',
+    NotificationType.eventInvitation => _text('auteur') ?? 'Un membre',
     NotificationType.autre => 'Jelvo',
   };
 
   String? get avatarUrl => switch (type) {
     NotificationType.groupInvitation => _text('inviter_avatar'),
     NotificationType.contactRequest => _text('avatar_url'),
+    NotificationType.eventInvitation => null,
     NotificationType.autre => null,
   };
 
@@ -100,9 +107,24 @@ class AppNotification {
 
   String? get requesterId => _text('requester_id');
 
+  /// Événement concerné, pour les invitations d'agenda.
+  String? get eventId => _text('event_id');
+
+  String get eventTitle => _text('titre') ?? 'un événement';
+
+  /// Début de l'événement, déjà remis à l'heure locale.
+  DateTime? get eventStart =>
+      DateTime.tryParse(_text('starts_at') ?? '')?.toLocal();
+
+  DateTime? get eventEnd =>
+      DateTime.tryParse(_text('ends_at') ?? '')?.toLocal();
+
+  String? get eventLocation => _text('lieu');
+
   String get title => switch (type) {
     NotificationType.groupInvitation => 'Invitation à rejoindre $groupName',
     NotificationType.contactRequest => 'Demande de contact',
+    NotificationType.eventInvitation => eventTitle,
     NotificationType.autre => 'Notification',
   };
 
@@ -111,6 +133,8 @@ class AppNotification {
       '$senderName vous invite à rejoindre « $groupName ».',
     NotificationType.contactRequest =>
       '$senderName souhaite vous ajouter à ses contacts.',
+    NotificationType.eventInvitation =>
+      '$senderName vous convie${_text('group_name') == null ? '' : ' avec « $groupName »'}.',
     NotificationType.autre => 'Vous avez une nouvelle notification.',
   };
 
@@ -118,6 +142,7 @@ class AppNotification {
   String? get actionLabel => switch (type) {
     NotificationType.groupInvitation => 'Voir l’invitation',
     NotificationType.contactRequest => 'Voir la demande',
+    NotificationType.eventInvitation => 'Voir l’événement',
     NotificationType.autre => null,
   };
 

@@ -16,6 +16,10 @@ class FakeTaskRepository implements TaskRepository {
   bool? lastToggledDone;
   String? lastCheckedItemId;
   AssigneeStatus? lastResponse;
+  String? lastUpdatedTitle;
+  String? lastClaimedId;
+  bool? lastClaimTake;
+  String? lastDeletedId;
 
   /// Deux tâches suffisent : une à échéance proche pour l'accueil, une du
   /// groupe g1 pour l'écran de groupe.
@@ -72,6 +76,52 @@ class FakeTaskRepository implements TaskRepository {
   }
 
   @override
+  Future<Task> updateTask({
+    required String taskId,
+    required String title,
+    String? description,
+    DateTime? dueAt,
+    TaskPriority priority = TaskPriority.medium,
+    DateTime? reminderAt,
+    String? rrule,
+  }) async {
+    lastUpdatedTitle = title;
+    final int index = _tasks.indexWhere((Task t) => t.id == taskId);
+    final Task ancienne = index == -1
+        ? Task(id: taskId, title: title)
+        : _tasks[index];
+    final Task modifiee = Task(
+      id: taskId,
+      title: title,
+      notes: description,
+      dueDate: dueAt,
+      groupId: ancienne.groupId,
+      createdBy: ancienne.createdBy,
+      completedAt: ancienne.completedAt,
+      priority: priority,
+      reminderAt: reminderAt,
+      rrule: rrule,
+      myStatus: ancienne.myStatus,
+      assignees: ancienne.assignees,
+      itemCount: ancienne.itemCount,
+      checkedCount: ancienne.checkedCount,
+    );
+    if (index == -1) {
+      _tasks.add(modifiee);
+    } else {
+      _tasks[index] = modifiee;
+    }
+    return modifiee;
+  }
+
+  @override
+  Future<String> claim({required String taskId, required bool take}) async {
+    lastClaimedId = taskId;
+    lastClaimTake = take;
+    return take ? 'pris' : 'lache';
+  }
+
+  @override
   Future<void> respond({
     required String taskId,
     required AssigneeStatus status,
@@ -104,8 +154,10 @@ class FakeTaskRepository implements TaskRepository {
   }) async {}
 
   @override
-  Future<void> deleteTask(String taskId) async =>
-      _tasks.removeWhere((Task t) => t.id == taskId);
+  Future<void> deleteTask(String taskId) async {
+    lastDeletedId = taskId;
+    _tasks.removeWhere((Task t) => t.id == taskId);
+  }
 
   @override
   Future<List<TaskListItem>> fetchItems(String taskId) async =>

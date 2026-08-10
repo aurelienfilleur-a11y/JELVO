@@ -23,6 +23,7 @@ class TaskRow extends StatelessWidget {
     this.dueTone,
     this.assignee,
     this.showDivider = true,
+    this.trailing,
   });
 
   final String title;
@@ -44,6 +45,12 @@ class TaskRow extends StatelessWidget {
   final String? assignee;
 
   final bool showDivider;
+
+  /// Widget posé à droite de la ligne — une action de retrait, un chevron.
+  ///
+  /// Reste un `Widget` nu : `core/widgets` ne connaît pas le domaine, et
+  /// chaque feature y met ce qui lui est propre.
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -121,6 +128,10 @@ class TaskRow extends StatelessWidget {
                       ],
                     ),
                   ),
+                  if (trailing != null) ...<Widget>[
+                    AppSpacing.hGapSm,
+                    trailing!,
+                  ],
                 ],
               ),
             ),

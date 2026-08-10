@@ -62,6 +62,25 @@ final tasksForGroupProvider = Provider.family<List<Task>, String>(
       _all(ref).where((Task t) => t.groupId == groupId).toList(),
 );
 
+/// Une tâche par son identifiant, `null` si elle n'est plus visible.
+///
+/// L'écran de détail s'y branche plutôt que de recevoir la tâche en argument :
+/// après une modification ou un cochage, il se remet à jour tout seul.
+final taskByIdProvider = Provider.family<Task?, String>((Ref ref, String id) {
+  for (final Task task in _all(ref)) {
+    if (task.id == id) return task;
+  }
+  return null;
+});
+
+/// Tâches ouvertes que personne n'a prises, dans un groupe donné.
+final unassignedTasksForGroupProvider = Provider.family<List<Task>, String>(
+  (Ref ref, String groupId) => ref
+      .watch(tasksForGroupProvider(groupId))
+      .where((Task t) => !t.isDone && t.assignees.isEmpty)
+      .toList(),
+);
+
 /// Liste de courses d'une tâche, rechargée à chaque ouverture.
 final taskItemsProvider = FutureProvider.autoDispose
     .family<List<TaskListItem>, String>(
@@ -105,6 +124,36 @@ class TaskActions {
     );
     await _refresh();
     return task;
+  }
+
+  Future<Task> update({
+    required String taskId,
+    required String title,
+    String? description,
+    DateTime? dueAt,
+    TaskPriority priority = TaskPriority.medium,
+    DateTime? reminderAt,
+    String? rrule,
+  }) async {
+    final Task task = await _repository.updateTask(
+      taskId: taskId,
+      title: title,
+      description: description,
+      dueAt: dueAt,
+      priority: priority,
+      reminderAt: reminderAt,
+      rrule: rrule,
+    );
+    await _refresh();
+    return task;
+  }
+
+  /// Prendre une tâche libre, ou s'en retirer. Renvoie le mot d'état de la
+  /// fonction SQL, que l'écran traduit.
+  Future<String> claim(String taskId, {required bool take}) async {
+    final String outcome = await _repository.claim(taskId: taskId, take: take);
+    await _refresh();
+    return outcome;
   }
 
   Future<void> toggleDone(String taskId, {required bool done}) async {

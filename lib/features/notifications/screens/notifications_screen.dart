@@ -6,6 +6,9 @@ import '../../../core/core.dart';
 import '../../../data/data_providers.dart';
 import '../../../router/app_routes.dart';
 import '../../auth/models/auth_failure.dart';
+import '../../calendar/models/calendar_event.dart';
+import '../../calendar/providers/calendar_providers.dart';
+import '../../calendar/widgets/response_buttons.dart';
 import '../models/app_notification.dart';
 import '../providers/notification_providers.dart';
 
@@ -98,6 +101,14 @@ class NotificationsScreen extends ConsumerWidget {
           notification: notification,
           now: now,
           onTap: () => _open(context, ref, notification),
+          // Répondre à un événement se fait ici : c'est dans la notification
+          // qu'on apprend l'invitation, et l'obligation d'ouvrir le détail
+          // pour dire « oui » était un détour de trop.
+          reponse:
+              notification.type == NotificationType.eventInvitation &&
+                  notification.eventId != null
+              ? _ReponseEvenement(eventId: notification.eventId!)
+              : null,
         );
       },
     );
@@ -160,6 +171,14 @@ class NotificationsScreen extends ConsumerWidget {
         }
       case NotificationType.contactRequest:
         router.goNamed(AppRoutes.contacts);
+      case NotificationType.eventInvitation:
+        final String? eventId = notification.eventId;
+        if (eventId != null) {
+          router.pushNamed(
+            AppRoutes.eventDetail,
+            pathParameters: <String, String>{'id': eventId},
+          );
+        }
       case NotificationType.autre:
         break;
     }
@@ -171,11 +190,16 @@ class _NotificationTile extends StatelessWidget {
     required this.notification,
     required this.now,
     required this.onTap,
+    this.reponse,
   });
 
   final AppNotification notification;
   final DateTime now;
   final VoidCallback onTap;
+
+  /// Bloc de réponse affiché sous la ligne, pour les types qui en attendent
+  /// une. `null` partout ailleurs.
+  final Widget? reponse;
 
   @override
   Widget build(BuildContext context) {
@@ -184,66 +208,102 @@ class _NotificationTile extends StatelessWidget {
     return AppCard(
       onTap: onTap,
       padding: const EdgeInsets.all(AppSpacing.md),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: type.accent.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(AppSpacing.md),
-            ),
-            child: Icon(type.icon, size: 20, color: type.accent),
-          ),
-          AppSpacing.hGapMd,
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  notification.title,
-                  style: AppTypography.body.copyWith(
-                    fontWeight: notification.isUnread
-                        ? AppTypography.semiBold
-                        : AppTypography.medium,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: type.accent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppSpacing.md),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  notification.message,
-                  style: AppTypography.caption,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (notification.createdAt != null) ...<Widget>[
-                  AppSpacing.gapXs,
-                  Text(
-                    AppDates.relativeDay(notification.createdAt!, now: now),
-                    style: AppTypography.caption.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          if (notification.isUnread) ...<Widget>[
-            AppSpacing.hGapSm,
-            Container(
-              width: 10,
-              height: 10,
-              margin: const EdgeInsets.only(top: AppSpacing.xs),
-              decoration: const BoxDecoration(
-                color: AppColors.primary,
-                shape: BoxShape.circle,
+                child: Icon(type.icon, size: 20, color: type.accent),
               ),
-            ),
-          ],
+              AppSpacing.hGapMd,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      notification.title,
+                      style: AppTypography.body.copyWith(
+                        fontWeight: notification.isUnread
+                            ? AppTypography.semiBold
+                            : AppTypography.medium,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      notification.message,
+                      style: AppTypography.caption,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (notification.createdAt != null) ...<Widget>[
+                      AppSpacing.gapXs,
+                      Text(
+                        AppDates.relativeDay(notification.createdAt!, now: now),
+                        style: AppTypography.caption.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (notification.isUnread) ...<Widget>[
+                AppSpacing.hGapSm,
+                Container(
+                  width: 10,
+                  height: 10,
+                  margin: const EdgeInsets.only(top: AppSpacing.xs),
+                  decoration: const BoxDecoration(
+                    color: AppColors.primary,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          if (reponse != null) ...<Widget>[AppSpacing.gapMd, reponse!],
         ],
       ),
+    );
+  }
+}
+
+/// Les trois réponses posées directement dans la notification.
+class _ReponseEvenement extends ConsumerWidget {
+  const _ReponseEvenement({required this.eventId});
+
+  final String eventId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final CalendarEvent? event = ref.watch(eventByIdProvider(eventId));
+
+    return ResponseButtons(
+      compact: true,
+      courante: event?.myResponse ?? EventResponse.pending,
+      onRepondre: (EventResponse reponse) async {
+        final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+        try {
+          await ref.read(eventActionsProvider).respond(eventId, reponse);
+          messenger.showSnackBar(
+            SnackBar(content: Text('Réponse enregistrée : ${reponse.label}.')),
+          );
+        } catch (error) {
+          messenger.showSnackBar(
+            SnackBar(content: Text(AuthFailure.from(error).message)),
+          );
+        }
+      },
     );
   }
 }

@@ -177,21 +177,43 @@ class GroupActions {
     await _refreshGroups();
   }
 
-  Future<void> removeMember({
+  Future<MemberOutcome> removeMember({
     required String groupId,
     required String userId,
-  }) async {
-    await _repository.removeMember(groupId: groupId, userId: userId);
-    _ref.invalidate(groupMembersProvider(groupId));
-    await _refreshGroups();
-  }
+  }) => _administrer(
+    groupId,
+    () => _repository.removeMember(groupId: groupId, userId: userId),
+  );
 
-  Future<void> promote({
+  Future<MemberOutcome> promote({
     required String groupId,
     required String userId,
-  }) async {
-    await _repository.promoteToAdmin(groupId: groupId, userId: userId);
-    _ref.invalidate(groupMembersProvider(groupId));
+  }) => _administrer(
+    groupId,
+    () => _repository.promoteToAdmin(groupId: groupId, userId: userId),
+  );
+
+  Future<MemberOutcome> demote({
+    required String groupId,
+    required String userId,
+  }) => _administrer(
+    groupId,
+    () => _repository.demoteToMember(groupId: groupId, userId: userId),
+  );
+
+  /// Rafraîchit la liste des membres, et le groupe lui-même : mon propre rôle
+  /// a pu changer, et avec lui l'accès aux actions d'administration.
+  Future<MemberOutcome> _administrer(
+    String groupId,
+    Future<String> Function() action,
+  ) async {
+    final MemberOutcome outcome = MemberOutcome.fromDb(await action());
+    if (outcome.isSuccess) {
+      _ref.invalidate(groupMembersProvider(groupId));
+      _ref.invalidate(groupDetailProvider(groupId));
+      await _refreshGroups();
+    }
+    return outcome;
   }
 
   Future<LeaveOutcome> leave(String groupId) async {

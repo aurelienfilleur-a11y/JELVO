@@ -14,6 +14,10 @@ class FakeNotificationRepository implements NotificationRepository {
   String? lastReadId;
   int markAllReadCount = 0;
 
+  /// Nombre de relectures. Une action qui referme une notification côté base
+  /// doit relire la boîte : sans cela, la ligne resterait à l'écran.
+  int fetchCount = 0;
+
   static final List<AppNotification> demoNotifications = <AppNotification>[
     AppNotification(
       id: 'n1',
@@ -49,8 +53,10 @@ class FakeNotificationRepository implements NotificationRepository {
   ];
 
   @override
-  Future<List<AppNotification>> fetchNotifications() async =>
-      List<AppNotification>.of(_notifications);
+  Future<List<AppNotification>> fetchNotifications() async {
+    fetchCount++;
+    return List<AppNotification>.of(_notifications);
+  }
 
   @override
   Future<void> markRead(String id) async {

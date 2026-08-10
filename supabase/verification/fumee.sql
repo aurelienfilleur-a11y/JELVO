@@ -132,6 +132,25 @@ begin
   resultat := public.repondre_evenement(evenement, 'maybe');
   assert resultat = 'maybe', 'repondre_evenement : ' || resultat;
 
+  -- Répondre referme la notification de l'invitée. C'est bien **elle** qui
+  -- répond, pas l'organisateur : le déclencheur ne touche que la ligne de
+  -- celui qui a répondu, et l'éprouver sous le mauvais jeton ne prouverait
+  -- rien.
+  perform set_config('request.jwt.claims',
+    '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}',
+    true);
+  perform public.repondre_evenement(evenement, 'yes');
+
+  assert (select count(*) from public.notifications
+           where type = 'event_invitation'
+             and user_id = '33333333-3333-3333-3333-333333333333'::uuid
+             and read_at is null) = 0,
+         'répondre n''a pas refermé la notification';
+
+  perform set_config('request.jwt.claims',
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}',
+    true);
+
   -- Lectures ----------------------------------------------------------------
   assert (select count(*) from public.mes_taches()) = 2, 'mes_taches';
   assert (select count(*) from public.mon_agenda()) = 2, 'mon_agenda';

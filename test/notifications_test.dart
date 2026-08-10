@@ -160,4 +160,53 @@ void main() {
         .where((NavBadge b) => b.count > 0);
     expect(visibles, isEmpty);
   });
+
+  testWidgets('répondre à un événement depuis la notification relit la boîte', (
+    WidgetTester tester,
+  ) async {
+    final FakeNotificationRepository repository = await _pumpApp(
+      tester,
+      notifications: <AppNotification>[
+        AppNotification(
+          id: 'n9',
+          type: NotificationType.eventInvitation,
+          payload: const <String, dynamic>{
+            'event_id': 'e1',
+            'titre': 'Brunch chez les parents',
+            'group_name': 'Famille Rousseau',
+            'auteur': 'Léa Marchand',
+          },
+          createdAt: DateTime(2026, 8, 3, 8),
+        ),
+      ],
+    );
+
+    await tester.tap(find.byTooltip('Notifications'));
+    await tester.pumpAndSettle();
+
+    // Les trois réponses sont dans la ligne : c'est là qu'on apprend
+    // l'invitation, et le détour par le détail était un détour de trop.
+    expect(find.text('Brunch chez les parents'), findsOneWidget);
+    expect(find.text('Peut-être'), findsOneWidget);
+
+    final int avant = repository.fetchCount;
+    await tester.tap(find.text('Peut-être'));
+    await tester.pumpAndSettle();
+
+    // Répondre referme la notification côté base ; sans relecture, la ligne
+    // resterait à l'écran et la pastille allumée.
+    expect(repository.fetchCount, greaterThan(avant));
+  });
+
+  testWidgets('la boîte est relue à chaque ouverture', (
+    WidgetTester tester,
+  ) async {
+    final FakeNotificationRepository repository = await _pumpApp(tester);
+    final int avant = repository.fetchCount;
+
+    await tester.tap(find.byTooltip('Notifications'));
+    await tester.pumpAndSettle();
+
+    expect(repository.fetchCount, greaterThan(avant));
+  });
 }

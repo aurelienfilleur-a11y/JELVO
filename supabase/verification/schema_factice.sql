@@ -168,3 +168,13 @@ create table public.notifications (
   read_at    timestamptz,
   created_at timestamptz not null default now()
 );
+
+-- Supabase accorde les privilèges de table à `authenticated` et laisse RLS
+-- filtrer. On reproduit le `grant` — sans lui, une lecture légitime échouerait
+-- en « permission denied » et ferait croire à un défaut du code. Les politiques
+-- RLS, elles, ne sont pas rejouées ici : ce décor sert à éprouver les
+-- fonctions, pas les politiques du projet.
+grant usage on schema public, auth to authenticated, anon;
+grant select, insert, update, delete on all tables in schema public
+  to authenticated;
+grant select on all tables in schema auth to authenticated;

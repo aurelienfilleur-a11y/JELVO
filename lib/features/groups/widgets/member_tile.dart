@@ -14,6 +14,7 @@ class MemberTile extends StatelessWidget {
     this.isMe = false,
     this.canManage = false,
     this.onPromote,
+    this.onDemote,
     this.onRemove,
   });
 
@@ -21,6 +22,11 @@ class MemberTile extends StatelessWidget {
   final bool isMe;
   final bool canManage;
   final VoidCallback? onPromote;
+
+  /// Retirer le rôle d'administrateur. Sans ce geste, une promotion faite par
+  /// erreur resterait définitive.
+  final VoidCallback? onDemote;
+
   final VoidCallback? onRemove;
 
   bool get _showMenu => canManage && !isMe;
@@ -76,17 +82,26 @@ class MemberTile extends StatelessWidget {
           if (_showMenu)
             PopupMenuButton<_MemberAction>(
               tooltip: 'Gérer ce membre',
+              // Le trois-points vertical, et non horizontal : c'est celui que
+              // Material emploie partout ailleurs pour « d'autres actions »,
+              // et l'ancien passait pour un ornement.
               icon: const Icon(
-                Icons.more_horiz_rounded,
+                Icons.more_vert_rounded,
                 color: AppColors.textSecondary,
               ),
               onSelected: (_MemberAction action) => switch (action) {
                 _MemberAction.promote => onPromote?.call(),
+                _MemberAction.demote => onDemote?.call(),
                 _MemberAction.remove => onRemove?.call(),
               },
               itemBuilder: (BuildContext context) =>
                   <PopupMenuEntry<_MemberAction>>[
-                    if (!member.isAdmin)
+                    if (member.isAdmin)
+                      const PopupMenuItem<_MemberAction>(
+                        value: _MemberAction.demote,
+                        child: Text('Retirer le rôle d’administrateur'),
+                      )
+                    else
                       const PopupMenuItem<_MemberAction>(
                         value: _MemberAction.promote,
                         child: Text('Nommer administrateur'),
@@ -103,4 +118,4 @@ class MemberTile extends StatelessWidget {
   }
 }
 
-enum _MemberAction { promote, remove }
+enum _MemberAction { promote, demote, remove }

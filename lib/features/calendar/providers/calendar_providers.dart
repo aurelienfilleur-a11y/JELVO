@@ -118,6 +118,20 @@ final Provider<Map<DateTime, int>> eventCountByDayProvider =
       return counts;
     });
 
+/// Un événement par son identifiant, `null` s'il n'est plus visible.
+///
+/// L'écran de détail s'y branche plutôt que de recevoir l'événement en
+/// argument : après une réponse ou une modification, il se met à jour seul.
+final eventByIdProvider = Provider.family<CalendarEvent?, String>((
+  Ref ref,
+  String id,
+) {
+  for (final CalendarEvent event in _all(ref)) {
+    if (event.id == id) return event;
+  }
+  return null;
+});
+
 /// Écritures sur l'agenda.
 final Provider<EventActions> eventActionsProvider = Provider<EventActions>(
   EventActions.new,
@@ -153,6 +167,32 @@ class EventActions {
       imageUrl: imageUrl,
       reminderMinutes: reminderMinutes,
       participants: participants,
+    );
+    await _refresh();
+    return event;
+  }
+
+  Future<CalendarEvent> update({
+    required String eventId,
+    required String title,
+    required DateTime startsAt,
+    DateTime? endsAt,
+    String? description,
+    String? location,
+    String? rrule,
+    String? imageUrl,
+    int? reminderMinutes,
+  }) async {
+    final CalendarEvent event = await _repository.updateEvent(
+      eventId: eventId,
+      title: title,
+      startsAt: startsAt,
+      endsAt: endsAt,
+      description: description,
+      location: location,
+      rrule: rrule,
+      imageUrl: imageUrl,
+      reminderMinutes: reminderMinutes,
     );
     await _refresh();
     return event;

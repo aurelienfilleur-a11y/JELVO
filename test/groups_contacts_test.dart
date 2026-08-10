@@ -213,7 +213,7 @@ void main() {
       await tester.tap(find.text('Famille Rousseau'));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byIcon(Icons.more_vert_rounded));
+      await tester.tap(find.byTooltip('Actions'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Quitter le groupe').last);
       await tester.pumpAndSettle();
@@ -421,13 +421,12 @@ void main() {
       await tester.tap(find.text('Nouvelle tâche'));
       await tester.pumpAndSettle();
 
-      // Le type est pré-sélectionné : l'écran s'ouvre sur « Tâche ».
+      // Le formulaire s'ouvre en feuille, réglé sur la tâche.
       expect(find.text('Créer la tâche'), findsOneWidget);
-      // Et le groupe aussi : c'est ce qui manquait pour tester la tranche 3.
-      final DropdownButtonFormField<String?> champ = tester.widget(
-        find.byType(DropdownButtonFormField<String?>),
-      );
-      expect(champ.initialValue, 'g1');
+      // La carte d'assignation n'apparaît que pour une tâche de groupe :
+      // sa présence prouve que le groupe a bien été transmis.
+      expect(find.text('Assigner à'), findsOneWidget);
+      expect(find.text('Léa Marchand'), findsWidgets);
     });
 
     testWidgets('l’écran de groupe offre un chemin visible sans le « + »', (
@@ -447,10 +446,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Créer l’événement'), findsOneWidget);
-      final DropdownButtonFormField<String?> champ = tester.widget(
-        find.byType(DropdownButtonFormField<String?>),
-      );
-      expect(champ.initialValue, 'g1');
+      // Participants du groupe, donc contexte transmis — et l'heure de fin,
+      // qui manquait à la création d'événement.
+      expect(find.text('Participants'), findsOneWidget);
+      expect(find.text('Fin'), findsOneWidget);
     });
   });
 

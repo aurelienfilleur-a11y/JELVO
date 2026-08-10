@@ -37,6 +37,21 @@ abstract final class AppRoutes {
   static const String calendar = 'calendar';
   static const String calendarPath = '/calendrier';
 
+  /// Détail d'un événement, empilé sur le navigateur racine : il s'ouvre
+  /// depuis l'accueil, le calendrier, un groupe ou une notification, donc
+  /// depuis n'importe quel onglet.
+  static const String eventDetail = 'eventDetail';
+  static const String eventDetailPath = '/evenements/:id';
+
+  /// Liste des tâches et détail d'une tâche. Les tâches n'ont pas d'onglet :
+  /// elles vivent dans l'accueil et dans les groupes, et la liste complète
+  /// s'ouvre depuis le récapitulatif de l'accueil.
+  static const String tasks = 'tasks';
+  static const String tasksPath = '/taches';
+
+  static const String taskDetail = 'taskDetail';
+  static const String taskDetailPath = '/taches/:id';
+
   static const String contacts = 'contacts';
   static const String contactsPath = '/contacts';
 

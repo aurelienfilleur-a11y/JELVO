@@ -9,17 +9,18 @@ import '../../auth/models/auth_failure.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../calendar/models/calendar_event.dart';
 import '../../calendar/providers/calendar_providers.dart';
+import '../../calendar/widgets/event_form_sheet.dart';
 import '../../contacts/models/contact.dart';
 import '../../contacts/providers/contact_providers.dart';
-import '../../create/models/creation_kind.dart';
 import '../../tasks/models/task.dart';
 import '../../tasks/providers/task_providers.dart';
+import '../../tasks/widgets/task_form_sheet.dart';
+import '../../tasks/widgets/task_tile.dart';
 import '../models/group.dart';
 import '../models/group_invite.dart';
 import '../models/group_member.dart';
 import '../providers/group_providers.dart';
 import '../widgets/group_banner.dart';
-import '../widgets/group_creation_sheet.dart';
 import '../widgets/invite_link_sheet.dart';
 import '../widgets/member_tile.dart';
 
@@ -192,7 +193,12 @@ class _GroupView extends ConsumerWidget {
             AppSpacing.md,
           ),
           sliver: SliverToBoxAdapter(
-            child: SectionHeader(title: 'Membres', subtitle: group.memberLabel),
+            child: SectionHeader(
+              title: 'Membres',
+              subtitle: group.isAdmin
+                  ? '${group.memberLabel} · vous administrez ce groupe'
+                  : group.memberLabel,
+            ),
           ),
         ),
 
@@ -225,8 +231,21 @@ class _GroupView extends ConsumerWidget {
                   member: member,
                   isMe: member.userId == myId,
                   canManage: group.isAdmin,
-                  onPromote: () => _promote(context, ref, member),
-                  onRemove: () => _remove(context, ref, member),
+                  onPromote: () => _administrer(
+                    context,
+                    ref,
+                    member,
+                    (GroupActions a) =>
+                        a.promote(groupId: group.id, userId: member.userId),
+                  ),
+                  onDemote: () => _administrer(
+                    context,
+                    ref,
+                    member,
+                    (GroupActions a) =>
+                        a.demote(groupId: group.id, userId: member.userId),
+                  ),
+                  onRemove: () => _confirmRemove(context, ref, member),
                 );
               },
             ),
@@ -260,11 +279,8 @@ class _GroupView extends ConsumerWidget {
             ? 'Rien de prévu'
             : '${events.length} événement${events.length > 1 ? 's' : ''}',
         actionLabel: 'Ajouter',
-        onActionPressed: () => ouvrirCreation(
-          context,
-          groupId: group.id,
-          kind: CreationKind.event,
-        ),
+        onActionPressed: () =>
+            ouvrirFormulaireDEvenement(context, groupId: group.id),
       ),
       if (events.isEmpty)
         SliverToBoxAdapter(
@@ -275,11 +291,8 @@ class _GroupView extends ConsumerWidget {
                 'Proposez une date au groupe : chacun répondra oui, '
                 'peut-être ou non.',
             actionLabel: 'Proposer une date',
-            onActionPressed: () => ouvrirCreation(
-              context,
-              groupId: group.id,
-              kind: CreationKind.event,
-            ),
+            onActionPressed: () =>
+                ouvrirFormulaireDEvenement(context, groupId: group.id),
           ),
         )
       else
@@ -302,6 +315,10 @@ class _GroupView extends ConsumerWidget {
                     ? null
                     : event.myResponse.tone,
                 statusLabel: event.myResponse.label,
+                onTap: () => context.pushNamed(
+                  AppRoutes.eventDetail,
+                  pathParameters: <String, String>{'id': event.id},
+                ),
               );
             },
           ),
@@ -330,7 +347,7 @@ class _GroupView extends ConsumerWidget {
                   '${tasks.length > 1 ? 's' : ''}',
         actionLabel: 'Ajouter',
         onActionPressed: () =>
-            ouvrirCreation(context, groupId: group.id, kind: CreationKind.task),
+            ouvrirFormulaireDeTache(context, groupId: group.id),
       ),
       if (tasks.isEmpty)
         SliverToBoxAdapter(
@@ -339,11 +356,8 @@ class _GroupView extends ConsumerWidget {
             title: 'Aucune tâche ouverte',
             message: 'Répartissez ce qu’il y a à faire : chacun verra sa part.',
             actionLabel: 'Ajouter une tâche',
-            onActionPressed: () => ouvrirCreation(
-              context,
-              groupId: group.id,
-              kind: CreationKind.task,
-            ),
+            onActionPressed: () =>
+                ouvrirFormulaireDeTache(context, groupId: group.id),
           ),
         )
       else
@@ -355,21 +369,10 @@ class _GroupView extends ConsumerWidget {
               child: Column(
                 children: <Widget>[
                   for (int i = 0; i < tasks.length; i++)
-                    TaskRow(
-                      title: tasks[i].title,
-                      subtitle: tasks[i].hasList
-                          ? '${tasks[i].checkedCount} sur '
-                                '${tasks[i].itemCount} articles'
-                          : tasks[i].notes,
-                      done: tasks[i].isDone,
-                      dueLabel: tasks[i].dueDate == null
-                          ? null
-                          : AppDates.relativeDay(tasks[i].dueDate!, now: now),
-                      dueTone: tasks[i].toneFor(now),
+                    TaskTile(
+                      task: tasks[i],
+                      now: now,
                       showDivider: i < tasks.length - 1,
-                      onToggle: (_) => ref
-                          .read(taskActionsProvider)
-                          .toggleDone(tasks[i].id, done: !tasks[i].isDone),
                     ),
                 ],
               ),
@@ -429,20 +432,23 @@ class _GroupView extends ConsumerWidget {
     );
   }
 
-  Future<void> _promote(
+  /// Toutes les actions d'administration passent par ici : elles renvoient un
+  /// mot d'état, et c'est lui — non l'absence d'exception — qui dit si quelque
+  /// chose a changé. L'écriture directe précédente répondait 200 sans rien
+  /// faire, et l'écran annonçait une promotion qui n'avait pas eu lieu.
+  Future<void> _administrer(
     BuildContext context,
     WidgetRef ref,
     GroupMember member,
+    Future<MemberOutcome> Function(GroupActions) action,
   ) async {
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     try {
-      await ref
-          .read(groupActionsProvider)
-          .promote(groupId: group.id, userId: member.userId);
+      final MemberOutcome outcome = await action(
+        ref.read(groupActionsProvider),
+      );
       messenger.showSnackBar(
-        SnackBar(
-          content: Text('${member.shortName} est désormais administrateur.'),
-        ),
+        SnackBar(content: Text(outcome.message(member.shortName))),
       );
     } catch (error) {
       messenger.showSnackBar(
@@ -451,34 +457,28 @@ class _GroupView extends ConsumerWidget {
     }
   }
 
-  Future<void> _remove(
+  Future<void> _confirmRemove(
     BuildContext context,
     WidgetRef ref,
     GroupMember member,
   ) async {
-    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     final bool confirmed = await _confirm(
       context,
       title: 'Retirer ce membre',
       message:
-          '${member.displayName} n’aura plus accès au groupe. Vous pourrez '
-          'l’inviter à nouveau plus tard.',
+          '${member.displayName} n\u2019aura plus accès au groupe. Vous pourrez '
+          'l\u2019inviter à nouveau plus tard.',
       confirmLabel: 'Retirer',
     );
-    if (!confirmed) return;
+    if (!confirmed || !context.mounted) return;
 
-    try {
-      await ref
-          .read(groupActionsProvider)
-          .removeMember(groupId: group.id, userId: member.userId);
-      messenger.showSnackBar(
-        SnackBar(content: Text('${member.shortName} a été retiré du groupe.')),
-      );
-    } catch (error) {
-      messenger.showSnackBar(
-        SnackBar(content: Text(AuthFailure.from(error).message)),
-      );
-    }
+    await _administrer(
+      context,
+      ref,
+      member,
+      (GroupActions a) =>
+          a.removeMember(groupId: group.id, userId: member.userId),
+    );
   }
 
   Future<void> _confirmLeave(BuildContext context, WidgetRef ref) async {

@@ -39,7 +39,7 @@ D'où `supabase/verification/rejouer.sh` : il monte un cluster PostgreSQL
 jetable, y pose le décor minimal de `supabase/verification/schema_factice.sql`
 — tables, types et `auth.uid()` factices —, rejoue tous les fichiers de
 `supabase/` dans l'ordre, puis lance `verification/fumee.sql`, qui **appelle**
-les quatorze fonctions de la tranche 3. **À lancer avant de livrer une
+les vingt fonctions des tranches 3 et 3b. **À lancer avant de livrer une
 migration.**
 
 Les deux étapes ne font pas double emploi : `create function` ne vérifie que la
@@ -92,8 +92,7 @@ supabase/                     # SQL à exécuter sur le projet Supabase
 ```
 
 Features existantes : `auth`, `profile`, `home`, `groups`, `calendar`,
-`contacts`, `notifications`, `tasks` (sans écran propre, exposée dans `home` et
-`groups`), `create`.
+`contacts`, `notifications`, `tasks`, `create`.
 
 `lib/l10n/` porte les fichiers ARB et la classe `AppTexts` générée.
 
@@ -507,8 +506,9 @@ fonction. Cela vaut aussi pour toute future table de ce genre.
 **`supabase/correctif_creation_groupe.sql`**,
 **`supabase/notifications.sql`**,
 **`supabase/correctif_notifications.sql`**,
-**`supabase/correctif_invitations_type.sql`**, puis
-**`supabase/tranche3_taches_et_evenements.sql`**, dans cet ordre, dans
+**`supabase/correctif_invitations_type.sql`**,
+**`supabase/tranche3_taches_et_evenements.sql`**, puis
+**`supabase/tranche3b_details_et_administration.sql`**, dans cet ordre, dans
 l'éditeur SQL du projet. Idempotentes.
 
 Trois entrées de `supabase/` ne sont **pas** des migrations : elles n'écrivent
@@ -653,6 +653,31 @@ rien ne pouvait le voir — voir ci-dessous.
 y compris pour un littéral seul, pour que la règle n'ait pas d'exception à
 retenir.
 
+### Une écriture PostgREST qui ne touche aucune ligne répond 200
+
+Promouvoir un membre et le retirer ne fonctionnaient pas, sans jamais le dire.
+L'application écrivait directement dans `group_members` :
+
+```dart
+await _client.from('group_members')
+    .update({'role': 'admin'}).eq('group_id', id).eq('user_id', membre);
+```
+
+Si les politiques UPDATE et DELETE ne couvrent pas le cas d'un admin agissant
+sur autrui, la requête ne touche **aucune ligne** — et PostgREST répond `200`
+sans erreur. Aucune exception n'était levée, l'écran affichait « X est
+désormais administrateur », et rien n'avait changé. **Un échec silencieux est
+pire qu'une erreur** : il se diagnostique mal, et longtemps.
+
+D'où `promouvoir_membre`, `retrograder_membre` et `retirer_membre` en
+`security definer`, qui renvoient un **mot d'état** — `promu`, `dernier_admin`,
+`non_admin`… — traduit par `MemberOutcome`. C'est lui, et non l'absence
+d'exception, qui décide du message affiché.
+
+**Règle** : une écriture dont l'effet dépend d'une politique RLS ne se juge pas
+à l'absence d'erreur. Soit elle passe par une fonction qui dit ce qu'elle a
+fait, soit elle relit ce qu'elle vient d'écrire.
+
 ### Créer une fonction ne prouve pas qu'elle s'exécute
 
 `create function` ne contrôle que la **syntaxe** du corps d'une fonction
@@ -663,9 +688,10 @@ les quatre `case` fautifs ci-dessus.
 
 D'où `supabase/verification/fumee.sql`, lancé par `rejouer.sh` après les sept
 fichiers : il pose un décor minimal — deux comptes, un groupe, deux adhésions —
-puis **appelle réellement les quatorze fonctions** de la tranche 3 sous le rôle
-`authenticated`, avec des `assert` sur ce qu'elles renvoient, et annule tout
-par un `rollback`. C'est lui qui a trouvé le défaut, et lui seul le pouvait.
+puis **appelle réellement les vingt fonctions** des tranches 3 et 3b sous le
+rôle `authenticated`, avec des `assert` sur ce qu'elles renvoient, et annule
+tout par un `rollback`. C'est lui qui a trouvé le défaut, et lui seul le
+pouvait.
 
 Il ne couvre pas encore les fonctions des tranches précédentes, éprouvées par
 l'usage en production. Les y étendre est la suite naturelle.
@@ -873,10 +899,11 @@ sûr d'éprouver son caractère contextuel.
   contacts, de notifications et d'invitation portent encore leurs chaînes en
   ligne : elles restent à déplacer, sans changement de code autre que
   l'appel à `AppTexts.of(context)`.
-- **Tâches et événements n'ont pas encore d'écran dédié.** Le SQL et la couche
-  de données couvrent l'acceptation d'un assigné, la liste de courses cochable,
-  les réponses Oui / Peut-être / Non, le rappel et la récurrence ; l'interface
-  se limite pour l'instant à la création, à la case à cocher et à l'affichage.
+- Tâches et événements ont leur écran de détail (`/taches/:id`,
+  `/evenements/:id`), leur formulaire en feuille et leur liste (`/taches`).
+  Restent hors périmètre : les notifications système, et la modification d'une
+  seule occurrence d'un élément récurrent — la `rrule` vaut pour toute la
+  série.
 - Six prérequis côté projet Supabase, non vérifiables depuis le code :
   exécuter `supabase/email_pour_pseudo.sql` pour la connexion par pseudo,
   `supabase/tranche2_groupes_et_invitations.sql` pour les groupes et les
@@ -885,8 +912,10 @@ sûr d'éprouver son caractère contextuel.
   `supabase/correctif_notifications.sql` pour les notifications,
   `supabase/correctif_invitations_type.sql` pour l'invitation nominative,
   `supabase/tranche3_taches_et_evenements.sql` pour les tâches et les
-  événements, et faire émettre `{{ .Token }}` au modèle d'e-mail de
-  confirmation pour le code à 6 chiffres.
+  événements, `supabase/tranche3b_details_et_administration.sql` pour la
+  modification, l'auto-assignation et l'administration des membres, et faire
+  émettre `{{ .Token }}` au modèle d'e-mail de confirmation pour le code à
+  6 chiffres.
 - **Aucun fichier de `supabase/` n'a jamais été exécuté contre la base réelle
   depuis ce dépôt** : la CI ne compile que le Flutter, et le seul contrôle
   disponible ici est `supabase/verification/rejouer.sh`, sur schéma factice. Il
@@ -908,9 +937,13 @@ sûr d'éprouver son caractère contextuel.
   choix du groupe — ou « Personnel » — et de la date. Le choix « Groupe »
   redirige vers l'écran de création dédié. Ouvert depuis un groupe, il arrive
   pré-rempli par l'URL (`?type=…&groupe=…`).
-- Le choix nominatif des participants d'un événement et des assignés d'une
-  tâche n'a pas d'interface : la valeur par défaut s'applique — tous les
-  membres pour un événement, l'auteur pour une tâche.
+- La récurrence se choisit dans une liste fermée (jamais, quotidienne,
+  hebdomadaire, quinzaine, mensuelle, annuelle). Une `rrule` écrite ailleurs et
+  non reconnue s'affiche « Jamais » mais **n'est pas effacée** tant que le
+  sélecteur n'est pas touché.
+- Le rappel est enregistré, mais **rien ne l'envoie encore** : `reminder_at` et
+  `reminder_minutes` sont stockés, la notification système n'est pas au
+  périmètre.
 - Le mode sombre n'est pas au périmètre : `themeMode` est figé sur
   `ThemeMode.light`.
 - `google_fonts` télécharge Inter au premier lancement. Pour un fonctionnement

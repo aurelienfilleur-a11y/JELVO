@@ -44,6 +44,7 @@ readonly FICHIERS=(
   correctif_notifications.sql
   correctif_invitations_type.sql
   tranche3_taches_et_evenements.sql
+  tranche3b_details_et_administration.sql
 )
 
 arreter() { pg_ctl -D "$CLUSTER" stop -m immediate >/dev/null 2>&1 || true

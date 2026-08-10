@@ -25,6 +25,23 @@ abstract interface class TaskRepository {
     List<String>? items,
   });
 
+  /// Remplace **tous** les champs modifiables : l'écran de détail envoie
+  /// l'état complet du formulaire. Une sémantique « ne change que ce qui est
+  /// fourni » interdirait de vider une échéance.
+  Future<Task> updateTask({
+    required String taskId,
+    required String title,
+    String? description,
+    DateTime? dueAt,
+    TaskPriority priority,
+    DateTime? reminderAt,
+    String? rrule,
+  });
+
+  /// Se prendre ou se retirer une tâche libre. Renvoie le mot d'état de
+  /// `s_attribuer_tache` : `pris`, `lache`, `deja_pris`, `deja_assignee`…
+  Future<String> claim({required String taskId, required bool take});
+
   /// L'assigné accepte ou refuse.
   Future<void> respond({
     required String taskId,
@@ -104,6 +121,54 @@ class SupabaseTaskRepository implements TaskRepository {
         );
       }
       return Task.fromRow(rows.first);
+    } catch (error) {
+      throw AuthFailure.from(error);
+    }
+  }
+
+  @override
+  Future<Task> updateTask({
+    required String taskId,
+    required String title,
+    String? description,
+    DateTime? dueAt,
+    TaskPriority priority = TaskPriority.medium,
+    DateTime? reminderAt,
+    String? rrule,
+  }) async {
+    try {
+      final Object? result = await _client.rpc<Object?>(
+        'modifier_tache',
+        params: <String, dynamic>{
+          'p_task_id': taskId,
+          'p_title': title,
+          'p_description': description,
+          'p_due_at': dueAt?.toUtc().toIso8601String(),
+          'p_priority': priority.dbValue,
+          'p_reminder_at': reminderAt?.toUtc().toIso8601String(),
+          'p_rrule': rrule,
+        },
+      );
+      final List<Map<String, dynamic>> rows = _rows(result);
+      if (rows.isEmpty) {
+        throw const AuthFailure(
+          'La tâche n’a pas pu être modifiée. Réessayez dans un instant.',
+        );
+      }
+      return Task.fromRow(rows.first);
+    } catch (error) {
+      throw AuthFailure.from(error);
+    }
+  }
+
+  @override
+  Future<String> claim({required String taskId, required bool take}) async {
+    try {
+      final Object? result = await _client.rpc<Object?>(
+        's_attribuer_tache',
+        params: <String, dynamic>{'p_task_id': taskId, 'p_prendre': take},
+      );
+      return (result as String?) ?? 'inconnu';
     } catch (error) {
       throw AuthFailure.from(error);
     }

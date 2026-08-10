@@ -88,6 +88,61 @@ enum LeaveOutcome {
   };
 }
 
+/// Résultat d'une action d'administration sur un membre.
+///
+/// Les fonctions SQL renvoient un mot d'état plutôt que `void` : l'écran peut
+/// alors dire ce qui s'est réellement passé. C'est la leçon de l'écriture
+/// directe dans `group_members`, qui répondait 200 sans rien changer.
+enum MemberOutcome {
+  promu,
+  retrograde,
+  retire,
+  dejaAdmin,
+  dernierAdmin,
+  nonAdmin,
+  nonAdminCible,
+  nonMembre,
+  soiMeme,
+  inconnu;
+
+  static MemberOutcome fromDb(String? value) => switch (value) {
+    'promu' => MemberOutcome.promu,
+    'retrograde' => MemberOutcome.retrograde,
+    'retire' => MemberOutcome.retire,
+    'deja_admin' => MemberOutcome.dejaAdmin,
+    'dernier_admin' => MemberOutcome.dernierAdmin,
+    'non_admin' => MemberOutcome.nonAdmin,
+    'non_admin_cible' => MemberOutcome.nonAdminCible,
+    'non_membre' => MemberOutcome.nonMembre,
+    'soi_meme' => MemberOutcome.soiMeme,
+    _ => MemberOutcome.inconnu,
+  };
+
+  bool get isSuccess =>
+      this == MemberOutcome.promu ||
+      this == MemberOutcome.retrograde ||
+      this == MemberOutcome.retire;
+
+  /// [nom] est le prénom ou le nom affiché de la personne visée.
+  String message(String nom) => switch (this) {
+    MemberOutcome.promu => '$nom est désormais administrateur.',
+    MemberOutcome.retrograde => '$nom n’est plus administrateur.',
+    MemberOutcome.retire => '$nom a été retiré du groupe.',
+    MemberOutcome.dejaAdmin => '$nom est déjà administrateur.',
+    MemberOutcome.dernierAdmin =>
+      'Un groupe doit garder au moins un administrateur. Nommez quelqu’un '
+          'd’autre avant.',
+    MemberOutcome.nonAdmin =>
+      'Seul un administrateur du groupe peut faire cela.',
+    MemberOutcome.nonAdminCible => '$nom n’est pas administrateur.',
+    MemberOutcome.nonMembre => '$nom ne fait plus partie du groupe.',
+    MemberOutcome.soiMeme =>
+      'Pour partir vous-même, utilisez « Quitter le groupe ».',
+    MemberOutcome.inconnu =>
+      'L’action n’a pas abouti. Réessayez dans un instant.',
+  };
+}
+
 /// Aperçu public d'un groupe, affiché avant d'accepter une invitation.
 @immutable
 class GroupInvitePreview {

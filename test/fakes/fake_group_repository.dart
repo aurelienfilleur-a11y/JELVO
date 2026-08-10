@@ -39,6 +39,7 @@ class FakeGroupRepository implements GroupRepository {
   String? lastLeftGroupId;
   String? lastDeletedGroupId;
   String? lastPromotedUserId;
+  String? lastDemotedUserId;
   String? lastRemovedUserId;
   String? lastInvitedUserId;
   String? lastCreatedName;
@@ -135,20 +136,31 @@ class FakeGroupRepository implements GroupRepository {
   }
 
   @override
-  Future<void> removeMember({
+  Future<String> removeMember({
     required String groupId,
     required String userId,
   }) async {
     lastRemovedUserId = userId;
     _members.removeWhere((GroupMember m) => m.userId == userId);
+    return 'retire';
   }
 
   @override
-  Future<void> promoteToAdmin({
+  Future<String> promoteToAdmin({
     required String groupId,
     required String userId,
   }) async {
     lastPromotedUserId = userId;
+    return 'promu';
+  }
+
+  @override
+  Future<String> demoteToMember({
+    required String groupId,
+    required String userId,
+  }) async {
+    lastDemotedUserId = userId;
+    return 'retrograde';
   }
 
   @override

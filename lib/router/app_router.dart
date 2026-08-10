@@ -11,6 +11,7 @@ import '../features/auth/screens/signup_credentials_screen.dart';
 import '../features/auth/screens/signup_identity_screen.dart';
 import '../features/auth/screens/verify_email_screen.dart';
 import '../features/calendar/screens/calendar_screen.dart';
+import '../features/calendar/screens/event_detail_screen.dart';
 import '../features/contacts/screens/add_contact_screen.dart';
 import '../features/contacts/screens/contacts_screen.dart';
 import '../features/contacts/screens/my_qr_code_screen.dart';
@@ -26,6 +27,8 @@ import '../features/home/screens/home_screen.dart';
 import '../features/notifications/screens/notifications_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
 import '../features/profile/screens/settings_screen.dart';
+import '../features/tasks/screens/task_detail_screen.dart';
+import '../features/tasks/screens/tasks_screen.dart';
 import 'app_routes.dart';
 import 'app_shell.dart';
 
@@ -177,6 +180,32 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
             kind: CreationKind.fromParam(parametres[AppRoutes.createKindParam]),
           );
         },
+      ),
+
+      // Détails, empilés sur le navigateur racine : ils s'ouvrent depuis
+      // n'importe quel onglet et depuis les notifications.
+      GoRoute(
+        path: AppRoutes.tasksPath,
+        name: AppRoutes.tasks,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (BuildContext context, GoRouterState state) =>
+            const TasksScreen(),
+        routes: <RouteBase>[
+          GoRoute(
+            path: ':id',
+            name: AppRoutes.taskDetail,
+            parentNavigatorKey: _rootNavigatorKey,
+            builder: (BuildContext context, GoRouterState state) =>
+                TaskDetailScreen(taskId: state.pathParameters['id'] ?? ''),
+          ),
+        ],
+      ),
+      GoRoute(
+        path: AppRoutes.eventDetailPath,
+        name: AppRoutes.eventDetail,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (BuildContext context, GoRouterState state) =>
+            EventDetailScreen(eventId: state.pathParameters['id'] ?? ''),
       ),
 
       GoRoute(

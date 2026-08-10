@@ -29,6 +29,20 @@ abstract interface class EventRepository {
     List<String>? participants,
   });
 
+  /// Remplace tous les champs modifiables. Réservé au propriétaire et aux
+  /// admins du groupe : déplacer une date engage tous les participants.
+  Future<CalendarEvent> updateEvent({
+    required String eventId,
+    required String title,
+    required DateTime startsAt,
+    DateTime? endsAt,
+    String? description,
+    String? location,
+    String? rrule,
+    String? imageUrl,
+    int? reminderMinutes,
+  });
+
   Future<void> respond({
     required String eventId,
     required EventResponse response,
@@ -99,6 +113,45 @@ class SupabaseEventRepository implements EventRepository {
       if (rows.isEmpty) {
         throw const AuthFailure(
           'L’événement n’a pas pu être créé. Réessayez dans un instant.',
+        );
+      }
+      return CalendarEvent.fromRow(rows.first);
+    } catch (error) {
+      throw AuthFailure.from(error);
+    }
+  }
+
+  @override
+  Future<CalendarEvent> updateEvent({
+    required String eventId,
+    required String title,
+    required DateTime startsAt,
+    DateTime? endsAt,
+    String? description,
+    String? location,
+    String? rrule,
+    String? imageUrl,
+    int? reminderMinutes,
+  }) async {
+    try {
+      final Object? result = await _client.rpc<Object?>(
+        'modifier_evenement',
+        params: <String, dynamic>{
+          'p_event_id': eventId,
+          'p_title': title,
+          'p_starts_at': startsAt.toUtc().toIso8601String(),
+          'p_ends_at': endsAt?.toUtc().toIso8601String(),
+          'p_description': description,
+          'p_location': location,
+          'p_rrule': rrule,
+          'p_image_url': imageUrl,
+          'p_reminder_minutes': reminderMinutes,
+        },
+      );
+      final List<Map<String, dynamic>> rows = _rows(result);
+      if (rows.isEmpty) {
+        throw const AuthFailure(
+          'L’événement n’a pas pu être modifié. Réessayez dans un instant.',
         );
       }
       return CalendarEvent.fromRow(rows.first);

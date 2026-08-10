@@ -41,9 +41,27 @@ abstract interface class GroupRepository {
   /// Suppression douce : la ligne reste, `deleted_at` est renseigné.
   Future<void> deleteGroup(String groupId);
 
-  Future<void> removeMember({required String groupId, required String userId});
+  /// Administration des membres.
+  ///
+  /// Les trois passent par des fonctions SQL et renvoient un **mot d'état** —
+  /// `retire`, `promu`, `dernier_admin`, `non_admin`… — et non `void`.
+  ///
+  /// L'écriture directe dans `group_members` par PostgREST ne convenait pas :
+  /// quand les politiques ne couvrent pas le cas, la requête ne touche aucune
+  /// ligne et le serveur répond **200 sans erreur**. L'écran annonçait donc une
+  /// promotion qui n'avait pas eu lieu. Voir
+  /// `supabase/tranche3b_details_et_administration.sql`.
+  Future<String> removeMember({
+    required String groupId,
+    required String userId,
+  });
 
-  Future<void> promoteToAdmin({
+  Future<String> promoteToAdmin({
+    required String groupId,
+    required String userId,
+  });
+
+  Future<String> demoteToMember({
     required String groupId,
     required String userId,
   });
@@ -330,32 +348,34 @@ class SupabaseGroupRepository implements GroupRepository {
   }
 
   @override
-  Future<void> removeMember({
+  Future<String> removeMember({
     required String groupId,
     required String userId,
-  }) async {
-    try {
-      await _client
-          .from('group_members')
-          .delete()
-          .eq('group_id', groupId)
-          .eq('user_id', userId);
-    } catch (error) {
-      throw AuthFailure.from(error);
-    }
-  }
+  }) => _administrer('retirer_membre', groupId: groupId, userId: userId);
 
   @override
-  Future<void> promoteToAdmin({
+  Future<String> promoteToAdmin({
+    required String groupId,
+    required String userId,
+  }) => _administrer('promouvoir_membre', groupId: groupId, userId: userId);
+
+  @override
+  Future<String> demoteToMember({
+    required String groupId,
+    required String userId,
+  }) => _administrer('retrograder_membre', groupId: groupId, userId: userId);
+
+  Future<String> _administrer(
+    String fonction, {
     required String groupId,
     required String userId,
   }) async {
     try {
-      await _client
-          .from('group_members')
-          .update(<String, dynamic>{'role': GroupRole.admin.dbValue})
-          .eq('group_id', groupId)
-          .eq('user_id', userId);
+      final Object? result = await _client.rpc<Object?>(
+        fonction,
+        params: <String, dynamic>{'p_group_id': groupId, 'p_user_id': userId},
+      );
+      return (result as String?) ?? 'inconnu';
     } catch (error) {
       throw AuthFailure.from(error);
     }

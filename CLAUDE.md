@@ -15,21 +15,71 @@ flutter analyze                  # analyse statique — doit rester vide
 dart format .                    # formatage — vérifié en CI
 flutter build web --release --base-href /jelvo/
 
-supabase/verification/rejouer.sh # compile le SQL — voir plus bas
+supabase/verification/rejouer.sh # compile et appelle le SQL — voir plus bas
+supabase/verification/appliquer.sh --essai   # ce qui serait appliqué en base
 ```
 
-La CI (`.github/workflows/deploy-web.yml`) exécute `dart format
---set-exit-if-changed`, `flutter analyze`, `flutter test` puis `flutter build
-web`. Ces quatre commandes doivent passer avant tout push sur `main`.
+Deux workflows tournent sur `main` :
+
+| Workflow | Déclencheur | Rôle |
+| --- | --- | --- |
+| `deploy-web.yml` | push et pull request | format, analyse, tests, build, publication |
+| `migrations-supabase.yml` | push sur `main` touchant `supabase/` | applique les migrations, relève le schéma |
+
+`deploy-web.yml` exécute `dart format --set-exit-if-changed`, `flutter
+analyze`, `flutter test` puis `flutter build web`. Ces quatre commandes doivent
+passer avant tout push sur `main`.
+
+### Les migrations s'appliquent toutes seules
+
+`supabase/migrations.txt` liste les fichiers à appliquer, **dans l'ordre**.
+C'est la source unique : `appliquer.sh` (base réelle) et `rejouer.sh` (base
+jetable) la lisent tous les deux, pour qu'aucun ordre ne puisse diverger de
+l'autre.
+
+À chaque push sur `main`, `migrations-supabase.yml` applique ce qui doit
+l'être, puis recommite `supabase/schema_actuel.sql`. Il n'y a plus rien à
+coller dans l'éditeur SQL du projet.
+
+Trois points à connaître :
+
+- **Un fichier est rejoué dès que son empreinte change**, pas seulement quand
+  il est nouveau. C'est ce qui permet de corriger un fichier sur place — la
+  tranche 3 l'a été deux fois — plutôt que d'empiler des correctifs. La
+  contrepartie est une contrainte réelle : **une migration doit rester
+  idempotente**. Un `insert` nu ou un `alter table add column` sans
+  `if not exists` casserait au second passage.
+- **Le job ne tourne jamais sur une pull request.** Le dépôt est public : un
+  job déclenché par une PR exécuterait du code proposé par n'importe qui, et
+  lui donner `SUPABASE_DB_URL` reviendrait à publier la chaîne de connexion.
+  Conséquence assumée : une migration n'est éprouvée contre la vraie base
+  qu'après fusion, et le filet d'avant fusion reste `verification/`.
+- La table de suivi vit dans le schéma `jelvo_migrations`, pas dans `public` :
+  `public` est exposé par PostgREST, et l'historique des migrations n'a rien à
+  faire dans l'API.
+
+### `supabase/schema_actuel.sql` fait foi
+
+Instantané du schéma **réel**, relevé après chaque application : types
+énumérés, tables et colonnes — les `not null` sans valeur par défaut y sont
+signalées —, contraintes, politiques RLS, fonctions, déclencheurs, privilèges.
+
+**Le lire avant d'écrire une insertion.** C'est ce fichier qui remplace la
+devinette, et la devinette a coûté `invitations.type` puis plusieurs jours de
+diagnostic. Il est généré par `verification/extraire_schema.sql`, par
+introspection du catalogue plutôt que par `pg_dump` — lequel refuse de tourner
+contre un serveur plus récent que lui, et la version de PostgreSQL de Supabase
+n'est pas celle du runner GitHub.
 
 ### Le SQL n'est vérifié par aucune de ces commandes
 
 **Une CI verte ne dit rien des fichiers de `supabase/`.** La chaîne Flutter ne
 lit pas ce dossier : les quatre commandes ci-dessus passeraient sur un fichier
-SQL vide comme sur un fichier qui ne se parse pas. Le SQL livré n'est donc, par
-construction, jamais exécuté par la CI, et il ne l'a jamais été contre la vraie
-base — c'est vous qui le collez dans l'éditeur SQL du projet, et c'est là qu'il
-échoue le cas échéant.
+SQL vide comme sur un fichier qui ne se parse pas.
+
+Le SQL est désormais appliqué automatiquement — mais **après** fusion, et par
+un autre workflow. Une migration fautive passe donc toujours la revue : elle
+n'échoue qu'une fois sur `main`. Le seul filet d'avant fusion reste celui-ci.
 
 Le coût s'est déjà payé deux fois : `invitations.type` oubliée (`23502`), puis
 `articles_de_tache` livrée avec un `position` non cité (`42601`), une erreur
@@ -54,6 +104,30 @@ cette même documentation — la connaissance faillible qui avait laissé passer
 d'énumération restent à vérifier contre le projet, et c'est l'objet de la
 PARTIE A de `supabase/diagnostic_taches_evenements.sql` (voir « Le schéma
 initial fait autorité »).
+
+### Fusion automatique des pull requests
+
+Les pull requests de l'assistant activent l'**auto-merge natif de GitHub** :
+elles se fusionnent seules dès que « Compiler la version web » passe au vert,
+sans intervention.
+
+Deux façons de garder la main :
+
+| Signal | Effet |
+| --- | --- |
+| étiquette **`arbitrage-requis`** sur la PR | l'auto-merge n'est pas activé, la PR attend |
+| PR ouverte en **brouillon** | GitHub n'auto-fusionne jamais un brouillon |
+
+L'étiquette est posée dès l'ouverture, jamais après coup : une PR déjà
+auto-fusionnée ne se rattrape pas. Sont concernées les livraisons dont le
+choix, et non l'exécution, mérite un avis — un arbitrage de produit, une
+migration destructrice, un changement de dépendance.
+
+L'auto-merge natif est préféré à un workflow maison pour une raison précise :
+une fusion faite par `GITHUB_TOKEN` **ne déclenche aucun workflow en aval**.
+Le déploiement des pages et l'application des migrations ne partiraient pas.
+
+Il exige que « Allow auto-merge » soit coché dans les réglages du dépôt.
 
 Version de Flutter attendue : **3.44.8** (Dart 3.12). Elle est épinglée dans
 `env.FLUTTER_VERSION` du workflow ; toute montée de version doit y être
@@ -500,16 +574,14 @@ groupe et l'adhésion admin dans la même transaction.
 créée *ensuite*, ne pas utiliser `insert(...).select()` — passer par une
 fonction. Cela vaut aussi pour toute future table de ce genre.
 
-### Migrations à exécuter
+### Migrations
 
-**`supabase/tranche2_groupes_et_invitations.sql`**,
-**`supabase/correctif_creation_groupe.sql`**,
-**`supabase/notifications.sql`**,
-**`supabase/correctif_notifications.sql`**,
-**`supabase/correctif_invitations_type.sql`**,
-**`supabase/tranche3_taches_et_evenements.sql`**, puis
-**`supabase/tranche3b_details_et_administration.sql`**, dans cet ordre, dans
-l'éditeur SQL du projet. Idempotentes.
+Elles s'appliquent **toutes seules** à chaque push sur `main` : voir « Les
+migrations s'appliquent toutes seules » en tête de document. L'ordre vit dans
+`supabase/migrations.txt`, et une nouvelle migration n'existe qu'une fois
+ajoutée à ce fichier — un `.sql` déposé dans `supabase/` sans y figurer ne
+sera jamais appliqué. C'est voulu : c'est ce qui tient les scripts de
+diagnostic à l'écart.
 
 Trois entrées de `supabase/` ne sont **pas** des migrations : elles n'écrivent
 rien et ne changent rien.
@@ -921,25 +993,16 @@ sûr d'éprouver son caractère contextuel.
   Restent hors périmètre : les notifications système, et la modification d'une
   seule occurrence d'un élément récurrent — la `rrule` vaut pour toute la
   série.
-- Six prérequis côté projet Supabase, non vérifiables depuis le code :
-  exécuter `supabase/email_pour_pseudo.sql` pour la connexion par pseudo,
-  `supabase/tranche2_groupes_et_invitations.sql` pour les groupes et les
-  invitations, `supabase/correctif_creation_groupe.sql` pour la création de
-  groupe, `supabase/notifications.sql` puis
-  `supabase/correctif_notifications.sql` pour les notifications,
-  `supabase/correctif_invitations_type.sql` pour l'invitation nominative,
-  `supabase/tranche3_taches_et_evenements.sql` pour les tâches et les
-  événements, `supabase/tranche3b_details_et_administration.sql` pour la
-  modification, l'auto-assignation et l'administration des membres, et faire
-  émettre `{{ .Token }}` au modèle d'e-mail de confirmation pour le code à
-  6 chiffres.
-- **Aucun fichier de `supabase/` n'a jamais été exécuté contre la base réelle
-  depuis ce dépôt** : la CI ne compile que le Flutter, et le seul contrôle
-  disponible ici est `supabase/verification/rejouer.sh`, sur schéma factice. Il
-  compile *et* appelle désormais les fonctions de la tranche 3, mais son décor
-  reste recopié de cette documentation : il ne peut rien dire des colonnes
-  obligatoires, contraintes et énumérations réelles. Un `flutter build` vert ne
-  dit toujours rien de la validité d'une migration.
+- **Un seul prérequis manuel subsiste côté projet Supabase** : faire émettre
+  `{{ .Token }}` au modèle d'e-mail de confirmation, pour le code à 6 chiffres.
+  Les migrations, elles, s'appliquent seules à chaque push sur `main`.
+- **Une migration n'est éprouvée contre la vraie base qu'après fusion.** Le
+  workflow qui l'applique ne peut pas tourner sur une pull request — le dépôt
+  est public et le secret y serait exposé. Avant fusion, il reste
+  `supabase/verification/rejouer.sh`, sur schéma factice : il compile *et*
+  appelle les fonctions, mais son décor est recopié de cette documentation, et
+  ne dit donc rien des colonnes réelles. C'est `supabase/schema_actuel.sql`,
+  relevé après coup, qui fait foi.
 - Le test de fumée ne couvre que la tranche 3. Les fonctions des tranches
   précédentes ne sont éprouvées que par l'usage en production.
 - Le scan de QR code demande une caméra : il est désactivé proprement sur le web

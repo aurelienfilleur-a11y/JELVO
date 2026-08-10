@@ -1,0 +1,16 @@
+-- Schéma réel de la base Jelvo — NE PAS MODIFIER À LA MAIN.
+--
+-- Ce fichier est **généré**. Il sera remplacé par l'instantané complet à la
+-- première exécution du workflow `migrations-supabase.yml`, c'est-à-dire au
+-- premier push sur `main` touchant `supabase/`.
+--
+-- Ce qu'il contiendra : types énumérés, tables et colonnes — avec les
+-- colonnes `not null` sans valeur par défaut signalées comme telles —,
+-- contraintes, politiques RLS, fonctions, déclencheurs et privilèges.
+--
+-- À quoi il sert : cesser de deviner. Avant d'écrire une insertion ou une
+-- fonction, on lit ce fichier. Le schéma initial n'a jamais été dans le
+-- dépôt, et son absence a coûté cher — `invitations.type`, colonne
+-- obligatoire jamais renseignée par `inviter_dans_groupe`, a valu un `23502`
+-- et plusieurs jours de diagnostic à l'aveugle. Un sondage de noms candidats
+-- ne voit que ce qu'on a pensé à chercher ; un instantané, lui, montre tout.

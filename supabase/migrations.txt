@@ -1,0 +1,33 @@
+# Ordre d'application des migrations Jelvo.
+#
+# **Source unique de vérité.** Ce fichier est lu par les deux chemins qui
+# exécutent du SQL, et par eux seuls :
+#
+#   - `supabase/verification/appliquer.sh` — application sur la base réelle,
+#     déclenchée par le workflow `migrations-supabase.yml` à chaque push sur
+#     `main` ;
+#   - `supabase/verification/rejouer.sh` — rejeu local sur base jetable.
+#
+# Deux listes auraient fini par diverger, et la divergence se serait vue le
+# jour où la base réelle aurait reçu les fichiers dans un ordre que le rejeu
+# local n'éprouve pas.
+#
+# Un fichier absent d'ici n'est **jamais** appliqué. C'est voulu pour les
+# scripts de diagnostic (`diagnostic_*.sql`), pour `verification/` et pour
+# `schema_actuel.sql`, qui est une sortie et non une entrée.
+#
+# Chaque fichier doit rester **idempotent** : il est rejoué dès que son
+# contenu change, et non appliqué une fois pour toutes. C'est ce qui a permis
+# de corriger `tranche3_taches_et_evenements.sql` deux fois sans écrire de
+# fichier de correctif.
+#
+# Les lignes vides et celles commençant par « # » sont ignorées.
+
+email_pour_pseudo.sql
+tranche2_groupes_et_invitations.sql
+correctif_creation_groupe.sql
+notifications.sql
+correctif_notifications.sql
+correctif_invitations_type.sql
+tranche3_taches_et_evenements.sql
+tranche3b_details_et_administration.sql

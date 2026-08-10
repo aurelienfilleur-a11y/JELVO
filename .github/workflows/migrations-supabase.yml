@@ -1,0 +1,104 @@
+name: Migrations Supabase
+
+# Applique les fichiers de `supabase/` à la base réelle, puis recommite
+# l'instantané du schéma.
+#
+#
+# POURQUOI JAMAIS SUR UNE PULL REQUEST
+#
+# Le dépôt est **public**. Un job déclenché par une pull request s'exécuterait
+# avec du code proposé par n'importe qui ; lui donner `SUPABASE_DB_URL`
+# reviendrait à publier la chaîne de connexion — il suffirait d'ajouter un
+# `echo` au workflow dans la PR. Le déclencheur est donc `push` sur `main`
+# uniquement, jamais `pull_request` ni `pull_request_target`.
+#
+# Conséquence assumée : une migration n'est éprouvée contre la vraie base
+# qu'après fusion. Le filet avant fusion reste `supabase/verification/`, qui
+# tourne sur une base jetable sans aucun secret.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/**'
+      - '.github/workflows/migrations-supabase.yml'
+  # Pour rattraper une base à la main, sans avoir à pousser un commit vide.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Deux applications simultanées se marcheraient dessus : la table de suivi
+# n'est consultée qu'au début de chaque fichier.
+concurrency:
+  group: migrations-supabase
+  cancel-in-progress: false
+
+jobs:
+  appliquer:
+    name: Appliquer et relever le schéma
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Installer psql au besoin
+        run: |
+          command -v psql >/dev/null && exit 0
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client
+
+      - name: Vérifier que le secret est en place
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::error::Le secret SUPABASE_DB_URL est absent." \
+                 "Réglages du dépôt → Secrets and variables → Actions."
+            exit 1
+          fi
+
+      # Le script n'applique que ce dont l'empreinte a changé, chaque fichier
+      # dans sa propre transaction. Voir son en-tête.
+      - name: Appliquer les migrations
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: supabase/verification/appliquer.sh
+
+      - name: Relever le schéma réel
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          psql "$SUPABASE_DB_URL" -At --no-psqlrc \
+            -f supabase/verification/extraire_schema.sql \
+            > supabase/schema_actuel.sql
+          echo "$(wc -l < supabase/schema_actuel.sql) lignes relevées."
+
+      # `[skip ci]` évite la boucle : ce commit touche `supabase/`, qui est
+      # justement le chemin qui déclenche ce workflow. Il n'emporte aucun code
+      # Dart, donc ne pas redéployer les pages est sans conséquence.
+      - name: Commiter l'instantané s'il a changé
+        run: |
+          if git diff --quiet -- supabase/schema_actuel.sql; then
+            echo "Schéma inchangé, rien à commiter."
+            exit 0
+          fi
+          git config user.name  'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add supabase/schema_actuel.sql
+          git commit -m 'Relève le schéma réel de la base [skip ci]'
+          git push origin HEAD:main
+
+      - name: Résumé
+        if: always()
+        run: |
+          {
+            echo '## Migrations Supabase'
+            echo
+            echo 'Les fichiers listés dans `supabase/migrations.txt` ont été'
+            echo 'confrontés à la table de suivi `jelvo_migrations.appliquees` :'
+            echo 'seuls ceux dont l’empreinte a changé sont rejoués.'
+            echo
+            echo 'L’instantané du schéma vit dans `supabase/schema_actuel.sql`.'
+          } >> "$GITHUB_STEP_SUMMARY"

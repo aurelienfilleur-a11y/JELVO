@@ -12,12 +12,36 @@ import '../../calendar/widgets/response_buttons.dart';
 import '../models/app_notification.dart';
 import '../providers/notification_providers.dart';
 
-/// Boîte de notifications : invitations de groupe et demandes de contact.
-class NotificationsScreen extends ConsumerWidget {
+/// Boîte de notifications : invitations de groupe, demandes de contact et
+/// invitations à un événement.
+///
+/// La liste est **relue à chaque ouverture**. `notificationsProvider` n'est pas
+/// `autoDispose` — il garde son état d'une visite à l'autre —, et plusieurs
+/// déclencheurs referment des notifications côté base sans que l'application en
+/// soit avertie : une invitation acceptée ailleurs, un événement auquel on a
+/// répondu depuis son écran de détail. Sans cette relecture, la boîte affiche
+/// ce qui était vrai la première fois qu'on l'a ouverte.
+class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<NotificationsScreen> createState() =>
+      _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Riverpod 3 interdit d'écrire dans un provider pendant un cycle de vie du
+    // widget : la relecture est reportée après la première image.
+    Future<void>.microtask(() {
+      if (mounted) ref.read(notificationsProvider.notifier).refresh();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final AsyncValue<List<AppNotification>> notificationsAsync = ref.watch(
       notificationsProvider,
     );
@@ -37,7 +61,7 @@ class NotificationsScreen extends ConsumerWidget {
         actions: <Widget>[
           if (unread > 0)
             TextButton(
-              onPressed: () => _markAllRead(context, ref),
+              onPressed: () => _markAllRead(context),
               child: const Text('Tout marquer comme lu'),
             ),
         ],
@@ -100,7 +124,7 @@ class NotificationsScreen extends ConsumerWidget {
         return _NotificationTile(
           notification: notification,
           now: now,
-          onTap: () => _open(context, ref, notification),
+          onTap: () => _open(context, notification),
           // Répondre à un événement se fait ici : c'est dans la notification
           // qu'on apprend l'invitation, et l'obligation d'ouvrir le détail
           // pour dire « oui » était un détour de trop.
@@ -127,7 +151,7 @@ class NotificationsScreen extends ConsumerWidget {
         ),
   );
 
-  Future<void> _markAllRead(BuildContext context, WidgetRef ref) async {
+  Future<void> _markAllRead(BuildContext context) async {
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     try {
       await ref.read(notificationActionsProvider).markAllRead();
@@ -138,11 +162,7 @@ class NotificationsScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _open(
-    BuildContext context,
-    WidgetRef ref,
-    AppNotification notification,
-  ) async {
+  Future<void> _open(BuildContext context, AppNotification notification) async {
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     final GoRouter router = GoRouter.of(context);
 

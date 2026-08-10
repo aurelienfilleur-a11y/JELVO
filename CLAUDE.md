@@ -775,6 +775,23 @@ Le `payload` porte de quoi afficher la ligne — nom du groupe, nom de
 l'émetteur, avatar, identifiants — pour que l'écran ne fasse qu'**une seule
 lecture**, sans jointure ni requête de complément.
 
+### Une action qui referme une notification doit relire la boîte
+
+Les déclencheurs ci-dessus referment des notifications **côté base**, sans que
+l'application en soit avertie : elle ne les relit qu'à la demande. Toute action
+cliente qui déclenche une de ces fermetures doit donc rafraîchir
+`notificationsProvider` — sinon la ligne reste à l'écran et la pastille
+allumée, alors que la base est à jour.
+
+C'est le cas d'`EventActions.respond` : répondre à un événement déclenche
+`clore_notification_evenement`. Le défaut s'était vu à l'usage — la
+notification survivait à la réponse.
+
+La boîte est en outre relue **à chaque ouverture** de `NotificationsScreen` :
+`notificationsProvider` n'est pas `autoDispose` et garde son état d'une visite
+à l'autre, si bien qu'une invitation acceptée ailleurs y serait restée
+indéfiniment.
+
 ### Répartition des pastilles
 
 `NotificationType.navIndex` associe chaque type à **un seul** onglet :

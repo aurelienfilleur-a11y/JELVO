@@ -4,6 +4,7 @@ import '../../../core/utils/date_formatting.dart';
 import '../../../data/data_providers.dart';
 import '../../../data/supabase_providers.dart';
 import '../../auth/providers/auth_providers.dart';
+import '../../notifications/providers/notification_providers.dart';
 import '../models/calendar_event.dart';
 import '../repository/event_repository.dart';
 
@@ -201,6 +202,12 @@ class EventActions {
   Future<void> respond(String eventId, EventResponse response) async {
     await _repository.respond(eventId: eventId, response: response);
     await _refresh();
+
+    // Répondre referme la notification d'invitation, côté base, par
+    // `clore_notification_evenement`. Sans cette relecture, la ligne resterait
+    // à l'écran et la pastille allumée : la boîte est relue à la demande, pas
+    // poussée. Un compteur doit refléter ce qui reste à faire.
+    await _ref.read(notificationsProvider.notifier).refresh();
   }
 
   Future<void> remove(String eventId) async {

@@ -35,17 +35,15 @@ readonly CLUSTER=$(mktemp -d)
 readonly VERIFICATION=$(cd "$(dirname "$0")" && pwd)
 readonly SUPABASE=$(dirname "$VERIFICATION")
 
-# Ordre d'exécution : chaque fichier suppose les précédents.
-readonly FICHIERS=(
-  email_pour_pseudo.sql
-  tranche2_groupes_et_invitations.sql
-  correctif_creation_groupe.sql
-  notifications.sql
-  correctif_notifications.sql
-  correctif_invitations_type.sql
-  tranche3_taches_et_evenements.sql
-  tranche3b_details_et_administration.sql
-)
+# Ordre d'exécution : `supabase/migrations.txt`, la même liste que celle
+# appliquée à la base réelle. Deux listes auraient fini par diverger.
+readonly MANIFESTE="$SUPABASE/migrations.txt"
+FICHIERS=()
+while IFS= read -r ligne; do
+  ligne="${ligne%%#*}"
+  ligne="$(echo "$ligne" | tr -d '[:space:]')"
+  [ -n "$ligne" ] && FICHIERS+=("$ligne")
+done < "$MANIFESTE"
 
 arreter() { pg_ctl -D "$CLUSTER" stop -m immediate >/dev/null 2>&1 || true
             rm -rf "$CLUSTER"; }

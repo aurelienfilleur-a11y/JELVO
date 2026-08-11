@@ -851,10 +851,31 @@ s'y ajoute pas : c'est tout l'objet d'une exception, et les cumuler donnerait
 une journée comptée deux fois. `slotsForDayProvider` applique cette règle une
 fois pour toutes ; `availableMinutesForDayProvider` s'y branche.
 
-`weekday` est un entier que le schéma initial ne documente pas. L'application
-retient la **convention ISO — 1 = lundi … 7 = dimanche**, la même que
-`DateTime.weekday`. Le seul endroit à changer si la base attendait
-`extract(dow)`, où dimanche vaut 0, est `AvailabilitySlot.weekday`.
+### `weekday` ne se compte pas pareil des deux côtés
+
+La base retient **`extract(dow)` — 0 = dimanche … 6 = samedi**, et le fait
+tenir : `availabilities_weekday_check : CHECK (weekday >= 0 AND weekday <= 6)`.
+Dart retient l'**ISO — 1 = lundi … 7 = dimanche** (`DateTime.weekday`).
+
+Les deux conventions **coïncident du lundi au samedi**. Seul le dimanche les
+sépare — et c'est exactement ce qui rend l'écart si facile à ne pas voir : six
+cas sur sept passent sans conversion, et le septième échoue en `23514`.
+
+L'application garde l'ISO en mémoire, pour que `slot.weekday == jour.weekday`
+se compare sans arrière-pensée, et convertit **aux deux frontières** :
+`AvailabilitySlot.jourBaseDepuisIso` à l'écriture, `jourIsoDepuisBase` à la
+lecture dans `fromRow`. Nulle part ailleurs.
+
+Le défaut avait été livré. Il n'a été vu qu'en relisant
+`supabase/schema_actuel.sql` **après** l'application de la migration — le
+décor de `verification/` ne portait alors aucune des contraintes `check` de
+la table, et laissait donc passer un 7. Les trois y sont désormais recopiées,
+et `fumee.sql` écrit un dimanche. Contrôle négatif fait : avec un 7, le rejeu
+échoue.
+
+**Règle** : quand `schema_actuel.sql` révèle une contrainte `check` sur une
+table qu'on écrit, la recopier dans `verification/schema_factice.sql`. Un
+décor plus permissif que la vraie base ne vérifie rien.
 
 | Fonction | Rôle |
 | --- | --- |
@@ -1081,6 +1102,9 @@ quand le compteur vaut zéro.
   par onglet, leur extinction, la liste et le marquage comme lu.
 - `test/tasks_events_test.dart` couvre les écrans de détail, l'assignation et
   l'administration des groupes.
+- `test/availability_weekday_test.dart` couvre la conversion ISO ↔
+  `extract(dow)`, sans widget : les six jours identiques, le dimanche qui ne
+  l'est pas, la réversibilité, et la relecture d'une ligne de la base.
 - `test/availability_calendar_test.dart` couvre la semaine d'accueil (sept
   jours, marqueurs, ouverture du calendrier à la date touchée), les quatre
   compteurs, l'agrégation d'un événement, d'une tâche et d'un créneau sur la

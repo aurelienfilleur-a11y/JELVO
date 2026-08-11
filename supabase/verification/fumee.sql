@@ -261,7 +261,14 @@ begin
     p_id => creneau, p_kind => 'recurring', p_weekday => 3,
     p_start => '10:00', p_end => '11:00', p_status => 'unavailable');
 
-  assert (select count(*) from public.mes_disponibilites()) = 2,
+  -- Le dimanche vaut **0** dans la base (`extract(dow)`), pas 7 : la
+  -- contrainte `availabilities_weekday_check` borne le jour à 0..6. Ce cas est
+  -- ici parce qu'il a échappé au décor, qui ne portait pas la contrainte.
+  perform public.definir_disponibilite(
+    p_kind => 'recurring', p_weekday => 0,
+    p_start => '15:00', p_end => '17:00', p_status => 'available');
+
+  assert (select count(*) from public.mes_disponibilites()) = 3,
          'mes_disponibilites';
 
   -- Les autres ne voient qu'un mot parmi trois, jamais un créneau.

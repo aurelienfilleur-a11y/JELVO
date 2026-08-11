@@ -81,7 +81,7 @@ class AvailabilitySlot {
       status: AvailabilityStatus.fromDb(row['status'] as String?),
       start: parseHeure(row['start_time'] as String?),
       end: parseHeure(row['end_time'] as String?),
-      weekday: row['weekday'] as int?,
+      weekday: jourIsoDepuisBase(row['weekday'] as int?),
       onDate: DateTime.tryParse((row['on_date'] as String?) ?? ''),
     );
   }
@@ -97,11 +97,19 @@ class AvailabilitySlot {
 
   /// Jour de la semaine d'un créneau récurrent, `null` pour une exception.
   ///
-  /// **Convention ISO : 1 = lundi … 7 = dimanche**, la même que
-  /// `DateTime.weekday` de Dart. Le schéma initial stocke un entier sans dire
-  /// lequel ; l'application est cohérente avec elle-même, et cette constante
-  /// est le seul endroit à changer si la base attendait `extract(dow)`, où
-  /// dimanche vaut 0.
+  /// **Côté Dart, convention ISO : 1 = lundi … 7 = dimanche**, la même que
+  /// `DateTime.weekday`, pour que `slot.weekday == jour.weekday` se compare
+  /// sans arrière-pensée.
+  ///
+  /// **Côté base, c'est `extract(dow)` : 0 = dimanche … 6 = samedi.** Ce n'est
+  /// pas un choix, c'est une contrainte du schéma initial —
+  /// `availabilities_weekday_check : CHECK (weekday >= 0 AND weekday <= 6)`.
+  /// Écrire 7 pour un dimanche échouerait en `23514`.
+  ///
+  /// Les deux conventions coïncident du lundi au samedi ; seul le dimanche les
+  /// sépare, ce qui rend le défaut d'autant plus facile à ne pas voir. La
+  /// conversion vit dans [jourBaseDepuisIso] et [jourIsoDepuisBase], et
+  /// nulle part ailleurs.
   final int? weekday;
 
   /// Date d'un créneau exceptionnel, `null` pour un récurrent.
@@ -118,6 +126,14 @@ class AvailabilitySlot {
   ];
 
   static String nomDuJour(int weekday) => nomsDeJour[(weekday - 1).clamp(0, 6)];
+
+  /// ISO (1 = lundi … 7 = dimanche) → `extract(dow)` (0 = dimanche … 6).
+  static int? jourBaseDepuisIso(int? iso) => iso == null ? null : iso % 7;
+
+  /// `extract(dow)` → ISO. Le dimanche, seul écart entre les deux, remonte de
+  /// 0 à 7 ; les autres jours sont identiques.
+  static int? jourIsoDepuisBase(int? dow) =>
+      dow == null ? null : (dow == 0 ? 7 : dow);
 
   /// « 09:00 » à partir de minutes depuis minuit.
   static String formaterHeure(int minutes) {

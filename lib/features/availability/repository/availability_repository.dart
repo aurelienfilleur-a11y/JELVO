@@ -73,7 +73,9 @@ class SupabaseAvailabilityRepository implements AvailabilityRepository {
           'p_status': status.dbValue,
           'p_start': AvailabilitySlot.formaterHeure(start),
           'p_end': AvailabilitySlot.formaterHeure(end),
-          'p_weekday': weekday,
+          // La base borne le jour à 0..6 (`extract(dow)`) : un dimanche écrit
+          // en ISO — 7 — casserait sur `availabilities_weekday_check`.
+          'p_weekday': AvailabilitySlot.jourBaseDepuisIso(weekday),
           // `date` et non `timestamptz` : envoyer un instant ferait glisser le
           // jour d'un fuseau à l'autre.
           'p_on_date': onDate == null

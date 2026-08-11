@@ -174,6 +174,9 @@ create table public.notifications (
 create type public.availability_status as enum ('available', 'unavailable');
 create type public.availability_kind   as enum ('recurring', 'exception');
 
+-- Les trois contraintes `check` sont recopiées de `schema_actuel.sql`, et non
+-- devinées. Celle sur `weekday` a coûté un aller-retour : la vraie base borne
+-- le jour à **0..6**, et le décor, qui l'ignorait, laissait passer un 7.
 create table public.availabilities (
   id         uuid primary key default gen_random_uuid(),
   user_id    uuid not null,
@@ -183,7 +186,13 @@ create table public.availabilities (
   end_time   time not null,
   status     public.availability_status not null default 'available',
   kind       public.availability_kind not null default 'recurring',
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  constraint availabilities_check check (end_time > start_time),
+  constraint availabilities_check1 check (
+    (kind = 'recurring' and weekday is not null and on_date is null)
+    or (kind = 'exception' and on_date is not null and weekday is null)
+  ),
+  constraint availabilities_weekday_check check (weekday >= 0 and weekday <= 6)
 );
 
 -- Réduite à sa signature : la vraie porte la règle de visibilité — contacts et

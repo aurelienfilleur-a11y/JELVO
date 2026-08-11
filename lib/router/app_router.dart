@@ -10,6 +10,7 @@ import '../features/auth/screens/reset_password_screen.dart';
 import '../features/auth/screens/signup_credentials_screen.dart';
 import '../features/auth/screens/signup_identity_screen.dart';
 import '../features/auth/screens/verify_email_screen.dart';
+import '../features/availability/screens/availability_screen.dart';
 import '../features/calendar/screens/calendar_screen.dart';
 import '../features/calendar/screens/event_detail_screen.dart';
 import '../features/contacts/screens/add_contact_screen.dart';
@@ -214,6 +215,13 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
         parentNavigatorKey: _rootNavigatorKey,
         builder: (BuildContext context, GoRouterState state) =>
             const ProfileScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.availabilityPath,
+        name: AppRoutes.availability,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (BuildContext context, GoRouterState state) =>
+            const AvailabilityScreen(),
       ),
       GoRoute(
         path: AppRoutes.settingsPath,

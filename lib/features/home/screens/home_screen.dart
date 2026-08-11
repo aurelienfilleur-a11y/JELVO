@@ -15,6 +15,7 @@ import '../../tasks/providers/task_providers.dart';
 import '../../tasks/widgets/task_tile.dart';
 import '../providers/home_providers.dart';
 import '../widgets/summary_banner.dart';
+import '../widgets/week_overview.dart';
 
 /// Écran d'accueil : résumé du jour, agenda, tâches urgentes et groupes actifs.
 class HomeScreen extends ConsumerWidget {
@@ -62,6 +63,27 @@ class HomeScreen extends ConsumerWidget {
               onEventsPressed: () => context.goNamed(AppRoutes.calendar),
               onTasksPressed: () => context.pushNamed(AppRoutes.tasks),
               onGroupsPressed: () => context.goNamed(AppRoutes.groups),
+            ),
+          ),
+        ),
+
+        // La semaine d'un coup d'œil, sous le bandeau : c'est la première
+        // chose qu'on veut voir en ouvrant l'application.
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.screenMargin,
+            AppSpacing.md,
+            AppSpacing.screenMargin,
+            0,
+          ),
+          sliver: SliverToBoxAdapter(
+            child: WeekOverview(
+              days: ref.watch(currentWeekProvider),
+              today: now,
+              onDaySelected: (DateTime jour) {
+                ref.read(selectedDayProvider.notifier).select(jour);
+                context.goNamed(AppRoutes.calendar);
+              },
             ),
           ),
         ),

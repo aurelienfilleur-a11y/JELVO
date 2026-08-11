@@ -84,6 +84,10 @@ abstract final class AppRoutes {
   static const String profile = 'profile';
   static const String profilePath = '/profil';
 
+  /// Saisie de ses disponibilités, ouverte depuis le profil.
+  static const String availability = 'availability';
+  static const String availabilityPath = '/disponibilites';
+
   static const String settings = 'settings';
   static const String settingsPath = '/parametres';
 

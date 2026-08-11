@@ -44,17 +44,24 @@ readonly VERIFICATION=$(cd "$(dirname "$0")" && pwd)
 readonly SUPABASE=$(dirname "$VERIFICATION")
 readonly MANIFESTE="$SUPABASE/migrations.txt"
 
+# shellcheck source=connexion.sh
+. "$VERIFICATION/connexion.sh"
+
 essai=0
 [ "${1:-}" = '--essai' ] && essai=1
 
-if [ -z "${SUPABASE_DB_URL:-}" ]; then
-  echo "SUPABASE_DB_URL n'est pas défini." >&2
-  exit 2
-fi
+# Épure les blancs de début et de fin, contrôle la forme, et pose le masque
+# GitHub sur la valeur nettoyée. Voir `connexion.sh` : un saut de ligne collé
+# depuis un téléphone donnait `FATAL: database "postgres\n" does not exist`,
+# message qui désigne la base plutôt que le presse-papiers.
+URL=$(normaliser_url_connexion "${SUPABASE_DB_URL:-}") || exit 2
+readonly URL
+
+echo "Connexion à $(masquer_mot_de_passe "$URL")"
 
 # `-q` tait les « CREATE FUNCTION » ; les `raise notice` des migrations, eux,
 # passent toujours — ce sont eux qui disent ce qui s'est passé.
-psql=(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -q --no-psqlrc)
+psql=(psql "$URL" -v ON_ERROR_STOP=1 -q --no-psqlrc)
 
 # La table de suivi vit dans son propre schéma : `public` est exposé par
 # PostgREST, et l'historique des migrations n'a rien à faire dans l'API.

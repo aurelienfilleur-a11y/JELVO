@@ -49,26 +49,30 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends postgresql-client
 
-      - name: Vérifier que le secret est en place
+      # Épure et contrôle une fois pour toutes, puis republie la valeur propre
+      # pour les étapes suivantes. Sans cela, l'extraction du schéma
+      # reprendrait le secret brut et retomberait sur le même défaut que
+      # l'application des migrations.
+      - name: Normaliser la chaîne de connexion
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
-          if [ -z "$SUPABASE_DB_URL" ]; then
-            echo "::error::Le secret SUPABASE_DB_URL est absent." \
-                 "Réglages du dépôt → Secrets and variables → Actions."
+          . supabase/verification/connexion.sh
+          if ! url=$(normaliser_url_connexion "$SUPABASE_DB_URL"); then
+            echo "::error::Chaîne de connexion inutilisable, voir ci-dessus."
             exit 1
           fi
+          # `add-mask` a déjà été posé par la fonction : écrire la valeur dans
+          # l'environnement du job ne l'expose donc pas dans les journaux.
+          echo "SUPABASE_DB_URL=$url" >> "$GITHUB_ENV"
+          echo "Connexion à $(masquer_mot_de_passe "$url")"
 
       # Le script n'applique que ce dont l'empreinte a changé, chaque fichier
       # dans sa propre transaction. Voir son en-tête.
       - name: Appliquer les migrations
-        env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: supabase/verification/appliquer.sh
 
       - name: Relever le schéma réel
-        env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           psql "$SUPABASE_DB_URL" -At --no-psqlrc \
             -f supabase/verification/extraire_schema.sql \

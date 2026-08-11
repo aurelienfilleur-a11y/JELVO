@@ -17,6 +17,7 @@ flutter build web --release --base-href /jelvo/
 
 supabase/verification/rejouer.sh # compile et appelle le SQL — voir plus bas
 supabase/verification/appliquer.sh --essai   # ce qui serait appliqué en base
+supabase/verification/essai_connexion.sh     # éprouve le nettoyage de l'URL
 ```
 
 Deux workflows tournent sur `main` :
@@ -57,6 +58,39 @@ Trois points à connaître :
 - La table de suivi vit dans le schéma `jelvo_migrations`, pas dans `public` :
   `public` est exposé par PostgREST, et l'historique des migrations n'a rien à
   faire dans l'API.
+
+#### La chaîne de connexion est épurée avant usage
+
+`verification/connexion.sh` retire les blancs de début et de fin du secret,
+contrôle qu'il commence par `postgresql://` — ou `postgres://`, synonyme
+accepté par libpq —, et pose un `::add-mask::` sur la valeur nettoyée.
+
+Ce n'est pas de la précaution abstraite : un secret collé depuis un téléphone
+emporte volontiers un saut de ligne final, invisible dans le champ de saisie
+et masqué dans les journaux. libpq le prend au pied de la lettre et répond
+
+```
+FATAL: database "postgres\n" does not exist
+```
+
+message qui désigne la base plutôt que le presse-papiers, et envoie chercher
+le défaut du mauvais côté.
+
+Deux points de méthode :
+
+- **Le masque doit être reposé.** Celui de GitHub porte sur la valeur
+  *enregistrée* du secret ; dès qu'on en retire le saut de ligne, la chaîne
+  manipulée n'est plus celle-là et n'est plus masquée d'office.
+- **Le nettoyage est signalé, jamais silencieux.** Le secret reste fautif au
+  passage suivant, et son propriétaire doit pouvoir le corriger à la source.
+
+Le fichier est **sourcé** par `appliquer.sh` et par le workflow, qui republie
+la valeur propre dans `GITHUB_ENV` pour l'extraction du schéma. Une seconde
+implémentation aurait fini par diverger — et c'est précisément l'étape
+d'extraction qui aurait continué d'échouer.
+
+`essai_connexion.sh` éprouve les douze cas sans base de données, y compris
+qu'une valeur refusée ne fuite pas dans les messages.
 
 ### `supabase/schema_actuel.sql` fait foi
 

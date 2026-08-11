@@ -6,6 +6,7 @@ import 'package:jelvo/core/core.dart';
 import 'package:jelvo/data/clock.dart';
 import 'package:jelvo/data/data_providers.dart';
 import 'package:jelvo/features/auth/providers/auth_providers.dart';
+import 'package:jelvo/features/availability/providers/availability_providers.dart';
 import 'package:jelvo/features/contacts/providers/contact_providers.dart';
 import 'package:jelvo/features/calendar/providers/calendar_providers.dart';
 import 'package:jelvo/features/groups/providers/group_providers.dart';
@@ -14,6 +15,7 @@ import 'package:jelvo/features/profile/providers/profile_providers.dart';
 import 'package:jelvo/main.dart';
 
 import 'fakes/fake_auth_repository.dart';
+import 'fakes/fake_availability_repository.dart';
 import 'fakes/fake_contact_repository.dart';
 import 'fakes/fake_event_repository.dart';
 import 'fakes/fake_group_repository.dart';
@@ -53,6 +55,9 @@ Future<FakeAuthRepository> _pumpApp(
         taskRepositoryProvider.overrideWithValue(FakeTaskRepository()),
         eventRepositoryProvider.overrideWithValue(FakeEventRepository()),
         contactRepositoryProvider.overrideWithValue(FakeContactRepository()),
+        availabilityRepositoryProvider.overrideWithValue(
+          FakeAvailabilityRepository(),
+        ),
       ],
       child: const JelvoApp(),
     ),

@@ -169,6 +169,28 @@ create table public.notifications (
   created_at timestamptz not null default now()
 );
 
+-- Disponibilités : table et fonction du schéma initial, relevées sur le
+-- projet par sondage de PostgREST (colonnes, types énumérés et signature).
+create type public.availability_status as enum ('available', 'unavailable');
+create type public.availability_kind   as enum ('recurring', 'exception');
+
+create table public.availabilities (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null,
+  weekday    integer,
+  on_date    date,
+  start_time time not null,
+  end_time   time not null,
+  status     public.availability_status not null default 'available',
+  kind       public.availability_kind not null default 'recurring',
+  created_at timestamptz not null default now()
+);
+
+-- Réduite à sa signature : la vraie porte la règle de visibilité — contacts et
+-- co-membres seulement —, que ce décor n'a pas à rejouer.
+create function public.get_availability_status(at_ts timestamptz, target uuid)
+returns text language sql stable as $$ select 'unknown'::text $$;
+
 -- Supabase accorde les privilèges de table à `authenticated` et laisse RLS
 -- filtrer. On reproduit le `grant` — sans lui, une lecture légitime échouerait
 -- en « permission denied » et ferait croire à un défaut du code. Les politiques

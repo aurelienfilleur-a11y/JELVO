@@ -63,6 +63,7 @@ declare
   article    uuid;
   articles   integer;
   resultat   text;
+  creneau    uuid;
 begin
   -- Tâches -----------------------------------------------------------------
   tache := (public.creer_tache(
@@ -244,7 +245,36 @@ begin
   assert (select count(*) from public.mes_taches()) = 1, 'tâche non retirée';
   assert (select count(*) from public.mon_agenda()) = 1, 'événement non retiré';
 
-  raise notice 'Fumée : les 20 fonctions des tranches 3 et 3b répondent.';
+  -- Disponibilités (tranche 4) ----------------------------------------------
+  creneau := (public.definir_disponibilite(
+    p_kind => 'recurring', p_weekday => 2,
+    p_start => '09:00', p_end => '12:00', p_status => 'available'
+  )).id;
+
+  perform public.definir_disponibilite(
+    p_kind => 'exception', p_on_date => (now() + interval '3 days')::date,
+    p_start => '14:00', p_end => '18:00', p_status => 'unavailable'
+  );
+
+  -- Modifier son propre créneau ne le duplique pas.
+  perform public.definir_disponibilite(
+    p_id => creneau, p_kind => 'recurring', p_weekday => 3,
+    p_start => '10:00', p_end => '11:00', p_status => 'unavailable');
+
+  assert (select count(*) from public.mes_disponibilites()) = 2,
+         'mes_disponibilites';
+
+  -- Les autres ne voient qu'un mot parmi trois, jamais un créneau.
+  assert (select statut from public.statuts_de_disponibilite(
+            array['33333333-3333-3333-3333-333333333333'::uuid], now())) 
+         in ('available', 'unavailable', 'unknown'),
+         'statuts_de_disponibilite';
+
+  assert public.supprimer_disponibilite(creneau), 'supprimer_disponibilite';
+  assert not public.supprimer_disponibilite(creneau),
+         'supprimer deux fois doit renvoyer faux';
+
+  raise notice 'Fumée : les 24 fonctions des tranches 3, 3b et 4 répondent.';
 end;
 $fumee$;
 

@@ -166,7 +166,7 @@ supabase/                     # SQL à exécuter sur le projet Supabase
 ```
 
 Features existantes : `auth`, `profile`, `home`, `groups`, `calendar`,
-`contacts`, `notifications`, `tasks`, `create`.
+`contacts`, `notifications`, `tasks`, `availability`, `create`.
 
 `lib/l10n/` porte les fichiers ARB et la classe `AppTexts` générée.
 
@@ -796,6 +796,123 @@ chaque `returns table` et les noms d'argument de chaque fonction à la liste
 
 ---
 
+## Disponibilités
+
+`availabilities` et `get_availability_status` **viennent du schéma initial** :
+`supabase/tranche4_disponibilites.sql` n'en crée ni n'en modifie aucun, il
+n'ajoute que quatre fonctions d'accès. Les colonnes ont été relevées sur le
+projet avant d'écrire une ligne, conformément à « Le schéma initial fait
+autorité ».
+
+| Table | Colonnes |
+| --- | --- |
+| `availabilities` | `id`, `user_id`, `weekday`, `on_date`, `start_time`, `end_time`, `status`, `kind`, `created_at` |
+
+Deux énumérations : `availability_status` (`available`, `unavailable`) et
+`availability_kind` (`recurring`, `exception`).
+
+Un créneau `recurring` s'appuie sur `weekday`, un créneau `exception` sur
+`on_date`. **Une exception remplace la règle hebdomadaire du jour**, elle ne
+s'y ajoute pas : c'est tout l'objet d'une exception, et les cumuler donnerait
+une journée comptée deux fois. `slotsForDayProvider` applique cette règle une
+fois pour toutes ; `availableMinutesForDayProvider` s'y branche.
+
+`weekday` est un entier que le schéma initial ne documente pas. L'application
+retient la **convention ISO — 1 = lundi … 7 = dimanche**, la même que
+`DateTime.weekday`. Le seul endroit à changer si la base attendait
+`extract(dow)`, où dimanche vaut 0, est `AvailabilitySlot.weekday`.
+
+| Fonction | Rôle |
+| --- | --- |
+| `mes_disponibilites` | ses propres créneaux, avec tout le détail — **aucun paramètre d'utilisateur** |
+| `definir_disponibilite` | crée ou modifie un créneau, conversions d'énumération explicites |
+| `supprimer_disponibilite` | renvoie un booléen : c'est lui qui dit si une ligne est partie |
+| `statuts_de_disponibilite` | statut de plusieurs personnes à un instant donné |
+
+### Les autres ne voient jamais qu'un mot parmi trois
+
+**Disponible, Indisponible, Inconnu.** Jamais un créneau, jamais une heure,
+jamais une raison. La visibilité est limitée aux contacts et aux co-membres de
+groupes.
+
+Cette règle est tenue **par la base**, pas par l'écran :
+`statuts_de_disponibilite` **délègue** à `get_availability_status` au lieu de
+relire `availabilities`. Réimplémenter la visibilité, ce serait se donner deux
+endroits où elle peut diverger — et l'un des deux finirait par être le plus
+permissif. La fonction du schéma initial reste seule juge.
+
+Côté Dart, la distinction est portée par deux types différents, et non par un
+drapeau : `AvailabilityStatus` (deux valeurs) est ce que l'on déclare pour
+soi, `PeerAvailability` (trois valeurs) est tout ce qu'on peut savoir d'autrui.
+Aucune conversion ne mène de l'un vers l'autre. `unknown` couvre aussi bien
+« rien de déclaré » que « vous n'avez pas à le savoir » : les distinguer serait
+déjà en dire trop.
+
+`PeerAvailabilityList` ne prend que des `PeerCandidate` — un identifiant, un
+nom — et sert donc aussi bien les membres d'un groupe que les contacts. Il
+apparaît dans `EventFormSheet` **une fois la date et l'heure choisies** : sans
+instant à interroger, la question n'a pas de réponse. Une panne de lecture y
+est signalée sans bloquer la création.
+
+L'écran de saisie s'ouvre depuis le **profil** — une disponibilité décrit la
+personne, pas le fonctionnement de l'application — et porte la règle en tête,
+là où l'on saisit plutôt que dans une page d'aide que personne n'ouvre.
+
+---
+
+## Calendrier personnel et semaine d'accueil
+
+### Le calendrier n'a pas de contenu propre
+
+Il **agrège** quatre sources : événements de tous les groupes, rendez-vous
+personnels, tâches datées et créneaux de disponibilité. `dayAgendaProvider` les
+réduit à un type commun, `AgendaEntry`, ce qui est la seule façon de les
+**trier ensemble par heure** — une liste par source ne le permettrait pas.
+
+L'agrégation vit dans le provider et non dans l'écran, parce que les quatre
+compteurs d'en-tête lisent la même chose : deux agrégations parallèles
+finiraient par afficher un nombre que la liste dessous contredit.
+
+| Compteur | Source |
+| --- | --- |
+| Événements | lignes de type événement du jour affiché |
+| Tâches | tâches datées du jour affiché |
+| Disponible | `availableMinutesForDayProvider`, en « 4 h 30 » |
+| Invitations | invitations de groupe + événements et tâches sans réponse |
+
+Un rendez-vous personnel n'a pas à être filtré côté application : `mon_agenda`
+ne le renvoie qu'à son propriétaire.
+
+**Le filtre par groupe compte vide pour « tout »**, et non pour « rien » :
+c'est l'état d'ouverture, et un calendrier vide par défaut n'aurait aucun sens.
+`CalendarGroupFilter.personal` est la clé des éléments sans groupe, qui n'ont
+pas d'identifiant à donner. Les créneaux de disponibilité **échappent au
+filtre** : ils décrivent le fond de la journée, pas un groupe, et les masquer
+en filtrant ferait disparaître ce fond.
+
+`DayTimeline` rend le tout : gouttière d'heures, rail continu, une carte par
+élément — et une bande discrète, sans carte ni ombre, pour les créneaux, qui
+ne sont pas des choses qui arrivent mais des choses qui se peuvent.
+
+### La semaine sur l'accueil
+
+`WeekOverview`, posé **sous le bandeau violet**, montre les sept jours de la
+semaine en cours : initiale, quantième, jour courant plein, et deux marqueurs
+par jour — violet pour les événements, vert pour les tâches. Toucher un jour
+règle `selectedDayProvider` puis ouvre le calendrier à cette date.
+
+Les marqueurs sont des pastilles et non des chiffres : à cette taille, un « 3 »
+et un « 8 » ne se distinguent pas d'un coup d'œil, alors qu'une pastille
+présente ou absente, si. Le compte exact est à une touche. Il est en revanche
+porté par l'étiquette `Semantics`, qu'une pastille ne dit pas à un lecteur
+d'écran.
+
+La hauteur des marqueurs est **réservée en permanence** : sans cela, les
+colonnes chargées et les colonnes vides n'auraient pas la même hauteur et la
+ligne des quantièmes danserait.
+
+---
+
 ## Internationalisation
 
 Les textes vivent dans `lib/l10n/app_fr.arb` et sont exposés par la classe
@@ -928,11 +1045,23 @@ quand le compteur vaut zéro.
   sur ce groupe, et les deux sections portent leur propre action « Ajouter ».
 - `test/notifications_test.dart` couvre la cloche, la répartition des pastilles
   par onglet, leur extinction, la liste et le marquage comme lu.
+- `test/tasks_events_test.dart` couvre les écrans de détail, l'assignation et
+  l'administration des groupes.
+- `test/availability_calendar_test.dart` couvre la semaine d'accueil (sept
+  jours, marqueurs, ouverture du calendrier à la date touchée), les quatre
+  compteurs, l'agrégation d'un événement, d'une tâche et d'un créneau sur la
+  même journée, le filtre par groupe — qui ne masque pas les créneaux —, et
+  l'écran de disponibilités ouvert depuis le profil.
 
-Six faux dépôts vivent dans `test/fakes/` : authentification, profil, groupes,
-contacts, notifications, tâches et agenda. Les quatre fichiers de test les
-surchargent tous — un provider oublié tombe sur `Supabase.instance`, absent en
-test.
+Huit faux dépôts vivent dans `test/fakes/` : authentification, profil, groupes,
+contacts, notifications, tâches, agenda et disponibilités. **Tous les fichiers
+de test les surchargent tous** — un provider oublié tombe sur
+`Supabase.instance`, absent en test.
+
+L'oubli ne se voit pas toujours : un `AsyncNotifier` qui échoue à la
+construction donne un `AsyncValue` en erreur, dont le `.value` nul retombe sur
+la liste vide de repli. L'écran s'affiche, vide, et le test passe pour de
+mauvaises raisons.
 
 Quatre points à respecter dans tout nouveau test de widget :
 
@@ -961,9 +1090,11 @@ Quatre points à respecter dans tout nouveau test de widget :
    ]
    ```
    Les deux faux dépôts vivent dans `test/fakes/fake_auth_repository.dart`.
-4. Surcharger les groupes, les contacts et les notifications, pour la même
-   raison : `groupRepositoryProvider`, `contactRepositoryProvider` et
-   `notificationRepositoryProvider`, avec les faux dépôts de `test/fakes/`.
+4. Surcharger tout le reste du domaine, pour la même raison :
+   `groupRepositoryProvider`, `contactRepositoryProvider`,
+   `notificationRepositoryProvider`, `taskRepositoryProvider`,
+   `eventRepositoryProvider` et `availabilityRepositoryProvider`, avec les faux
+   dépôts de `test/fakes/`. L'accueil et le calendrier les lisent tous les six.
 
 Le `+` central de la barre et le bouton « Nouveau groupe » portent la même
 icône : viser un bouton d'en-tête par `find.byTooltip`, pas par `find.byIcon`.
@@ -975,9 +1106,9 @@ sûr d'éprouver son caractère contextuel.
 ## État actuel et limites connues
 
 - **Tout le domaine est branché sur Supabase** : authentification, profil,
-  groupes, contacts, invitations, notifications, tâches et événements. Il n'y a
-  plus aucun jeu de données de démonstration dans `lib/` — les seuls restants
-  vivent dans `test/fakes/`.
+  groupes, contacts, invitations, notifications, tâches, événements et
+  disponibilités. Il n'y a plus aucun jeu de données de démonstration dans
+  `lib/` — les seuls restants vivent dans `test/fakes/`.
 - Les notifications sont **relues à la demande**, pas poussées : la liste se
   rafraîchit à l'ouverture de l'écran, au geste de traction et après chaque
   action. Le temps réel et les notifications système (`push_tokens`) ne sont pas
@@ -1003,8 +1134,16 @@ sûr d'éprouver son caractère contextuel.
   appelle les fonctions, mais son décor est recopié de cette documentation, et
   ne dit donc rien des colonnes réelles. C'est `supabase/schema_actuel.sql`,
   relevé après coup, qui fait foi.
-- Le test de fumée ne couvre que la tranche 3. Les fonctions des tranches
-  précédentes ne sont éprouvées que par l'usage en production.
+- Le test de fumée couvre les tranches 3, 3b et 4 — vingt-quatre fonctions
+  réellement appelées. Les fonctions des tranches 2 et antérieures ne sont
+  éprouvées que par l'usage en production.
+- **Les disponibilités n'ont pas encore de lecture en dehors de la création
+  d'événement.** Le statut d'un contact n'apparaît ni sur sa fiche, ni dans la
+  liste des contacts ; c'est la suite naturelle, et elle ne demande aucun SQL
+  de plus — `statuts_de_disponibilite` accepte déjà une liste.
+- Le calendrier agrège une **journée** à la fois. Une vue mois, et le rendu des
+  événements à cheval sur deux jours, restent hors périmètre : la timeline
+  place chaque élément à son heure de début.
 - Le scan de QR code demande une caméra : il est désactivé proprement sur le web
   et sur ordinateur, où l'écran renvoie vers la recherche par pseudo. Les cibles
   Android et iOS n'ont pas pu être compilées ici — `mobile_scanner` embarque du

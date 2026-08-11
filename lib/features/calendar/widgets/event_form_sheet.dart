@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/core.dart';
 import '../../../data/data_providers.dart';
 import '../../auth/models/auth_failure.dart';
+import '../../auth/providers/auth_providers.dart';
+import '../../availability/widgets/peer_availability_list.dart';
 import '../../groups/models/group_member.dart';
 import '../../groups/providers/group_providers.dart';
 import '../../tasks/widgets/assignee_picker.dart';
@@ -148,6 +150,8 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
             AppSpacing.gapLg,
             _blocHoraires(),
 
+            ..._blocDisponibilites(membres),
+
             AppSpacing.gapLg,
             AppTextField(
               label: 'Lieu',
@@ -254,6 +258,38 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
         ],
       ),
     );
+  }
+
+  /// Disponibilité des personnes conviées, une fois la date et l'heure
+  /// connues.
+  ///
+  /// Il n'apparaît qu'après le choix d'un horaire : sans instant à
+  /// interroger, la question n'a pas de réponse. Les candidats sont les
+  /// participants cochés, ou à défaut tous les membres actifs — c'est
+  /// exactement qui sera convié.
+  List<Widget> _blocDisponibilites(List<GroupMember> membres) {
+    final DateTime? debut = _instant(
+      _debut,
+      const TimeOfDay(hour: 12, minute: 0),
+    );
+    if (debut == null || _debut == null) return const <Widget>[];
+
+    final String? moi = ref.watch(currentUserIdProvider);
+    final DateTime maintenant = ref.watch(nowProvider);
+
+    final List<PeerCandidate> candidats = <PeerCandidate>[
+      for (final GroupMember membre in membres)
+        if (membre.isActive(maintenant) &&
+            membre.userId != moi &&
+            (_participants.isEmpty || _participants.contains(membre.userId)))
+          PeerCandidate(userId: membre.userId, name: membre.displayName),
+    ];
+    if (candidats.isEmpty) return const <Widget>[];
+
+    return <Widget>[
+      AppSpacing.gapLg,
+      PeerAvailabilityList(candidates: candidats, at: debut),
+    ];
   }
 
   Widget _blocPlusDOptions() {

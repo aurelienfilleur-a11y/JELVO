@@ -204,6 +204,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
         ),
 
+        AppSpacing.gapLg,
+        _LigneDisponibilites(
+          onTap: () => context.pushNamed(AppRoutes.availability),
+        ),
+
         AppSpacing.gapXl,
         PrimaryButton(
           label: 'Enregistrer',
@@ -267,6 +272,63 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+}
+
+/// Entrée vers la saisie des disponibilités.
+///
+/// Elle vit dans le profil et non dans les paramètres : une disponibilité
+/// décrit la personne, pas le fonctionnement de l'application. Le sous-titre
+/// rappelle la règle de confidentialité avant même d'ouvrir l'écran.
+class _LigneDisponibilites extends StatelessWidget {
+  const _LigneDisponibilites({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: EdgeInsets.zero,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: AppRadii.cardRadius,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Row(
+            children: <Widget>[
+              const Icon(
+                Icons.event_available_outlined,
+                size: 20,
+                color: AppColors.primary,
+              ),
+              AppSpacing.hGapMd,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text('Mes disponibilités', style: AppTypography.h3),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Les autres n’y voient qu’un mot : disponible, '
+                      'indisponible ou inconnu.',
+                      style: AppTypography.caption.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.textSecondary,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

@@ -15,11 +15,13 @@ import 'package:jelvo/features/groups/providers/group_providers.dart';
 import 'package:jelvo/features/tasks/providers/task_providers.dart';
 import 'package:jelvo/features/groups/screens/join_group_screen.dart';
 import 'package:jelvo/features/auth/providers/auth_providers.dart';
+import 'package:jelvo/features/availability/providers/availability_providers.dart';
 import 'package:jelvo/features/profile/providers/profile_providers.dart';
 import 'package:jelvo/main.dart';
 import 'package:jelvo/router/app_routes.dart';
 
 import 'fakes/fake_auth_repository.dart';
+import 'fakes/fake_availability_repository.dart';
 import 'fakes/fake_contact_repository.dart';
 import 'fakes/fake_event_repository.dart';
 import 'fakes/fake_group_repository.dart';
@@ -54,6 +56,9 @@ Future<({FakeGroupRepository groups, FakeContactRepository contacts})> _pumpApp(
         taskRepositoryProvider.overrideWithValue(FakeTaskRepository()),
         eventRepositoryProvider.overrideWithValue(FakeEventRepository()),
         contactRepositoryProvider.overrideWithValue(contacts),
+        availabilityRepositoryProvider.overrideWithValue(
+          FakeAvailabilityRepository(),
+        ),
       ],
       child: const JelvoApp(),
     ),
@@ -106,6 +111,9 @@ Future<void> _pumpJoinScreen(
         taskRepositoryProvider.overrideWithValue(FakeTaskRepository()),
         eventRepositoryProvider.overrideWithValue(FakeEventRepository()),
         contactRepositoryProvider.overrideWithValue(FakeContactRepository()),
+        availabilityRepositoryProvider.overrideWithValue(
+          FakeAvailabilityRepository(),
+        ),
       ],
       child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
     ),

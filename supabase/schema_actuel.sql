@@ -441,6 +441,7 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 -- est_admin_du_groupe(p_group_id uuid, p_user_id uuid) → boolean   [security definer, postgres]
 -- est_membre_du_groupe(p_group_id uuid, p_user_id uuid) → boolean   [security definer, postgres]
 -- get_availability_status(target uuid, at_ts timestamp with time zone) → text   [security definer, postgres]
+-- groupe_du_chemin(p_name text) → uuid   [security invoker, postgres]
 -- has_social_link(other uuid) → boolean   [security definer, postgres]
 -- inviter_dans_groupe(p_group_id uuid, p_invitee uuid) → text   [security definer, postgres]
 -- is_group_admin(gid uuid) → boolean   [security definer, postgres]

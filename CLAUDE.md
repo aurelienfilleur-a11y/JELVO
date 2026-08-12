@@ -979,6 +979,48 @@ erreur**. La migration l'ajoute pour les trois tables, de façon idempotente.
 RLS continue de s'appliquer : chacun ne reçoit que ce que `msg_select` lui
 laisse voir.
 
+### Les médias vivent dans un bucket privé
+
+`chat-media` **existait déjà et est privé**. Vérifié par sondage plutôt que
+supposé, `schema_actuel.sql` ne couvrant pas le schéma `storage` :
+
+| Requête | Bucket présent | Bucket absent |
+| --- | --- | --- |
+| `GET /object/<bucket>/sonde` | `NoSuchKey` | `NoSuchBucket` |
+| `GET /object/public/<bucket>/sonde` | `NoSuchBucket` s'il est **privé** | `NoSuchBucket` |
+
+**La convention de chemin porte l'autorisation** :
+
+```
+chat-media/<group_id>/<uuid>.<ext>
+```
+
+Le premier segment est le groupe, et c'est lui que lisent les quatre
+politiques de `storage.objects`. Sans cette convention, une politique devrait
+retrouver le groupe dans `messages` — or l'objet est déposé **avant** que le
+message existe.
+
+`public.groupe_du_chemin` extrait ce segment et renvoie `null` sur tout ce qui
+sort de la convention. C'est essentiel : **une exception levée dans une
+politique fait échouer la requête entière** au lieu de refuser l'accès.
+
+`messages.media_url` stocke **le chemin, jamais une URL**. Le bucket étant
+privé, la lecture passe par une URL signée qui expire ; stocker l'URL donnerait
+des liens morts en quelques heures. `signedMediaUrlProvider` la demande à la
+volée, et il est `autoDispose` pour la même raison.
+
+Les photos sont compressées à la sélection (`imageQuality`, `maxWidth`), comme
+les avatars. **Les vidéos ne sont pas ré-encodées** — aucun paquet de
+compression vidéo n'est dans les dépendances —, d'où une borne de poids
+contrôlée *à la sélection* : échouer après trente secondes de téléversement
+serait pire que refuser tout de suite.
+
+Le workflow des migrations peut ne pas avoir le privilège de créer des
+politiques sur `storage.objects`. Le fichier attrape alors
+`insufficient_privilege`, **avertit fort** et laisse le reste s'appliquer : un
+échec dur bloquerait toutes les migrations suivantes, alors que le défaut se
+répare en collant la PARTIE 2 dans l'éditeur SQL.
+
 ### La frappe passe par un broadcast, jamais par une table
 
 « X est en train d'écrire » vaut deux secondes. L'écrire en base laisserait une
@@ -1193,7 +1235,10 @@ quand le compteur vaut zéro.
   vide, l'arrivée d'un message par le flux temps réel, l'indicateur de frappe
   dans les deux sens, la bascule d'une réaction, et les trois issues d'une
   suppression — la sienne, celle d'un autre, et celle qui ne touche aucune
-  ligne.
+  ligne. Côté médias : le sélecteur qui ne propose jamais de document, la
+  vignette qui ne laisse pas fuiter le chemin de stockage, la vidéo annoncée
+  comme telle, le média qui disparaît à la suppression, et les bornes de poids
+  et d'extension, sans widget.
 
 Neuf faux dépôts vivent dans `test/fakes/` : authentification, profil, groupes,
 contacts, notifications, tâches, agenda, disponibilités et chat. **Tous les
@@ -1257,11 +1302,11 @@ sûr d'éprouver son caractère contextuel.
   groupes, contacts, invitations, notifications, tâches, événements,
   disponibilités et chat. Il n'y a plus aucun jeu de données de démonstration
   dans `lib/` — les seuls restants vivent dans `test/fakes/`.
-- **Le chat n'accepte encore que du texte.** Les photos et les vidéos sont
-  prévues par le schéma (`media_url`, `media_kind`) et par le dépôt, mais le
-  sélecteur et le bucket privé `chat-media` arrivent en tranche 5b. Le bouton
-  de pièce jointe n'est donc pas affiché : mieux vaut pas de bouton qu'un
-  bouton qui ne fait rien.
+- **Les vidéos s'envoient mais ne se lisent pas dans l'application.** Elles
+  sont sélectionnées, bornées en poids, téléversées, stockées et affichées
+  comme pièce jointe ; seule la **lecture en place** manque, car elle demande
+  `video_player`, c'est-à-dire une nouvelle dépendance — un arbitrage, pas une
+  exécution. Les photos, elles, sont complètes : vignette et plein écran.
 - **Le temps réel n'est pas éprouvé automatiquement.** Les tests simulent le
   flux par un `StreamController` ; qu'un événement arrive réellement dépend de
   la publication `supabase_realtime` et d'une socket, et ne se constate qu'à
@@ -1292,8 +1337,8 @@ sûr d'éprouver son caractère contextuel.
   appelle les fonctions, mais son décor est recopié de cette documentation, et
   ne dit donc rien des colonnes réelles. C'est `supabase/schema_actuel.sql`,
   relevé après coup, qui fait foi.
-- Le test de fumée couvre les tranches 3, 3b, 4 et 5a — vingt-neuf fonctions
-  réellement appelées. Les fonctions des tranches 2 et antérieures ne sont
+- Le test de fumée couvre les tranches 3, 3b, 4, 5a et 5b — trente fonctions
+  réellement appelées, contrôles négatifs de l'accès au bucket compris. Les fonctions des tranches 2 et antérieures ne sont
   éprouvées que par l'usage en production.
 - **Les disponibilités n'ont pas encore de lecture en dehors de la création
   d'événement.** Le statut d'un contact n'apparaît ni sur sa fiche, ni dans la

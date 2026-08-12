@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -239,6 +240,17 @@ final unreadForGroupProvider = Provider.family<int, String>(
       0,
 );
 
+/// URL signée d'un média, résolue à la demande.
+///
+/// `autoDispose` : une URL signée expire, et la garder en cache au-delà de
+/// l'affichage donnerait un lien mort. Sortir de la conversation et y revenir
+/// en redemande une fraîche.
+final signedMediaUrlProvider = FutureProvider.autoDispose
+    .family<String, String>(
+      (Ref ref, String path) =>
+          ref.watch(chatRepositoryProvider).signedMediaUrl(path),
+    );
+
 /// Écritures. Les widgets ne touchent jamais au dépôt.
 final Provider<ChatActions> chatActionsProvider = Provider<ChatActions>(
   ChatActions.new,
@@ -259,6 +271,25 @@ class ChatActions {
   }) => _ref
       .read(conversationProvider(groupId).notifier)
       .send(content: content, mediaUrl: mediaUrl, mediaKind: mediaKind);
+
+  /// Téléverse puis envoie. Les deux vont ensemble : un objet déposé sans
+  /// message qui le référence resterait dans le bucket sans que personne ne
+  /// puisse le voir ni le retrouver.
+  Future<void> sendMedia(
+    String groupId, {
+    required Uint8List bytes,
+    required String extension,
+    required MediaKind kind,
+    String? caption,
+  }) async {
+    final String chemin = await _repository.uploadMedia(
+      groupId: groupId,
+      bytes: bytes,
+      extension: extension,
+      kind: kind,
+    );
+    await send(groupId, content: caption, mediaUrl: chemin, mediaKind: kind);
+  }
 
   /// Renvoie faux si rien n'a été supprimé — c'est la fonction SQL qui le dit,
   /// et non l'absence d'exception : sans politique DELETE, une écriture sans

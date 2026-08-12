@@ -7,9 +7,11 @@ import '../../auth/providers/auth_providers.dart';
 import '../../groups/models/group.dart';
 import '../../groups/providers/group_providers.dart';
 import '../../profile/providers/profile_providers.dart';
+import '../models/media_selection.dart';
 import '../models/message.dart';
 import '../providers/chat_providers.dart';
 import '../widgets/message_bubble.dart';
+import '../widgets/media_picker_sheet.dart';
 import '../widgets/message_composer.dart';
 
 /// Conversation d'un groupe.
@@ -35,6 +37,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   /// Dernier message marqué lu, pour ne pas réécrire à chaque reconstruction.
   String? _dernierLu;
+
+  /// Un téléversement est en cours : le composeur se verrouille, sans quoi on
+  /// pourrait en lancer trois d'affilée sans le voir.
+  bool _envoiMedia = false;
 
   @override
   void initState() {
@@ -124,7 +130,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           TypingIndicator(names: ecrivent),
           AppSpacing.gapXs,
 
-          MessageComposer(onSend: _envoyer, onTypingChanged: _annoncerFrappe),
+          MessageComposer(
+            onSend: _envoyer,
+            onTypingChanged: _annoncerFrappe,
+            onAttach: _joindre,
+            enabled: !_envoiMedia,
+          ),
         ],
       ),
     );
@@ -170,6 +181,30 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       messenger.showSnackBar(
         SnackBar(content: Text(AuthFailure.from(error).message)),
       );
+    }
+  }
+
+  Future<void> _joindre() async {
+    final MediaSelection? choix = await choisirMedia(context);
+    if (choix == null || !mounted) return;
+
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    setState(() => _envoiMedia = true);
+    try {
+      await ref
+          .read(chatActionsProvider)
+          .sendMedia(
+            widget.groupId,
+            bytes: choix.bytes,
+            extension: choix.extension,
+            kind: choix.kind,
+          );
+    } catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(AuthFailure.from(error).message)),
+      );
+    } finally {
+      if (mounted) setState(() => _envoiMedia = false);
     }
   }
 

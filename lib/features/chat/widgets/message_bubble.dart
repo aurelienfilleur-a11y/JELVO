@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/core.dart';
 import '../models/message.dart';
+import 'chat_media.dart';
 
 /// Une bulle de la conversation.
 ///
@@ -85,7 +86,7 @@ class MessageBubble extends StatelessWidget {
                     : Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
-                          if (message.hasMedia) _media(),
+                          if (message.hasMedia) ChatMedia(message: message),
                           if (message.content != null &&
                               message.content!.isNotEmpty)
                             Text(
@@ -143,27 +144,6 @@ class MessageBubble extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _media() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadii.field),
-        child: Container(
-          height: 160,
-          width: 220,
-          color: AppColors.background,
-          alignment: Alignment.center,
-          child: Icon(
-            message.mediaKind == MediaKind.video
-                ? Icons.play_circle_outline_rounded
-                : Icons.image_outlined,
-            color: AppColors.textSecondary,
-          ),
-        ),
-      ),
     );
   }
 

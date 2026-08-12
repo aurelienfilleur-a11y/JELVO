@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:jelvo/features/chat/models/message.dart';
 import 'package:jelvo/features/chat/repository/chat_repository.dart';
@@ -174,6 +175,30 @@ class FakeChatRepository implements ChatRepository {
   }) async {
     lastTyping = typing;
   }
+
+  /// Dernier média téléversé, pour les assertions.
+  String? lastUploadedPath;
+  int? lastUploadedBytes;
+
+  @override
+  Future<String> uploadMedia({
+    required String groupId,
+    required Uint8List bytes,
+    required String extension,
+    required MediaKind kind,
+  }) async {
+    lastUploadedBytes = bytes.length;
+    // Même convention que le vrai dépôt : c'est le premier segment que lisent
+    // les politiques du bucket.
+    lastUploadedPath = '$groupId/media-${_media++}.$extension';
+    return lastUploadedPath!;
+  }
+
+  int _media = 1;
+
+  @override
+  Future<String> signedMediaUrl(String path) async =>
+      'https://exemple.test/signe/$path';
 
   @override
   Future<void> leave(String groupId) async {}

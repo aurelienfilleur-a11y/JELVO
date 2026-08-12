@@ -1,16 +1,21 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:jelvo/core/core.dart';
 import 'package:jelvo/data/clock.dart';
+import 'package:jelvo/data/app_config.dart';
 import 'package:jelvo/data/data_providers.dart';
 import 'package:jelvo/features/auth/providers/auth_providers.dart';
 import 'package:jelvo/features/availability/providers/availability_providers.dart';
 import 'package:jelvo/features/calendar/providers/calendar_providers.dart';
+import 'package:jelvo/features/chat/models/media_selection.dart';
 import 'package:jelvo/features/chat/models/message.dart';
 import 'package:jelvo/features/chat/providers/chat_providers.dart';
 import 'package:jelvo/features/chat/repository/chat_repository.dart';
+import 'package:jelvo/features/chat/widgets/chat_media.dart';
 import 'package:jelvo/features/contacts/providers/contact_providers.dart';
 import 'package:jelvo/features/groups/providers/group_providers.dart';
 import 'package:jelvo/features/notifications/providers/notification_providers.dart';
@@ -231,6 +236,165 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('🎉'), findsNothing);
+    });
+  });
+
+  group('Médias', () {
+    testWidgets('le bouton de pièce jointe est proposé', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester);
+      await _ouvrirDiscussion(tester);
+
+      expect(find.byTooltip('Joindre une photo ou une vidéo'), findsOneWidget);
+    });
+
+    testWidgets('la feuille propose photo et vidéo, jamais un document', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester);
+      await _ouvrirDiscussion(tester);
+
+      await tester.tap(find.byTooltip('Joindre une photo ou une vidéo'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Photo de la galerie'), findsOneWidget);
+      expect(find.text('Prendre une photo'), findsOneWidget);
+      expect(find.text('Vidéo de la galerie'), findsOneWidget);
+      expect(find.text('Filmer'), findsOneWidget);
+      // `media_type` ne connaît que `image` et `video` : c'est le type qui
+      // interdit les documents, et l'écran ne doit pas en promettre.
+      expect(find.textContaining('document'), findsNothing);
+      expect(find.textContaining('Fichier'), findsNothing);
+    });
+
+    testWidgets('un message photo affiche la vignette, pas le chemin brut', (
+      WidgetTester tester,
+    ) async {
+      final FakeChatRepository chat = await _pumpApp(tester);
+      chat.receive(
+        Message(
+          id: 'm50',
+          groupId: 'g1',
+          senderId: 'u2',
+          createdAt: DateTime(2026, 8, 3, 8, 50),
+          mediaUrl: 'g1/photo.jpg',
+          mediaKind: MediaKind.image,
+          senderName: 'Léa Marchand',
+        ),
+      );
+      await _ouvrirDiscussion(tester);
+
+      expect(find.byType(ChatMedia), findsOneWidget);
+      // Le chemin de stockage n'a rien à faire à l'écran.
+      expect(find.textContaining('g1/photo.jpg'), findsNothing);
+    });
+
+    testWidgets('une vidéo s’annonce comme telle', (WidgetTester tester) async {
+      final FakeChatRepository chat = await _pumpApp(tester);
+      chat.receive(
+        Message(
+          id: 'm51',
+          groupId: 'g1',
+          senderId: 'u2',
+          createdAt: DateTime(2026, 8, 3, 8, 51),
+          mediaUrl: 'g1/film.mp4',
+          mediaKind: MediaKind.video,
+          senderName: 'Léa Marchand',
+        ),
+      );
+      await _ouvrirDiscussion(tester);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Vidéo'), findsOneWidget);
+    });
+
+    testWidgets('un média supprimé ne montre plus rien', (
+      WidgetTester tester,
+    ) async {
+      final FakeChatRepository chat = await _pumpApp(tester);
+      chat.receive(
+        Message(
+          id: 'm52',
+          groupId: 'g1',
+          senderId: FakeChatRepository.moi,
+          createdAt: DateTime(2026, 8, 3, 8, 52),
+          mediaUrl: 'g1/secret.jpg',
+          mediaKind: MediaKind.image,
+        ),
+      );
+      await _ouvrirDiscussion(tester);
+      expect(find.byType(ChatMedia), findsOneWidget);
+
+      await tester.longPress(find.byType(ChatMedia));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Supprimer le message'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ChatMedia), findsNothing);
+      expect(find.text('Message supprimé'), findsOneWidget);
+    });
+  });
+
+  group('Bornes d’un média', () {
+    test('une vidéo trop lourde est refusée, une photo jamais', () {
+      final MediaSelection lourde = MediaSelection(
+        bytes: Uint8List(AppConfig.chatMediaMaxVideoBytes + 1),
+        extension: 'mp4',
+        kind: MediaKind.video,
+      );
+      expect(lourde.isTooHeavy, isTrue);
+
+      final MediaSelection courte = MediaSelection(
+        bytes: Uint8List(1024),
+        extension: 'mp4',
+        kind: MediaKind.video,
+      );
+      expect(courte.isTooHeavy, isFalse);
+
+      // Les photos sont compressées à la sélection : la borne de poids ne les
+      // concerne pas.
+      final MediaSelection photo = MediaSelection(
+        bytes: Uint8List(AppConfig.chatMediaMaxVideoBytes + 1),
+        extension: 'jpg',
+        kind: MediaKind.image,
+      );
+      expect(photo.isTooHeavy, isFalse);
+    });
+
+    test('l’extension se déduit du nom, avec un repli selon le type', () {
+      expect(MediaSelection.extensionOf('photo.HEIC', MediaKind.image), 'heic');
+      expect(MediaSelection.extensionOf('film.MP4', MediaKind.video), 'mp4');
+      // Un nom venu du web porte parfois une chaîne de requête.
+      expect(
+        MediaSelection.extensionOf('image.png?v=2', MediaKind.image),
+        'png',
+      );
+      // Sans extension lisible, le repli suit le type déclaré.
+      expect(
+        MediaSelection.extensionOf('sans-extension', MediaKind.image),
+        'jpg',
+      );
+      expect(MediaSelection.extensionOf(null, MediaKind.video), 'mp4');
+    });
+
+    test('le poids se lit en ko ou en Mo', () {
+      expect(
+        MediaSelection(
+          bytes: Uint8List(500 * 1024),
+          extension: 'jpg',
+          kind: MediaKind.image,
+        ).sizeLabel,
+        '500 ko',
+      );
+      expect(
+        MediaSelection(
+          bytes: Uint8List(3 * 1024 * 1024 + 200 * 1024),
+          extension: 'mp4',
+          kind: MediaKind.video,
+        ).sizeLabel,
+        '3,2 Mo',
+      );
     });
   });
 

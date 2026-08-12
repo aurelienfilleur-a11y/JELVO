@@ -26,6 +26,24 @@ abstract final class AppConfig {
   /// Bucket Storage des photos de groupe.
   static const String groupPhotosBucket = 'group-photos';
 
+  /// Bucket Storage des médias du chat. **Privé** : contrairement aux deux
+  /// précédents, on n'en tire jamais d'URL publique — la lecture passe par une
+  /// URL signée, et les politiques la réservent aux membres du groupe.
+  static const String chatMediaBucket = 'chat-media';
+
+  /// Validité d'une URL signée de média. Assez longue pour tenir le temps
+  /// d'une conversation, assez courte pour qu'un lien recopié ailleurs cesse
+  /// vite de fonctionner.
+  static const Duration chatMediaUrlValidity = Duration(hours: 2);
+
+  /// Poids maximal d'une vidéo. Sans ré-encodage côté application, c'est la
+  /// seule borne dont on dispose : mieux vaut refuser clairement à la
+  /// sélection qu'échouer au téléversement.
+  static const int chatMediaMaxVideoBytes = 25 * 1024 * 1024;
+
+  /// Durée maximale demandée au sélecteur pour une vidéo.
+  static const Duration chatMediaMaxVideoDuration = Duration(seconds: 60);
+
   /// Délai avant de pouvoir redemander un code de vérification.
   static const Duration resendCodeDelay = Duration(seconds: 45);
 

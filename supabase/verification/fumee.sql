@@ -364,7 +364,40 @@ begin
            where id = message2),
          'un message supprimé laisse fuiter son contenu';
 
-  raise notice 'Fumée : les 29 fonctions des tranches 3, 3b, 4 et 5a répondent.';
+  -- Médias du chat (tranche 5b) ----------------------------------------------
+  -- `groupe_du_chemin` porte à elle seule l'autorisation du bucket privé : si
+  -- elle levait au lieu de rendre `null`, toute politique qui l'appelle ferait
+  -- échouer la requête entière plutôt que de refuser l'accès.
+  assert public.groupe_du_chemin(
+           '22222222-2222-2222-2222-222222222222/photo.jpg')
+         = '22222222-2222-2222-2222-222222222222'::uuid,
+         'groupe_du_chemin : chemin conforme';
+
+  assert public.groupe_du_chemin('photo.jpg') is null,
+         'un chemin sans dossier doit donner null, pas une erreur';
+  assert public.groupe_du_chemin('pas-un-uuid/photo.jpg') is null,
+         'un dossier qui n''est pas un UUID doit donner null';
+  assert public.groupe_du_chemin('') is null, 'chemin vide';
+
+  -- Contrôle positif et négatif de la règle d'accès elle-même.
+  assert public.est_membre_du_groupe(
+           public.groupe_du_chemin(
+             '22222222-2222-2222-2222-222222222222/photo.jpg'),
+           '11111111-1111-1111-1111-111111111111'::uuid),
+         'un membre doit pouvoir lire les médias de son groupe';
+
+  assert not public.est_membre_du_groupe(
+           public.groupe_du_chemin('44444444-4444-4444-4444-444444444444/x.jpg'),
+           '11111111-1111-1111-1111-111111111111'::uuid),
+         'un non-membre ne doit pas lire les médias d''un autre groupe';
+
+  assert not public.est_membre_du_groupe(
+           public.groupe_du_chemin('hors-convention.jpg'),
+           '11111111-1111-1111-1111-111111111111'::uuid),
+         'un chemin hors convention ne doit ouvrir aucun accès';
+
+  raise notice
+    'Fumée : les 30 fonctions des tranches 3, 3b, 4, 5a et 5b répondent.';
 end;
 $fumee$;
 

@@ -1,7 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../data/app_config.dart';
 import '../../auth/models/auth_failure.dart';
 import '../models/message.dart';
 
@@ -82,6 +86,25 @@ abstract interface class ChatRepository {
 
   /// Signaux de frappe des autres membres.
   Stream<TypingSignal> watchTyping(String groupId);
+
+  /// Téléverse un média et renvoie **le chemin** dans le bucket.
+  ///
+  /// Le chemin, et non une URL : le bucket est privé, sa lecture passe par une
+  /// URL signée qui expire. Stocker l'URL dans `messages.media_url` la ferait
+  /// pourrir en quelques heures.
+  ///
+  /// La convention `<group_id>/<uuid>.<ext>` n'est pas cosmétique : les
+  /// politiques du bucket lisent le **premier segment** pour savoir de quel
+  /// groupe relève l'objet.
+  Future<String> uploadMedia({
+    required String groupId,
+    required Uint8List bytes,
+    required String extension,
+    required MediaKind kind,
+  });
+
+  /// URL signée d'un média, valable un temps limité.
+  Future<String> signedMediaUrl(String path);
 
   /// Libère les canaux d'un groupe.
   Future<void> leave(String groupId);
@@ -294,6 +317,65 @@ class SupabaseChatRepository implements ChatRepository {
       // volontairement ignoré
     }
   }
+
+  @override
+  Future<String> uploadMedia({
+    required String groupId,
+    required Uint8List bytes,
+    required String extension,
+    required MediaKind kind,
+  }) async {
+    // Le premier segment est l'identifiant du groupe : c'est lui que lisent
+    // les politiques du bucket. Le second est tiré au sort, pour qu'un nom de
+    // fichier ne révèle rien et que deux envois simultanés ne se marchent pas
+    // dessus.
+    final String jeton = base64Url
+        .encode(List<int>.generate(12, (_) => Random.secure().nextInt(256)))
+        .replaceAll('=', '');
+    final String chemin = '$groupId/$jeton.$extension';
+
+    try {
+      await _client.storage
+          .from(AppConfig.chatMediaBucket)
+          .uploadBinary(
+            chemin,
+            bytes,
+            fileOptions: FileOptions(
+              contentType: _typeMime(extension, kind),
+              upsert: false,
+            ),
+          );
+      return chemin;
+    } catch (error) {
+      throw AuthFailure.from(error);
+    }
+  }
+
+  @override
+  Future<String> signedMediaUrl(String path) async {
+    try {
+      return await _client.storage
+          .from(AppConfig.chatMediaBucket)
+          .createSignedUrl(path, AppConfig.chatMediaUrlValidity.inSeconds);
+    } catch (error) {
+      throw AuthFailure.from(error);
+    }
+  }
+
+  static String _typeMime(String extension, MediaKind kind) =>
+      switch (extension.toLowerCase()) {
+        'png' => 'image/png',
+        'gif' => 'image/gif',
+        'webp' => 'image/webp',
+        'heic' => 'image/heic',
+        'jpg' || 'jpeg' => 'image/jpeg',
+        'mp4' => 'video/mp4',
+        'mov' => 'video/quicktime',
+        'webm' => 'video/webm',
+        // Repli cohérent avec le type déclaré plutôt qu'un
+        // `application/octet-stream` qui empêcherait tout affichage.
+        _ => kind == MediaKind.video ? 'video/mp4' : 'image/jpeg',
+      };
 
   @override
   Future<void> leave(String groupId) async {

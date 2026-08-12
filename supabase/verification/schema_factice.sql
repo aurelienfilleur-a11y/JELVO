@@ -235,6 +235,36 @@ create table public.message_reads (
   constraint message_reads_pkey primary key (group_id, user_id)
 );
 
+-- Storage réduit à ce que les politiques de `chat-media` touchent. Le vrai
+-- schéma appartient à `supabase_storage_admin` et porte bien davantage ; ce
+-- décor sert seulement à ce que `create policy` s'exécute au rejeu, et à
+-- éprouver `groupe_du_chemin`.
+create schema if not exists storage;
+
+create table storage.buckets (
+  id     text primary key,
+  name   text not null,
+  public boolean not null default false
+);
+
+create table storage.objects (
+  id        uuid primary key default gen_random_uuid(),
+  bucket_id text not null,
+  name      text not null,
+  owner     uuid,
+  created_at timestamptz not null default now()
+);
+
+alter table storage.objects enable row level security;
+
+insert into storage.buckets (id, name, public)
+values ('chat-media', 'chat-media', false)
+on conflict (id) do nothing;
+
+grant usage on schema storage to authenticated, anon;
+grant select, insert, update, delete on storage.objects to authenticated;
+grant select on storage.buckets to authenticated;
+
 -- Supabase accorde les privilèges de table à `authenticated` et laisse RLS
 -- filtrer. On reproduit le `grant` — sans lui, une lecture légitime échouerait
 -- en « permission denied » et ferait croire à un défaut du code. Les politiques

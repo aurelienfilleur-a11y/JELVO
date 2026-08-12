@@ -12,6 +12,7 @@ import '../features/auth/screens/signup_identity_screen.dart';
 import '../features/auth/screens/verify_email_screen.dart';
 import '../features/availability/screens/availability_screen.dart';
 import '../features/calendar/screens/calendar_screen.dart';
+import '../features/chat/screens/chat_screen.dart';
 import '../features/calendar/screens/event_detail_screen.dart';
 import '../features/contacts/screens/add_contact_screen.dart';
 import '../features/contacts/screens/contacts_screen.dart';
@@ -121,6 +122,15 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
                         builder: (BuildContext context, GoRouterState state) =>
                             GroupFormScreen(
                               groupId: state.pathParameters['id'],
+                            ),
+                      ),
+                      GoRoute(
+                        path: 'discussion',
+                        name: AppRoutes.groupChat,
+                        parentNavigatorKey: _rootNavigatorKey,
+                        builder: (BuildContext context, GoRouterState state) =>
+                            ChatScreen(
+                              groupId: state.pathParameters['id'] ?? '',
                             ),
                       ),
                     ],

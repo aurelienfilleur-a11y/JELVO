@@ -1,0 +1,294 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../core/core.dart';
+import '../../auth/models/auth_failure.dart';
+import '../../auth/providers/auth_providers.dart';
+import '../../groups/models/group.dart';
+import '../../groups/providers/group_providers.dart';
+import '../../profile/providers/profile_providers.dart';
+import '../models/message.dart';
+import '../providers/chat_providers.dart';
+import '../widgets/message_bubble.dart';
+import '../widgets/message_composer.dart';
+
+/// Conversation d'un groupe.
+///
+/// **Une seule conversation par groupe** : ni canaux, ni fils, ni messagerie
+/// privée. La table `messages` n'a d'ailleurs qu'un `group_id`, sans notion de
+/// destinataire — le schéma initial dit la même chose que le produit.
+///
+/// La liste est **inversée** : les messages récents sont en bas, et c'est là
+/// que l'écran s'ouvre. Une liste à l'endroit obligerait à faire défiler à
+/// chaque ouverture, et sauterait au moindre message reçu.
+class ChatScreen extends ConsumerStatefulWidget {
+  const ChatScreen({super.key, required this.groupId});
+
+  final String groupId;
+
+  @override
+  ConsumerState<ChatScreen> createState() => _ChatScreenState();
+}
+
+class _ChatScreenState extends ConsumerState<ChatScreen> {
+  final ScrollController _defilement = ScrollController();
+
+  /// Dernier message marqué lu, pour ne pas réécrire à chaque reconstruction.
+  String? _dernierLu;
+
+  @override
+  void initState() {
+    super.initState();
+    _defilement.addListener(_surDefilement);
+    // Écrire dans un provider pendant la construction est interdit par
+    // Riverpod : on repousse d'une image.
+    Future<void>.microtask(_marquerLu);
+  }
+
+  @override
+  void dispose() {
+    _defilement.dispose();
+    super.dispose();
+  }
+
+  void _surDefilement() {
+    // Liste inversée : le haut de l'historique est atteint quand on approche
+    // de l'extrémité *maximale* du défilement.
+    if (_defilement.position.pixels >=
+        _defilement.position.maxScrollExtent - 200) {
+      ref.read(conversationProvider(widget.groupId).notifier).loadMore();
+    }
+  }
+
+  Future<void> _marquerLu() async {
+    if (!mounted) return;
+    try {
+      await ref.read(chatActionsProvider).markRead(widget.groupId);
+    } catch (_) {
+      // Un accusé de lecture perdu ne mérite pas d'interrompre la lecture.
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final AsyncValue<List<Message>> conversation = ref.watch(
+      conversationProvider(widget.groupId),
+    );
+    final List<Message> messages = conversation.value ?? const <Message>[];
+    final Group? groupe = ref.watch(groupByIdProvider(widget.groupId));
+    final String? moi = ref.watch(currentUserIdProvider);
+    final List<String> ecrivent = ref.watch(typingProvider(widget.groupId));
+
+    // Un message arrivé pendant qu'on regarde est lu : ne pas le marquer
+    // laisserait la pastille allumée sur une conversation ouverte.
+    final String? plusRecent = messages.isEmpty ? null : messages.first.id;
+    if (plusRecent != null && plusRecent != _dernierLu) {
+      _dernierLu = plusRecent;
+      Future<void>.microtask(_marquerLu);
+    }
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: Text(groupe?.name ?? 'Discussion'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          tooltip: 'Retour',
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
+      ),
+      body: Column(
+        children: <Widget>[
+          Expanded(
+            child: conversation.hasError && messages.isEmpty
+                ? EmptyState(
+                    icon: Icons.cloud_off_rounded,
+                    title: 'Conversation indisponible',
+                    message: AuthFailure.from(conversation.error!).message,
+                    actionLabel: 'Réessayer',
+                    onActionPressed: () => ref
+                        .read(conversationProvider(widget.groupId).notifier)
+                        .refresh(),
+                  )
+                : messages.isEmpty
+                ? const EmptyState(
+                    icon: Icons.forum_outlined,
+                    title: 'Rien encore',
+                    message:
+                        'Lancez la conversation : personne n’a encore écrit '
+                        'ici.',
+                  )
+                : _liste(messages, moi),
+          ),
+
+          TypingIndicator(names: ecrivent),
+          AppSpacing.gapXs,
+
+          MessageComposer(onSend: _envoyer, onTypingChanged: _annoncerFrappe),
+        ],
+      ),
+    );
+  }
+
+  Widget _liste(List<Message> messages, String? moi) {
+    return ListView.builder(
+      controller: _defilement,
+      reverse: true,
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screenMargin,
+        AppSpacing.md,
+        AppSpacing.screenMargin,
+        AppSpacing.md,
+      ),
+      itemCount: messages.length,
+      itemBuilder: (BuildContext context, int index) {
+        final Message message = messages[index];
+        // La liste est inversée : le message « suivant » à l'écran est celui
+        // d'indice supérieur, donc plus ancien.
+        final Message? precedent = index + 1 < messages.length
+            ? messages[index + 1]
+            : null;
+
+        return MessageBubble(
+          message: message,
+          isMine: message.senderId == moi,
+          showSender: precedent?.senderId != message.senderId,
+          timeLabel: AppDates.time(message.createdAt),
+          onLongPress: () => _ouvrirActions(message, moi),
+          onReactionTap: (String emoji) => _reagir(message, emoji),
+          onRetry: message.failed ? () => _reessayer(message) : null,
+        );
+      },
+    );
+  }
+
+  Future<void> _envoyer(String texte) async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(chatActionsProvider).send(widget.groupId, content: texte);
+    } catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(AuthFailure.from(error).message)),
+      );
+    }
+  }
+
+  void _reessayer(Message message) {
+    ref
+        .read(conversationProvider(widget.groupId).notifier)
+        .discardFailed(message.id);
+    if (message.content != null) _envoyer(message.content!);
+  }
+
+  void _annoncerFrappe(bool frappe) {
+    final String? nom = ref.read(currentProfileProvider).value?.displayName;
+    ref
+        .read(chatActionsProvider)
+        .announceTyping(widget.groupId, typing: frappe, name: nom);
+  }
+
+  Future<void> _reagir(Message message, String emoji) async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    try {
+      // La fonction SQL bascule : reposer le même emoji le retire. L'écran n'a
+      // donc pas à savoir si l'on ajoute ou si l'on enlève.
+      await ref
+          .read(chatActionsProvider)
+          .react(widget.groupId, message.id, emoji);
+    } catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(AuthFailure.from(error).message)),
+      );
+    }
+  }
+
+  Future<void> _ouvrirActions(Message message, String? moi) async {
+    if (message.pending || message.failed) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (BuildContext sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.sm,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: <Widget>[
+                  for (final String emoji in emojisDeReaction)
+                    IconButton(
+                      // Un emoji n'est pas une icône : `Text` le rend, et
+                      // l'infobulle donne au lecteur d'écran ce que le glyphe
+                      // ne dit pas.
+                      icon: Text(emoji, style: const TextStyle(fontSize: 24)),
+                      tooltip: 'Réagir $emoji',
+                      isSelected: message.reactionOf(moi) == emoji,
+                      onPressed: () {
+                        Navigator.of(sheetContext).pop();
+                        _reagir(message, emoji);
+                      },
+                    ),
+                ],
+              ),
+            ),
+            const Divider(height: 1, color: AppColors.border),
+            if (message.senderId == moi)
+              ListTile(
+                leading: const Icon(
+                  Icons.delete_outline_rounded,
+                  color: AppColors.danger,
+                ),
+                title: Text(
+                  'Supprimer le message',
+                  style: AppTypography.body.copyWith(color: AppColors.danger),
+                ),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  _supprimer(message);
+                },
+              )
+            else
+              const ListTile(
+                leading: Icon(
+                  Icons.lock_outline_rounded,
+                  color: AppColors.textSecondary,
+                ),
+                title: Text('Vous ne pouvez supprimer que vos messages'),
+              ),
+            AppSpacing.gapMd,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _supprimer(Message message) async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    try {
+      // Le booléen fait foi : `messages` n'a pas de politique DELETE, et une
+      // écriture sans effet répond 200. Annoncer une suppression qui n'a pas
+      // eu lieu serait pire que l'échec lui-même.
+      final bool retire = await ref
+          .read(chatActionsProvider)
+          .delete(widget.groupId, message.id);
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            retire
+                ? 'Message supprimé.'
+                : 'Ce message ne peut plus être supprimé.',
+          ),
+        ),
+      );
+    } catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(AuthFailure.from(error).message)),
+      );
+    }
+  }
+}

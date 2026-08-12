@@ -10,6 +10,7 @@ import '../../auth/providers/auth_providers.dart';
 import '../../calendar/models/calendar_event.dart';
 import '../../calendar/providers/calendar_providers.dart';
 import '../../calendar/widgets/event_form_sheet.dart';
+import '../../chat/providers/chat_providers.dart';
 import '../../contacts/models/contact.dart';
 import '../../contacts/providers/contact_providers.dart';
 import '../../tasks/models/task.dart';
@@ -158,6 +159,8 @@ class _GroupView extends ConsumerWidget {
                   Text(group.description!, style: AppTypography.bodyMuted),
                   AppSpacing.gapLg,
                 ],
+                _LigneDiscussion(groupId: group.id),
+                AppSpacing.gapLg,
                 Row(
                   children: <Widget>[
                     Expanded(
@@ -558,6 +561,74 @@ class _GroupView extends ConsumerWidget {
       ),
     );
     return answer ?? false;
+  }
+}
+
+/// Entrée vers la conversation du groupe.
+///
+/// Elle est posée **au-dessus** des boutons d'invitation, et non reléguée dans
+/// une section plus bas : c'est ce qu'on vient ouvrir le plus souvent, et un
+/// groupe se vit d'abord par sa discussion.
+class _LigneDiscussion extends ConsumerWidget {
+  const _LigneDiscussion({required this.groupId});
+
+  final String groupId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final int nonLus = ref.watch(unreadForGroupProvider(groupId));
+
+    return AppCard(
+      padding: EdgeInsets.zero,
+      child: InkWell(
+        onTap: () => context.pushNamed(
+          AppRoutes.groupChat,
+          pathParameters: <String, String>{'id': groupId},
+        ),
+        borderRadius: AppRadii.cardRadius,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Row(
+            children: <Widget>[
+              NavBadge(
+                count: nonLus,
+                child: const Icon(
+                  Icons.forum_outlined,
+                  color: AppColors.primary,
+                ),
+              ),
+              AppSpacing.hGapMd,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text('Discussion', style: AppTypography.h3),
+                    const SizedBox(height: 2),
+                    Text(
+                      nonLus == 0
+                          ? 'La conversation du groupe'
+                          : '$nonLus message${nonLus > 1 ? 's' : ''} non lu'
+                                '${nonLus > 1 ? 's' : ''}',
+                      style: AppTypography.caption.copyWith(
+                        color: nonLus == 0
+                            ? AppColors.textSecondary
+                            : AppColors.primary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.textSecondary,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

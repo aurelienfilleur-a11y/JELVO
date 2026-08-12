@@ -14,6 +14,12 @@ abstract final class AppRoutes {
   static const String groupDetail = 'groupDetail';
   static const String groupDetailPath = '/groupes/:id';
 
+  /// Conversation du groupe. Empilée sur le navigateur racine : le clavier et
+  /// la barre de saisie ont besoin de toute la hauteur, et la barre de
+  /// navigation n'a rien à faire au-dessus d'un fil de discussion.
+  static const String groupChat = 'groupChat';
+  static const String groupChatPath = '/groupes/:id/discussion';
+
   /// Création et modification, empilées sur le navigateur racine.
   static const String groupCreate = 'groupCreate';
   static const String groupCreatePath = '/groupes/nouveau';

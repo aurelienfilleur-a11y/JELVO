@@ -64,6 +64,8 @@ declare
   articles   integer;
   resultat   text;
   creneau    uuid;
+  message    uuid;
+  message2   uuid;
 begin
   -- Tâches -----------------------------------------------------------------
   tache := (public.creer_tache(
@@ -281,7 +283,88 @@ begin
   assert not public.supprimer_disponibilite(creneau),
          'supprimer deux fois doit renvoyer faux';
 
-  raise notice 'Fumée : les 24 fonctions des tranches 3, 3b et 4 répondent.';
+  -- Chat (tranche 5a) --------------------------------------------------------
+  -- Le bloc « administration » ci-dessus a éprouvé `retirer_membre`, et Léa
+  -- n'est donc plus dans le groupe. On l'y remet : sans second membre, ni
+  -- l'accusé de lecture ni le compteur de non-lus n'ont de sens à éprouver.
+  insert into public.group_members (group_id, user_id, role)
+  values ('22222222-2222-2222-2222-222222222222',
+          '33333333-3333-3333-3333-333333333333', 'member')
+  on conflict do nothing;
+
+  message := public.envoyer_message(
+    '22222222-2222-2222-2222-222222222222'::uuid, 'Bonjour tout le monde');
+
+  -- Un message ne portant qu'un média est légitime : `messages_check` exige un
+  -- contenu **ou** une URL, pas les deux.
+  message2 := public.envoyer_message(
+    '22222222-2222-2222-2222-222222222222'::uuid,
+    p_media_url => 'chat-media/22222222/photo.jpg', p_media_kind => 'image');
+
+  assert (select count(*) from public.messages_du_groupe(
+            '22222222-2222-2222-2222-222222222222'::uuid)) = 2,
+         'messages_du_groupe';
+
+  -- La clé primaire tient la règle : une seule réaction par personne. Poser un
+  -- second emoji remplace le premier, il ne s'y ajoute pas.
+  assert public.reagir_message(message, '👍') = '👍', 'reagir_message';
+  assert public.reagir_message(message, '🎉') = '🎉', 'remplacer la réaction';
+  assert (select count(*) from public.message_reactions
+           where message_id = message) = 1,
+         'une seule réaction par personne et par message';
+
+  -- Reposer le même emoji le retire.
+  assert public.reagir_message(message, '🎉') is null, 'retirer la réaction';
+  assert (select count(*) from public.message_reactions
+           where message_id = message) = 0, 'réaction non retirée';
+
+  -- « Lu » se déduit de `last_read_at`, seule chose que le schéma stocke.
+  -- C'est bien l'autre membre qui lit : l'expéditeur ne se compte jamais.
+  assert (select lu_par from public.messages_du_groupe(
+            '22222222-2222-2222-2222-222222222222'::uuid)
+          where id = message) = 0, 'lu_par avant lecture';
+
+  perform set_config('request.jwt.claims',
+    '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}',
+    true);
+  perform public.marquer_lu('22222222-2222-2222-2222-222222222222'::uuid);
+
+  assert (select non_lus from public.messages_non_lus()
+           where group_id = '22222222-2222-2222-2222-222222222222'::uuid) = 0,
+         'messages_non_lus après lecture';
+
+  perform set_config('request.jwt.claims',
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}',
+    true);
+
+  assert (select lu_par from public.messages_du_groupe(
+            '22222222-2222-2222-2222-222222222222'::uuid)
+          where id = message) = 1, 'lu_par après lecture';
+
+  -- `marquer_lu` ne recule jamais : rouvrir une vieille conversation ne doit
+  -- pas « dé-lire » ce qui l'était.
+  perform public.marquer_lu('22222222-2222-2222-2222-222222222222'::uuid,
+                            now() - interval '1 day');
+  assert (select last_read_at from public.message_reads
+           where group_id = '22222222-2222-2222-2222-222222222222'::uuid
+             and user_id = '11111111-1111-1111-1111-111111111111'::uuid)
+         > now() - interval '1 hour',
+         'marquer_lu a reculé';
+
+  -- Suppression douce : le booléen fait foi, pas l'absence d'erreur.
+  assert public.supprimer_message(message2), 'supprimer_message';
+  assert not public.supprimer_message(message2),
+         'supprimer deux fois doit renvoyer faux';
+
+  -- Le contenu d'un message supprimé ne doit plus sortir de la base — le
+  -- masquer à l'écran seulement le laisserait lisible dans la réponse réseau.
+  assert (select content is null and media_url is null and deleted_at is not null
+            from public.messages_du_groupe(
+              '22222222-2222-2222-2222-222222222222'::uuid)
+           where id = message2),
+         'un message supprimé laisse fuiter son contenu';
+
+  raise notice 'Fumée : les 29 fonctions des tranches 3, 3b, 4 et 5a répondent.';
 end;
 $fumee$;
 

@@ -200,7 +200,7 @@ supabase/                     # SQL à exécuter sur le projet Supabase
 ```
 
 Features existantes : `auth`, `profile`, `home`, `groups`, `calendar`,
-`contacts`, `notifications`, `tasks`, `availability`, `create`.
+`contacts`, `notifications`, `tasks`, `availability`, `chat`, `create`.
 
 `lib/l10n/` porte les fichiers ARB et la classe `AppTexts` générée.
 
@@ -915,6 +915,83 @@ là où l'on saisit plutôt que dans une page d'aide que personne n'ouvre.
 
 ---
 
+## Chat de groupe
+
+**Une seule conversation par groupe.** Ni canaux, ni fils, ni messagerie
+privée — et le schéma dit la même chose que le produit : `messages` ne porte
+qu'un `group_id`, sans aucune notion de destinataire.
+
+Les trois tables **viennent du schéma initial** ; `supabase/tranche5a_chat.sql`
+n'en crée aucune, il n'ajoute que six fonctions.
+
+| Table | Colonnes | Ce que la forme impose |
+| --- | --- | --- |
+| `messages` | `id`, `group_id`, `sender_id`, `content`, `media_url`, `media_kind`, `created_at`, `deleted_at` | `CHECK (content is not null or media_url is not null)`, contenu ≤ 2000 |
+| `message_reactions` | `message_id`, `user_id`, `emoji` — **PK `(message_id, user_id)`** | une réaction par personne et par message, **tenu par la base** |
+| `message_reads` | `group_id`, `user_id`, `last_read_at` — **PK `(group_id, user_id)`** | l'accusé de lecture est **par conversation**, jamais par message |
+
+`media_type` ne connaît que `image` et `video` : c'est **le type**, et non une
+règle d'écran, qui interdit les documents.
+
+### Trois conséquences qui ne se négocient pas
+
+**1. La clé primaire de `message_reactions` porte déjà la règle.**
+`reagir_message` n'a donc rien à vérifier : elle fait un `on conflict` et
+bascule. Reposer le même emoji le retire.
+
+**2. « Lu » se déduit, il n'est stocké nulle part.** Le schéma ne connaît qu'un
+`last_read_at` par conversation. Un message est lu si un *autre* membre a un
+`last_read_at` postérieur à son `created_at` — c'est ce que renvoie la colonne
+`lu_par` de `messages_du_groupe`. Un accusé par message demanderait une table
+qui n'existe pas.
+
+**3. `messages` n'a pas de politique DELETE.** Seulement `msg_insert`,
+`msg_select` et `msg_update using (sender_id = auth.uid())`. La suppression est
+donc **douce**, et `supprimer_message` renvoie un booléen : une écriture sans
+effet répond 200 côté PostgREST, et l'absence d'erreur ne prouve rien.
+
+### `content` passe à la chaîne vide, pas à `null`
+
+Piège trouvé par le test de fumée, et par lui seul. Vider `content` **et**
+`media_url` viole `messages_check`, qui exige l'un ou l'autre : la suppression
+échouait en `23514`. La contrainte dicte donc la forme de la suppression douce.
+
+Le contenu part quand même — `messages_du_groupe` ne renvoie ni texte ni média
+pour une ligne supprimée. **Ce n'est pas un masquage d'écran** : ce qui n'est
+pas renvoyé n'est pas non plus lisible dans la réponse réseau.
+
+### Le temps réel n'apporte qu'un signal
+
+`postgres_changes` ne transporte que les colonnes brutes de la ligne : ni le
+nom de l'expéditeur, ni l'agrégat des réactions, ni le compte de lectures, que
+seule la fonction SQL sait assembler. À chaque changement, l'application
+**relit** donc la fenêtre courante plutôt que d'appliquer l'événement.
+Reconstituer la jointure côté client, ce serait se donner deux endroits où elle
+peut diverger.
+
+L'impression d'instantanéité vient d'ailleurs : le message que l'on envoie
+s'affiche **avant** l'aller-retour, en `pending`, et la relecture le remplace.
+
+**Une table doit être ajoutée à la publication pour émettre.** Sans
+`alter publication supabase_realtime add table …`, le client s'abonne, le canal
+passe à `subscribed`, et **aucun événement n'arrive jamais, sans la moindre
+erreur**. La migration l'ajoute pour les trois tables, de façon idempotente.
+RLS continue de s'appliquer : chacun ne reçoit que ce que `msg_select` lui
+laisse voir.
+
+### La frappe passe par un broadcast, jamais par une table
+
+« X est en train d'écrire » vaut deux secondes. L'écrire en base laisserait une
+ligne derrière chaque frappe, pour une information périmée avant d'être lue.
+D'où un `sendBroadcastMessage` sur le canal du groupe — et une **expiration
+côté client** : sans elle, quelqu'un qui ferme l'application en plein mot
+resterait « en train d'écrire » indéfiniment.
+
+Le composeur annonce **une fois** au début, puis la fin après deux secondes de
+silence. Émettre à chaque touche inonderait le canal.
+
+---
+
 ## Calendrier personnel et semaine d'accueil
 
 ### Le calendrier n'a pas de contenu propre
@@ -1111,10 +1188,22 @@ quand le compteur vaut zéro.
   même journée, le filtre par groupe — qui ne masque pas les créneaux —, et
   l'écran de disponibilités ouvert depuis le profil.
 
-Huit faux dépôts vivent dans `test/fakes/` : authentification, profil, groupes,
-contacts, notifications, tâches, agenda et disponibilités. **Tous les fichiers
-de test les surchargent tous** — un provider oublié tombe sur
+- `test/chat_test.dart` couvre l'entrée depuis l'écran du groupe et sa
+  pastille, l'ordre inversé de la conversation, l'envoi, le refus d'un message
+  vide, l'arrivée d'un message par le flux temps réel, l'indicateur de frappe
+  dans les deux sens, la bascule d'une réaction, et les trois issues d'une
+  suppression — la sienne, celle d'un autre, et celle qui ne touche aucune
+  ligne.
+
+Neuf faux dépôts vivent dans `test/fakes/` : authentification, profil, groupes,
+contacts, notifications, tâches, agenda, disponibilités et chat. **Tous les
+fichiers de test les surchargent tous** — un provider oublié tombe sur
 `Supabase.instance`, absent en test.
+
+`FakeChatRepository` simule le temps réel par un `StreamController` : un vrai
+canal Realtime demande une socket, que le harnais de test n'a pas. Ce qui est
+éprouvé, c'est donc que **l'écran réagit au signal** — pas que le signal
+arrive, ce qui ne se vérifie qu'à l'usage.
 
 L'oubli ne se voit pas toujours : un `AsyncNotifier` qui échoue à la
 construction donne un `AsyncValue` en erreur, dont le `.value` nul retombe sur
@@ -1151,8 +1240,9 @@ Quatre points à respecter dans tout nouveau test de widget :
 4. Surcharger tout le reste du domaine, pour la même raison :
    `groupRepositoryProvider`, `contactRepositoryProvider`,
    `notificationRepositoryProvider`, `taskRepositoryProvider`,
-   `eventRepositoryProvider` et `availabilityRepositoryProvider`, avec les faux
-   dépôts de `test/fakes/`. L'accueil et le calendrier les lisent tous les six.
+   `eventRepositoryProvider`, `availabilityRepositoryProvider` et
+   `chatRepositoryProvider`, avec les faux dépôts de `test/fakes/`. L'accueil,
+   le calendrier et l'écran de groupe les lisent tous les sept.
 
 Le `+` central de la barre et le bouton « Nouveau groupe » portent la même
 icône : viser un bouton d'en-tête par `find.byTooltip`, pas par `find.byIcon`.
@@ -1164,9 +1254,19 @@ sûr d'éprouver son caractère contextuel.
 ## État actuel et limites connues
 
 - **Tout le domaine est branché sur Supabase** : authentification, profil,
-  groupes, contacts, invitations, notifications, tâches, événements et
-  disponibilités. Il n'y a plus aucun jeu de données de démonstration dans
-  `lib/` — les seuls restants vivent dans `test/fakes/`.
+  groupes, contacts, invitations, notifications, tâches, événements,
+  disponibilités et chat. Il n'y a plus aucun jeu de données de démonstration
+  dans `lib/` — les seuls restants vivent dans `test/fakes/`.
+- **Le chat n'accepte encore que du texte.** Les photos et les vidéos sont
+  prévues par le schéma (`media_url`, `media_kind`) et par le dépôt, mais le
+  sélecteur et le bucket privé `chat-media` arrivent en tranche 5b. Le bouton
+  de pièce jointe n'est donc pas affiché : mieux vaut pas de bouton qu'un
+  bouton qui ne fait rien.
+- **Le temps réel n'est pas éprouvé automatiquement.** Les tests simulent le
+  flux par un `StreamController` ; qu'un événement arrive réellement dépend de
+  la publication `supabase_realtime` et d'une socket, et ne se constate qu'à
+  l'usage. Un défaut de publication est muet : le canal s'abonne et rien
+  n'arrive.
 - Les notifications sont **relues à la demande**, pas poussées : la liste se
   rafraîchit à l'ouverture de l'écran, au geste de traction et après chaque
   action. Le temps réel et les notifications système (`push_tokens`) ne sont pas
@@ -1192,7 +1292,7 @@ sûr d'éprouver son caractère contextuel.
   appelle les fonctions, mais son décor est recopié de cette documentation, et
   ne dit donc rien des colonnes réelles. C'est `supabase/schema_actuel.sql`,
   relevé après coup, qui fait foi.
-- Le test de fumée couvre les tranches 3, 3b et 4 — vingt-quatre fonctions
+- Le test de fumée couvre les tranches 3, 3b, 4 et 5a — vingt-neuf fonctions
   réellement appelées. Les fonctions des tranches 2 et antérieures ne sont
   éprouvées que par l'usage en production.
 - **Les disponibilités n'ont pas encore de lecture en dehors de la création

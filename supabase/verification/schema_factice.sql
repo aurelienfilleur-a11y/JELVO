@@ -200,6 +200,41 @@ create table public.availabilities (
 create function public.get_availability_status(at_ts timestamptz, target uuid)
 returns text language sql stable as $$ select 'unknown'::text $$;
 
+-- Chat (tranche 5a) : les trois tables viennent du schéma initial. Leurs
+-- contraintes sont recopiées de `schema_actuel.sql` — y compris les deux clés
+-- primaires composées, qui portent à elles seules deux règles de produit :
+-- une réaction par personne et par message, un accusé de lecture par
+-- conversation et par personne.
+create type public.media_type as enum ('image', 'video');
+
+create table public.messages (
+  id         uuid primary key default gen_random_uuid(),
+  group_id   uuid not null,
+  sender_id  uuid not null,
+  content    text,
+  media_url  text,
+  media_kind public.media_type,
+  created_at timestamptz not null default now(),
+  deleted_at timestamptz,
+  constraint messages_check check (content is not null or media_url is not null),
+  constraint messages_content_check check (char_length(content) <= 2000)
+);
+
+create table public.message_reactions (
+  message_id uuid not null,
+  user_id    uuid not null,
+  emoji      text not null,
+  constraint message_reactions_pkey primary key (message_id, user_id),
+  constraint message_reactions_emoji_check check (char_length(emoji) <= 8)
+);
+
+create table public.message_reads (
+  group_id     uuid not null,
+  user_id      uuid not null,
+  last_read_at timestamptz not null default now(),
+  constraint message_reads_pkey primary key (group_id, user_id)
+);
+
 -- Supabase accorde les privilèges de table à `authenticated` et laisse RLS
 -- filtrer. On reproduit le `grant` — sans lui, une lecture légitime échouerait
 -- en « permission denied » et ferait croire à un défaut du code. Les politiques

@@ -396,9 +396,170 @@ begin
            '11111111-1111-1111-1111-111111111111'::uuid),
          'un chemin hors convention ne doit ouvrir aucun accès';
 
+  -- Notifications push (tranche 5c) ------------------------------------------
+  -- **Le cas qui justifie tout le reste** : `push_tokens_platform_check`
+  -- n'acceptait que `ios` et `android`. Sans l'élargissement de la tranche 5c,
+  -- cet appel échouerait en `23514` — exactement le défaut du dimanche, vu
+  -- cette fois avant livraison plutôt qu'après.
+  assert public.enregistrer_push('endpoint-web-moi', 'web', 'cle', 'secret'),
+         'enregistrer_push : plateforme web refusée';
+
+  -- Réenregistrer le même endpoint ne duplique pas : la clé primaire est
+  -- (user_id, token), et un abonnement se réenregistre à chaque démarrage.
+  assert public.enregistrer_push('endpoint-web-moi', 'web', 'cle2', 'secret2');
+  assert (select count(*) from public.push_tokens
+           where user_id = '11111111-1111-1111-1111-111111111111'::uuid) = 1,
+         'un réenregistrement a dupliqué la ligne';
+
+  -- Les six types sont proposés, tous activés par défaut : le modèle est un
+  -- opt-out, personne n'a de ligne au départ et tout arrive.
+  assert (select count(*) from public.mes_preferences_notification()) = 6,
+         'mes_preferences_notification';
+  assert (select bool_and(enabled) from public.mes_preferences_notification()),
+         'tout devrait être activé sans aucune ligne de préférence';
+
+  assert not public.definir_preference_notification('chat_message', false),
+         'definir_preference_notification';
+  assert (select enabled from public.mes_preferences_notification()
+           where type = 'chat_message') = false,
+         'la préférence n''a pas été retenue';
+  perform public.definir_preference_notification('chat_message', true);
+
+  -- Un type inconnu serait accepté sans effet : il doit être refusé.
+  begin
+    perform public.definir_preference_notification('type_invente', true);
+    raise exception 'un type inconnu aurait dû être refusé';
+  exception
+    when others then
+      if sqlerrm <> 'type_inconnu' then raise; end if;
+  end;
+
+  -- Léa s'abonne, puis les six déclencheurs peuvent la viser.
+  perform set_config('request.jwt.claims',
+    '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}',
+    true);
+  perform public.enregistrer_push('endpoint-web-lea', 'web', 'k', 's');
+  perform set_config('request.jwt.claims',
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}',
+    true);
+
+  perform public.envoyer_message(
+    '22222222-2222-2222-2222-222222222222'::uuid, 'Message qui notifie');
+
+  -- La promesse de l'écran de création de tâche : « Jelvo enverra une
+  -- notification à la personne assignée ». Une tâche neuve : celle du début a
+  -- été supprimée par le bloc des tâches.
+  tache := (public.creer_tache(
+    p_title    => 'Fumée — tâche qui notifie',
+    p_group_id => '22222222-2222-2222-2222-222222222222'::uuid,
+    p_assignees => array['33333333-3333-3333-3333-333333333333'::uuid]
+  )).id;
+
+  -- Événement neuf, pour la réponse puis le changement de date.
+  evenement := (public.creer_evenement(
+    p_title     => 'Fumée — événement qui notifie',
+    p_starts_at => now() + interval '6 days',
+    p_group_id  => '22222222-2222-2222-2222-222222222222'::uuid
+  )).id;
+
+  perform set_config('request.jwt.claims',
+    '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}',
+    true);
+  perform public.repondre_evenement(evenement, 'yes');
+  perform set_config('request.jwt.claims',
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}',
+    true);
+
+  perform public.modifier_evenement(
+    p_event_id  => evenement,
+    p_title     => 'Fumée — événement qui notifie',
+    p_starts_at => now() + interval '7 days');
+
+  -- Une préférence désactivée arrête tout, sans rien casser d'autre.
+  perform set_config('request.jwt.claims',
+    '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}',
+    true);
+  perform public.definir_preference_notification('chat_message', false);
+  perform set_config('request.jwt.claims',
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}',
+    true);
+
+  perform public.envoyer_message(
+    '22222222-2222-2222-2222-222222222222'::uuid, 'Message qui ne notifie pas');
+
   raise notice
-    'Fumée : les 30 fonctions des tranches 3, 3b, 4, 5a et 5b répondent.';
+    'Fumée : les fonctions des tranches 3, 3b, 4, 5a et 5b répondent.';
 end;
 $fumee$;
+
+-- ---------------------------------------------------------------------------
+-- La file d'envoi se vérifie sous `postgres`, pas sous `authenticated`
+-- ---------------------------------------------------------------------------
+-- `push_outbox` porte une politique SELECT limitée à ses propres lignes : les
+-- notifications empilées pour Léa sont **invisibles** à Camille, et compter
+-- sous le mauvais jeton donnait zéro alors que les lignes existaient. C'est
+-- exactement le piège que ce fichier existe pour attraper.
+
+set local role postgres;
+
+do $file$
+declare
+  ligne record;
+  restants integer;
+begin
+  assert (select count(*) from public.push_outbox
+           where user_id = '33333333-3333-3333-3333-333333333333'::uuid
+             and type = 'chat_message') = 1,
+         'un nouveau message n''a pas empilé exactement une notification';
+
+  -- L'expéditeur ne se notifie jamais lui-même.
+  assert (select count(*) from public.push_outbox
+           where user_id = '11111111-1111-1111-1111-111111111111'::uuid
+             and type = 'chat_message') = 0,
+         'l''expéditeur s''est notifié lui-même';
+
+  assert (select count(*) from public.push_outbox
+           where user_id = '33333333-3333-3333-3333-333333333333'::uuid
+             and type = 'task_assigned') = 1,
+         'assigner une tâche n''a pas notifié la personne';
+
+  -- La réponse va à l'organisateur, le changement de date aux participants.
+  assert (select count(*) from public.push_outbox
+           where user_id = '11111111-1111-1111-1111-111111111111'::uuid
+             and type = 'event_response') = 1,
+         'la réponse n''a pas notifié l''organisateur';
+
+  assert (select count(*) from public.push_outbox
+           where user_id = '33333333-3333-3333-3333-333333333333'::uuid
+             and type = 'event_changed') = 1,
+         'le changement de date n''a pas notifié la participante';
+
+  -- La vidange voit les abonnements, et joint chaque ligne à son endpoint.
+  select count(*) into restants from public.push_a_envoyer(100);
+  assert restants > 0, 'push_a_envoyer ne renvoie rien';
+
+  select * into ligne from public.push_a_envoyer(1);
+  assert ligne.token is not null, 'push_a_envoyer sans endpoint';
+
+  perform public.marquer_push_traite(ligne.id);
+  assert (select sent_at is not null from public.push_outbox
+           where id = ligne.id), 'marquer_push_traite n''a rien clos';
+
+  -- Un échec incrémente au lieu de clore : trois tentatives, puis abandon.
+  select id into ligne from public.push_outbox where sent_at is null limit 1;
+  perform public.marquer_push_traite(ligne.id, 'endpoint injoignable');
+  assert (select attempts = 1 and sent_at is null from public.push_outbox
+           where id = ligne.id), 'un échec a été pris pour un succès';
+
+  -- Un endpoint mort se purge : sur iOS, retirer l'icône de l'écran d'accueil
+  -- détruit l'abonnement sans que personne n'en soit averti.
+  assert public.purger_push('endpoint-web-lea') = 1, 'purger_push';
+  assert public.purger_push('endpoint-inexistant') = 0,
+         'purger_push a cru retirer une ligne qui n''existait pas';
+
+  raise notice
+    'Fumée : les fonctions des tranches 3, 3b, 4, 5a, 5b et 5c répondent.';
+end;
+$file$;
 
 rollback;

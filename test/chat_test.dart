@@ -18,10 +18,12 @@ import 'package:jelvo/features/chat/repository/chat_repository.dart';
 import 'package:jelvo/features/chat/widgets/chat_media.dart';
 import 'package:jelvo/features/contacts/providers/contact_providers.dart';
 import 'package:jelvo/features/groups/providers/group_providers.dart';
+import 'package:jelvo/features/notifications/models/app_notification.dart';
 import 'package:jelvo/features/notifications/providers/notification_providers.dart';
 import 'package:jelvo/features/profile/providers/profile_providers.dart';
 import 'package:jelvo/features/tasks/providers/task_providers.dart';
 import 'package:jelvo/main.dart';
+import 'package:jelvo/router/app_bottom_nav.dart';
 
 import 'fakes/fake_auth_repository.dart';
 import 'fakes/fake_availability_repository.dart';
@@ -34,7 +36,11 @@ import 'fakes/fake_task_repository.dart';
 
 final DateTime _testNow = DateTime(2026, 8, 3, 9);
 
-Future<FakeChatRepository> _pumpApp(WidgetTester tester) async {
+Future<FakeChatRepository> _pumpApp(
+  WidgetTester tester, {
+  Map<String, int>? unread,
+  bool avecNotifications = true,
+}) async {
   tester.view.physicalSize = const Size(420, 1600);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
@@ -42,7 +48,7 @@ Future<FakeChatRepository> _pumpApp(WidgetTester tester) async {
 
   final FakeAuthRepository auth = FakeAuthRepository(signedIn: true);
   addTearDown(auth.dispose);
-  final FakeChatRepository chat = FakeChatRepository();
+  final FakeChatRepository chat = FakeChatRepository(unread: unread);
   addTearDown(chat.dispose);
 
   await tester.pumpWidget(
@@ -60,7 +66,9 @@ Future<FakeChatRepository> _pumpApp(WidgetTester tester) async {
           FakeAvailabilityRepository(),
         ),
         notificationRepositoryProvider.overrideWithValue(
-          FakeNotificationRepository(),
+          FakeNotificationRepository(
+            notifications: avecNotifications ? null : <AppNotification>[],
+          ),
         ),
       ],
       child: const JelvoApp(),
@@ -80,8 +88,116 @@ Future<void> _ouvrirDiscussion(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+/// Pastille de l'onglet Groupes — index 1 de la barre du bas.
+///
+/// Viser `NavBadge` sans restreindre à la barre attraperait aussi la cloche de
+/// l'accueil, qui en est un.
+int _pastilleGroupes(WidgetTester tester) {
+  final List<NavBadge> badges = tester
+      .widgetList<NavBadge>(
+        find.descendant(
+          of: find.byType(AppBottomNav),
+          matching: find.byType(NavBadge),
+        ),
+      )
+      .toList();
+  return badges[1].count;
+}
+
 void main() {
   setUpAll(() => initializeDateFormatting(AppDates.locale));
+
+  group('Savoir qu’on a reçu un message', () {
+    testWidgets('l’onglet Groupes porte une pastille sans y entrer', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester, avecNotifications: false);
+
+      // Depuis l'accueil, sans avoir ouvert quoi que ce soit.
+      expect(_pastilleGroupes(tester), 1);
+    });
+
+    testWidgets('la pastille compte les conversations, pas les messages', (
+      WidgetTester tester,
+    ) async {
+      // Douze messages non lus, mais dans **une seule** conversation : ce que
+      // la pastille annonce, c'est le nombre d'endroits où aller.
+      await _pumpApp(
+        tester,
+        unread: const <String, int>{'g1': 12},
+        avecNotifications: false,
+      );
+
+      expect(_pastilleGroupes(tester), 1);
+    });
+
+    testWidgets('deux conversations actives donnent deux', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(
+        tester,
+        unread: const <String, int>{'g1': 3, 'g2': 1},
+        avecNotifications: false,
+      );
+
+      expect(_pastilleGroupes(tester), 2);
+    });
+
+    testWidgets('un groupe sans rien à lire n’allume rien', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(
+        tester,
+        unread: const <String, int>{'g1': 0},
+        avecNotifications: false,
+      );
+
+      expect(_pastilleGroupes(tester), 0);
+    });
+
+    testWidgets('la carte du groupe dit lequel est actif', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(
+        tester,
+        unread: const <String, int>{'g1': 3},
+        avecNotifications: false,
+      );
+
+      await tester.tap(find.text('Groupes'));
+      await tester.pumpAndSettle();
+
+      // « Famille Rousseau » est g1 ; « Vacances en Corse » n'a rien.
+      final GroupCard famille = tester.widget<GroupCard>(
+        find.widgetWithText(GroupCard, 'Famille Rousseau'),
+      );
+      final GroupCard corse = tester.widget<GroupCard>(
+        find.widgetWithText(GroupCard, 'Vacances en Corse'),
+      );
+
+      expect(famille.unreadCount, 3);
+      expect(corse.unreadCount, 0);
+      // La carte, elle, a la place d'afficher le compte réel.
+      expect(find.text('3'), findsWidgets);
+    });
+
+    testWidgets('lire la conversation éteint la pastille', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(
+        tester,
+        unread: const <String, int>{'g1': 4},
+        avecNotifications: false,
+      );
+      expect(_pastilleGroupes(tester), 1);
+
+      await _ouvrirDiscussion(tester);
+      await tester.tap(find.byTooltip('Retour').first);
+      await tester.pumpAndSettle();
+
+      expect(_pastilleGroupes(tester), 0);
+    });
+  });
 
   group('Entrée depuis le groupe', () {
     testWidgets('la ligne annonce les messages non lus', (

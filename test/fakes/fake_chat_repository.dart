@@ -92,6 +92,9 @@ class FakeChatRepository implements ChatRepository {
   Stream<void> watchChanges(String groupId) => _changements.stream;
 
   @override
+  Stream<void> watchAllMessages() => _changements.stream;
+
+  @override
   Stream<TypingSignal> watchTyping(String groupId) => _frappes.stream;
 
   @override

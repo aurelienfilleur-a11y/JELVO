@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/core.dart';
 import '../../../router/app_routes.dart';
+import '../../chat/providers/chat_providers.dart';
 import '../../auth/models/auth_failure.dart';
 import '../models/group.dart';
 import '../models/group_invite.dart';
@@ -96,6 +97,9 @@ class GroupsScreen extends ConsumerWidget {
                   icon: group.icon,
                   accentColor: group.accent.color,
                   trailingLabel: group.memberLabel,
+                  // Savoir *lequel* est actif, pas seulement qu'il se passe
+                  // quelque chose quelque part.
+                  unreadCount: ref.watch(unreadForGroupProvider(group.id)),
                   onTap: () => context.pushNamed(
                     AppRoutes.groupDetail,
                     pathParameters: <String, String>{'id': group.id},

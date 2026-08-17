@@ -40,7 +40,7 @@ class AppShell extends ConsumerWidget {
       body: navigationShell,
       bottomNavigationBar: AppBottomNav(
         currentIndex: navigationShell.currentIndex,
-        badges: ref.watch(unreadByTabProvider),
+        badges: ref.watch(navBadgesProvider),
         onDestinationSelected: (int index) => navigationShell.goBranch(
           index,
           // Re-toucher l'onglet actif ramène à sa racine, comportement attendu

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/core.dart';
+import '../../../data/data_providers.dart';
 import '../../../router/app_routes.dart';
 import '../../groups/providers/group_providers.dart';
 import '../models/auth_failure.dart';
@@ -25,6 +26,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
 
   bool _submitting = false;
+
+  /// Cochée par défaut : c'est le comportement que l'application avait, et
+  /// celui qu'on attend d'un téléphone personnel.
+  bool _seSouvenir = true;
+
   String? _errorMessage;
   String? _identifierError;
   String? _passwordError;
@@ -81,6 +87,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ),
 
+        _caseSeSouvenir(),
+
         AppSpacing.gapLg,
         PrimaryButton(
           label: 'Se connecter',
@@ -105,6 +113,88 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           ],
         ),
+      ],
+    );
+  }
+
+  /// « Se souvenir de moi », et la précision qui évite un faux bug.
+  ///
+  /// Sans elle, quelqu'un qui coche la case dans Safari puis ouvre
+  /// l'application installée se retrouve devant l'écran de connexion et en
+  /// conclut, très raisonnablement, que la case ne marche pas. Une application
+  /// posée sur l'écran d'accueil a son propre stockage : c'est une session
+  /// distincte, et rien dans le code ne peut y changer quoi que ce soit.
+  Widget _caseSeSouvenir() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        InkWell(
+          onTap: _submitting
+              ? null
+              : () => setState(() => _seSouvenir = !_seSouvenir),
+          borderRadius: AppRadii.fieldRadius,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+            child: Row(
+              children: <Widget>[
+                Checkbox(
+                  value: _seSouvenir,
+                  onChanged: _submitting
+                      ? null
+                      : (bool? coche) =>
+                            setState(() => _seSouvenir = coche ?? true),
+                ),
+                Flexible(
+                  child: Text('Se souvenir de moi', style: AppTypography.body),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        Padding(
+          padding: const EdgeInsets.only(left: AppSpacing.md),
+          child: Text(
+            _seSouvenir
+                ? 'Vous resterez connecté jusqu’à la déconnexion.'
+                : 'Vous serez déconnecté à la fermeture de l’application.',
+            style: AppTypography.caption.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ),
+
+        if (ref.watch(estSurLeWebProvider)) ...<Widget>[
+          AppSpacing.gapSm,
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              color: AppColors.primarySoft,
+              borderRadius: AppRadii.fieldRadius,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const Icon(
+                  Icons.info_outline_rounded,
+                  size: 18,
+                  color: AppColors.primary,
+                ),
+                AppSpacing.hGapSm,
+                Expanded(
+                  child: Text(
+                    'Jelvo installé sur l’écran d’accueil a sa propre '
+                    'session : s’y connecter est une étape distincte de '
+                    'Safari, même avec cette case cochée.',
+                    style: AppTypography.caption.copyWith(
+                      color: AppColors.midnight,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -145,6 +235,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     setState(() => _submitting = true);
     try {
+      // **Avant** la connexion, pas après : gotrue écrit la session dans la
+      // foulée de `signIn`, et le réglage doit déjà être en place quand il le
+      // fait. L'inverse persisterait la session que l'on vient de refuser.
+      await ref
+          .read(sessionPersistenceProvider)
+          .definir(seSouvenir: _seSouvenir);
+
       await ref
           .read(authRepositoryProvider)
           .signIn(identifier: identifier, password: password);

@@ -7,6 +7,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/core.dart';
 import 'l10n/app_localizations.dart';
 import 'data/app_config.dart';
+import 'data/data_providers.dart';
+import 'data/session_persistence.dart';
 import 'data/diagnostic_mode.dart';
 import 'router/app_router.dart';
 
@@ -22,13 +24,23 @@ Future<void> main() async {
   await initializeDateFormatting(AppDates.locale);
 
   // `Supabase.initialize` restaure la session persistée : l'utilisateur reste
-  // connecté d'un lancement à l'autre.
+  // connecté d'un lancement à l'autre — sauf s'il a décoché « Se souvenir de
+  // moi », auquel cas `SessionPersistence` n'a rien écrit à retrouver.
+  final SessionPersistence persistance = SessionPersistence();
   await Supabase.initialize(
     url: AppConfig.supabaseUrl,
     publishableKey: AppConfig.supabaseAnonKey,
+    authOptions: FlutterAuthClientOptions(localStorage: persistance),
   );
 
-  runApp(const ProviderScope(child: JelvoApp()));
+  runApp(
+    ProviderScope(
+      // `Override` n'est pas exporté par Riverpod 3 : inférence, comme dans
+      // les tests.
+      overrides: [sessionPersistenceProvider.overrideWithValue(persistance)],
+      child: const JelvoApp(),
+    ),
+  );
 }
 
 class JelvoApp extends ConsumerWidget {

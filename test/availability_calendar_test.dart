@@ -13,6 +13,7 @@ import 'package:jelvo/features/contacts/providers/contact_providers.dart';
 import 'package:jelvo/features/groups/providers/group_providers.dart';
 import 'package:jelvo/features/home/widgets/week_overview.dart';
 import 'package:jelvo/features/notifications/providers/notification_providers.dart';
+import 'package:jelvo/features/notifications/providers/push_providers.dart';
 import 'package:jelvo/features/profile/providers/profile_providers.dart';
 import 'package:jelvo/features/tasks/providers/task_providers.dart';
 import 'package:jelvo/main.dart';
@@ -24,6 +25,7 @@ import 'fakes/fake_contact_repository.dart';
 import 'fakes/fake_event_repository.dart';
 import 'fakes/fake_group_repository.dart';
 import 'fakes/fake_notification_repository.dart';
+import 'fakes/fake_push.dart';
 import 'fakes/fake_task_repository.dart';
 
 /// Lundi 3 août 2026 : le jour du créneau récurrent du faux dépôt, et celui
@@ -51,6 +53,8 @@ Future<FakeAvailabilityRepository> _pumpApp(WidgetTester tester) async {
         eventRepositoryProvider.overrideWithValue(FakeEventRepository()),
         contactRepositoryProvider.overrideWithValue(FakeContactRepository()),
         chatRepositoryProvider.overrideWithValue(FakeChatRepository()),
+        pushServiceProvider.overrideWithValue(FakePushService()),
+        pushRepositoryProvider.overrideWithValue(FakePushRepository()),
         availabilityRepositoryProvider.overrideWithValue(dispos),
         notificationRepositoryProvider.overrideWithValue(
           FakeNotificationRepository(),

@@ -10,6 +10,7 @@ import 'data/app_config.dart';
 import 'data/data_providers.dart';
 import 'data/session_persistence.dart';
 import 'data/diagnostic_mode.dart';
+import 'features/notifications/providers/push_providers.dart';
 import 'router/app_router.dart';
 
 Future<void> main() async {
@@ -49,6 +50,10 @@ class JelvoApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final GoRouter router = ref.watch(routerProvider);
+
+    // Repose l'abonnement aux notifications à chaque ouverture de session : un
+    // abonnement révoqué ne prévient personne.
+    ref.watch(pushRegistrationProvider);
 
     return MaterialApp.router(
       onGenerateTitle: (BuildContext context) => AppTexts.of(context).appTitle,

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/core.dart';
 import '../../auth/models/auth_failure.dart';
 import '../../auth/providers/auth_providers.dart';
+import '../../notifications/widgets/push_settings_section.dart';
 import '../models/profile.dart';
 import '../providers/profile_providers.dart';
 
@@ -70,9 +71,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
 
             AppSpacing.gapXl,
+            const PushSettingsSection(),
+
+            AppSpacing.gapXl,
             const SectionHeader(
-              title: 'Préférences',
-              subtitle: 'Notifications et thème arriveront prochainement',
+              title: 'Apparence',
+              subtitle: 'Le mode sombre arrivera prochainement',
             ),
             AppSpacing.gapMd,
             AppCard(
@@ -87,8 +91,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   AppSpacing.hGapMd,
                   Expanded(
                     child: Text(
-                      'Le réglage des notifications et le mode sombre ne sont '
-                      'pas encore disponibles.',
+                      'Le mode sombre n’est pas encore disponible.',
                       style: AppTypography.caption,
                     ),
                   ),

@@ -428,6 +428,40 @@ flutter build web --release \
 Le workflow les injecte depuis son bloc `env`. Toute nouvelle valeur de
 configuration passe par `AppConfig`, jamais par une constante disséminée.
 
+### « Se souvenir de moi » décide de ce qui est écrit, pas de ce qui expire
+
+`SessionPersistence` (`data/session_persistence.dart`) est le `LocalStorage`
+que gotrue interroge au démarrage et appelle à chaque rafraîchissement de
+jeton. **Cochée — le défaut —, elle délègue au stockage habituel.** Décochée,
+elle n'écrit rien : la session ne vit qu'en mémoire dans le client et disparaît
+avec le processus. Ce n'est pas une expiration programmée, il n'y a simplement
+rien à retrouver.
+
+Le **drapeau**, lui, est persistant : il faut le connaître *avant* la
+restauration de session, donc dès `initialize()`. Il passe par une seconde
+instance du même stockage plutôt que par une dépendance de plus.
+
+Trois points qui ne sont pas décoratifs :
+
+- **Le réglage se pose avant `signIn`.** gotrue écrit la session dans la
+  foulée ; régler après persisterait celle qu'on vient de refuser.
+- **Décocher efface une session déjà enregistrée.** Sans cela, celle d'une
+  connexion précédente survivrait — exactement l'impression que la case ne
+  marche pas.
+- **`removePersistedSession` n'est jamais conditionnelle** : une déconnexion
+  efface quel que soit le réglage.
+- La clé de session reprend **à l'identique** le format de
+  `Supabase.initialize` (`sb-<hôte>-auth-token`) : en changer déconnecterait
+  tout le monde à la mise à jour.
+
+**L'application installée sur l'écran d'accueil a son propre stockage.** Se
+connecter dans Safari ne connecte pas la PWA, et aucun code n'y peut rien.
+L'écran de connexion le dit sous la case, sans quoi le premier réflexe est de
+conclure que la case est cassée. La consigne est conditionnée par
+`estSurLeWebProvider` et non par `kIsWeb` directement : les tests tournent sur
+la machine virtuelle, où `kIsWeb` vaut faux, et un texte réservé au web n'y
+serait jamais éprouvé.
+
 `main()` attend `Supabase.initialize(url:, publishableKey:)` avant `runApp` :
 la session persistée est donc déjà restaurée au premier `build` — d'où les deux
 seuls états de `AuthStatus`, sans `unknown`.
@@ -1248,6 +1282,10 @@ compteur vaut zéro.
   connexion, la disponibilité du pseudo et la déconnexion.
 - `test/credentials_rules_test.dart` couvre les règles de validation, sans
   widget.
+- `test/session_persistence_test.dart` couvre « Se souvenir de moi » sans
+  widget : le défaut coché, l'écriture ou non de la session, l'effacement au
+  décochage, la survie du *choix* alors que la session ne survit pas, et la
+  déconnexion qui efface quel que soit le réglage.
 - `test/groups_contacts_test.dart` couvre la liste et le détail d'un groupe, la
   création, le départ, les cinq états d'un lien d'invitation, les demandes de
   contact, l'encodage du QR code, et le « + » contextuel : depuis l'écran d'un

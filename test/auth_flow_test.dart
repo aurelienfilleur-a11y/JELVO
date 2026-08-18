@@ -5,6 +5,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:jelvo/core/core.dart';
 import 'package:jelvo/data/clock.dart';
 import 'package:jelvo/data/data_providers.dart';
+import 'package:jelvo/data/session_persistence.dart';
 import 'package:jelvo/features/auth/models/auth_failure.dart';
 import 'package:jelvo/features/auth/providers/auth_providers.dart';
 import 'package:jelvo/features/availability/providers/availability_providers.dart';
@@ -27,12 +28,20 @@ import 'fakes/fake_task_repository.dart';
 
 final DateTime _testNow = DateTime(2026, 8, 3, 9);
 
+/// Réglage observé par les tests de « Se souvenir de moi ». Il n'écrit nulle
+/// part : ses deux stockages sont éphémères.
+late SessionPersistence _persistance;
+
 Future<FakeAuthRepository> _pumpApp(
   WidgetTester tester, {
   required bool signedIn,
   Set<String> pseudosTaken = const <String>{},
   SignUpOutcome signUpOutcome = SignUpOutcome.codeSent,
 }) async {
+  _persistance = SessionPersistence(
+    session: const EphemeralSessionStorage(),
+    drapeau: const EphemeralSessionStorage(),
+  );
   tester.view.physicalSize = const Size(420, 1600);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
@@ -48,6 +57,10 @@ Future<FakeAuthRepository> _pumpApp(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        sessionPersistenceProvider.overrideWithValue(_persistance),
+        // Les tests tournent sur la VM : sans cela, la consigne réservée au
+        // web ne serait jamais éprouvée.
+        estSurLeWebProvider.overrideWithValue(true),
         clockProvider.overrideWithValue(FixedClock(_testNow)),
         authRepositoryProvider.overrideWithValue(auth),
         profileRepositoryProvider.overrideWithValue(FakeProfileRepository()),
@@ -103,6 +116,62 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Renseignez votre mot de passe.'), findsOneWidget);
+  });
+
+  group('Se souvenir de moi', () {
+    testWidgets('la case est cochée par défaut', (WidgetTester tester) async {
+      await _pumpApp(tester, signedIn: false);
+
+      final Checkbox case_ = tester.widget<Checkbox>(find.byType(Checkbox));
+      expect(case_.value, isTrue);
+      expect(find.text('Se souvenir de moi'), findsOneWidget);
+      expect(
+        find.text('Vous resterez connecté jusqu’à la déconnexion.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('décocher annonce la déconnexion à la fermeture', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester, signedIn: false);
+
+      await tester.tap(find.byType(Checkbox));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Vous serez déconnecté à la fermeture de l’application.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('la session installée est annoncée comme distincte', (
+      WidgetTester tester,
+    ) async {
+      // Sans cette précision, quelqu'un qui coche dans Safari puis ouvre
+      // l'application de l'écran d'accueil conclut que la case ne marche pas.
+      await _pumpApp(tester, signedIn: false);
+
+      expect(find.textContaining('a sa propre session'), findsOneWidget);
+      expect(find.textContaining('distincte de Safari'), findsOneWidget);
+    });
+
+    testWidgets('le réglage est posé avant la connexion', (
+      WidgetTester tester,
+    ) async {
+      // L'ordre compte : gotrue écrit la session dans la foulée de `signIn`.
+      // Régler après persisterait la session que l'on vient de refuser.
+      await _pumpApp(tester, signedIn: false);
+
+      await tester.tap(find.byType(Checkbox));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).first, 'camille.rousseau');
+      await tester.enterText(find.byType(TextField).at(1), 'Motdepasse1');
+      await tester.tap(find.text('Se connecter'));
+      await tester.pumpAndSettle();
+
+      expect(_persistance.seSouvenir, isFalse);
+    });
   });
 
   testWidgets('des identifiants incorrects affichent un message en français', (

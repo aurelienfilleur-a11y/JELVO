@@ -37,6 +37,20 @@
 // La **publique** doit aussi être passée à la compilation Flutter, via
 // `--dart-define=VAPID_PUBLIC_KEY=…` : le navigateur en a besoin pour
 // s'abonner. Elle est publique par conception, comme la clé « publishable ».
+//
+//
+// CETTE FONCTION DOIT ÊTRE PLANIFIÉE — SANS CELA, RIEN NE PART NON PLUS
+//
+// Elle ne s'exécute pas toute seule. Tant que rien ne l'appelle, la file se
+// remplit et personne ne la vide : c'est exactement ce qui s'est passé entre
+// les tranches 5c et 5d.
+//
+// Tableau de bord Supabase → Integrations → Cron → nouvelle tâche, type
+// « Edge Function », `envoyer-push`, toutes les minutes (`* * * * *`).
+//
+// C'est **la seule chose à planifier** : la fonction empile les rappels dus
+// avant de vider la file. Voir l'en-tête de `supabase/tranche5d_rappels.sql`
+// pour la raison du choix.
 
 import webpush from 'npm:web-push@3.6.7';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
@@ -84,6 +98,19 @@ Deno.serve(async (requete: Request): Promise<Response> => {
     { auth: { persistSession: false } },
   );
 
+  // Empiler **avant** de lire la file, et non après : un rappel dont l'heure
+  // vient d'arriver part dans le même passage, au lieu d'attendre le suivant.
+  // C'est ce qui permet de ne planifier qu'une seule chose.
+  //
+  // L'échec n'interrompt pas : les notifications déjà en attente n'ont pas à
+  // subir un défaut du calcul des rappels.
+  const { data: rappels, error: erreurRappels } = await supabase.rpc(
+    'empiler_rappels',
+  );
+  if (erreurRappels) {
+    console.error('empiler_rappels :', erreurRappels.message);
+  }
+
   const { data, error } = await supabase.rpc('push_a_envoyer', {
     p_limite: LOT,
   });
@@ -113,7 +140,13 @@ Deno.serve(async (requete: Request): Promise<Response> => {
     }
   }
 
-  return json({ lues: lignes.length, envoyes, echecs, purges });
+  return json({
+    rappels: erreurRappels ? null : (rappels ?? 0),
+    lues: lignes.length,
+    envoyes,
+    echecs,
+    purges,
+  });
 });
 
 type Issue = 'envoye' | 'echec' | 'purge';

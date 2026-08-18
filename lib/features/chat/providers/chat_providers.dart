@@ -222,7 +222,17 @@ class UnreadMessagesNotifier extends AsyncNotifier<Map<String, int>> {
   @override
   Future<Map<String, int>> build() {
     ref.watch(authStatusProvider);
-    return ref.watch(chatRepositoryProvider).unreadCounts();
+    final ChatRepository repository = ref.watch(chatRepositoryProvider);
+
+    // Le compteur doit bouger **sans** qu'on entre dans la conversation :
+    // c'est tout l'objet d'une pastille. On écoute donc un canal global, et
+    // non celui d'un groupe ouvert.
+    final StreamSubscription<void> abonnement = repository
+        .watchAllMessages()
+        .listen((_) => refresh());
+    ref.onDispose(abonnement.cancel);
+
+    return repository.unreadCounts();
   }
 
   Future<void> refresh() async {
@@ -239,6 +249,23 @@ final unreadForGroupProvider = Provider.family<int, String>(
           const <String, int>{})[groupId] ??
       0,
 );
+
+/// Nombre de **conversations** qui contiennent des messages non lus.
+///
+/// Ce n'est délibérément pas le nombre de messages. Trois personnes qui
+/// écrivent dans le même groupe, cela reste **une** conversation à ouvrir : ce
+/// que la pastille annonce, c'est le nombre d'endroits où aller, pas le volume
+/// de ce qui s'y trouve. Un « 47 » sur l'onglet dirait quelque chose de vrai
+/// et d'inutile.
+///
+/// La notification système, elle, fait l'inverse — une par message. Les deux
+/// répondent à des questions différentes : « où dois-je aller ? » ici,
+/// « que s'est-il passé ? » sur l'écran verrouillé.
+final Provider<int> unreadConversationsProvider = Provider<int>((Ref ref) {
+  final Map<String, int> parGroupe =
+      ref.watch(unreadMessagesProvider).value ?? const <String, int>{};
+  return parGroupe.values.where((int nombre) => nombre > 0).length;
+});
 
 /// URL signée d'un média, résolue à la demande.
 ///

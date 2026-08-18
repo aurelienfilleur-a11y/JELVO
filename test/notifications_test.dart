@@ -53,7 +53,11 @@ Future<FakeNotificationRepository> _pumpApp(
         taskRepositoryProvider.overrideWithValue(FakeTaskRepository()),
         eventRepositoryProvider.overrideWithValue(FakeEventRepository()),
         contactRepositoryProvider.overrideWithValue(FakeContactRepository()),
-        chatRepositoryProvider.overrideWithValue(FakeChatRepository()),
+        // Aucun message non lu : ces tests mesurent les pastilles de la
+        // boîte de notifications, pas celles de la messagerie.
+        chatRepositoryProvider.overrideWithValue(
+          FakeChatRepository(unread: const <String, int>{}),
+        ),
         availabilityRepositoryProvider.overrideWithValue(
           FakeAvailabilityRepository(),
         ),

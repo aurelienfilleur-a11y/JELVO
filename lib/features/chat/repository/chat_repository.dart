@@ -73,6 +73,17 @@ abstract interface class ChatRepository {
   /// Non-lus par groupe, pour les pastilles.
   Future<Map<String, int>> unreadCounts();
 
+  /// Émet à chaque message reçu, **quel que soit le groupe**.
+  ///
+  /// Sans ce signal global, la pastille de l'onglet ne bougerait qu'après une
+  /// visite dans la conversation concernée — c'est-à-dire précisément quand
+  /// elle n'a plus rien à annoncer. `watchChanges` ne sert qu'un groupe à la
+  /// fois, et n'est abonné que pendant que l'écran est ouvert.
+  ///
+  /// RLS filtre pour nous : on ne reçoit que les messages des groupes dont on
+  /// est membre, sans avoir à les énumérer.
+  Stream<void> watchAllMessages();
+
   /// Annonce que l'on écrit — ou que l'on a cessé.
   ///
   /// Passe par un **broadcast** Realtime et non par une table : l'information
@@ -316,6 +327,30 @@ class SupabaseChatRepository implements ChatRepository {
     } catch (_) {
       // volontairement ignoré
     }
+  }
+
+  RealtimeChannel? _canalGlobal;
+  StreamController<void>? _tousLesMessages;
+
+  @override
+  Stream<void> watchAllMessages() {
+    final StreamController<void> controleur = _tousLesMessages ??=
+        StreamController<void>.broadcast();
+
+    _canalGlobal ??= _client
+        .channel('jelvo:messages')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'messages',
+          // Aucun filtre : RLS ne laisse passer que les groupes dont on est
+          // membre, et les énumérer côté client donnerait un abonnement à
+          // refaire à chaque adhésion.
+          callback: (_) => _tousLesMessages?.add(null),
+        )
+        .subscribe();
+
+    return controleur.stream;
   }
 
   @override

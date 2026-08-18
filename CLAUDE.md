@@ -1021,6 +1021,40 @@ politiques sur `storage.objects`. Le fichier attrape alors
 échec dur bloquerait toutes les migrations suivantes, alors que le défaut se
 répare en collant la PARTIE 2 dans l'éditeur SQL.
 
+### Deux compteurs qui répondent à deux questions
+
+**Dans l'application, la pastille de l'onglet Groupes compte les
+*conversations*, pas les messages.** Trois personnes qui écrivent dans le même
+groupe, cela reste **1** : ce qu'annonce la pastille, c'est le nombre
+d'endroits où aller, pas le volume de ce qui s'y trouve. Un « 47 » sur
+l'onglet dirait quelque chose de vrai et d'inutile.
+
+**Sur le téléphone, c'est l'inverse : une notification système par message**,
+avec le nom du groupe pour s'y retrouver. La question n'est plus « où dois-je
+aller ? » mais « que s'est-il passé ? ».
+
+La carte du groupe, dans la liste, affiche le **compte réel** de ses messages
+non lus : elle a la place de le dire, là où la pastille de l'onglet ne l'a
+pas. C'est elle qui répond à « lequel est actif ».
+
+`unreadConversationsProvider` dérive tout cela de `messages_non_lus()`, seule
+lecture nécessaire — `message_reads.last_read_at` suffit.
+
+**`navBadgesProvider` agrège deux sources de nature différente** : les
+notifications de la boîte et les conversations non lues. Un message n'a pas de
+ligne dans `notifications` — ce n'est pas une notification, il n'a rien à faire
+dans une liste qu'on dépile —, et n'apparaît donc pas dans le compteur de la
+cloche. **La cloche et la somme des pastilles ne coïncident donc plus** ;
+c'était vrai tant que tout venait de `notifications`, la messagerie y a mis
+fin. Le compromis est le bon : allumer la cloche à chaque message ferait de la
+boîte un fil de discussion.
+
+Le compteur doit bouger **sans** qu'on entre dans la conversation, sinon il
+n'annonce rien. `UnreadMessagesNotifier` s'abonne donc à un canal Realtime
+**global** sur `messages` : RLS ne laisse passer que les groupes dont on est
+membre, ce qui évite de les énumérer et de refaire l'abonnement à chaque
+adhésion.
+
 ### La frappe passe par un broadcast, jamais par une table
 
 « X est en train d'écrire » vaut deux secondes. L'écrire en base laisserait une
@@ -1164,8 +1198,10 @@ exactement la somme des pastilles. Ajouter un type impose de lui choisir un
 onglet — c'est voulu.
 
 `unreadByTabProvider` renvoie les quatre compteurs dans l'ordre de
-`AppBottomNav.destinations` ; `AppShell` les lui passe. `NavBadge` ne peint rien
-quand le compteur vaut zéro.
+`AppBottomNav.destinations`. C'est `navBadgesProvider` qui y ajoute les
+conversations non lues de la messagerie et que lit `AppShell` — voir « Deux
+compteurs qui répondent à deux questions ». `NavBadge` ne peint rien quand le
+compteur vaut zéro.
 
 ---
 
@@ -1235,7 +1271,10 @@ quand le compteur vaut zéro.
   vide, l'arrivée d'un message par le flux temps réel, l'indicateur de frappe
   dans les deux sens, la bascule d'une réaction, et les trois issues d'une
   suppression — la sienne, celle d'un autre, et celle qui ne touche aucune
-  ligne. Côté médias : le sélecteur qui ne propose jamais de document, la
+  ligne. Côté pastilles : l'onglet Groupes allumé sans être entré nulle part,
+  douze messages dans un groupe qui comptent pour une conversation, deux
+  groupes actifs qui comptent pour deux, et l'extinction à la lecture. Côté
+  médias : le sélecteur qui ne propose jamais de document, la
   vignette qui ne laisse pas fuiter le chemin de stockage, la vidéo annoncée
   comme telle, le média qui disparaît à la suppression, et les bornes de poids
   et d'extension, sans widget.

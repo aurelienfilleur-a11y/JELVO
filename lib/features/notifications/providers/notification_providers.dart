@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/supabase_providers.dart';
 import '../../auth/providers/auth_providers.dart';
+import '../../chat/providers/chat_providers.dart';
 import '../models/app_notification.dart';
 import '../repository/notification_repository.dart';
 
@@ -60,6 +61,25 @@ final Provider<List<int>> unreadByTabProvider = Provider<List<int>>((Ref ref) {
     counts[notification.type.navIndex]++;
   }
   return counts;
+});
+
+/// Pastilles réellement affichées sur la barre inférieure.
+///
+/// Elles agrègent **deux sources de nature différente** : les notifications de
+/// la boîte, et les conversations qui contiennent des messages non lus. Les
+/// secondes n'ont pas de ligne dans `notifications` — un message n'est pas une
+/// notification, il n'a rien à faire dans une liste qu'on dépile —, et
+/// n'apparaissent donc pas dans le compteur de la cloche.
+///
+/// **La cloche et la somme des pastilles ne coïncident donc plus.** C'était
+/// vrai tant que tout venait de `notifications` ; la messagerie a mis fin à
+/// cette égalité, et c'est le bon compromis : allumer la cloche à chaque
+/// message ferait de la boîte un fil de discussion.
+final Provider<List<int>> navBadgesProvider = Provider<List<int>>((Ref ref) {
+  final List<int> compteurs = List<int>.of(ref.watch(unreadByTabProvider));
+  // Index 1 : l'onglet Groupes, où vivent les conversations.
+  compteurs[1] += ref.watch(unreadConversationsProvider);
+  return compteurs;
 });
 
 /// Écritures sur la boîte de notifications.

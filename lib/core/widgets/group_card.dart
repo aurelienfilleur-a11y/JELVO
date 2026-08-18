@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
+import '../theme/app_radii.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 import 'app_card.dart';
@@ -20,6 +21,7 @@ class GroupCard extends StatelessWidget {
     this.accentColor = AppColors.primary,
     this.members = const <AvatarData>[],
     this.trailingLabel,
+    this.unreadCount = 0,
     this.onTap,
   });
 
@@ -34,6 +36,14 @@ class GroupCard extends StatelessWidget {
 
   /// Métadonnée de droite : « 3 événements », « 2 tâches »…
   final String? trailingLabel;
+
+  /// Messages non lus de la conversation. Zéro n'affiche rien.
+  ///
+  /// Un nombre et non un booléen : la carte a la place de le dire, là où la
+  /// pastille de l'onglet ne l'a pas. Les deux ne répondent d'ailleurs pas à
+  /// la même question — l'onglet dit *combien de conversations*, la carte dit
+  /// *combien de messages ici*.
+  final int unreadCount;
 
   final VoidCallback? onTap;
 
@@ -63,11 +73,21 @@ class GroupCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text(
-                      name,
-                      style: AppTypography.h3,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: <Widget>[
+                        Flexible(
+                          child: Text(
+                            name,
+                            style: AppTypography.h3,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (unreadCount > 0) ...<Widget>[
+                          AppSpacing.hGapSm,
+                          _PastilleNonLus(count: unreadCount),
+                        ],
+                      ],
                     ),
                     if (description != null) ...<Widget>[
                       const SizedBox(height: 2),
@@ -116,6 +136,41 @@ class GroupCard extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// Compteur de messages non lus posé à côté du nom du groupe.
+///
+/// Violet plein plutôt que rouge : ce n'est pas une alerte, c'est une
+/// conversation qui attend. Le rouge de [NavBadge] est réservé à ce qui
+/// demande une décision — une invitation, une demande de contact.
+class _PastilleNonLus extends StatelessWidget {
+  const _PastilleNonLus({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: count == 1 ? '1 message non lu' : '$count messages non lus',
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        constraints: const BoxConstraints(minWidth: 20),
+        decoration: BoxDecoration(
+          color: AppColors.primary,
+          borderRadius: BorderRadius.circular(AppRadii.pill),
+        ),
+        child: Text(
+          count > 99 ? '99+' : '$count',
+          textAlign: TextAlign.center,
+          style: AppTypography.caption.copyWith(
+            color: Colors.white,
+            fontWeight: AppTypography.semiBold,
+            fontSize: 11,
+          ),
+        ),
       ),
     );
   }

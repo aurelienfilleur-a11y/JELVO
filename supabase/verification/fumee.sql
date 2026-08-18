@@ -562,4 +562,145 @@ begin
 end;
 $file$;
 
+
+-- ---------------------------------------------------------------------------
+-- Les rappels (tranche 5d), sous `postgres` : `empiler_rappels` est réservée
+-- au rôle de service, et écrit dans la boîte de tout le monde.
+-- ---------------------------------------------------------------------------
+
+do $rappels$
+declare
+  camille    uuid := '11111111-1111-1111-1111-111111111111'::uuid;
+  lea        uuid := '33333333-3333-3333-3333-333333333333'::uuid;
+  groupe     uuid := '22222222-2222-2222-2222-222222222222'::uuid;
+  tache      uuid;
+  evenement  uuid;
+  serie      uuid;
+begin
+  -- 1. `prochaine_occurrence` ------------------------------------------------
+  -- Sans récurrence, l'occurrence unique ne compte que si elle est devant.
+  assert public.prochaine_occurrence(
+           '2026-08-03 09:00+00', null, '2026-08-03 08:00+00'
+         ) = '2026-08-03 09:00+00'::timestamptz,
+         'une occurrence à venir doit être proposée';
+  assert public.prochaine_occurrence(
+           '2026-08-03 09:00+00', null, '2026-08-03 10:00+00'
+         ) is null,
+         'une occurrence passée ne doit pas être proposée';
+
+  assert public.prochaine_occurrence(
+           '2026-08-03 09:00+00', 'FREQ=DAILY', '2026-08-10 08:00+00'
+         ) = '2026-08-10 09:00+00'::timestamptz, 'FREQ=DAILY';
+
+  assert public.prochaine_occurrence(
+           '2026-08-03 09:00+00', 'FREQ=WEEKLY', '2026-08-04 00:00+00'
+         ) = '2026-08-10 09:00+00'::timestamptz, 'FREQ=WEEKLY';
+
+  assert public.prochaine_occurrence(
+           '2026-08-03 09:00+00', 'FREQ=WEEKLY;INTERVAL=2', '2026-08-04 00:00+00'
+         ) = '2026-08-17 09:00+00'::timestamptz, 'FREQ=WEEKLY;INTERVAL=2';
+
+  -- Le 31 n'existe pas tous les mois : l'occurrence retombe sur la fin du
+  -- mois, et la suivante repart de la base — elle ne se décale pas de proche
+  -- en proche.
+  assert public.prochaine_occurrence(
+           '2026-01-31 09:00+00', 'FREQ=MONTHLY', '2026-02-15 00:00+00'
+         ) = '2026-02-28 09:00+00'::timestamptz, 'FREQ=MONTHLY, mois court';
+  assert public.prochaine_occurrence(
+           '2026-01-31 09:00+00', 'FREQ=MONTHLY', '2026-03-15 00:00+00'
+         ) = '2026-03-31 09:00+00'::timestamptz, 'FREQ=MONTHLY, retour au 31';
+
+  assert public.prochaine_occurrence(
+           '2026-08-03 09:00+00', 'FREQ=YEARLY', '2027-01-01 00:00+00'
+         ) = '2027-08-03 09:00+00'::timestamptz, 'FREQ=YEARLY';
+
+  -- Une règle que l'application n'écrit pas ne se devine pas : mieux vaut ne
+  -- pas rappeler que rappeler à la mauvaise heure.
+  assert public.prochaine_occurrence(
+           '2026-08-03 09:00+00', 'FREQ=HOURLY', '2026-08-03 10:00+00'
+         ) is null, 'une règle inconnue doit renvoyer null';
+  assert public.prochaine_occurrence(
+           '2026-08-03 09:00+00', 'FREQ=DAILY;INTERVAL=99999999999',
+           '2026-08-04 00:00+00'
+         ) is not null, 'un INTERVAL démesuré ne doit pas faire lever';
+
+  -- 2. Le décor : deux abonnements, sans lesquels rien ne s'empile -----------
+  -- Celui de Léa vient d'être purgé par le bloc précédent.
+  perform set_config('request.jwt.claims',
+    '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}',
+    true);
+  perform public.enregistrer_push('endpoint-rappel-lea', 'web', 'k', 's');
+  perform set_config('request.jwt.claims',
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}',
+    true);
+  perform public.enregistrer_push('endpoint-rappel-camille', 'web', 'k', 's');
+
+  -- 3. Une tâche dont l'heure du rappel vient de passer ----------------------
+  insert into public.tasks (group_id, created_by, title, due_at, reminder_at)
+  values (groupe, camille, 'Fumée — rappel de tâche',
+          now() + interval '1 hour', now() - interval '1 minute')
+  returning id into tache;
+
+  insert into public.task_assignees (task_id, user_id, status)
+  values (tache, lea, 'pending'::assignee_status);
+
+  assert public.empiler_rappels() >= 1, 'aucun rappel empilé';
+  assert (select count(*) from public.push_outbox
+           where user_id = lea and type = 'reminder') = 1,
+         'la tâche n''a pas rappelé son assignée';
+
+  -- **L'assertion qui justifie `push_reminders_sent`.** Le battement passe
+  -- toutes les minutes et la fenêtre regarde dix minutes en arrière : sans
+  -- mémoire, le même rappel repartirait à chaque passage.
+  perform public.empiler_rappels();
+  assert (select count(*) from public.push_outbox
+           where user_id = lea and type = 'reminder') = 1,
+         'un second passage a renvoyé le même rappel';
+
+  -- 4. Un rendez-vous personnel rappelle son propriétaire --------------------
+  insert into public.events (owner_id, title, starts_at, reminder_minutes)
+  values (camille, 'Fumée — rappel d''événement',
+          now() + interval '30 minutes', 30)
+  returning id into evenement;
+
+  perform public.empiler_rappels();
+  assert (select count(*) from public.push_outbox
+           where user_id = camille and type = 'reminder') = 1,
+         'l''événement personnel n''a pas rappelé son propriétaire';
+
+  -- 5. Un élément récurrent vise la **prochaine** occurrence -----------------
+  -- Série hebdomadaire commencée il y a trois semaines : c'est l'occurrence
+  -- d'aujourd'hui qui doit être rappelée, pas celle du début.
+  insert into public.events (owner_id, title, starts_at, rrule, reminder_minutes)
+  values (camille, 'Fumée — série hebdomadaire',
+          now() - interval '21 days' + interval '30 minutes',
+          'FREQ=WEEKLY', 30)
+  returning id into serie;
+
+  perform public.empiler_rappels();
+  assert (select count(*) from public.push_outbox
+           where user_id = camille and type = 'reminder') = 2,
+         'la série récurrente n''a pas rappelé son occurrence du jour';
+  assert (select occurrence > now() from public.push_reminders_sent
+           where source_id = serie),
+         'le rappel a visé la première occurrence au lieu de la prochaine';
+
+  -- 6. Qui a refusé n'est pas rappelé ---------------------------------------
+  insert into public.tasks (group_id, created_by, title, due_at, reminder_at)
+  values (groupe, camille, 'Fumée — tâche refusée',
+          now() + interval '2 hours', now() - interval '2 minutes')
+  returning id into tache;
+
+  insert into public.task_assignees (task_id, user_id, status)
+  values (tache, lea, 'declined'::assignee_status);
+
+  perform public.empiler_rappels();
+  assert (select count(*) from public.push_outbox
+           where user_id = lea and type = 'reminder') = 1,
+         'une assignée qui a refusé a tout de même été rappelée';
+
+  raise notice 'Fumée : les rappels de la tranche 5d répondent.';
+end;
+$rappels$;
+
 rollback;

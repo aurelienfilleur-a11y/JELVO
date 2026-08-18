@@ -1253,6 +1253,106 @@ annonce que les notifications ne sont pas disponibles, plutôt que d'offrir un
 bouton qui échouerait. Le workflow de déploiement s'arrête de même avec un
 avertissement explicite.
 
+### Une base ne se réveille pas toute seule
+
+**La tranche 5c a livré une file que rien ne vidait.** `push_outbox` se
+remplissait à chaque message, chaque invitation, chaque assignation — et
+`envoyer-push` n'était appelée par personne. Aucune erreur nulle part : la
+file grossissait, en silence. C'est le même genre de panne que la publication
+`supabase_realtime` manquante, et elle se diagnostique aussi mal.
+
+La tranche 5d ferme cet écart, et **il n'y a qu'une seule chose à planifier** :
+
+```
+Tableau de bord Supabase → Integrations → Cron → Edge Function
+envoyer-push,  * * * * *
+```
+
+La fonction appelle `empiler_rappels()` **puis** vide la file, dans le même
+passage. Deux planifications distinctes — l'une pour les rappels, l'autre pour
+l'envoi — auraient donné deux cadences à tenir d'accord, et un rappel empilé
+juste après le dernier envoi aurait attendu le tour suivant.
+
+L'alternative, `pg_cron` + `pg_net` appelant la fonction depuis la base, a été
+écartée pour une raison précise : elle impose de ranger une clé `service_role`
+**dans la base**. La clé vit déjà du bon côté, dans les secrets de la fonction.
+
+**C'est le second prérequis manuel du projet**, avec le modèle d'e-mail à
+`{{ .Token }}`. Tant qu'il n'est pas posé, les rappels ne sont pas « en
+retard » : ils ne sont pas empilés du tout, et aucune notification ne part.
+
+---
+
+## Rappels
+
+`tasks.reminder_at` — un instant — et `events.reminder_minutes` — un délai
+avant le début — étaient enregistrés depuis la tranche 3 sans que rien ne les
+lise. `supabase/tranche5d_rappels.sql` les lit.
+
+| Fonction / table | Rôle |
+| --- | --- |
+| `prochaine_occurrence` | prochaine occurrence d'une `rrule`, ou `null` |
+| `empiler_rappels` | dépose dans `push_outbox` les rappels dus |
+| `push_reminders_sent` | ce qui a déjà été rappelé — clé primaire à quatre colonnes |
+
+### La mémoire est une clé primaire, pas un contrôle
+
+Le battement passe toutes les minutes, mais `empiler_rappels` regarde **dix
+minutes en arrière** : un battement manqué — un redéploiement, une minute
+sautée — ne doit pas faire disparaître un rappel. La contrepartie, c'est que
+le même rappel entre dans la fenêtre dix fois de suite.
+
+Ce qui l'écarte est la clé primaire de `push_reminders_sent` —
+`(kind, source_id, occurrence, user_id)` — et un `on conflict do nothing` dont
+on lit le `found`. Pas un test préalable, qui se doublerait d'une course. Même
+raison que pour `message_reactions`.
+
+`occurrence` est dans la clé, et pas seulement `source_id` : un élément
+récurrent doit être rappelé à **chacune** de ses occurrences.
+
+Le contrôle négatif a été fait : en retirant le `continue when not found`, le
+test de fumée échoue sur « un second passage a renvoyé le même rappel ».
+
+### Une `rrule` inconnue ne se devine pas
+
+L'application n'écrit que cinq règles (`RecurrenceRule`) : `FREQ=DAILY`,
+`FREQ=WEEKLY`, `FREQ=WEEKLY;INTERVAL=2`, `FREQ=MONTHLY`, `FREQ=YEARLY`.
+`prochaine_occurrence` ne connaît que celles-là et renvoie **`null` sur toute
+autre** — l'élément n'est alors pas rappelé. Interpréter au jugé une règle
+portant `COUNT`, `UNTIL` ou `BYDAY` donnerait des rappels à des heures
+fausses, ce qui est pire qu'un rappel manquant.
+
+Les occurrences sont calculées **depuis la base**, jamais de proche en
+proche : un mensuel posé le 31 janvier tombe le 28 février puis **le 31 mars**,
+et non le 28 mars. Les deux cas sont dans le test de fumée.
+
+### L'avance est reportée, l'occurrence est recherchée en conséquence
+
+Un rappel n'est pas « l'occurrence suivante moins l'avance » : c'est
+l'occurrence dont le rappel tombe **maintenant**. La recherche part donc de
+`fenêtre + avance`, sans quoi un quotidien à 9 h rappelé une heure avant ne
+serait jamais trouvé — à 8 h, l'occurrence suivante est encore celle du jour,
+et son rappel est déjà passé.
+
+Pour une tâche, l'avance est `due_at - reminder_at` de la première
+occurrence, reportée telle quelle sur les suivantes.
+
+### Qui est rappelé
+
+| Élément | Destinataires |
+| --- | --- |
+| tâche avec assignés | les assignés, sauf `declined` |
+| tâche sans assigné | celui qui l'a créée |
+| événement avec participants | ceux qui n'ont pas répondu `no` |
+| rendez-vous personnel | son propriétaire |
+
+L'heure affichée dans le corps de la notification est rendue en
+**Europe/Paris** : l'application n'a qu'une locale, et le schéma ne porte
+aucun fuseau par événement. Il n'y a rien de plus juste à faire ici.
+
+Les tâches terminées et les éléments supprimés sont écartés — `completed_at`
+reste la seule source du statut.
+
 ---
 
 ## Calendrier personnel et semaine d'accueil
@@ -1564,8 +1664,15 @@ sûr d'éprouver son caractère contextuel.
   Restent hors périmètre : les notifications système, et la modification d'une
   seule occurrence d'un élément récurrent — la `rrule` vaut pour toute la
   série.
-- **Un seul prérequis manuel subsiste côté projet Supabase** : faire émettre
-  `{{ .Token }}` au modèle d'e-mail de confirmation, pour le code à 6 chiffres.
+- **Trois prérequis manuels subsistent, et rien ne les remplace :**
+  1. faire émettre `{{ .Token }}` au modèle d'e-mail de confirmation, pour le
+     code à 6 chiffres ;
+  2. **planifier `envoyer-push` toutes les minutes** — sans quoi la file ne se
+     vide pas et aucun rappel n'est empilé ;
+  3. ajouter **`github-actions` à la liste de contournement** de la règle de
+     protection de `main`, sans quoi `schema_actuel.sql` ne peut plus y être
+     publié.
+
   Les migrations, elles, s'appliquent seules à chaque push sur `main`.
 - **Une migration n'est éprouvée contre la vraie base qu'après fusion.** Le
   workflow qui l'applique ne peut pas tourner sur une pull request — le dépôt
@@ -1574,9 +1681,10 @@ sûr d'éprouver son caractère contextuel.
   appelle les fonctions, mais son décor est recopié de cette documentation, et
   ne dit donc rien des colonnes réelles. C'est `supabase/schema_actuel.sql`,
   relevé après coup, qui fait foi.
-- Le test de fumée couvre les tranches 3, 3b, 4, 5a et 5b — trente fonctions
-  réellement appelées, contrôles négatifs de l'accès au bucket compris. Les fonctions des tranches 2 et antérieures ne sont
-  éprouvées que par l'usage en production.
+- Le test de fumée couvre les tranches 3, 3b, 4, 5a, 5b, 5c et 5d — plus de
+  trente fonctions réellement appelées, contrôles négatifs de l'accès au
+  bucket et de la mémoire des rappels compris. Les fonctions des tranches 2 et
+  antérieures ne sont éprouvées que par l'usage en production.
 - **Les disponibilités n'ont pas encore de lecture en dehors de la création
   d'événement.** Le statut d'un contact n'apparaît ni sur sa fiche, ni dans la
   liste des contacts ; c'est la suite naturelle, et elle ne demande aucun SQL
@@ -1600,9 +1708,15 @@ sûr d'éprouver son caractère contextuel.
   hebdomadaire, quinzaine, mensuelle, annuelle). Une `rrule` écrite ailleurs et
   non reconnue s'affiche « Jamais » mais **n'est pas effacée** tant que le
   sélecteur n'est pas touché.
-- Le rappel est enregistré, mais **rien ne l'envoie encore** : `reminder_at` et
-  `reminder_minutes` sont stockés, la notification système n'est pas au
-  périmètre.
+- Les rappels partent — voir « Rappels ». Deux réserves : une `rrule` que
+  l'application n'écrit pas n'est pas rappelée du tout, et l'arithmétique de
+  récurrence se fait dans le fuseau de la session (UTC), si bien qu'un élément
+  récurrent peut se décaler d'une heure au passage à l'heure d'été. Corriger
+  cela demanderait un fuseau par élément, que le schéma ne porte pas.
+- **Le chemin complet d'un rappel n'a pas été éprouvé de bout en bout.** Le
+  test de fumée prouve que la file se remplit à la bonne heure et une seule
+  fois ; que le navigateur affiche bien la notification dépend de la
+  planification, des clés VAPID et d'un vrai appareil.
 - Le mode sombre n'est pas au périmètre : `themeMode` est figé sur
   `ThemeMode.light`.
 - `google_fonts` télécharge Inter au premier lancement. Pour un fonctionnement

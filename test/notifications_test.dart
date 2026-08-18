@@ -14,6 +14,7 @@ import 'package:jelvo/features/groups/providers/group_providers.dart';
 import 'package:jelvo/features/tasks/providers/task_providers.dart';
 import 'package:jelvo/features/notifications/models/app_notification.dart';
 import 'package:jelvo/features/notifications/providers/notification_providers.dart';
+import 'package:jelvo/features/notifications/providers/push_providers.dart';
 import 'package:jelvo/features/profile/providers/profile_providers.dart';
 import 'package:jelvo/main.dart';
 
@@ -25,6 +26,7 @@ import 'fakes/fake_event_repository.dart';
 import 'fakes/fake_group_repository.dart';
 import 'fakes/fake_task_repository.dart';
 import 'fakes/fake_notification_repository.dart';
+import 'fakes/fake_push.dart';
 
 final DateTime _testNow = DateTime(2026, 8, 3, 9);
 
@@ -58,6 +60,8 @@ Future<FakeNotificationRepository> _pumpApp(
         chatRepositoryProvider.overrideWithValue(
           FakeChatRepository(unread: const <String, int>{}),
         ),
+        pushServiceProvider.overrideWithValue(FakePushService()),
+        pushRepositoryProvider.overrideWithValue(FakePushRepository()),
         availabilityRepositoryProvider.overrideWithValue(
           FakeAvailabilityRepository(),
         ),

@@ -34,3 +34,4 @@ tranche3b_details_et_administration.sql
 tranche4_disponibilites.sql
 tranche5a_chat.sql
 tranche5b_medias_chat.sql
+tranche5c_notifications_push.sql

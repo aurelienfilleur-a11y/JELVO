@@ -44,6 +44,20 @@ abstract final class AppConfig {
   /// Durée maximale demandée au sélecteur pour une vidéo.
   static const Duration chatMediaMaxVideoDuration = Duration(seconds: 60);
 
+  /// Clé VAPID **publique**, nécessaire au navigateur pour s'abonner aux
+  /// notifications système.
+  ///
+  /// Publique par conception, comme la clé « publishable » : elle peut figurer
+  /// dans un dépôt public. Sa jumelle privée, elle, ne vit que dans les
+  /// secrets de la fonction Edge et ne doit **jamais** entrer ici.
+  ///
+  /// Vide par défaut : tant qu'elle n'est pas fournie, l'application dit que
+  /// les notifications ne sont pas configurées plutôt que d'offrir un bouton
+  /// qui échouerait.
+  static const String vapidPublicKey = String.fromEnvironment(
+    'VAPID_PUBLIC_KEY',
+  );
+
   /// Délai avant de pouvoir redemander un code de vérification.
   static const Duration resendCodeDelay = Duration(seconds: 45);
 

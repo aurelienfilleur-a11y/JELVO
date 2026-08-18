@@ -17,6 +17,7 @@ import 'package:jelvo/features/tasks/providers/task_providers.dart';
 import 'package:jelvo/features/groups/screens/join_group_screen.dart';
 import 'package:jelvo/features/auth/providers/auth_providers.dart';
 import 'package:jelvo/features/availability/providers/availability_providers.dart';
+import 'package:jelvo/features/notifications/providers/push_providers.dart';
 import 'package:jelvo/features/profile/providers/profile_providers.dart';
 import 'package:jelvo/main.dart';
 import 'package:jelvo/router/app_routes.dart';
@@ -27,6 +28,7 @@ import 'fakes/fake_chat_repository.dart';
 import 'fakes/fake_contact_repository.dart';
 import 'fakes/fake_event_repository.dart';
 import 'fakes/fake_group_repository.dart';
+import 'fakes/fake_push.dart';
 import 'fakes/fake_task_repository.dart';
 
 final DateTime _testNow = DateTime(2026, 8, 3, 9);
@@ -59,6 +61,8 @@ Future<({FakeGroupRepository groups, FakeContactRepository contacts})> _pumpApp(
         eventRepositoryProvider.overrideWithValue(FakeEventRepository()),
         contactRepositoryProvider.overrideWithValue(contacts),
         chatRepositoryProvider.overrideWithValue(FakeChatRepository()),
+        pushServiceProvider.overrideWithValue(FakePushService()),
+        pushRepositoryProvider.overrideWithValue(FakePushRepository()),
         availabilityRepositoryProvider.overrideWithValue(
           FakeAvailabilityRepository(),
         ),
@@ -115,6 +119,8 @@ Future<void> _pumpJoinScreen(
         eventRepositoryProvider.overrideWithValue(FakeEventRepository()),
         contactRepositoryProvider.overrideWithValue(FakeContactRepository()),
         chatRepositoryProvider.overrideWithValue(FakeChatRepository()),
+        pushServiceProvider.overrideWithValue(FakePushService()),
+        pushRepositoryProvider.overrideWithValue(FakePushRepository()),
         availabilityRepositoryProvider.overrideWithValue(
           FakeAvailabilityRepository(),
         ),

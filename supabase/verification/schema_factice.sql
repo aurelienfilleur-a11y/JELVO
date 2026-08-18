@@ -265,6 +265,21 @@ grant usage on schema storage to authenticated, anon;
 grant select, insert, update, delete on storage.objects to authenticated;
 grant select on storage.buckets to authenticated;
 
+-- push_tokens : contrainte et clé primaire recopiées de `schema_actuel.sql`.
+-- Le CHECK n'accepte que ios/android — c'est lui que la tranche 5c élargit, et
+-- un décor plus permissif ne le vérifierait pas.
+create table public.push_tokens (
+  user_id    uuid not null,
+  token      text not null,
+  platform   text not null,
+  updated_at timestamptz not null default now(),
+  constraint push_tokens_pkey primary key (user_id, token),
+  constraint push_tokens_platform_check
+    check (platform = any (array['ios'::text, 'android'::text]))
+);
+
+do $r$ begin create role service_role; exception when duplicate_object then null; end $r$;
+
 -- Supabase accorde les privilèges de table à `authenticated` et laisse RLS
 -- filtrer. On reproduit le `grant` — sans lui, une lecture légitime échouerait
 -- en « permission denied » et ferait croire à un défaut du code. Les politiques

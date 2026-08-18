@@ -12,6 +12,7 @@ import 'package:jelvo/features/calendar/providers/calendar_providers.dart';
 import 'package:jelvo/features/chat/providers/chat_providers.dart';
 import 'package:jelvo/features/groups/providers/group_providers.dart';
 import 'package:jelvo/features/tasks/providers/task_providers.dart';
+import 'package:jelvo/features/notifications/providers/push_providers.dart';
 import 'package:jelvo/features/profile/providers/profile_providers.dart';
 import 'package:jelvo/main.dart';
 
@@ -21,6 +22,7 @@ import 'fakes/fake_chat_repository.dart';
 import 'fakes/fake_contact_repository.dart';
 import 'fakes/fake_event_repository.dart';
 import 'fakes/fake_group_repository.dart';
+import 'fakes/fake_push.dart';
 import 'fakes/fake_task_repository.dart';
 
 /// Date figée : les libellés « Aujourd'hui » / « Demain » et le jeu de données
@@ -58,6 +60,8 @@ Future<FakeAuthRepository> _pumpApp(
         eventRepositoryProvider.overrideWithValue(FakeEventRepository()),
         contactRepositoryProvider.overrideWithValue(FakeContactRepository()),
         chatRepositoryProvider.overrideWithValue(FakeChatRepository()),
+        pushServiceProvider.overrideWithValue(FakePushService()),
+        pushRepositoryProvider.overrideWithValue(FakePushRepository()),
         availabilityRepositoryProvider.overrideWithValue(
           FakeAvailabilityRepository(),
         ),

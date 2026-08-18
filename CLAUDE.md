@@ -1125,6 +1125,101 @@ silence. Émettre à chaque touche inonderait le canal.
 
 ---
 
+## Notifications système (Web Push)
+
+L'application est une PWA : les notifications passent par **Web Push**, pas par
+un SDK natif. `supabase/tranche5c_notifications_push.sql` et
+`supabase/functions/envoyer-push/` en portent la moitié serveur.
+
+### Ce qui a dû être élargi dans le schéma
+
+`push_tokens` venait du schéma initial avec
+`CHECK (platform IN ('ios','android'))` : **`'web'` était refusé**, et tout
+abonnement aurait échoué en `23514` — le défaut du dimanche de la tranche 4,
+vu cette fois avant livraison. La contrainte est élargie sans rien retirer, et
+deux colonnes nullables (`p256dh`, `auth_key`) accueillent les clés.
+**`token` porte l'endpoint** : c'est l'adresse de destination, donc le jeton au
+sens de cette table, et la clé primaire garde son sens.
+
+### Une file, pas un appel depuis le déclencheur
+
+Les six déclencheurs empilent dans `push_outbox` ; la fonction Edge la vide.
+Trois raisons, chacune suffisante :
+
+1. une notification est un effet de bord et ne doit **jamais** faire échouer
+   l'écriture qui l'a provoquée — un appel réseau dans la transaction
+   violerait cette règle à la première panne ;
+2. la clé VAPID privée n'a rien à faire dans la base ;
+3. les rappels de la tranche 5d y déposeront aussi : un seul envoyeur.
+
+`push_outbox` n'a **aucune politique d'insertion** : personne ne dépose dans la
+file d'autrui. Sa politique SELECT ne montre que ses propres lignes — piège
+rencontré au test de fumée, où compter sous le mauvais jeton donnait zéro
+alors que les lignes existaient. Les vérifications de la file tournent donc
+sous `postgres`.
+
+Les préférences suivent un modèle **opt-out** : absence de ligne = activé. Un
+modèle inverse aurait imposé de semer six lignes à l'inscription, pour une
+application qui n'enverrait rien tant qu'on n'a pas coché.
+
+### Deux services worker, deux portées
+
+`web/jelvo_push_sw.js` est **distinct** de celui que Flutter génère. Deux
+enregistrements ne peuvent pas partager une portée, et le fichier de Flutter
+est régénéré à chaque compilation : y ajouter du code le ferait disparaître au
+build suivant. Le nôtre s'enregistre sur `push/`. Un abonnement appartient à
+l'enregistrement et non à la page, donc une portée étroite ne gêne rien.
+
+Le clic sur une notification compose une URL **avec `#`** : l'application
+n'appelle pas `usePathUrlStrategy()`, et un lien sans fragment servirait
+`404.html` en perdant la destination — même piège que `AppConfig.inviteUrl`.
+
+### `dart:js_interop`, sans nouvelle dépendance
+
+`push_service_web.dart` déclare son interopérabilité à la main plutôt que de
+tirer `package:web`. Import conditionnel : sur la machine virtuelle et sur les
+cibles natives, c'est `push_service_stub.dart` qui répond `nonSupporte`. Aucun
+`kIsWeb` disséminé, et rien de JS ne remonte jusqu'aux écrans.
+
+### Les limites d'iOS ne sont pas des défauts à corriger
+
+Elles sont dans le produit, et l'écran de réglages les dit :
+
+- **Web Push n'existe que dans l'application ajoutée à l'écran d'accueil.**
+  Dans un onglet Safari, `PushManager` est absent. D'où l'état
+  `installationRequise`, distinct de `nonSupporte`.
+- **Aucun bouton d'installation n'est possible** : iOS n'implémente pas
+  `beforeinstallprompt`. La consigne écrite est tout ce qui reste.
+- **L'application installée a son propre stockage** : il faut s'y reconnecter.
+- **Retirer l'icône détruit l'abonnement**, sans prévenir personne. D'où le
+  réenregistrement à chaque ouverture de session
+  (`pushRegistrationProvider`), et la purge sur `404`/`410` côté fonction Edge.
+- **Un refus est définitif** côté application : l'API ne permet plus de
+  redemander. L'écran renvoie donc aux réglages du navigateur plutôt que de
+  proposer un bouton qui ne ferait rien.
+- **Pas de push silencieux** : `userVisibleOnly` est obligatoire, et le service
+  worker affiche toujours quelque chose — sinon l'abonnement est révoqué après
+  quelques récidives. D'où le repli « Jelvo / Vous avez du nouveau ».
+
+### Rien n'envoie sans ces secrets
+
+| Où | Quoi |
+| --- | --- |
+| Secrets GitHub | `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF` |
+| `supabase secrets set` | `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` |
+| `--dart-define` du build web | `VAPID_PUBLIC_KEY` |
+
+La paire se génère avec `npx web-push generate-vapid-keys`. La **privée** ne
+doit jamais entrer dans le dépôt, qui est public ; la publique, si — le
+navigateur en a besoin pour s'abonner, comme la clé « publishable ».
+
+Tant que `VAPID_PUBLIC_KEY` est vide, `_apiDisponible` est faux et l'écran
+annonce que les notifications ne sont pas disponibles, plutôt que d'offrir un
+bouton qui échouerait. Le workflow de déploiement s'arrête de même avec un
+avertissement explicite.
+
+---
+
 ## Calendrier personnel et semaine d'accueil
 
 ### Le calendrier n'a pas de contenu propre
@@ -1340,8 +1435,15 @@ compteur vaut zéro.
   comme telle, le média qui disparaît à la suppression, et les bornes de poids
   et d'extension, sans widget.
 
-Neuf faux dépôts vivent dans `test/fakes/` : authentification, profil, groupes,
-contacts, notifications, tâches, agenda, disponibilités et chat. **Tous les
+- `test/push_notifications_test.dart` couvre les réglages de notification :
+  l'activation qui enregistre l'abonnement en base, le refus et sa marche à
+  suivre, la désactivation des deux côtés, la consigne d'installation iOS sans
+  bouton, les six types désactivables, l'interrupteur qui revient si l'écriture
+  échoue, et le réenregistrement au démarrage.
+
+Onze faux dépôts vivent dans `test/fakes/` : authentification, profil, groupes,
+contacts, notifications, tâches, agenda, disponibilités, chat, navigateur
+(`FakePushService`) et préférences de notification. **Tous les
 fichiers de test les surchargent tous** — un provider oublié tombe sur
 `Supabase.instance`, absent en test.
 

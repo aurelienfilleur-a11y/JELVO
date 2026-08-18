@@ -1,0 +1,82 @@
+name: Fonctions Supabase
+
+# Déploie les fonctions Edge de `supabase/functions/`.
+#
+# **Jamais sur une pull request.** Même raison que pour les migrations : le
+# dépôt est public, et un job déclenché par une PR exécuterait du code proposé
+# par n'importe qui — avec, ici, le jeton d'accès au projet Supabase.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/functions/**'
+      - '.github/workflows/fonctions-supabase.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: fonctions-supabase
+  cancel-in-progress: false
+
+jobs:
+  deployer:
+    name: Déployer les fonctions Edge
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      # Le job s'arrête proprement si les secrets manquent, plutôt que
+      # d'échouer sur une erreur d'authentification illisible. Tant que la
+      # paire n'est pas fournie, la fonction n'est simplement pas déployée —
+      # et le reste du dépôt continue de fonctionner.
+      - name: Vérifier les secrets
+        id: secrets
+        env:
+          JETON: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PROJET: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          manquants=""
+          [ -z "$JETON" ]  && manquants="$manquants SUPABASE_ACCESS_TOKEN"
+          [ -z "$PROJET" ] && manquants="$manquants SUPABASE_PROJECT_REF"
+
+          if [ -n "$manquants" ]; then
+            {
+              echo "## Fonctions Supabase — non déployées"
+              echo
+              echo "Secrets manquants :$manquants"
+              echo
+              echo 'Voir l’en-tête de `supabase/functions/envoyer-push/index.ts`.'
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::warning::Secrets manquants :$manquants — déploiement ignoré."
+            echo "pret=non" >> "$GITHUB_OUTPUT"
+          else
+            echo "pret=oui" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Installer la CLI Supabase
+        if: steps.secrets.outputs.pret == 'oui'
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Déployer envoyer-push
+        if: steps.secrets.outputs.pret == 'oui'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          supabase functions deploy envoyer-push \
+            --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}" \
+            --no-verify-jwt
+
+      - name: Résumé
+        if: steps.secrets.outputs.pret == 'oui'
+        run: |
+          {
+            echo '## Fonctions Supabase'
+            echo
+            echo '`envoyer-push` déployée.'
+            echo
+            echo 'Elle vide `public.push_outbox`. Les clés VAPID se posent'
+            echo 'séparément, avec `supabase secrets set` — le workflow ne les'
+            echo 'connaît pas et n’a pas à les connaître.'
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -59,6 +59,41 @@ Trois points à connaître :
   `public` est exposé par PostgREST, et l'historique des migrations n'a rien à
   faire dans l'API.
 
+#### « Migrations en échec » ne veut pas dire « migrations non appliquées »
+
+Le job fait **deux choses** que rien ne relie : il applique le SQL, puis il
+recommite l'instantané du schéma. La seconde peut échouer seule, et c'est
+arrivé dès la première fusion suivant la protection de `main` — la tranche 5c
+s'est appliquée intégralement, et le job est tout de même ressorti en rouge :
+
+```
+OK    tranche5c_notifications_push.sql
+…
+remote: error: GH013: Repository rule violations found for refs/heads/main.
+remote: - Required status check "Compiler la version web" is expected.
+```
+
+**Une règle de protection s'applique à toute poussée, pas seulement aux
+fusions.** Le workflow pousse un commit direct, qui n'a aucune vérification à
+présenter : GitHub le refuse. La règle qui rend l'auto-merge armable est donc
+exactement celle qui empêche le relevé du schéma d'atteindre `main`.
+
+Le remède ne se code pas : il faut ajouter **`github-actions` à la liste de
+contournement** de la règle — Settings → Rules → règle de `main` → *Bypass
+list*. Tant que ce n'est pas fait, le job échoue à chaque migration ayant
+changé le schéma.
+
+Ce qui se code, en revanche, c'est de ne pas mentir sur le coupable. L'étape
+distingue désormais ce refus, l'annonce en toutes lettres — « les migrations
+SONT appliquées » —, et l'instantané part en **pièce jointe du job** pour ne
+pas être perdu. Le premier diagnostic avait conclu à une migration ratée et
+au SQL absent de la base ; il était faux, et il l'était parce que l'échec
+brut ne nommait que la dernière commande.
+
+**Règle** : lire le journal jusqu'à la ligne `OK <fichier>` avant de conclure
+qu'une migration n'est pas passée. Le rouge du job ne désigne pas l'étape qui
+compte.
+
 #### La chaîne de connexion est épurée avant usage
 
 `verification/connexion.sh` retire les blancs de début et de fin du secret,
@@ -139,37 +174,37 @@ d'énumération restent à vérifier contre le projet, et c'est l'objet de la
 PARTIE A de `supabase/diagnostic_taches_evenements.sql` (voir « Le schéma
 initial fait autorité »).
 
-### Fusion automatique des pull requests — **inopérante aujourd'hui**
+### Fusion automatique des pull requests — **opérante depuis le 18 août 2026**
 
-> **État réel : l'auto-merge ne fonctionne pas sur ce dépôt.** Les pull
-> requests attendent une fusion manuelle. Ce paragraphe a décrit pendant
-> plusieurs tranches un mécanisme qui n'a jamais marché, et deux PR sont
-> restées ouvertes dix-sept heures avec une CI verte avant que quelqu'un s'en
-> aperçoive.
+L'auto-merge fonctionne, et cela a été **constaté de bout en bout** sur la
+PR #27 : armée à 18:20:44 alors que la vérification était encore
+`in_progress` et la PR `blocked`, fusionnée seule à 18:22:59, sans aucun appel
+de fusion.
 
-**Ce qui manque.** « Allow auto-merge » coché dans les réglages est
-**nécessaire mais pas suffisant**. GitHub refuse d'armer l'auto-merge sur une
-pull request déjà fusionnable : s'il n'y a rien à attendre, il n'y a rien à
-automatiser. L'API répond alors
+Ce qui a manqué pendant plusieurs tranches — au prix de deux PR restées
+ouvertes dix-sept heures avec une CI verte — n'était pas « Allow auto-merge »
+dans les réglages, qui était coché depuis le début. C'était la **règle de
+protection sur `main`** déclarant au moins une vérification obligatoire, en
+l'occurrence « Compiler la version web ».
+
+La raison est contre-intuitive : GitHub refuse d'armer l'auto-merge sur une
+pull request **déjà fusionnable**. S'il n'y a rien à attendre, il n'y a rien à
+automatiser, et l'API répond
 
 ```
 Pull request Protected branch rules not configured for this branch
 ```
 
-Il faut donc, en plus, une **règle de protection sur `main`** — ou un
-*ruleset* — déclarant au moins une vérification obligatoire, en l'occurrence
-« Compiler la version web ». C'est elle qui rend la PR temporairement non
-fusionnable, donc éligible à l'auto-merge.
+C'est donc la vérification obligatoire qui, en rendant la PR temporairement
+non fusionnable, la rend éligible. Sans elle, l'auto-merge n'est pas
+« désactivé » : il est **inarmable**, ce qui ne se voit qu'en lisant le refus
+de l'API.
 
-`main` n'est aujourd'hui pas protégée (`protected: false`), et l'auto-merge est
-par conséquent inarmable.
+> **La règle a un effet de bord ailleurs**, décrit sous « Les migrations
+> s'appliquent toutes seules » : elle refuse aussi les poussées directes du
+> workflow des migrations.
 
-**Tant que ce n'est pas configuré**, la règle de travail est celle-ci : après
-avoir ouvert une PR, attendre la CI et **fusionner explicitement**. Ne pas
-annoncer une fusion automatique qui n'aura pas lieu — c'est ce qui a coûté les
-dix-sept heures.
-
-Deux façons de garder la main, le jour où le mécanisme sera armé :
+Deux façons de garder la main :
 
 | Signal | Effet |
 | --- | --- |

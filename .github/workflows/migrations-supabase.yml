@@ -73,16 +73,48 @@ jobs:
         run: supabase/verification/appliquer.sh
 
       - name: Relever le schéma réel
+        id: relever
         run: |
           psql "$SUPABASE_DB_URL" -At --no-psqlrc \
             -f supabase/verification/extraire_schema.sql \
             > supabase/schema_actuel.sql
           echo "$(wc -l < supabase/schema_actuel.sql) lignes relevées."
 
+      # Qu'il atteigne `main` ou non, le relevé doit rester récupérable : un
+      # refus de poussée le perdait purement et simplement, et la seule façon
+      # de le revoir était de relancer le workflow.
+      #
+      # La condition porte sur l'étape de relevé, et non sur `always()` : le
+      # fichier existe déjà dans le dépôt, et le joindre sans qu'il ait été
+      # régénéré donnerait un instantané périmé sous une étiquette fraîche.
+      - name: Conserver l'instantané en pièce jointe
+        if: steps.relever.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: schema_actuel
+          path: supabase/schema_actuel.sql
+          if-no-files-found: warn
+
       # `[skip ci]` évite la boucle : ce commit touche `supabase/`, qui est
       # justement le chemin qui déclenche ce workflow. Il n'emporte aucun code
       # Dart, donc ne pas redéployer les pages est sans conséquence.
-      - name: Commiter l'instantané s'il a changé
+      #
+      #
+      # POURQUOI CETTE ÉTAPE PEUT ÊTRE REFUSÉE
+      #
+      # `main` exige désormais la vérification « Compiler la version web » —
+      # c'est elle qui rend l'auto-merge armable. Mais une règle de dépôt
+      # s'applique **à toute poussée**, y compris celle-ci, qui n'est pas une
+      # fusion et n'a donc aucune vérification à présenter. GitHub répond
+      # `GH013` et refuse.
+      #
+      # Le remède ne se code pas : il faut ajouter `github-actions` à la liste
+      # de contournement de la règle (Settings → Rules → la règle de `main` →
+      # « Bypass list »). Le message ci-dessous le dit en toutes lettres,
+      # parce que l'échec brut désigne le mauvais coupable : il ressemble à
+      # une migration ratée alors que les migrations, elles, sont passées.
+      - name: Publier l'instantané du schéma
+        id: instantane
         run: |
           if git diff --quiet -- supabase/schema_actuel.sql; then
             echo "Schéma inchangé, rien à commiter."
@@ -92,7 +124,16 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add supabase/schema_actuel.sql
           git commit -m 'Relève le schéma réel de la base [skip ci]'
-          git push origin HEAD:main
+
+          if git push origin HEAD:main 2>push.log; then
+            echo "Instantané publié."
+            exit 0
+          fi
+
+          cat push.log
+          echo "refuse=1" >> "$GITHUB_OUTPUT"
+          echo "::error title=Instantané non publié::Les migrations SONT appliquées ; seul le relevé du schéma n'a pas pu être poussé sur main, la règle de protection refusant toute poussée directe. Remède : ajouter github-actions à la liste de contournement de la règle (Settings, Rules, main, Bypass list). En attendant, le relevé est en pièce jointe de ce job, sous le nom schema_actuel."
+          exit 1
 
       - name: Résumé
         if: always()
@@ -104,5 +145,16 @@ jobs:
             echo 'confrontés à la table de suivi `jelvo_migrations.appliquees` :'
             echo 'seuls ceux dont l’empreinte a changé sont rejoués.'
             echo
-            echo 'L’instantané du schéma vit dans `supabase/schema_actuel.sql`.'
+            if [ "${{ steps.instantane.outputs.refuse }}" = '1' ]; then
+              echo '> **Les migrations sont appliquées.** Ce qui a échoué, c’est'
+              echo '> la publication de `supabase/schema_actuel.sql` sur `main` :'
+              echo '> la règle de protection refuse toute poussée directe.'
+              echo '>'
+              echo '> Remède, une fois pour toutes : ajouter `github-actions` à'
+              echo '> la liste de contournement de la règle.'
+              echo '>'
+              echo '> Le relevé est en pièce jointe de ce job (`schema_actuel`).'
+            else
+              echo 'L’instantané du schéma vit dans `supabase/schema_actuel.sql`.'
+            fi
           } >> "$GITHUB_STEP_SUMMARY"

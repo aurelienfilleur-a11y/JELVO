@@ -1238,20 +1238,31 @@ Elles sont dans le produit, et l'écran de réglages les dit :
 
 ### Rien n'envoie sans ces secrets
 
-| Où | Quoi |
-| --- | --- |
-| Secrets GitHub | `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF` |
-| `supabase secrets set` | `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` |
-| `--dart-define` du build web | `VAPID_PUBLIC_KEY` |
+| Où | Quoi | Posé ? |
+| --- | --- | --- |
+| `env` de `deploy-web.yml` | `VAPID_PUBLIC_KEY` | **oui**, en clair |
+| Dashboard Supabase → Edge Functions → Secrets | `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | à faire |
+| Secrets GitHub | `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF` | à faire |
 
-La paire se génère avec `npx web-push generate-vapid-keys`. La **privée** ne
-doit jamais entrer dans le dépôt, qui est public ; la publique, si — le
-navigateur en a besoin pour s'abonner, comme la clé « publishable ».
+La paire est un couple ECDSA **P-256**, encodé en base64url **sans
+remplissage** : la publique est le point non compressé de 65 octets (87
+caractères, commençant par `B`), la privée le scalaire de 32 octets (43
+caractères). `npx web-push generate-vapid-keys` les produit, `openssl
+ecparam -name prime256v1` aussi.
+
+**La publique a sa place dans le dépôt**, comme la clé « publishable » : le
+navigateur en a besoin pour s'abonner, elle part donc dans le bundle web de
+toute façon. La **privée** ne doit jamais y entrer — le dépôt est public, et
+elle vit dans les secrets de la fonction Edge, qui ne quittent pas le serveur.
 
 Tant que `VAPID_PUBLIC_KEY` est vide, `_apiDisponible` est faux et l'écran
 annonce que les notifications ne sont pas disponibles, plutôt que d'offrir un
-bouton qui échouerait. Le workflow de déploiement s'arrête de même avec un
-avertissement explicite.
+bouton qui échouerait. `fonctions-supabase.yml` s'arrête de même, avec un
+avertissement nommant les secrets manquants, plutôt que de déployer une
+fonction incapable d'envoyer.
+
+**Rien ne peut être planifié avant que la fonction soit déployée** : l'ordre
+est donc secrets GitHub → déploiement → secrets de la fonction → planification.
 
 ### Une base ne se réveille pas toute seule
 

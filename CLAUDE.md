@@ -139,29 +139,52 @@ d'énumération restent à vérifier contre le projet, et c'est l'objet de la
 PARTIE A de `supabase/diagnostic_taches_evenements.sql` (voir « Le schéma
 initial fait autorité »).
 
-### Fusion automatique des pull requests
+### Fusion automatique des pull requests — **inopérante aujourd'hui**
 
-Les pull requests de l'assistant activent l'**auto-merge natif de GitHub** :
-elles se fusionnent seules dès que « Compiler la version web » passe au vert,
-sans intervention.
+> **État réel : l'auto-merge ne fonctionne pas sur ce dépôt.** Les pull
+> requests attendent une fusion manuelle. Ce paragraphe a décrit pendant
+> plusieurs tranches un mécanisme qui n'a jamais marché, et deux PR sont
+> restées ouvertes dix-sept heures avec une CI verte avant que quelqu'un s'en
+> aperçoive.
 
-Deux façons de garder la main :
+**Ce qui manque.** « Allow auto-merge » coché dans les réglages est
+**nécessaire mais pas suffisant**. GitHub refuse d'armer l'auto-merge sur une
+pull request déjà fusionnable : s'il n'y a rien à attendre, il n'y a rien à
+automatiser. L'API répond alors
+
+```
+Pull request Protected branch rules not configured for this branch
+```
+
+Il faut donc, en plus, une **règle de protection sur `main`** — ou un
+*ruleset* — déclarant au moins une vérification obligatoire, en l'occurrence
+« Compiler la version web ». C'est elle qui rend la PR temporairement non
+fusionnable, donc éligible à l'auto-merge.
+
+`main` n'est aujourd'hui pas protégée (`protected: false`), et l'auto-merge est
+par conséquent inarmable.
+
+**Tant que ce n'est pas configuré**, la règle de travail est celle-ci : après
+avoir ouvert une PR, attendre la CI et **fusionner explicitement**. Ne pas
+annoncer une fusion automatique qui n'aura pas lieu — c'est ce qui a coûté les
+dix-sept heures.
+
+Deux façons de garder la main, le jour où le mécanisme sera armé :
 
 | Signal | Effet |
 | --- | --- |
 | étiquette **`arbitrage-requis`** sur la PR | l'auto-merge n'est pas activé, la PR attend |
 | PR ouverte en **brouillon** | GitHub n'auto-fusionne jamais un brouillon |
 
-L'étiquette est posée dès l'ouverture, jamais après coup : une PR déjà
+L'étiquette se pose dès l'ouverture, jamais après coup : une PR déjà
 auto-fusionnée ne se rattrape pas. Sont concernées les livraisons dont le
 choix, et non l'exécution, mérite un avis — un arbitrage de produit, une
 migration destructrice, un changement de dépendance.
 
-L'auto-merge natif est préféré à un workflow maison pour une raison précise :
-une fusion faite par `GITHUB_TOKEN` **ne déclenche aucun workflow en aval**.
-Le déploiement des pages et l'application des migrations ne partiraient pas.
-
-Il exige que « Allow auto-merge » soit coché dans les réglages du dépôt.
+L'auto-merge natif reste préféré à un workflow maison pour une raison
+précise : une fusion faite par `GITHUB_TOKEN` **ne déclenche aucun workflow en
+aval**. Le déploiement des pages et l'application des migrations ne
+partiraient pas.
 
 Version de Flutter attendue : **3.44.8** (Dart 3.12). Elle est épinglée dans
 `env.FLUTTER_VERSION` du workflow ; toute montée de version doit y être

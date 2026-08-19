@@ -39,8 +39,15 @@ self.addEventListener('push', (event) => {
       body: charge.body,
       // `image` et les boutons d'action sont ignorés par iOS : on s'en tient à
       // ce qui passe partout.
+      // `icon` est la vignette de la notification. **iOS l'ignore** et
+      // affiche l'icône de l'application installée ; elle sert à Android et
+      // aux navigateurs de bureau.
       icon: 'icons/Icon-192.png',
-      badge: 'icons/Icon-192.png',
+      // `badge` est la silhouette monochrome de la barre d'état Android : le
+      // système n'en garde que l'alpha. Y mettre l'icône couleur donne un
+      // carré plein. Tant que `Icon-badge-96.png` n'est pas déposé, Android
+      // retombe sur son propre symbole — sans conséquence ailleurs.
+      badge: 'icons/Icon-badge-96.png',
       // Regrouper par type évite d'empiler dix notifications de la même
       // conversation sur l'écran verrouillé.
       tag: charge.type || 'jelvo',

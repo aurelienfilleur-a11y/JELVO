@@ -340,29 +340,28 @@ hauts uniquement) · pastilles `pill`.
 Marge d'écran : **16** (`screenMargin`, `screenHorizontal`, `screenAll`).
 Utiliser `AppSpacing.gapMd` plutôt que `SizedBox(height: 12)`.
 
-### Icônes — produites, jamais retouchées
+### Icônes — fournies, jamais dessinées ici
 
-`tool/generer_icones.py` fabrique les quatre PNG de `web/icons/` et le
-favicon à partir du monogramme **JV**, violet `primary` sur fond blanc. Une
-icône que personne ne sait régénérer finit par ne plus correspondre au reste
-de la charte ; celle-ci se refait d'une commande.
+**Le logo de Jelvo est un fichier fourni. Il ne se reconstruit pas.** Un
+monogramme redessiné d'après une description a été livré une fois, puis
+retiré : ce n'était pas le logo, c'en était une approximation, et une
+approximation de logo est un faux. Les emplacements sont câblés, les images
+viennent du dehors.
 
-Deux points de méthode que le fichier porte en commentaire :
+`web/icons/README.md` porte la liste exacte — sept fichiers, leurs tailles et
+leurs contraintes. Trois de ces contraintes ne se devinent pas :
 
-- **le centrage se fait sur l'encre réellement posée**, relevée après tracé.
-  Le crochet du J et les extrémités arrondies débordent de la géométrie
-  prévue, et un cadrage calculé d'avance laisse le monogramme de travers ;
-- **une icône masquable a son propre cadrage**, pas une simple réduction : le
-  système la rogne, parfois en cercle, et tout ce qui compte doit tenir dans
-  les 80 % centraux.
+- **une icône masquable n'est pas la même image en plus petit** : le système
+  la rogne, souvent en cercle, et tout ce qui compte doit tenir dans les 80 %
+  centraux, fond compris ;
+- **iOS ne respecte pas la transparence** — il compose sur du noir — et pose
+  lui-même les coins arrondis ; `Icon-180.png` doit donc être opaque et
+  carrée ;
+- **le badge Android ne garde que l'alpha** : une icône en couleur y devient
+  un carré plein, il faut une silhouette monochrome sur fond transparent.
 
-`ImageDraw.arc` trace **vers l'intérieur** de sa boîte : dessiner une ligne
-médiane de rayon *r* et d'épaisseur *e* demande une boîte de rayon *r + e/2*.
-Sans cela, l'épaisseur mange le rayon et le crochet du J devient un disque
-plein — c'est arrivé au premier essai.
-
-**Sur iPhone, changer l'icône ne suffit pas à la voir changer** : iOS fige
-celle de l'application installée. Il faut retirer l'icône de l'écran
+**Sur iPhone, remplacer les fichiers ne suffit pas à voir l'icône changer** :
+iOS fige celle de l'application installée. Il faut retirer l'icône de l'écran
 d'accueil et réinstaller — ce qui **détruit l'abonnement push** et oblige à
 réactiver les notifications.
 

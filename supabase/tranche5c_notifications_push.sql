@@ -90,8 +90,10 @@ as $$
   values
     ('chat_message',     'Nouveaux messages',
      'Quand quelqu''un écrit dans un de vos groupes'),
-    ('group_invitation', 'Invitations',
+    ('group_invitation', 'Invitations à un groupe',
      'Quand on vous invite dans un groupe'),
+    ('event_invitation', 'Invitations à un événement',
+     'Quand on vous convie à un événement'),
     ('task_assigned',    'Tâches assignées',
      'Quand une tâche vous est confiée'),
     ('reminder',         'Rappels',
@@ -309,9 +311,52 @@ $$;
 
 
 -- ---------------------------------------------------------------------------
--- 5. Les six déclencheurs
+-- 5. Les déclencheurs
 -- ---------------------------------------------------------------------------
 -- Tous attrapent leurs erreurs et laissent passer l'écriture principale.
+--
+--
+-- UNE SEULE RÈGLE DE FORMULATION
+--
+--   **titre = le contexte, corps = qui fait quoi.**
+--
+-- Le titre porte donc le **nom du groupe** — « Personnel » à défaut —, jamais
+-- un mot de catégorie. Sur un écran verrouillé, le titre sert à savoir de
+-- quel coin de sa vie vient la notification ; le corps, à savoir quoi.
+--
+-- Trois conventions cohabitaient avant : le nom du groupe pour les messages,
+-- le titre de l'événement pour les réponses et les changements de date, un
+-- mot de catégorie — « Invitation », « Nouvelle tâche », « Rappel » — pour le
+-- reste. L'empilement se lisait mal, et rien ne permettait de trier d'un coup
+-- d'œil. La règle vaut aussi pour `empiler_rappels`, dans la tranche 5d.
+--
+-- Conséquence à tenir : **le corps doit nommer l'élément**, puisque le titre
+-- ne le fait plus.
+
+-- 5.0 Le nom d'une personne, écrit au même endroit pour tous ---------------
+--
+-- Le même `coalesce` était recopié dans chaque déclencheur. Quatre copies,
+-- c'est quatre endroits où la règle peut diverger — et un cinquième arrivait
+-- avec l'invitation à un événement.
+--
+-- Renvoie `null` quand l'identifiant est absent ou sans profil : c'est à
+-- l'appelant de décider s'il écrit « Quelqu'un » ou s'il reformule sa phrase
+-- sans sujet.
+create or replace function public.nom_affiche(p_user_id uuid)
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(
+           nullif(trim(both ' ' from
+             coalesce(p.first_name, '') || ' ' || coalesce(p.last_name, '')), ''),
+           p.pseudo)
+    from public.profiles p
+   where p.id = p_user_id;
+$$;
+
 
 -- 5.1 Nouveau message ------------------------------------------------------
 create or replace function public.push_nouveau_message()
@@ -325,12 +370,7 @@ declare
   groupe     text;
   membre     record;
 begin
-  select coalesce(
-           nullif(trim(both ' ' from
-             coalesce(p.first_name, '') || ' ' || coalesce(p.last_name, '')), ''),
-           p.pseudo, 'Quelqu''un')
-    into expediteur
-    from public.profiles p where p.id = new.sender_id;
+  expediteur := coalesce(public.nom_affiche(new.sender_id), 'Quelqu''un');
 
   select g.name into groupe from public.groups g where g.id = new.group_id;
 
@@ -344,7 +384,7 @@ begin
     perform public.empiler_push(
       membre.user_id,
       'chat_message',
-      coalesce(groupe, 'Jelvo'),
+      coalesce(groupe, 'Personnel'),
       expediteur || ' : ' || coalesce(
         nullif(new.content, ''),
         case when new.media_kind = 'video' then 'a envoyé une vidéo'
@@ -383,18 +423,13 @@ begin
   end if;
 
   select g.name into groupe from public.groups g where g.id = new.group_id;
-  select coalesce(
-           nullif(trim(both ' ' from
-             coalesce(p.first_name, '') || ' ' || coalesce(p.last_name, '')), ''),
-           p.pseudo, 'Quelqu''un')
-    into emetteur
-    from public.profiles p where p.id = new.inviter_id;
+  emetteur := coalesce(public.nom_affiche(new.inviter_id), 'Quelqu''un');
 
   perform public.empiler_push(
     new.invitee_id,
     'group_invitation',
-    'Invitation',
-    emetteur || ' vous invite dans « ' || coalesce(groupe, 'un groupe') || ' »',
+    coalesce(groupe, 'Personnel'),
+    emetteur || ' vous invite dans le groupe',
     '/invitations/' || new.id::text
   );
 
@@ -422,7 +457,9 @@ security definer
 set search_path = public
 as $$
 declare
-  tache public.tasks%rowtype;
+  tache    public.tasks%rowtype;
+  groupe   text;
+  assigneur text;
 begin
   -- S'assigner soi-même n'a pas à se notifier.
   if new.user_id = auth.uid() then
@@ -434,11 +471,19 @@ begin
     return new;
   end if;
 
+  select g.name into groupe from public.groups g where g.id = tache.group_id;
+  select public.nom_affiche(auth.uid()) into assigneur;
+
   perform public.empiler_push(
     new.user_id,
     'task_assigned',
-    'Nouvelle tâche',
-    tache.title,
+    coalesce(groupe, 'Personnel'),
+    -- Sans assigneur identifiable — une écriture hors session —, on n'invente
+    -- pas de sujet à la phrase.
+    case when assigneur is null
+         then 'Nouvelle tâche : ' || tache.title
+         else assigneur || ' vous a confié : ' || tache.title
+    end,
     '/taches/' || new.task_id::text
   );
 
@@ -466,6 +511,7 @@ set search_path = public
 as $$
 declare
   evenement public.events%rowtype;
+  groupe    text;
   qui       text;
   mot       text;
 begin
@@ -478,12 +524,7 @@ begin
     return new;
   end if;
 
-  select coalesce(
-           nullif(trim(both ' ' from
-             coalesce(p.first_name, '') || ' ' || coalesce(p.last_name, '')), ''),
-           p.pseudo, 'Quelqu''un')
-    into qui
-    from public.profiles p where p.id = new.user_id;
+  qui := coalesce(public.nom_affiche(new.user_id), 'Quelqu''un');
 
   mot := case new.response
            when 'yes'   then 'vient'
@@ -492,11 +533,14 @@ begin
            else 'a répondu'
          end;
 
+  select g.name into groupe from public.groups g where g.id = evenement.group_id;
+
   perform public.empiler_push(
     evenement.owner_id,
     'event_response',
-    evenement.title,
-    qui || ' ' || mot,
+    coalesce(groupe, 'Personnel'),
+    -- Le titre ne nomme plus l'événement : le corps doit le faire.
+    evenement.title || ' — ' || qui || ' ' || mot,
     '/evenements/' || new.event_id::text
   );
 
@@ -514,6 +558,71 @@ create trigger trg_push_reponse_evenement
   for each row execute function public.push_reponse_evenement();
 
 
+-- 5.4bis Invitation à un événement -----------------------------------------
+--
+-- **Ce cas n'envoyait rien**, et c'était un trou et non un choix. Deux
+-- raisons cumulées : `push_invitation` écarte tout ce qui n'est pas
+-- `type = 'group'`, et convier quelqu'un passe par une insertion dans
+-- `event_participants`, qui n'avait de déclencheur que sur `update`. On était
+-- donc prévenu qu'un autre avait répondu, mais jamais qu'on était invité.
+--
+-- Un événement de groupe convie par défaut tous ses membres actifs : la
+-- création d'un événement dans un groupe de huit envoie donc sept
+-- notifications. C'est voulu — c'est exactement l'information attendue.
+create or replace function public.push_invitation_evenement()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  evenement public.events%rowtype;
+  groupe    text;
+  emetteur  text;
+begin
+  -- L'organisateur s'inscrit lui-même en créant l'événement.
+  if new.user_id = auth.uid() then
+    return new;
+  end if;
+
+  select * into evenement from public.events e where e.id = new.event_id;
+  if evenement.id is null or evenement.deleted_at is not null then
+    return new;
+  end if;
+
+  if new.user_id = evenement.owner_id then
+    return new;
+  end if;
+
+  select g.name into groupe from public.groups g where g.id = evenement.group_id;
+  emetteur := coalesce(public.nom_affiche(auth.uid()),
+                       public.nom_affiche(evenement.owner_id));
+
+  perform public.empiler_push(
+    new.user_id,
+    'event_invitation',
+    coalesce(groupe, 'Personnel'),
+    case when emetteur is null
+         then 'Vous êtes convié à ' || evenement.title
+         else emetteur || ' vous convie à ' || evenement.title
+    end,
+    '/evenements/' || new.event_id::text
+  );
+
+  return new;
+exception
+  when others then
+    raise warning 'push_invitation_evenement : %', sqlerrm;
+    return new;
+end;
+$$;
+
+drop trigger if exists trg_push_invitation_evenement on public.event_participants;
+create trigger trg_push_invitation_evenement
+  after insert on public.event_participants
+  for each row execute function public.push_invitation_evenement();
+
+
 -- 5.5 Changement de date ---------------------------------------------------
 create or replace function public.push_date_changee()
 returns trigger
@@ -523,10 +632,13 @@ set search_path = public
 as $$
 declare
   participant record;
+  groupe      text;
 begin
   if new.starts_at is not distinct from old.starts_at then
     return new;
   end if;
+
+  select g.name into groupe from public.groups g where g.id = new.group_id;
 
   for participant in
     select ep.user_id
@@ -537,8 +649,9 @@ begin
     perform public.empiler_push(
       participant.user_id,
       'event_changed',
-      new.title,
-      'Nouvelle date : ' || to_char(new.starts_at, 'DD/MM à HH24:MI'),
+      coalesce(groupe, 'Personnel'),
+      new.title || ' déplacé au '
+        || to_char(new.starts_at, 'DD/MM à HH24:MI'),
       '/evenements/' || new.id::text
     );
   end loop;

@@ -37,6 +37,10 @@ BADGE_BAS, BADGE_HAUT = 120, 200
 # d'être prolongée. Voir `_pente` : deux pixels ne suffisent pas.
 FENETRE = 64
 
+# Part du maître conservée pour le favicon. Voir `main` : à 32 px, le cadrage
+# d'origine ne laisse que quatorze pixels au monogramme.
+PART_FAVICON = 0.62
+
 
 def boite_du_monogramme(image: Image.Image) -> tuple[int, int, int, int]:
     """Boîte englobante du blanc, bornes incluses."""
@@ -170,12 +174,21 @@ def main() -> None:
         ('web/icons/Icon-512.png', 512),
         ('web/icons/Icon-maskable-192.png', 192),
         ('web/icons/Icon-maskable-512.png', 512),
-        ('web/favicon.png', 32),
     ]
     for chemin, taille in carres:
         maitre.resize((taille, taille), Image.LANCZOS).save(
             chemin, 'PNG', optimize=True)
         print(f'{chemin}  {taille}×{taille}')
+
+    # Le favicon est **recadré** avant d'être réduit. À 32 px, le monogramme
+    # n'occupait que 44 % de la toile, soit quatorze pixels utiles : le reste
+    # était du fond. C'est le seul format où le manque de place se voit, et
+    # c'est un recadrage — le tracé n'est ni redessiné ni déformé.
+    bord = round(largeur * (1 - PART_FAVICON) / 2)
+    maitre.crop((bord, bord, largeur - bord, largeur - bord)) \
+        .resize((32, 32), Image.LANCZOS) \
+        .save('web/favicon.png', 'PNG', optimize=True)
+    print(f'web/favicon.png  32×32  (recadré à {PART_FAVICON:.0%})')
 
     silhouette(maitre, 96).save(
         'web/icons/Icon-badge-96.png', 'PNG', optimize=True)

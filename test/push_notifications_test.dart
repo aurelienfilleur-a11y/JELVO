@@ -171,7 +171,7 @@ void main() {
     });
   });
 
-  group('Les six types', () {
+  group('Les sept types', () {
     testWidgets('chacun est désactivable', (WidgetTester tester) async {
       final ({FakePushRepository depot, FakePushService service}) faux =
           await _pumpApp(tester);
@@ -179,7 +179,8 @@ void main() {
 
       for (final String libelle in const <String>[
         'Nouveaux messages',
-        'Invitations',
+        'Invitations à un groupe',
+        'Invitations à un événement',
         'Tâches assignées',
         'Rappels',
         'Réponses aux événements',

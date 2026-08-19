@@ -20,7 +20,7 @@ emplacements sont câblés dans `web/manifest.json`, `web/index.html` et
 | `Icon-maskable-192.png` | 192 × 192 | manifeste, `purpose: maskable` |
 | `Icon-maskable-512.png` | 512 × 512 | manifeste, `purpose: maskable` |
 | `Icon-badge-96.png` | 96 × 96 | barre d'état Android — silhouette |
-| `../favicon.png` | 32 × 32 | onglet du navigateur |
+| `../favicon.png` | 32 × 32 | onglet du navigateur — **recadré à 62 %** |
 
 ## Le recentrage, et pourquoi il n'altère pas le tracé
 
@@ -42,6 +42,14 @@ Le script le remet d'aplomb, et deux choix de méthode s'imposaient :
   pixel, devenait une bande claire de dix-sept pixels le long du bord. Le
   raccord actuel s'écarte de 1 à 3 niveaux sur 255, contre 0 à 2 entre deux
   colonnes voisines du dégradé d'origine.
+
+## Le favicon est le seul recadré
+
+À 32 px, le cadrage d'origine ne laisse que **quatorze pixels** au monogramme,
+le reste étant du fond : le `jv` y devient une tache. Le favicon est donc
+découpé dans les **62 % centraux** du maître avant réduction. C'est un
+recadrage, pas une déformation ni un redessin, et c'est le seul format où le
+manque de place se voit.
 
 ## Les masquables sont la même image, et c'est vérifié
 

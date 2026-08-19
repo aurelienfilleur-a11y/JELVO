@@ -31,6 +31,11 @@ Deux workflows tournent sur `main` :
 analyze`, `flutter test` puis `flutter build web`. Ces quatre commandes doivent
 passer avant tout push sur `main`.
 
+**Et il faut lire leur vrai code de sortie.** `commande | tail -3` renvoie
+celui de `tail`, jamais celui de la commande : un `dart format` en échec y
+paraît vert. C'est arrivé — le formatage a été annoncé comme passé, et la CI
+l'a démenti trente secondes plus tard. Capturer le code avant de filtrer.
+
 ### Les migrations s'appliquent toutes seules
 
 `supabase/migrations.txt` liste les fichiers à appliquer, **dans l'ordre**.
@@ -360,6 +365,9 @@ droite. Deux choix ont guidé la correction, tous deux consignés dans
 - **la translation est entière**, jamais sous-pixellaire : un décalage de
   16,5 px aurait demandé un rééchantillonnage, donc une altération du tracé.
   Il reste un pixel d'écart, le jeu à répartir étant impair ;
+- **le favicon est recadré à 62 %** avant réduction, et lui seul : à 32 px, le
+  cadrage d'origine ne laissait que quatorze pixels au monogramme, le reste
+  étant du fond. C'est un recadrage, pas une déformation ;
 - **le dégradé est prolongé par une droite des moindres carrés** ajustée sur
   soixante-quatre colonnes. Prolonger depuis deux pixels voisins multiplie
   leur écart par la distance : le bruit du dégradé devenait une bande claire
@@ -1223,7 +1231,7 @@ sens de cette table, et la clé primaire garde son sens.
 
 ### Une file, pas un appel depuis le déclencheur
 
-Les six déclencheurs empilent dans `push_outbox` ; la fonction Edge la vide.
+Les déclencheurs empilent dans `push_outbox` ; la fonction Edge la vide.
 Trois raisons, chacune suffisante :
 
 1. une notification est un effet de bord et ne doit **jamais** faire échouer
@@ -1241,6 +1249,60 @@ sous `postgres`.
 Les préférences suivent un modèle **opt-out** : absence de ligne = activé. Un
 modèle inverse aurait imposé de semer six lignes à l'inscription, pour une
 application qui n'enverrait rien tant qu'on n'a pas coché.
+
+### Titre = le contexte, corps = qui fait quoi
+
+**Une seule règle de formulation, sans exception.** Le titre porte le **nom du
+groupe** — « Personnel » à défaut —, jamais un mot de catégorie. Sur un écran
+verrouillé, le titre sert à savoir de quel coin de sa vie vient la
+notification ; le corps, à savoir quoi.
+
+| Type | Titre | Corps |
+| --- | --- | --- |
+| `chat_message` | Famille | `Julie Martin : On fait un barbecue ?` |
+| `group_invitation` | Famille | `Julie Martin vous invite dans le groupe` |
+| `event_invitation` | Famille | `Julie Martin vous convie à Randonnée du lac Blanc` |
+| `task_assigned` | Famille | `Julie Martin vous a confié : Réserver le restaurant` |
+| `event_response` | Famille | `Randonnée du lac Blanc — Julie Martin vient` |
+| `event_changed` | Famille | `Randonnée du lac Blanc déplacé au 24/08 à 19:30` |
+| `reminder` (tâche) | Famille | `Rappel — Réserver le restaurant` |
+| `reminder` (événement) | Amis | `Rappel — Randonnée du lac Blanc à 09:00` |
+
+Trois conventions cohabitaient avant : le nom du groupe pour les messages, le
+titre de l'événement pour les réponses et les changements de date, un mot de
+catégorie — « Invitation », « Nouvelle tâche », « Rappel » — pour le reste.
+L'empilement se lisait mal et ne se triait pas d'un coup d'œil.
+
+**Conséquence à tenir pour tout nouveau type** : le corps doit **nommer
+l'élément**, puisque le titre ne le fait plus. Le test de fumée éprouve les
+deux moitiés de la règle sur `event_invitation` — le titre vaut le nom du
+groupe, le corps contient celui de l'événement.
+
+`public.nom_affiche(uuid)` écrit le nom d'une personne **au même endroit pour
+tous** : le même `coalesce(prénom nom, pseudo)` était recopié dans chaque
+déclencheur. Elle renvoie `null` quand le profil manque, à charge de
+l'appelant d'écrire « Quelqu'un » ou de reformuler sans sujet — `task_assigned`
+bascule ainsi sur « Nouvelle tâche : … » quand l'assigneur n'est pas
+identifiable.
+
+### Convier quelqu'un à un événement notifie — depuis peu
+
+Ce cas **n'envoyait rien**, et c'était un trou, pas un choix. Deux raisons
+cumulées, qu'il faut connaître avant d'ajouter un type :
+
+- `push_invitation` écarte tout ce qui n'est pas `type = 'group'` ;
+- convier quelqu'un passe par une insertion dans `event_participants`, table
+  qui n'avait de déclencheur que sur `update`. On était donc prévenu qu'un
+  autre avait répondu, mais jamais qu'on était invité.
+
+`push_invitation_evenement` comble l'écart. Un événement de groupe conviant
+par défaut tous ses membres actifs, une création dans un groupe de huit envoie
+sept notifications : c'est voulu.
+
+Le type porte le **même nom que dans la table `notifications`**
+(`event_invitation`), où il existait déjà depuis la tranche 3b. Les deux
+mécanismes restent distincts — la boîte se dépile, la notification système
+s'affiche — mais les nommer pareil évite d'avoir à traduire.
 
 ### Deux services worker, deux portées
 
@@ -1674,7 +1736,7 @@ compteur vaut zéro.
 - `test/push_notifications_test.dart` couvre les réglages de notification :
   l'activation qui enregistre l'abonnement en base, le refus et sa marche à
   suivre, la désactivation des deux côtés, la consigne d'installation iOS sans
-  bouton, les six types désactivables, l'interrupteur qui revient si l'écriture
+  bouton, les sept types désactivables, l'interrupteur qui revient si l'écriture
   échoue, et le réenregistrement au démarrage.
 
 Onze faux dépôts vivent dans `test/fakes/` : authentification, profil, groupes,

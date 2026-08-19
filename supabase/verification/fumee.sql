@@ -413,7 +413,7 @@ begin
 
   -- Les six types sont proposés, tous activés par défaut : le modèle est un
   -- opt-out, personne n'a de ligne au départ et tout arrive.
-  assert (select count(*) from public.mes_preferences_notification()) = 6,
+  assert (select count(*) from public.mes_preferences_notification()) = 7,
          'mes_preferences_notification';
   assert (select bool_and(enabled) from public.mes_preferences_notification()),
          'tout devrait être activé sans aucune ligne de préférence';
@@ -522,6 +522,26 @@ begin
            where user_id = '33333333-3333-3333-3333-333333333333'::uuid
              and type = 'task_assigned') = 1,
          'assigner une tâche n''a pas notifié la personne';
+
+  -- Le trou de la tranche 5c : convier quelqu'un n'envoyait rien. Un
+  -- événement de groupe inscrit ses membres dans `event_participants`, et
+  -- cette table n'avait de déclencheur que sur `update`.
+  assert (select count(*) from public.push_outbox
+           where user_id = '33333333-3333-3333-3333-333333333333'::uuid
+             and type = 'event_invitation') = 1,
+         'convier quelqu''un à un événement ne l''a pas notifié';
+
+  -- La règle de formulation : le titre porte le contexte, jamais un mot de
+  -- catégorie, et le corps nomme l'élément puisque le titre ne le fait plus.
+  assert (select title from public.push_outbox
+           where user_id = '33333333-3333-3333-3333-333333333333'::uuid
+             and type = 'event_invitation') = 'Famille Rousseau',
+         'le titre devrait porter le nom du groupe';
+  assert (select body like '%Fumée — événement qui notifie%'
+            from public.push_outbox
+           where user_id = '33333333-3333-3333-3333-333333333333'::uuid
+             and type = 'event_invitation'),
+         'le corps devrait nommer l''événement';
 
   -- La réponse va à l'organisateur, le changement de date aux participants.
   assert (select count(*) from public.push_outbox

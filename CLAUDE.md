@@ -1238,11 +1238,21 @@ Elles sont dans le produit, et l'écran de réglages les dit :
 
 ### Rien n'envoie sans ces secrets
 
-| Où | Quoi | Posé ? |
-| --- | --- | --- |
-| `env` de `deploy-web.yml` | `VAPID_PUBLIC_KEY` | **oui**, en clair |
-| Dashboard Supabase → Edge Functions → Secrets | `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | à faire |
-| Secrets GitHub | `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF` | à faire |
+| Où | Quoi |
+| --- | --- |
+| `env` de `deploy-web.yml` | `VAPID_PUBLIC_KEY` |
+| Dashboard Supabase → Edge Functions → Secrets | **`VAPID_PUBLIC_KEY`**, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` |
+| Secrets GitHub | `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF` |
+
+**`VAPID_PUBLIC_KEY` figure deux fois, et ce n'est pas une redondance.** Le
+`--dart-define` du workflow ne fournit la clé qu'au **bundle Flutter**, pour
+que le navigateur puisse s'abonner. La fonction Edge tourne sur un tout autre
+serveur, ne voit rien du dépôt, et lit ses propres secrets : sans la clé de
+son côté, `setVapidDetails` refuse la paire — la publique entre dans l'en-tête
+`Crypto-Key` de chaque envoi.
+
+L'omission a coûté une mise en service : la fonction sortait en `500` dès la
+première ligne, une fois par minute, **sans rien journaliser**.
 
 La paire est un couple ECDSA **P-256**, encodé en base64url **sans
 remplissage** : la publique est le point non compressé de 65 octets (87

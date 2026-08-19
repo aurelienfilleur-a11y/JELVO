@@ -348,12 +348,32 @@ retiré : ce n'était pas le logo, c'en était une approximation, et une
 approximation de logo est un faux. Les emplacements sont câblés, les images
 viennent du dehors.
 
+Le logo vit dans `tool/logo/jelvo-icone-source.png`, et
+`tool/preparer_icones.py` y **découpe** les sept fichiers — recentrage,
+réductions, extraction de la silhouette du badge. Aucune forme n'est
+reconstruite. Changer de logo, c'est remplacer la source et relancer.
+
+Le fichier fourni n'était pas centré — 333 px de marge à gauche contre 366 à
+droite. Deux choix ont guidé la correction, tous deux consignés dans
+`web/icons/README.md` :
+
+- **la translation est entière**, jamais sous-pixellaire : un décalage de
+  16,5 px aurait demandé un rééchantillonnage, donc une altération du tracé.
+  Il reste un pixel d'écart, le jeu à répartir étant impair ;
+- **le dégradé est prolongé par une droite des moindres carrés** ajustée sur
+  soixante-quatre colonnes. Prolonger depuis deux pixels voisins multiplie
+  leur écart par la distance : le bruit du dégradé devenait une bande claire
+  de dix-sept pixels le long du bord.
+
 `web/icons/README.md` porte la liste exacte — sept fichiers, leurs tailles et
 leurs contraintes. Trois de ces contraintes ne se devinent pas :
 
-- **une icône masquable n'est pas la même image en plus petit** : le système
-  la rogne, souvent en cercle, et tout ce qui compte doit tenir dans les 80 %
-  centraux, fond compris ;
+- **une icône masquable est rognée**, souvent en cercle : tout ce qui compte
+  doit tenir dans les 80 % centraux, fond compris. Le monogramme fourni y
+  tient déjà — demi-diagonale de 380 px pour un rayon sûr de 502 —, si bien
+  que les deux fichiers `maskable` sont le même rendu que les autres. **Le
+  script le contrôle à chaque exécution et s'arrête si ce n'est plus vrai** :
+  une source recadrée plus serré demanderait de vraies variantes ;
 - **iOS ne respecte pas la transparence** — il compose sur du noir — et pose
   lui-même les coins arrondis ; `Icon-180.png` doit donc être opaque et
   carrée ;

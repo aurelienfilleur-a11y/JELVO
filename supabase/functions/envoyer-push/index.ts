@@ -107,19 +107,36 @@ interface LigneAEnvoyer {
   auth_key: string | null;
 }
 
-Deno.serve((): Response => {
-  if (!VAPID_PUBLIC || !VAPID_PRIVATE) {
-    // Message explicite plutôt qu'un échec obscur : c'est l'oubli le plus
-    // probable à la première mise en service.
-    return json(
-      {
-        erreur: 'vapid_absent',
-        message:
-          'VAPID_PUBLIC_KEY et VAPID_PRIVATE_KEY ne sont pas configurés. ' +
-          'Voir l’en-tête de supabase/functions/envoyer-push/index.ts.',
-      },
-      500,
+Deno.serve(async (): Promise<Response> => {
+  // **Journaliser l'entrée, toujours, avant toute sortie anticipée.**
+  //
+  // Sans cette ligne, une invocation ne laissait dans les journaux que le
+  // `booted` / `shutdown` du runtime, et **deux pannes très différentes
+  // rendaient exactement la même trace** : une clé VAPID absente, qui sort
+  // immédiatement, et un `waitUntil` inopérant, qui laisse le travail
+  // commencer puis se faire interrompre. Impossible de les départager.
+  //
+  // C'est arrivé, et cela a coûté un aller-retour de diagnostic. Une
+  // fonction qui ne dit pas qu'elle a démarré n'est pas diagnosticable.
+  console.log('envoyer-push : invocation');
+
+  const manquants = [
+    !VAPID_PUBLIC ? 'VAPID_PUBLIC_KEY' : null,
+    !VAPID_PRIVATE ? 'VAPID_PRIVATE_KEY' : null,
+  ].filter((nom): nom is string => nom !== null);
+
+  if (manquants.length > 0) {
+    // **`VAPID_PUBLIC_KEY` se pose ici aussi**, dans les secrets de la
+    // fonction, et pas seulement dans le workflow web. Ce sont deux
+    // environnements sans aucun rapport : le `--dart-define` du build ne
+    // fournit la clé qu'au bundle Flutter, jamais à ce serveur. Et
+    // `setVapidDetails` exige la paire complète — la publique entre dans
+    // l'en-tête `Crypto-Key` de chaque envoi.
+    console.error(
+      `envoyer-push : secrets manquants — ${manquants.join(', ')}. ` +
+        'À poser dans Edge Functions → Secrets, pas dans le dépôt.',
     );
+    return json({ erreur: 'vapid_absent', manquants }, 500);
   }
 
   webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
@@ -130,33 +147,52 @@ Deno.serve((): Response => {
     { auth: { persistSession: false } },
   );
 
-  enArrierePlan(passage(supabase));
+  const travail = passage(supabase);
+  const differe = enArrierePlan(travail);
+
+  if (!differe) {
+    // Pas de `waitUntil` : mieux vaut dépasser le délai de la planification
+    // que perdre le travail. Un lot borné y passe de toute façon le plus
+    // souvent — et le journal dira lequel des deux chemins a été pris.
+    try {
+      await travail;
+    } catch (erreur) {
+      console.error('envoyer-push : passage échoué —', erreur);
+    }
+  }
 
   // On accuse réception, on ne rend pas compte : le travail commence à peine.
   // Le compte rendu part dans les journaux de la fonction, à la fin du
   // passage — voir `passage`.
-  return json({ accepte: true, lot: LOT }, 202);
+  return json({ accepte: true, lot: LOT, differe }, 202);
 });
 
 /**
- * Laisse le travail se poursuivre après la réponse.
+ * Laisse le travail se poursuivre après la réponse. Renvoie `false` si le
+ * runtime ne sait pas le faire — à l'appelant, alors, de l'attendre.
  *
- * Sans cela, l'instance serait susceptible d'être arrêtée dès que l'appelant
- * se déconnecte — c'est-à-dire aussitôt, puisqu'on répond immédiatement.
- * `waitUntil` est propre au runtime Supabase ; hors de lui (exécution locale),
- * il n'existe pas, et on se contente alors de ne pas perdre l'erreur.
+ * Sans `waitUntil`, l'instance serait susceptible d'être arrêtée dès que
+ * l'appelant se déconnecte, c'est-à-dire aussitôt puisqu'on répond
+ * immédiatement. Le global est propre au runtime Supabase : hors de lui, il
+ * n'existe pas, et **rendre la main sans attendre perdrait le passage**.
  */
-function enArrierePlan(travail: Promise<unknown>): void {
+function enArrierePlan(travail: Promise<unknown>): boolean {
   const runtime = (globalThis as {
     EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void };
   }).EdgeRuntime;
 
-  if (typeof runtime?.waitUntil === 'function') {
-    runtime.waitUntil(travail);
-    return;
+  if (typeof runtime?.waitUntil !== 'function') {
+    console.warn(
+      'envoyer-push : EdgeRuntime.waitUntil indisponible, passage attendu ' +
+        'dans la réponse.',
+    );
+    return false;
   }
 
-  travail.catch((erreur) => console.error('passage :', erreur));
+  runtime.waitUntil(travail.catch((erreur) => {
+    console.error('envoyer-push : passage interrompu —', erreur);
+  }));
+  return true;
 }
 
 /** Un passage complet : empiler les rappels dus, puis vider un lot. */

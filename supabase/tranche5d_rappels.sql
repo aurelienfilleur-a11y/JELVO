@@ -222,7 +222,9 @@ begin
 
     continue when rappel is null or rappel < depuis or rappel > maintenant;
 
-    corps := ligne.title || coalesce(' (' || ligne.groupe || ')', '');
+    -- Même règle qu'en tranche 5c : le titre porte le contexte, le corps
+    -- dit quoi. Le groupe quitte donc le corps pour devenir le titre.
+    corps := 'Rappel — ' || ligne.title;
 
     for destinataire in
       -- Les assignés, sauf ceux qui ont refusé. À défaut d'assigné, celui qui
@@ -247,7 +249,7 @@ begin
       if public.empiler_push(
         destinataire.user_id,
         'reminder',
-        'Rappel',
+        coalesce(ligne.groupe, 'Personnel'),
         corps,
         '/taches/' || ligne.id::text
       ) then
@@ -284,9 +286,8 @@ begin
     -- L'heure est rendue en Europe/Paris : l'application est en français et
     -- n'a qu'une locale. Le schéma ne porte aucun fuseau par événement, donc
     -- il n'y a rien de plus juste à faire ici.
-    corps := ligne.title
-      || ' à ' || to_char(occurrence at time zone 'Europe/Paris', 'HH24:MI')
-      || coalesce(' (' || ligne.groupe || ')', '');
+    corps := 'Rappel — ' || ligne.title
+      || ' à ' || to_char(occurrence at time zone 'Europe/Paris', 'HH24:MI');
 
     for destinataire in
       -- Qui a dit non n'a pas à être rappelé. Un rendez-vous personnel n'a
@@ -311,7 +312,7 @@ begin
       if public.empiler_push(
         destinataire.user_id,
         'reminder',
-        'Rappel',
+        coalesce(ligne.groupe, 'Personnel'),
         corps,
         '/evenements/' || ligne.id::text
       ) then

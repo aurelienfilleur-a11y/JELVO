@@ -1284,6 +1284,41 @@ passage. Deux planifications distinctes — l'une pour les rappels, l'autre pour
 l'envoi — auraient donné deux cadences à tenir d'accord, et un rappel empilé
 juste après le dernier envoi aurait attendu le tour suivant.
 
+#### Un passage doit tenir dans le délai de la planification
+
+L'interface Cron **plafonne le délai d'attente à 5000 ms**. Un passage qui
+déborde est compté en échec chaque minute — et détruit le seul signal qui
+disait si la chaîne fonctionne.
+
+Trois choses pouvaient déborder, et réduire le lot n'en réglait qu'une :
+
+| Cause | Borne posée |
+| --- | --- |
+| démarrage à froid (`web-push` s'importe en 1 à 3 s) | la réponse part **avant** le travail |
+| un endpoint qui pend — `allSettled` attend le plus lent | `DELAI_ENVOI_MS`, 3 s par envoi |
+| le volume | `LOT`, 20 lignes par passage |
+
+**La deuxième est la seule qui comptait vraiment** : `sendNotification`
+n'impose aucun délai maximal, si bien qu'un unique endpoint lent retenait le
+lot entier — un lot de taille 1 y aurait suffi. Diminuer `LOT` n'y pouvait
+rien.
+
+La réponse est donc un simple accusé de réception (`202`), et le travail se
+poursuit derrière elle via `EdgeRuntime.waitUntil` — sans quoi l'instance
+serait susceptible d'être arrêtée dès la déconnexion de l'appelant, c'est-à-dire
+aussitôt.
+
+**Conséquence à connaître : l'historique de la planification ne dit plus que
+« appelée ».** Ce qu'a fait un passage — rappels empilés, envois, échecs,
+purges, durée — se lit dans les **journaux de la fonction**, et les échecs
+individuels dans `push_outbox.last_error`. C'est le même compromis que pour le
+workflow des migrations : le vert de la tâche ne désigne pas l'étape qui
+compte.
+
+Rien ne se perd au passage : la file est ordonnée par `created_at`, un envoi
+non traité garde `sent_at is null`, et `attempts < 3` finit par abandonner ce
+qui échoue systématiquement.
+
 L'alternative, `pg_cron` + `pg_net` appelant la fonction depuis la base, a été
 écartée pour une raison précise : elle impose de ranger une clé `service_role`
 **dans la base**. La clé vit déjà du bon côté, dans les secrets de la fonction.

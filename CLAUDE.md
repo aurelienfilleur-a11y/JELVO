@@ -340,6 +340,32 @@ hauts uniquement) · pastilles `pill`.
 Marge d'écran : **16** (`screenMargin`, `screenHorizontal`, `screenAll`).
 Utiliser `AppSpacing.gapMd` plutôt que `SizedBox(height: 12)`.
 
+### Icônes — produites, jamais retouchées
+
+`tool/generer_icones.py` fabrique les quatre PNG de `web/icons/` et le
+favicon à partir du monogramme **JV**, violet `primary` sur fond blanc. Une
+icône que personne ne sait régénérer finit par ne plus correspondre au reste
+de la charte ; celle-ci se refait d'une commande.
+
+Deux points de méthode que le fichier porte en commentaire :
+
+- **le centrage se fait sur l'encre réellement posée**, relevée après tracé.
+  Le crochet du J et les extrémités arrondies débordent de la géométrie
+  prévue, et un cadrage calculé d'avance laisse le monogramme de travers ;
+- **une icône masquable a son propre cadrage**, pas une simple réduction : le
+  système la rogne, parfois en cercle, et tout ce qui compte doit tenir dans
+  les 80 % centraux.
+
+`ImageDraw.arc` trace **vers l'intérieur** de sa boîte : dessiner une ligne
+médiane de rayon *r* et d'épaisseur *e* demande une boîte de rayon *r + e/2*.
+Sans cela, l'épaisseur mange le rayon et le crochet du J devient un disque
+plein — c'est arrivé au premier essai.
+
+**Sur iPhone, changer l'icône ne suffit pas à la voir changer** : iOS fige
+celle de l'application installée. Il faut retirer l'icône de l'écran
+d'accueil et réinstaller — ce qui **détruit l'abonnement push** et oblige à
+réactiver les notifications.
+
 ### Ombres — `AppShadows`
 
 Toujours **très douces, opacité ≤ 0,06**. `card` au repos, `raised` pour un

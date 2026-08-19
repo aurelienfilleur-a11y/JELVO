@@ -1,72 +1,72 @@
-# Icônes de Jelvo — fichiers attendus
+# Icônes de Jelvo
 
-Ces fichiers sont **fournis**, pas générés. Les emplacements sont déjà câblés
-dans `web/manifest.json`, `web/index.html` et `web/jelvo_push_sw.js` : déposer
-les images aux noms exacts ci-dessous suffit, il n'y a aucun code à toucher.
+Les sept fichiers sont **découpés dans le logo fourni**, jamais dessinés :
 
-Le fichier maître est le monogramme **jv** blanc sur fond indigo dégradé, à
-coins arrondis. **Deux des sept fichiers ne veulent pas ces coins** — voir
-« Trois variantes », plus bas.
+```bash
+python3 tool/preparer_icones.py
+```
 
-## Ce qu'il faut déposer
+La source est `tool/logo/jelvo-icone-source.png` — monogramme `jv` blanc sur
+fond indigo dégradé, carré, 1254 × 1254. **Changer le logo, c'est remplacer
+ce fichier et relancer la commande.** Rien d'autre à toucher : les sept
+emplacements sont câblés dans `web/manifest.json`, `web/index.html` et
+`web/jelvo_push_sw.js`.
 
-| Fichier | Taille | Variante | Où il sert |
-| --- | --- | --- | --- |
-| `web/icons/Icon-180.png` | 180 × 180 | **B — carré plein** | écran d'accueil iOS |
-| `web/icons/Icon-192.png` | 192 × 192 | A — le maître | manifeste, vignette de notification |
-| `web/icons/Icon-512.png` | 512 × 512 | A — le maître | manifeste, écran de lancement |
-| `web/icons/Icon-maskable-192.png` | 192 × 192 | **B — carré plein, logo réduit** | manifeste, `purpose: maskable` |
-| `web/icons/Icon-maskable-512.png` | 512 × 512 | **B — carré plein, logo réduit** | manifeste, `purpose: maskable` |
-| `web/icons/Icon-badge-96.png` | 96 × 96 | **C — silhouette** | barre d'état Android |
-| `web/favicon.png` | 32 × 32 | A — le maître | onglet du navigateur |
+| Fichier | Taille | Où il sert |
+| --- | --- | --- |
+| `Icon-180.png` | 180 × 180 | écran d'accueil iOS (`apple-touch-icon`) |
+| `Icon-192.png` | 192 × 192 | manifeste, vignette de notification |
+| `Icon-512.png` | 512 × 512 | manifeste, écran de lancement |
+| `Icon-maskable-192.png` | 192 × 192 | manifeste, `purpose: maskable` |
+| `Icon-maskable-512.png` | 512 × 512 | manifeste, `purpose: maskable` |
+| `Icon-badge-96.png` | 96 × 96 | barre d'état Android — silhouette |
+| `../favicon.png` | 32 × 32 | onglet du navigateur |
 
-Format : PNG dans tous les cas.
+## Le recentrage, et pourquoi il n'altère pas le tracé
 
-## Trois variantes
+Dans le fichier fourni, le monogramme n'était **pas centré** : marges de 333
+à gauche contre 366 à droite, 357 en haut contre 375 en bas. Il est donc
+décalé de 16 px vers la gauche et de 9 px vers le haut.
 
-### A — le maître, tel quel
+Le script le remet d'aplomb, et deux choix de méthode s'imposaient :
 
-Coins arrondis compris, transparence autorisée autour d'eux. Simple
-redimensionnement. Quatre fichiers sur sept.
+- **la translation est entière**, jamais sous-pixellaire. Un décalage de 16,5
+  px aurait demandé un rééchantillonnage, c'est-à-dire une altération du
+  tracé. Il reste donc un pixel d'écart résiduel — 349 contre 350 —, parce
+  que le jeu à répartir est impair. C'est le prix à payer pour ne pas toucher
+  au dessin, et il est invisible ;
+- **le dégradé est prolongé, pas recopié.** La bande libérée est remplie par
+  une droite des moindres carrés ajustée sur soixante-quatre colonnes.
+  Prolonger depuis deux pixels voisins, comme au premier essai, multiplie
+  leur écart par la distance : le bruit du dégradé, invisible à l'échelle du
+  pixel, devenait une bande claire de dix-sept pixels le long du bord. Le
+  raccord actuel s'écarte de 1 à 3 niveaux sur 255, contre 0 à 2 entre deux
+  colonnes voisines du dégradé d'origine.
 
-### B — carré plein, sans coins arrondis
+## Les masquables sont la même image, et c'est vérifié
 
-Le dégradé indigo va **jusqu'aux quatre bords**, et le fichier est **opaque**.
-Deux raisons distinctes, qui tombent sur les mêmes fichiers :
+Une icône masquable est rognée par le système, souvent en cercle : tout ce
+qui compte doit tenir dans les **80 % centraux**. C'est en général une image
+distincte, avec plus de marge.
 
-- **iOS applique son propre masque** — un carré à coins super-elliptiques.
-  Lui donner une image déjà arrondie produit un **double arrondi** : on voit
-  l'angle du masque système déborder autour de l'angle du logo. Et iOS **ne
-  respecte pas la transparence** : ce qui est transparent devient noir.
-- **Les icônes masquables sont rognées** par le système, souvent en cercle.
-  Un fond qui s'arrête avant le bord laisse apparaître un liseré, ou un
-  disque de couleur système.
+Ici, non : le monogramme du fichier fourni a une demi-diagonale de **380 px**
+pour un rayon sûr de **502 px**. Il tient déjà, largement. Les deux fichiers
+`maskable` sont donc le même rendu que les autres.
 
-**Les deux `maskable` demandent en plus un logo plus petit** : tout ce qui
-compte doit tenir dans les **80 % centraux** — un cercle centré de 154 px pour
-le 192, de 410 px pour le 512. En pratique, le `jv` occupe environ 60 % de la
-largeur au lieu de 75 % dans le maître. **Ce n'est donc pas un
-redimensionnement du maître**, c'est un recadrage plus large.
+**Le script le contrôle à chaque exécution** et s'arrête si ce n'est plus
+vrai. Une source recadrée plus serré demanderait de vraies variantes, et
+mieux vaut un échec net qu'une icône dont le point du `j` se fait rogner.
 
-Le point du `j` compte dans la zone sûre : c'est la partie la plus haute du
-monogramme, et c'est elle qui se fera rogner en premier.
+## Ce que le format impose ailleurs
 
-### C — silhouette monochrome sur fond transparent
-
-**Android ne garde que l'alpha** du badge et en fait une silhouette blanche.
-Une icône en couleur y devient un carré plein. Il faut donc le `jv` seul —
-point du `j` compris — en pixels opaques, **sans aucun fond**.
-
-C'est le seul fichier vraiment facultatif : sans lui, Android affiche son
-propre symbole, et iOS ignore le badge de toute façon.
-
-## Où la transparence est nécessaire, et où elle nuit
-
-| Fichier | Transparence |
-| --- | --- |
-| `Icon-badge-96.png` | **obligatoire** — c'est elle qui porte la forme |
-| `Icon-192`, `Icon-512`, `favicon` | tolérée autour des coins arrondis |
-| `Icon-180`, les deux `maskable` | **à proscrire** — iOS compose sur du noir, le masque révèle le vide |
+- **iOS ne respecte pas la transparence** — il compose sur du noir — et pose
+  lui-même les coins arrondis. La source est carrée et opaque : c'est
+  exactement ce qu'il faut, et une source déjà arrondie donnerait un double
+  arrondi.
+- **Le badge Android ne garde que l'alpha.** Une icône en couleur y devient
+  un carré plein. `Icon-badge-96.png` est donc la silhouette du monogramme,
+  blanche sur fond transparent, extraite du même fichier par seuillage de la
+  luminance — l'anticrénelage des bords est conservé.
 
 ## Après le dépôt, sur iPhone
 
@@ -75,10 +75,9 @@ l'icône de l'application installée**. Il faut retirer Jelvo de l'écran
 d'accueil puis le réinstaller — ce qui **détruit l'abonnement push** et
 oblige à réactiver les notifications dans Profil → Paramètres.
 
-## Hors périmètre pour l'instant
+## Hors périmètre
 
 `ios/Runner/Assets.xcassets/AppIcon.appiconset/` et
 `android/app/src/main/res/mipmap-*/` portent les icônes des **applications
 natives**, qui ont leurs propres jeux de tailles. Seule la cible web est
-compilée et vérifiée aujourd'hui ; ces dossiers restent ceux du gabarit
-Flutter.
+compilée et vérifiée ; ces dossiers restent ceux du gabarit Flutter.

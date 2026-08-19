@@ -114,8 +114,7 @@ class FakePushRepository implements PushRepository {
         const NotificationPreference(
           type: 'event_changed',
           label: 'Changements de date',
-          description:
-              'Quand un événement auquel vous participez est déplacé',
+          description: 'Quand un événement auquel vous participez est déplacé',
           enabled: true,
         ),
       ];

@@ -31,6 +31,11 @@ Deux workflows tournent sur `main` :
 analyze`, `flutter test` puis `flutter build web`. Ces quatre commandes doivent
 passer avant tout push sur `main`.
 
+**Et il faut lire leur vrai code de sortie.** `commande | tail -3` renvoie
+celui de `tail`, jamais celui de la commande : un `dart format` en échec y
+paraît vert. C'est arrivé — le formatage a été annoncé comme passé, et la CI
+l'a démenti trente secondes plus tard. Capturer le code avant de filtrer.
+
 ### Les migrations s'appliquent toutes seules
 
 `supabase/migrations.txt` liste les fichiers à appliquer, **dans l'ordre**.

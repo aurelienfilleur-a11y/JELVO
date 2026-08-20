@@ -263,6 +263,30 @@ class GroupActions {
   Future<String> invite({required String groupId, required String userId}) =>
       _repository.invite(groupId: groupId, userId: userId);
 
+  /// Invite plusieurs personnes, et renvoie **combien n'ont pas reçu leur
+  /// invitation**.
+  ///
+  /// Les invitations sont indépendantes : une adresse qui échoue ne doit pas
+  /// empêcher les suivantes de partir. Elles sont donc toutes tentées, et
+  /// l'appelant décide quoi dire du reste — jamais de lever, car cette
+  /// méthode est appelée **après** la création du groupe, et un groupe créé
+  /// ne doit pas paraître perdu parce qu'une invitation a échoué.
+  Future<int> inviteAll({
+    required String groupId,
+    required Iterable<String> userIds,
+  }) async {
+    int echecs = 0;
+    for (final String userId in userIds) {
+      try {
+        final String issue = await invite(groupId: groupId, userId: userId);
+        if (issue != 'invite') echecs++;
+      } catch (_) {
+        echecs++;
+      }
+    }
+    return echecs;
+  }
+
   Future<JoinOutcome> acceptInvitation(String invitationId) async {
     final JoinOutcome outcome = await _repository.acceptInvitation(
       invitationId,

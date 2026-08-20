@@ -377,11 +377,14 @@ droite. Deux choix ont guidé la correction, tous deux consignés dans
 leurs contraintes. Trois de ces contraintes ne se devinent pas :
 
 - **une icône masquable est rognée**, souvent en cercle : tout ce qui compte
-  doit tenir dans les 80 % centraux, fond compris. Le monogramme fourni y
-  tient déjà — demi-diagonale de 380 px pour un rayon sûr de 502 —, si bien
-  que les deux fichiers `maskable` sont le même rendu que les autres. **Le
-  script le contrôle à chaque exécution et s'arrête si ce n'est plus vrai** :
-  une source recadrée plus serré demanderait de vraies variantes ;
+  doit tenir dans les 80 % centraux, fond compris. **Le script le contrôle à
+  chaque exécution et s'arrête si ce n'est plus vrai** ;
+- **les cadrages diffèrent selon l'usage, et ce n'est pas un oubli.** Les
+  icônes ordinaires sont recadrées à 80 % — le monogramme y flottait au
+  milieu d'une grande zone violette —, les masquables gardent le cadrage du
+  maître. Après rognage par le système, le monogramme occupe **la même part
+  visible des deux côtés** : 555 px pour 1003 px utiles. Les agrandir aussi
+  les ferait déborder ;
 - **iOS ne respecte pas la transparence** — il compose sur du noir — et pose
   lui-même les coins arrondis ; `Icon-180.png` doit donc être opaque et
   carrée ;
@@ -807,6 +810,31 @@ et une seule suffirait :
 retrait, promotion du plus ancien membre, suppression douce du groupe — qui,
 enchaînées depuis le client, laisseraient un groupe sans administrateur en cas
 d'échec au milieu.
+
+### Le groupe et ses premiers membres se décident ensemble
+
+Avant, il fallait créer le groupe, ouvrir son écran, puis inviter — trois
+étapes pour une seule intention, et un groupe vide entre-temps.
+`GroupMemberPicker` met la sélection dans l'écran de création : rangée
+d'avatars des contacts acceptés, favoris en tête, recherche pour retrouver
+qui n'y figure pas.
+
+**La rangée est l'état d'ouverture, la recherche ne fait que la compléter** :
+dans un carnet de quelques dizaines de noms, reconnaître un visage est plus
+rapide que taper un nom.
+
+Deux règles que le code porte, et qu'il faut garder :
+
+- **les invitations partent après la création, et leur échec ne remet rien en
+  cause.** `inviteAll` ne lève jamais et renvoie le nombre d'invitations non
+  parties ; l'écran entre dans le groupe puis le dit. Lever ici afficherait
+  une erreur sur un groupe pourtant bien créé ;
+- **un échec partiel est nommé.** Sans message, on croit avoir invité cinq
+  personnes alors que deux n'ont rien reçu, et rien ne le signale — c'est le
+  même défaut silencieux qu'une écriture PostgREST sans effet.
+
+Le sélecteur n'apparaît **qu'à la création**. En modification, la liste des
+membres se gère depuis l'écran du groupe, qui sait aussi les retirer.
 
 ### Invitations : deux mécanismes distincts
 
@@ -1703,7 +1731,8 @@ compteur vaut zéro.
   décochage, la survie du *choix* alors que la session ne survit pas, et la
   déconnexion qui efface quel que soit le réglage.
 - `test/groups_contacts_test.dart` couvre la liste et le détail d'un groupe, la
-  création, le départ, les cinq états d'un lien d'invitation, les demandes de
+  création — sélecteur de membres compris : les contacts acceptés proposés,
+  l'invitation partie à la création, et l'échec partiel annoncé —, le départ, les cinq états d'un lien d'invitation, les demandes de
   contact, l'encodage du QR code, et le « + » contextuel : depuis l'écran d'un
   groupe il n'offre plus d'en créer un, sa feuille ouvre `/creer` déjà réglée
   sur ce groupe, et les deux sections portent leur propre action « Ajouter ».

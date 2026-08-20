@@ -198,6 +198,77 @@ void main() {
       expect(fakes.groups.lastDeletedGroupId, isNull);
     });
 
+    testWidgets('le formulaire propose d’inviter dès la création', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester);
+
+      await tester.tap(find.text('Groupes'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Nouveau groupe').first);
+      await tester.pumpAndSettle();
+
+      // Avant, il fallait créer le groupe puis inviter dans un second temps.
+      expect(find.text('Choisir dans mes contacts'), findsOneWidget);
+      // Les contacts acceptés seulement : Noah est une demande en attente.
+      expect(find.text('Léa'), findsOneWidget);
+      expect(find.text('Yanis'), findsOneWidget);
+      expect(find.text('Noah'), findsNothing);
+      expect(
+        find.text('Personne n’est invité pour l’instant.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('les invitations partent à la création du groupe', (
+      WidgetTester tester,
+    ) async {
+      final ({FakeContactRepository contacts, FakeGroupRepository groups})
+      fakes = await _pumpApp(tester);
+
+      await tester.tap(find.text('Groupes'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Nouveau groupe').first);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField).first, 'Coloc Bastille');
+      await tester.tap(find.text('Léa'));
+      await tester.pumpAndSettle();
+      expect(find.text('1 personne sera invitée.'), findsOneWidget);
+
+      await tester.tap(find.text('Créer le groupe'));
+      await tester.pumpAndSettle();
+
+      expect(fakes.groups.lastCreatedName, 'Coloc Bastille');
+      expect(fakes.groups.invitedUserIds, <String>['u2']);
+      expect(find.text('Membres'), findsOneWidget);
+    });
+
+    testWidgets('une invitation qui ne part pas est annoncée', (
+      WidgetTester tester,
+    ) async {
+      // Le groupe est créé : un échec d'invitation ne doit ni le perdre, ni
+      // passer sous silence. Sans message, on croit avoir invité quelqu'un.
+      final FakeGroupRepository groups = FakeGroupRepository();
+      groups.refuseInvitationsPour.add('u3');
+      await _pumpApp(tester, groupRepository: groups);
+
+      await tester.tap(find.text('Groupes'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Nouveau groupe').first);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField).first, 'Voyage');
+      await tester.tap(find.text('Yanis'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Créer le groupe'));
+      await tester.pumpAndSettle();
+
+      expect(groups.lastCreatedName, 'Voyage');
+      expect(find.text('Membres'), findsOneWidget);
+      expect(find.byType(SnackBar), findsOneWidget);
+    });
+
     testWidgets('créer un groupe mène à son écran', (
       WidgetTester tester,
     ) async {

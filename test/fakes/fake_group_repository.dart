@@ -42,6 +42,14 @@ class FakeGroupRepository implements GroupRepository {
   String? lastDemotedUserId;
   String? lastRemovedUserId;
   String? lastInvitedUserId;
+
+  /// Tous les identifiants invités, dans l'ordre : la création d'un groupe en
+  /// invite plusieurs d'un coup, et `lastInvitedUserId` n'en garderait qu'un.
+  final List<String> invitedUserIds = <String>[];
+
+  /// Identifiants pour lesquels l'invitation ne partira pas, afin d'éprouver
+  /// l'échec partiel.
+  final Set<String> refuseInvitationsPour = <String>{};
   String? lastCreatedName;
 
   static const List<Group> demoGroups = <Group>[
@@ -224,6 +232,8 @@ class FakeGroupRepository implements GroupRepository {
     required String userId,
   }) async {
     lastInvitedUserId = userId;
+    invitedUserIds.add(userId);
+    if (refuseInvitationsPour.contains(userId)) return 'deja_membre';
     return 'invite';
   }
 

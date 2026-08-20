@@ -8,6 +8,7 @@ import '../../../router/app_routes.dart';
 import '../../auth/models/auth_failure.dart';
 import '../models/group.dart';
 import '../providers/group_providers.dart';
+import '../widgets/group_member_picker.dart';
 import '../widgets/group_photo_picker.dart';
 
 /// Limites de saisie, alignées sur ce que l'écran de groupe peut afficher sans
@@ -37,6 +38,10 @@ class _GroupFormScreenState extends ConsumerState<GroupFormScreen> {
   String? _photoExtension;
   bool _isPrivate = true;
   bool _submitting = false;
+
+  /// Personnes à inviter dès la création. Vide en modification : la liste des
+  /// membres se gère depuis l'écran du groupe, qui sait aussi les retirer.
+  Set<String> _invites = const <String>{};
   String? _nameError;
   String? _errorMessage;
 
@@ -148,6 +153,16 @@ class _GroupFormScreenState extends ConsumerState<GroupFormScreen> {
               ),
             ),
 
+            if (!_isEditing) ...<Widget>[
+              AppSpacing.gapXl,
+              GroupMemberPicker(
+                selected: _invites,
+                enabled: !_submitting,
+                onChanged: (Set<String> choisis) =>
+                    setState(() => _invites = choisis),
+              ),
+            ],
+
             AppSpacing.gapXl,
             PrimaryButton(
               label: _isEditing ? 'Enregistrer' : 'Créer le groupe',
@@ -215,13 +230,34 @@ class _GroupFormScreenState extends ConsumerState<GroupFormScreen> {
               photoExtension: _photoExtension,
               isPrivate: _isPrivate,
             );
+        // Les invitations partent **après** la création, et leur échec ne
+        // remet rien en cause : le groupe existe, on entre dedans, et on dit
+        // ce qui n'est pas parti. Lever ici afficherait une erreur sur un
+        // groupe pourtant bien créé.
+        final int echecs = _invites.isEmpty
+            ? 0
+            : await ref
+                  .read(groupActionsProvider)
+                  .inviteAll(groupId: group.id, userIds: _invites);
+
         if (!mounted) return;
+        // Capturé avant la navigation : la garde du routeur peut avoir quitté
+        // cet écran au moment d'afficher la `SnackBar`.
+        final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+
         // Remplace l'écran de création par le groupe fraîchement créé : revenir
         // en arrière ne doit pas rouvrir un formulaire déjà validé.
         context.pushReplacementNamed(
           AppRoutes.groupDetail,
           pathParameters: <String, String>{'id': group.id},
         );
+
+        final int envoyees = _invites.length - echecs;
+        if (_invites.isNotEmpty) {
+          messenger.showSnackBar(
+            SnackBar(content: Text(_bilanInvitations(envoyees, echecs))),
+          );
+        }
       }
     } catch (error) {
       if (!mounted) return;
@@ -230,6 +266,25 @@ class _GroupFormScreenState extends ConsumerState<GroupFormScreen> {
       if (mounted) setState(() => _submitting = false);
     }
   }
+}
+
+/// Ce que dit la `SnackBar` après la création.
+///
+/// Un échec partiel doit être **nommé** : sans cela, on croit avoir invité
+/// cinq personnes alors que deux n'ont rien reçu, et rien ne le signale.
+String _bilanInvitations(int envoyees, int echecs) {
+  if (echecs == 0) {
+    return envoyees == 1
+        ? 'Groupe créé, 1 invitation envoyée.'
+        : 'Groupe créé, $envoyees invitations envoyées.';
+  }
+  if (envoyees == 0) {
+    return echecs == 1
+        ? 'Groupe créé, mais l’invitation n’a pas pu partir.'
+        : 'Groupe créé, mais aucune des $echecs invitations n’a pu partir.';
+  }
+  return 'Groupe créé, $envoyees invitation(s) envoyée(s), '
+      '$echecs non parties.';
 }
 
 class _ErrorBanner extends StatelessWidget {

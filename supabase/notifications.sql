@@ -63,7 +63,8 @@ begin
         emetteur.pseudo,
         'Un membre'
       ),
-      'inviter_avatar', emetteur.avatar_url
+      'inviter_avatar',
+      coalesce('preset:' || emetteur.avatar_preset, emetteur.avatar_url)
     )
   );
 
@@ -111,7 +112,8 @@ begin
         demandeur.pseudo,
         'Quelqu’un'
       ),
-      'avatar_url',   demandeur.avatar_url
+      'avatar_url',
+      coalesce('preset:' || demandeur.avatar_preset, demandeur.avatar_url)
     )
   );
 

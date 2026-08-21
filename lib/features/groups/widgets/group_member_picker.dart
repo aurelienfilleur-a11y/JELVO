@@ -201,28 +201,13 @@ class _Pastille extends StatelessWidget {
               Stack(
                 clipBehavior: Clip.none,
                 children: <Widget>[
-                  Container(
-                    width: _taille,
-                    height: _taille,
-                    decoration: BoxDecoration(
-                      color: AvatarStack.colorFor(donnees, index),
-                      shape: BoxShape.circle,
-                      border: choisi
-                          ? Border.all(color: AppColors.primary, width: 3)
-                          : null,
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    alignment: Alignment.center,
-                    child: donnees.imageUrl == null
-                        ? _initiales(donnees)
-                        : Image.network(
-                            donnees.imageUrl!,
-                            fit: BoxFit.cover,
-                            width: _taille,
-                            height: _taille,
-                            errorBuilder: (_, _, _) =>
-                                Center(child: _initiales(donnees)),
-                          ),
+                  AvatarImage(
+                    data: donnees,
+                    size: _taille,
+                    index: index,
+                    border: choisi
+                        ? Border.all(color: AppColors.primary, width: 3)
+                        : null,
                   ),
                   if (choisi)
                     Positioned(
@@ -260,14 +245,6 @@ class _Pastille extends StatelessWidget {
       ),
     );
   }
-
-  Widget _initiales(AvatarData donnees) => Text(
-    donnees.initials,
-    style: AppTypography.body.copyWith(
-      color: Colors.white,
-      fontWeight: AppTypography.semiBold,
-    ),
-  );
 }
 
 /// Résultats de recherche, en liste plutôt qu'en rangée : on cherche un nom,
@@ -327,25 +304,7 @@ class _MiniAvatar extends StatelessWidget {
       name: contact.fullName,
       imageUrl: contact.avatarUrl,
     );
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        color: AvatarStack.colorFor(donnees, index),
-        shape: BoxShape.circle,
-      ),
-      alignment: Alignment.center,
-      clipBehavior: Clip.antiAlias,
-      child: donnees.imageUrl == null
-          ? Text(
-              donnees.initials,
-              style: AppTypography.caption.copyWith(
-                color: Colors.white,
-                fontWeight: AppTypography.semiBold,
-              ),
-            )
-          : Image.network(donnees.imageUrl!, fit: BoxFit.cover),
-    );
+    return AvatarImage(data: donnees, size: 40, index: index);
   }
 }
 

@@ -228,7 +228,8 @@ as $$
                    coalesce(p.first_name, '') || ' ' ||
                    coalesce(p.last_name, '')), ''),
                  p.pseudo, 'Membre'),
-               'avatar_url', p.avatar_url)
+               'avatar_url',
+               coalesce('preset:' || p.avatar_preset, p.avatar_url))
              order by p.first_name nulls last)
       from public.task_assignees a
       left join public.profiles p on p.id = a.user_id
@@ -653,7 +654,8 @@ as $$
                    coalesce(pr.first_name, '') || ' ' ||
                    coalesce(pr.last_name, '')), ''),
                  pr.pseudo, 'Membre'),
-               'avatar_url', pr.avatar_url)
+               'avatar_url',
+               coalesce('preset:' || pr.avatar_preset, pr.avatar_url))
              order by pr.first_name nulls last)
       from public.event_participants p
       left join public.profiles pr on pr.id = p.user_id

@@ -183,7 +183,7 @@ as $$
     coalesce(nullif(trim(both ' ' from
       coalesce(e.first_name, '') || ' ' || coalesce(e.last_name, '')), ''),
       e.pseudo, 'Un membre'),
-    e.avatar_url,
+    coalesce('preset:' || e.avatar_preset, e.avatar_url),
     i.status::text,
     i.created_at,
     i.expires_at

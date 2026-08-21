@@ -71,6 +71,16 @@ flutter:
   # Génère AppLocalizations à partir des fichiers ARB de lib/l10n.
   generate: true
 
+  # Les 93 avatars prédéfinis, embarqués plutôt que servis depuis Supabase :
+  # ils sont fixes, identiques pour tout le monde, et un aller-retour réseau
+  # pour une image qui ne changera jamais n'a pas de raison d'être.
+  #
+  # Le dossier est déclaré en entier — la numérotation comporte des trous
+  # (p1_10, p2_08 et p2_12 n'existent pas), et lister les fichiers un par un
+  # se désynchroniserait au premier ajout.
+  assets:
+    - assets/avatars/
+
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg

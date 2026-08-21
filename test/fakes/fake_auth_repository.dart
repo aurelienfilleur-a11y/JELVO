@@ -162,13 +162,53 @@ class FakeProfileRepository implements ProfileRepository {
     return _profile;
   }
 
+  /// Dernier avatar prédéfini demandé, pour les assertions.
+  String? lastChosenAvatar;
+
   @override
   Future<Profile> updateAvatar({
     required String userId,
     required Uint8List bytes,
     required String fileExtension,
   }) async {
-    _profile = _profile.copyWith(avatarUrl: 'https://example.test/avatar.jpg');
+    // Une photo efface l'avatar prédéfini, comme en base : le faux dépôt
+    // doit tenir la même règle, sans quoi un test passerait là où la
+    // production afficherait encore l'ancien avatar.
+    _profile = _remplacerAvatar(
+      url: 'https://example.test/avatar.jpg',
+      preset: null,
+    );
     return _profile;
   }
+
+  @override
+  Future<Profile> choisirAvatarPredefini({
+    required String userId,
+    required String avatarId,
+  }) async {
+    lastChosenAvatar = avatarId;
+    _profile = _remplacerAvatar(url: null, preset: avatarId);
+    return _profile;
+  }
+
+  @override
+  Future<Profile> effacerAvatar(String userId) async {
+    _profile = _remplacerAvatar(url: null, preset: null);
+    return _profile;
+  }
+
+  /// `copyWith` ne sait pas remettre un champ à `null` : on reconstruit.
+  Profile _remplacerAvatar({required String? url, required String? preset}) =>
+      Profile(
+        id: _profile.id,
+        pseudo: _profile.pseudo,
+        firstName: _profile.firstName,
+        lastName: _profile.lastName,
+        avatarUrl: url,
+        avatarPreset: preset,
+        bio: _profile.bio,
+        timezone: _profile.timezone,
+        createdAt: _profile.createdAt,
+        lastSeenAt: _profile.lastSeenAt,
+      );
 }

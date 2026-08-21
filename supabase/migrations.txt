@@ -22,7 +22,10 @@
 # fichier de correctif.
 #
 # Les lignes vides et celles commençant par « # » sont ignorées.
-
+# La colonne avatar_preset est ajoutée en premier : plusieurs fonctions
+# de lecture ci-dessous sont en `language sql`, dont le corps est validé
+# à la création. Les créer avant la colonne les ferait échouer.
+colonne_avatar_predefini.sql
 email_pour_pseudo.sql
 tranche2_groupes_et_invitations.sql
 correctif_creation_groupe.sql

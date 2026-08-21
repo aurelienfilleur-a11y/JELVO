@@ -66,4 +66,19 @@ class ProfileActions {
         );
     _ref.invalidate(currentProfileProvider);
   }
+
+  /// Choisit un avatar prédéfini. La photo éventuelle est effacée dans la
+  /// même écriture — le dernier choisi l'emporte.
+  Future<void> choisirAvatar(String avatarId) async {
+    await _ref
+        .read(profileRepositoryProvider)
+        .choisirAvatarPredefini(userId: _userId, avatarId: avatarId);
+    _ref.invalidate(currentProfileProvider);
+  }
+
+  /// Retour aux initiales.
+  Future<void> effacerAvatar() async {
+    await _ref.read(profileRepositoryProvider).effacerAvatar(_userId);
+    _ref.invalidate(currentProfileProvider);
+  }
 }

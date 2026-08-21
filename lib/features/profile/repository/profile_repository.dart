@@ -19,6 +19,21 @@ abstract interface class ProfileRepository {
   });
 
   /// Remplace la photo de profil et renvoie le profil à jour.
+  /// Choisit un avatar prédéfini, et **efface la photo** dans la même
+  /// écriture.
+  ///
+  /// Un profil a une photo **ou** un avatar prédéfini, jamais les deux : le
+  /// dernier choisi l'emporte. Les deux colonnes sont donc écrites ensemble,
+  /// ce qui rend la règle atomique — un déclencheur ferait la même chose de
+  /// façon moins lisible, et il n'y a qu'un seul écrivain.
+  Future<Profile> choisirAvatarPredefini({
+    required String userId,
+    required String avatarId,
+  });
+
+  /// Revient aux initiales : ni photo, ni avatar prédéfini.
+  Future<Profile> effacerAvatar(String userId);
+
   Future<Profile> updateAvatar({
     required String userId,
     required Uint8List bytes,
@@ -95,7 +110,46 @@ class SupabaseProfileRepository implements ProfileRepository {
 
       final Map<String, dynamic> row = await _client
           .from('profiles')
-          .update(<String, dynamic>{'avatar_url': url})
+          // `avatar_preset` est vidé dans la **même** écriture : sans cela,
+          // la lecture préférerait l'avatar prédéfini et la photo qu'on vient
+          // de téléverser resterait invisible.
+          .update(<String, dynamic>{'avatar_url': url, 'avatar_preset': null})
+          .eq('id', userId)
+          .select()
+          .single();
+      return Profile.fromMap(row);
+    } catch (error) {
+      throw AuthFailure.from(error);
+    }
+  }
+
+  @override
+  Future<Profile> choisirAvatarPredefini({
+    required String userId,
+    required String avatarId,
+  }) async {
+    try {
+      final Map<String, dynamic> row = await _client
+          .from('profiles')
+          .update(<String, dynamic>{
+            'avatar_preset': avatarId,
+            'avatar_url': null,
+          })
+          .eq('id', userId)
+          .select()
+          .single();
+      return Profile.fromMap(row);
+    } catch (error) {
+      throw AuthFailure.from(error);
+    }
+  }
+
+  @override
+  Future<Profile> effacerAvatar(String userId) async {
+    try {
+      final Map<String, dynamic> row = await _client
+          .from('profiles')
+          .update(<String, dynamic>{'avatar_preset': null, 'avatar_url': null})
           .eq('id', userId)
           .select()
           .single();

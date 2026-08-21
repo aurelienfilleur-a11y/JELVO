@@ -12,6 +12,7 @@ class Profile {
     required this.firstName,
     required this.lastName,
     this.avatarUrl,
+    this.avatarPreset,
     this.bio,
     this.timezone,
     this.createdAt,
@@ -25,6 +26,7 @@ class Profile {
       firstName: (map['first_name'] as String?) ?? '',
       lastName: (map['last_name'] as String?) ?? '',
       avatarUrl: map['avatar_url'] as String?,
+      avatarPreset: map['avatar_preset'] as String?,
       bio: map['bio'] as String?,
       timezone: map['timezone'] as String?,
       createdAt: _parseDate(map['created_at']),
@@ -37,10 +39,25 @@ class Profile {
   final String firstName;
   final String lastName;
   final String? avatarUrl;
+
+  /// Identifiant d'un avatar prédéfini (ex. « p2_07 »), ou `null`.
+  ///
+  /// **Exclusif de [avatarUrl]** : le dernier choisi vide l'autre, dans la
+  /// même écriture. Voir `ProfileRepository`.
+  final String? avatarPreset;
+
   final String? bio;
   final String? timezone;
   final DateTime? createdAt;
   final DateTime? lastSeenAt;
+
+  /// La valeur à passer à `AvatarData.imageUrl`.
+  ///
+  /// Les fonctions SQL de lecture composent déjà cette valeur pour les
+  /// **autres** personnes ; pour son propre profil, lu directement dans la
+  /// table, c'est ici qu'on la compose.
+  String? get avatarAAfficher =>
+      avatarPreset == null ? avatarUrl : 'preset:$avatarPreset';
 
   /// « Prénom Nom », réduit au non-vide.
   String get fullName =>
@@ -61,6 +78,7 @@ class Profile {
     'first_name': firstName,
     'last_name': lastName,
     'avatar_url': avatarUrl,
+    'avatar_preset': avatarPreset,
     'bio': bio,
     if (timezone != null) 'timezone': timezone,
   };

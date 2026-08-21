@@ -127,10 +127,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         Center(
           child: AvatarPicker(
             bytes: null,
-            imageUrl: profile.avatarUrl,
+            // `avatarAAfficher` et non `avatarUrl` : un avatar prédéfini doit
+            // apparaître ici comme il apparaît partout ailleurs.
+            imageUrl: profile.avatarAAfficher,
             initials: _initialsOf(profile),
             onPicked: _changeAvatar,
-            onRemoved: () {},
+            onRemoved: _retirerAvatar,
+          ),
+        ),
+        AppSpacing.gapSm,
+        // Les deux voies au même endroit et de même poids : la photo se prend
+        // en touchant l'aperçu ci-dessus, la galerie s'ouvre par ce bouton.
+        Center(
+          child: TextButton.icon(
+            onPressed: () => context.pushNamed(AppRoutes.avatarGallery),
+            icon: const Icon(Icons.face_retouching_natural_rounded, size: 18),
+            label: const Text('Choisir un avatar'),
           ),
         ),
         AppSpacing.gapMd,
@@ -231,6 +243,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   void _clearError() {
     if (_errorMessage != null) setState(() => _errorMessage = null);
+  }
+
+  Future<void> _retirerAvatar() async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(profileActionsProvider).effacerAvatar();
+    } catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(AuthFailure.from(error).message)),
+      );
+    }
   }
 
   Future<void> _changeAvatar(Uint8List bytes, String extension) async {

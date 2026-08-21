@@ -719,6 +719,30 @@ begin
            where user_id = lea and type = 'reminder') = 1,
          'une assignée qui a refusé a tout de même été rappelée';
 
+  -- Avatars prédéfinis ------------------------------------------------------
+  -- La colonne existe, mais ce qui compte est qu'elle **ressorte** par les
+  -- fonctions de lecture : leur signature n'ayant pas changé, rien d'autre ne
+  -- le prouverait.
+  update public.profiles set avatar_preset = 'p2_07' where id = lea;
+
+  perform set_config('request.jwt.claims',
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}',
+    true);
+
+  assert (select avatar_url from public.membres_du_groupe(groupe)
+           where user_id = lea) = 'preset:p2_07',
+         'membres_du_groupe ne renvoie pas l''avatar prédéfini';
+
+  -- Une photo l'emporte sur le prédéfini seulement si le prédéfini est vidé :
+  -- c'est l'écriture qui tient la règle, et la lecture ne fait que préférer
+  -- le prédéfini quand il est là.
+  update public.profiles
+     set avatar_preset = null, avatar_url = 'https://exemple.test/photo.jpg'
+   where id = lea;
+  assert (select avatar_url from public.membres_du_groupe(groupe)
+           where user_id = lea) = 'https://exemple.test/photo.jpg',
+         'la photo devrait reprendre la main une fois le prédéfini vidé';
+
   raise notice 'Fumée : les rappels de la tranche 5d répondent.';
 end;
 $rappels$;

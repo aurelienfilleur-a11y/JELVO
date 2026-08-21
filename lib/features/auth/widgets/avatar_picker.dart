@@ -85,7 +85,11 @@ class _AvatarPickerState extends State<AvatarPicker> {
           TextButton(
             onPressed: widget.onRemoved,
             style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-            child: const Text('Retirer la photo'),
+            child: Text(
+              AvatarData.assetPourAvatar(widget.imageUrl) != null
+                  ? 'Retirer l’avatar'
+                  : 'Retirer la photo',
+            ),
           )
         else
           Text('Ajouter une photo (facultatif)', style: AppTypography.caption),
@@ -108,6 +112,18 @@ class _AvatarPickerState extends State<AvatarPicker> {
         width: 104,
         height: 104,
         fit: BoxFit.cover,
+      );
+    }
+    // La valeur reçue peut désigner un avatar prédéfini embarqué plutôt
+    // qu'une photo — voir `AvatarData.assetPourAvatar`.
+    final String? asset = AvatarData.assetPourAvatar(widget.imageUrl);
+    if (asset != null) {
+      return Image.asset(
+        asset,
+        width: 104,
+        height: 104,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => _initialsLabel,
       );
     }
     if (widget.imageUrl != null) {

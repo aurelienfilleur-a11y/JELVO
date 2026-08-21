@@ -99,6 +99,29 @@ brut ne nommait que la dernière commande.
 qu'une migration n'est pas passée. Le rouge du job ne désigne pas l'étape qui
 compte.
 
+#### Trois échecs différents, un seul rouge
+
+Le job peut échouer à trois endroits, et **le rouge ne dit pas lequel** :
+
+| Où | Ce qui est vrai | Ce qu'il faut faire |
+| --- | --- | --- |
+| connexion refusée | **rien n'est appliqué** | régénérer `SUPABASE_DB_URL` |
+| une migration | ce qui précède l'est, pas la suite | corriger le SQL |
+| publication de l'instantané | **tout est appliqué** | contournement `github-actions` |
+
+**Règle** : chercher les lignes `OK <fichier>` avant de conclure. Aucune ligne
+`OK` du tout signifie que la base n'a rien reçu.
+
+Le cas s'est produit le 21 août : `password authentication failed for user
+"postgres"`, treize secondes de job, aucune migration appliquée — et comme
+les trois échecs précédents n'avaient porté que sur l'instantané, le premier
+réflexe a été de conclure pareil. La colonne `profiles.avatar_preset` est
+restée absente en production pendant que l'application l'écrivait déjà.
+
+D'où une étape **« Éprouver la connexion »** avant toute application, qui
+transforme le `FATAL` de libpq en une phrase actionnable, et un résumé qui
+distingue « aucune migration appliquée » de « seul l'instantané est refusé ».
+
 #### La chaîne de connexion est épurée avant usage
 
 `verification/connexion.sh` retire les blancs de début et de fin du secret,
@@ -664,6 +687,12 @@ seuls états de `AuthStatus`, sans `unknown`.
   signalée : le **mode diagnostic** décrit ci-dessous.
   `AuthFailure.technical` est toujours renseigné ; seul son affichage en
   dépend.
+
+  **Un message de repli doit rester vrai.** « Réessayez dans un instant »
+  convient à une panne passagère et à rien d'autre : servi pour une colonne
+  absente, il envoie chercher le défaut du mauvais côté. `PGRST204` et
+  `42703` ont donc leur propre message, qui dit que la base attend une mise à
+  jour.
 - `repository/auth_repository.dart` — l'interface expose `bool isSignedIn` et
   `Stream<bool> watchSignedIn()` plutôt que les types gotrue, ce qui permet de
   tester toute la pile sans `Supabase.initialize`.
@@ -1811,6 +1840,10 @@ compteur vaut zéro.
   par onglet, leur extinction, la liste et le marquage comme lu.
 - `test/tasks_events_test.dart` couvre les écrans de détail, l'assignation et
   l'administration des groupes.
+- `test/auth_failure_test.dart` couvre la traduction des erreurs PostgREST
+  sans widget : une colonne absente ne doit pas inviter à réessayer, et les
+  cas déjà couverts — pseudo pris, refus RLS, repli générique — ne bougent
+  pas.
 - `test/avatar_catalog_test.dart` couvre le catalogue sans widget : la liste
   générée confrontée au dossier, les trois trous de numérotation, l'existence
   de chaque fichier, et la résolution d'une valeur `preset:` — y compris le

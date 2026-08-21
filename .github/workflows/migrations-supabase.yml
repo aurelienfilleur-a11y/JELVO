@@ -67,9 +67,30 @@ jobs:
           echo "SUPABASE_DB_URL=$url" >> "$GITHUB_ENV"
           echo "Connexion à $(masquer_mot_de_passe "$url")"
 
+      # Une connexion refusée ressemble à tout et à rien : `appliquer.sh`
+      # s'arrête à sa première commande, sans avoir appliqué une seule
+      # migration, et le journal ne montre qu'un `FATAL` de libpq. Trois
+      # échecs précédents n'ayant porté que sur la publication de
+      # l'instantané, la tentation est grande de conclure pareil — c'est
+      # arrivé, et la colonne `profiles.avatar_preset` est restée absente en
+      # production pendant que l'application l'écrivait déjà.
+      - name: Éprouver la connexion
+        run: |
+          if ! psql "$SUPABASE_DB_URL" -Atq --no-psqlrc -c 'select 1' >/dev/null 2>erreur.log; then
+            cat erreur.log
+            if grep -qi 'password authentication failed' erreur.log; then
+              echo "::error title=Connexion refusée::Le secret SUPABASE_DB_URL n'authentifie plus (mot de passe refusé). AUCUNE migration n'a été appliquée. Régénérez la chaîne de connexion depuis le tableau de bord Supabase (Project Settings, Database, Connection string) et remettez-la dans les secrets du dépôt."
+            else
+              echo "::error title=Base injoignable::AUCUNE migration n'a été appliquée — voir l'erreur ci-dessus."
+            fi
+            exit 1
+          fi
+          echo "Connexion établie."
+
       # Le script n'applique que ce dont l'empreinte a changé, chaque fichier
       # dans sa propre transaction. Voir son en-tête.
       - name: Appliquer les migrations
+        id: appliquer
         run: supabase/verification/appliquer.sh
 
       - name: Relever le schéma réel
@@ -145,7 +166,14 @@ jobs:
             echo 'confrontés à la table de suivi `jelvo_migrations.appliquees` :'
             echo 'seuls ceux dont l’empreinte a changé sont rejoués.'
             echo
-            if [ "${{ steps.instantane.outputs.refuse }}" = '1' ]; then
+            if [ "${{ steps.appliquer.outcome }}" != 'success' ]; then
+              echo '> **Aucune migration n’a été appliquée.** Le job s’est'
+              echo '> arrêté avant `appliquer.sh` — connexion refusée, le plus'
+              echo '> souvent parce que `SUPABASE_DB_URL` n’authentifie plus.'
+              echo '>'
+              echo '> Ce n’est **pas** le cas habituel où seul l’instantané'
+              echo '> est refusé : ici la base n’a rien reçu.'
+            elif [ "${{ steps.instantane.outputs.refuse }}" = '1' ]; then
               echo '> **Les migrations sont appliquées.** Ce qui a échoué, c’est'
               echo '> la publication de `supabase/schema_actuel.sql` sur `main` :'
               echo '> la règle de protection refuse toute poussée directe.'

@@ -200,6 +200,25 @@ class AuthFailure implements Exception {
         technical: technical,
       );
     }
+    // Colonne inconnue : l'application demande un champ que la base n'a pas.
+    //
+    // **Ce n'est pas une panne passagère**, et « réessayez dans un instant »
+    // envoie chercher le défaut du mauvais côté — c'est arrivé sur
+    // `profiles.avatar_preset`, dont la migration n'était jamais passée parce
+    // que le job s'était arrêté à la connexion. PostgREST répond `PGRST204`
+    // quand son cache de schéma ignore la colonne, PostgreSQL `42703` quand
+    // elle n'existe pas du tout.
+    if (error.code == 'PGRST204' ||
+        error.code == '42703' ||
+        error.message.toLowerCase().contains('schema cache')) {
+      return AuthFailure(
+        'Cette fonctionnalité attend une mise à jour de la base. '
+        'Réessayez plus tard, ou signalez-le si cela persiste.',
+        kind: AuthFailureKind.schemaOutdated,
+        technical: technical,
+      );
+    }
+
     return AuthFailure(
       'Les données n’ont pas pu être enregistrées. Réessayez dans un instant.',
       technical: technical,
@@ -224,5 +243,11 @@ enum AuthFailureKind {
   network,
   storage,
   forbidden,
+
+  /// L'application demande une colonne que la base n'a pas encore : une
+  /// migration n'est pas passée. Distinct de `unknown`, dont le message
+  /// invite à réessayer — ce qui ne servirait à rien ici.
+  schemaOutdated,
+
   unknown,
 }

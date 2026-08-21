@@ -1328,6 +1328,31 @@ n'annonce rien. `UnreadMessagesNotifier` s'abonne donc à un canal Realtime
 membre, ce qui évite de les énumérer et de refaire l'abonnement à chaque
 adhésion.
 
+### Le nom coiffe la série, l'avatar la termine
+
+Dans une conversation, le nom de l'expéditeur apparaît sur le **premier**
+message d'une suite, son avatar sur le **dernier** — celui du bas. Poser
+l'avatar sur chaque message donnerait une colonne de visages répétés ; le
+poser en haut le séparerait de la fin de la prise de parole.
+
+**La gouttière de 28 dp reste réservée** sur les messages sans avatar : sans
+cela, les bulles d'une même série se décaleraient d'une ligne à l'autre et la
+suite se lirait en escalier.
+
+Aucun avatar sur ses propres messages, qui restent à droite : on sait qui l'on
+est, et la place gagnée profite au texte. Leur bulle garde 78 % de la largeur
+là où celle des autres descend à 70 % — à 360 dp, garder 78 % des deux côtés
+ferait déborder la ligne une fois la gouttière posée.
+
+Le rendu passe par `AvatarImage`, comme partout ailleurs : c'est ce qui fait
+qu'un avatar prédéfini, une photo ou des initiales s'affichent ici sans une
+ligne de code propre au chat.
+
+**Il n'y a pas de conversation à deux** au sens d'une messagerie privée : une
+conversation appartient toujours à un groupe. Un groupe de deux membres reçoit
+donc le même traitement, délibérément — une exception ferait sauter la mise en
+page le jour où un troisième membre arrive, pour économiser 36 dp.
+
 ### La frappe passe par un broadcast, jamais par une table
 
 « X est en train d'écrire » vaut deux secondes. L'écrire en base laisserait une
@@ -1872,7 +1897,10 @@ compteur vaut zéro.
   médias : le sélecteur qui ne propose jamais de document, la
   vignette qui ne laisse pas fuiter le chemin de stockage, la vidéo annoncée
   comme telle, le média qui disparaît à la suppression, et les bornes de poids
-  et d'extension, sans widget.
+  et d'extension, sans widget. Côté avatars : une série de trois messages ne
+  porte qu'un seul visage, posé sur le dernier, la gouttière garde les bulles
+  alignées, ses propres messages n'en ont pas, et l'avatar prédéfini de
+  l'expéditeur est rendu par le même point que partout ailleurs.
 
 - `test/push_notifications_test.dart` couvre les réglages de notification :
   l'activation qui enregistre l'abonnement en base, le refus et sa marche à

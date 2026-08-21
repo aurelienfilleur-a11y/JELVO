@@ -10,12 +10,23 @@ import 'chat_media.dart';
 /// gauche, sur fond clair, précédés de leur nom — mais **seulement quand
 /// l'expéditeur change**. Répéter le nom à chaque ligne d'une même personne
 /// hache la lecture pour ne rien apprendre.
+///
+/// **Le nom coiffe la série, l'avatar la termine.** Le nom apparaît sur le
+/// premier message d'une suite, l'avatar sur le dernier — celui du bas —, et
+/// la gouttière reste réservée sur les autres pour que les bulles ne se
+/// décalent pas d'une ligne à l'autre. Poser l'avatar sur chaque message
+/// donnerait une colonne de visages répétés, et le poser en haut le
+/// séparerait de la fin de la prise de parole.
+///
+/// Aucun avatar sur ses propres messages : on sait qui l'on est, et la place
+/// gagnée profite au texte.
 class MessageBubble extends StatelessWidget {
   const MessageBubble({
     super.key,
     required this.message,
     required this.isMine,
     required this.showSender,
+    required this.showAvatar,
     required this.timeLabel,
     required this.onLongPress,
     required this.onReactionTap,
@@ -25,6 +36,10 @@ class MessageBubble extends StatelessWidget {
   final Message message;
   final bool isMine;
   final bool showSender;
+
+  /// Vrai sur le dernier message d'une série. Voir la documentation de la
+  /// classe : la gouttière est réservée même quand il est faux.
+  final bool showAvatar;
   final String timeLabel;
   final VoidCallback onLongPress;
 
@@ -34,12 +49,18 @@ class MessageBubble extends StatelessWidget {
   /// Proposé uniquement sur un message dont l'envoi a échoué.
   final VoidCallback? onRetry;
 
+  /// Diamètre de l'avatar, et largeur de la gouttière qui lui est réservée.
+  ///
+  /// 28 dp : assez pour reconnaître un visage à côté d'un texte de 15, assez
+  /// peu pour ne pas manger la largeur de bulle sur un écran de 360 dp.
+  static const double _tailleAvatar = 28;
+
   @override
   Widget build(BuildContext context) {
     final Color fond = isMine ? AppColors.primary : AppColors.surface;
     final Color texte = isMine ? Colors.white : AppColors.midnight;
 
-    return Padding(
+    final Widget contenu = Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Column(
         crossAxisAlignment: isMine
@@ -48,7 +69,7 @@ class MessageBubble extends StatelessWidget {
         children: <Widget>[
           if (showSender && !isMine)
             Padding(
-              padding: const EdgeInsets.only(left: AppSpacing.md, bottom: 2),
+              padding: const EdgeInsets.only(left: AppSpacing.xs, bottom: 2),
               child: Text(
                 message.senderName ?? 'Membre',
                 style: AppTypography.caption.copyWith(
@@ -60,7 +81,10 @@ class MessageBubble extends StatelessWidget {
 
           ConstrainedBox(
             constraints: BoxConstraints(
-              maxWidth: MediaQuery.sizeOf(context).width * 0.78,
+              // Les messages des autres cèdent la gouttière de l'avatar : à
+              // 360 dp, garder 78 % ferait déborder la ligne.
+              maxWidth:
+                  MediaQuery.sizeOf(context).width * (isMine ? 0.78 : 0.7),
             ),
             child: GestureDetector(
               onLongPress: message.isDeleted ? null : onLongPress,
@@ -121,6 +145,34 @@ class MessageBubble extends StatelessWidget {
             ),
         ],
       ),
+    );
+
+    if (isMine) return contenu;
+
+    return Row(
+      // L'avatar s'aligne sur le bas de la dernière bulle de la série, pas
+      // sur son haut : c'est là que la prise de parole se termine.
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: <Widget>[
+        SizedBox(
+          width: _tailleAvatar,
+          child: showAvatar
+              ? Padding(
+                  // Aligné sur la bulle, pas sur la marge basse qui la suit.
+                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                  child: AvatarImage(
+                    data: AvatarData(
+                      name: message.senderName ?? 'Membre',
+                      imageUrl: message.senderAvatarUrl,
+                    ),
+                    size: _tailleAvatar,
+                  ),
+                )
+              : null,
+        ),
+        AppSpacing.hGapSm,
+        Flexible(child: contenu),
+      ],
     );
   }
 

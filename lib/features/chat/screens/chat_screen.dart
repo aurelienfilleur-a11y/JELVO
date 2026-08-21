@@ -160,10 +160,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             ? messages[index + 1]
             : null;
 
+        // La liste étant inversée, le message affiché **sous** celui-ci est
+        // d'indice inférieur. L'avatar se pose sur le dernier d'une série,
+        // c'est-à-dire celui dont le voisin du dessous change d'expéditeur —
+        // ou le tout dernier de la conversation.
+        final Message? suivant = index > 0 ? messages[index - 1] : null;
+
         return MessageBubble(
           message: message,
           isMine: message.senderId == moi,
           showSender: precedent?.senderId != message.senderId,
+          showAvatar: suivant?.senderId != message.senderId,
           timeLabel: AppDates.time(message.createdAt),
           onLongPress: () => _ouvrirActions(message, moi),
           onReactionTap: (String emoji) => _reagir(message, emoji),

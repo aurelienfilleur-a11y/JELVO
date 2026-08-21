@@ -42,6 +42,7 @@ Future<FakeChatRepository> _pumpApp(
   WidgetTester tester, {
   Map<String, int>? unread,
   bool avecNotifications = true,
+  List<Message>? messages,
 }) async {
   tester.view.physicalSize = const Size(420, 1600);
   tester.view.devicePixelRatio = 1;
@@ -50,7 +51,10 @@ Future<FakeChatRepository> _pumpApp(
 
   final FakeAuthRepository auth = FakeAuthRepository(signedIn: true);
   addTearDown(auth.dispose);
-  final FakeChatRepository chat = FakeChatRepository(unread: unread);
+  final FakeChatRepository chat = FakeChatRepository(
+    unread: unread,
+    messages: messages,
+  );
   addTearDown(chat.dispose);
 
   await tester.pumpWidget(
@@ -571,6 +575,129 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('On se retrouve à midi'), findsOneWidget);
+    });
+  });
+
+  group('Avatars dans la conversation', () {
+    /// Trois messages d'affilée de Léa, puis un de moi — l'ordre du dépôt est
+    /// du plus récent au plus ancien, la liste étant inversée à l'affichage.
+    List<Message> serie() => <Message>[
+      Message(
+        id: 'b1',
+        groupId: 'g1',
+        senderId: 'u2',
+        createdAt: DateTime(2026, 8, 3, 8, 45),
+        content: 'Et le troisième',
+        senderName: 'Léa Marchand',
+        senderAvatarUrl: 'preset:p2_07',
+      ),
+      Message(
+        id: 'b2',
+        groupId: 'g1',
+        senderId: 'u2',
+        createdAt: DateTime(2026, 8, 3, 8, 44),
+        content: 'Puis le deuxième',
+        senderName: 'Léa Marchand',
+        senderAvatarUrl: 'preset:p2_07',
+      ),
+      Message(
+        id: 'b3',
+        groupId: 'g1',
+        senderId: 'u2',
+        createdAt: DateTime(2026, 8, 3, 8, 43),
+        content: 'D’abord le premier',
+        senderName: 'Léa Marchand',
+        senderAvatarUrl: 'preset:p2_07',
+      ),
+      Message(
+        id: 'b4',
+        groupId: 'g1',
+        senderId: FakeChatRepository.moi,
+        createdAt: DateTime(2026, 8, 3, 8, 42),
+        content: 'Un mot de moi',
+      ),
+    ];
+
+    testWidgets('une série ne porte qu’un seul avatar, sur le dernier', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester, messages: serie());
+      await _ouvrirDiscussion(tester);
+
+      // Trois bulles de Léa, un seul visage : le poser sur chacune donnerait
+      // une colonne de visages répétés.
+      expect(find.byType(AvatarImage), findsOneWidget);
+
+      // Et c'est bien le dernier de la série. On compare les distances
+      // plutôt qu'un seuil en pixels : ce qui compte est que l'avatar soit
+      // près de la dernière bulle, pas de la première.
+      final double avatar = tester.getRect(find.byType(AvatarImage)).bottom;
+      final double dernier = tester
+          .getRect(find.text('Et le troisième'))
+          .bottom;
+      final double premier = tester
+          .getRect(find.text('D’abord le premier'))
+          .bottom;
+      expect(
+        (avatar - dernier).abs(),
+        lessThan((avatar - premier).abs()),
+        reason: 'l’avatar doit coller au bas de la série, pas à son haut',
+      );
+    });
+
+    testWidgets('la gouttière reste réservée : les bulles restent alignées', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester, messages: serie());
+      await _ouvrirDiscussion(tester);
+
+      // Sans réservation, les deux premières bulles glisseraient vers la
+      // gauche et la série serait en escalier.
+      final double sansAvatar = tester
+          .getRect(find.text('D’abord le premier'))
+          .left;
+      final double avecAvatar = tester
+          .getRect(find.text('Et le troisième'))
+          .left;
+      expect(sansAvatar, avecAvatar);
+    });
+
+    testWidgets('mes propres messages n’ont pas d’avatar', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(
+        tester,
+        messages: <Message>[
+          Message(
+            id: 'seul',
+            groupId: 'g1',
+            senderId: FakeChatRepository.moi,
+            createdAt: DateTime(2026, 8, 3, 8, 42),
+            content: 'Un mot de moi',
+          ),
+        ],
+      );
+      await _ouvrirDiscussion(tester);
+
+      expect(find.text('Un mot de moi'), findsOneWidget);
+      expect(find.byType(AvatarImage), findsNothing);
+    });
+
+    testWidgets('l’avatar prédéfini de l’expéditeur est bien rendu', (
+      WidgetTester tester,
+    ) async {
+      // Le même point de rendu que partout ailleurs : c'est ce qui fait que
+      // `preset:` est compris ici sans code propre au chat.
+      await _pumpApp(tester, messages: serie());
+      await _ouvrirDiscussion(tester);
+
+      final AvatarImage avatar = tester.widget<AvatarImage>(
+        find.byType(AvatarImage),
+      );
+      expect(
+        AvatarData.assetPourAvatar(avatar.data.imageUrl),
+        'assets/avatars/p2_07.png',
+      );
     });
   });
 }

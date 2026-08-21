@@ -90,6 +90,10 @@ abstract final class AppRoutes {
   static const String profile = 'profile';
   static const String profilePath = '/profil';
 
+  /// Galerie des avatars prédéfinis, empilée sur le profil.
+  static const String avatarGallery = 'avatarGallery';
+  static const String avatarGalleryPath = '/profil/avatar';
+
   /// Saisie de ses disponibilités, ouverte depuis le profil.
   static const String availability = 'availability';
   static const String availabilityPath = '/disponibilites';

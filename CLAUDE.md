@@ -396,6 +396,77 @@ iOS fige celle de l'application installée. Il faut retirer l'icône de l'écran
 d'accueil et réinstaller — ce qui **détruit l'abonnement push** et oblige à
 réactiver les notifications.
 
+### Avatars prédéfinis
+
+Quatre-vingt-treize illustrations rondes vivent dans `assets/avatars/`,
+**embarquées** et non servies depuis Supabase : elles sont fixes et
+identiques pour tout le monde. Le profil ne retient que **l'identifiant du
+fichier**.
+
+`lib/features/profile/models/avatar_catalog.dart` est **généré** par
+`tool/lister_avatars.py`, et `test/avatar_catalog_test.dart` confronte la
+liste au contenu réel du dossier — un fichier ajouté sans régénérer fait
+échouer les tests plutôt que d'ouvrir un trou dans la galerie.
+
+**La numérotation a des trous** : `p1_10`, `p2_08` et `p2_12` n'existent pas.
+93 fichiers, pas 96 — rien ne doit reconstruire un identifiant depuis un
+intervalle.
+
+#### `preset:` — pourquoi aucune signature SQL n'a changé
+
+Onze fonctions de lecture renvoyaient déjà un champ `avatar_url`. Changer les
+colonnes de sortie d'un `returns table` impose un `drop function` — `create
+or replace` le refuse —, soit onze suppressions en production pour un gain
+nul côté appelant.
+
+À la place, **l'expression change, pas la déclaration** :
+
+```sql
+coalesce('preset:' || p.avatar_preset, p.avatar_url)
+```
+
+**La colonne `profiles.avatar_url` ne contient toujours que des URL** ; c'est
+le *champ de sortie* du même nom qui devient « l'avatar à afficher ». La
+distinction est subtile et mérite d'être connue avant de lire l'une pour
+l'autre.
+
+Côté Dart, une seule règle et **un seul endroit** qui la connaît :
+`AvatarData.assetPourAvatar`. C'est ce qui a permis d'ajouter les avatars
+prédéfinis sans toucher aux dix écrans qui construisent un `AvatarData`.
+`AvatarImage` est le seul widget qui rend un avatar — prédéfini, photo, puis
+initiales, dans cet ordre.
+
+Pour son **propre** profil, lu directement dans la table plutôt que par une
+fonction, c'est `Profile.avatarAAfficher` qui compose la même valeur.
+
+#### La colonne s'ajoute avant tout le reste
+
+`colonne_avatar_predefini.sql` est **en tête de `migrations.txt`**, avant
+`email_pour_pseudo.sql`. Plusieurs fonctions de lecture sont en `language
+sql`, dont PostgreSQL **valide le corps à la création** : les créer avant la
+colonne les ferait échouer. Un fichier nommé « tranche » aurait suggéré une
+place chronologique qu'il ne peut pas occuper.
+
+#### Le dernier choisi l'emporte
+
+Un profil a une photo **ou** un avatar prédéfini. La règle est tenue par
+l'écriture, qui pose l'un et vide l'autre dans la **même** instruction —
+`choisirAvatarPredefini` et `updateAvatar` écrivent les deux colonnes. Sans
+cela, la lecture préférerait l'avatar et une photo fraîchement téléversée
+resterait invisible.
+
+#### Le poids, et pourquoi les fichiers ne sont pas retouchés
+
+Les 93 PNG pèsent **9,5 Mio** (256 × 256, ~100 Kio pièce, 27 000 couleurs).
+Mesuré : la recompression sans perte ne gagne rien (9,3 Mio), une palette de
+64 couleurs tomberait à 1,4 Mio mais **abîme le bord détouré**, et une
+réduction à 5 bits par canal donnerait 4,9 Mio sans perte visible.
+
+Rien n'a été retouché : ce sont les fichiers livrés, et la galerie utilise un
+`GridView.builder`, qui ne charge que les vignettes visibles. Les 9,5 Mio ne
+partent donc jamais d'un coup. Si l'application native devait maigrir, la
+réduction à 5 bits est la piste, et elle tient en une passe de script.
+
 ### Ombres — `AppShadows`
 
 Toujours **très douces, opacité ≤ 0,06**. `card` au repos, `raised` pour un
@@ -1740,6 +1811,14 @@ compteur vaut zéro.
   par onglet, leur extinction, la liste et le marquage comme lu.
 - `test/tasks_events_test.dart` couvre les écrans de détail, l'assignation et
   l'administration des groupes.
+- `test/avatar_catalog_test.dart` couvre le catalogue sans widget : la liste
+  générée confrontée au dossier, les trois trous de numérotation, l'existence
+  de chaque fichier, et la résolution d'une valeur `preset:` — y compris le
+  préfixe nu, qui ne doit pas produire un chemin bancal.
+- `test/avatar_gallery_test.dart` couvre la galerie : les deux voies
+  cohabitant sur le profil, la sélection qui n'enregistre pas seule, la
+  confirmation qui enregistre, l'inertie sans choix, l'anneau sur l'avatar
+  courant, et la photo effacée par le choix d'un avatar.
 - `test/availability_weekday_test.dart` couvre la conversion ISO ↔
   `extract(dow)`, sans widget : les six jours identiques, le dimanche qui ne
   l'est pas, la réversibilité, et la relecture d'une ligne de la base.

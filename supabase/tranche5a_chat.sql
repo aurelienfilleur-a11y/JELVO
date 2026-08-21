@@ -156,7 +156,7 @@ as $$
     p.pseudo,
     p.first_name,
     p.last_name,
-    p.avatar_url,
+    coalesce('preset:' || p.avatar_preset, p.avatar_url),
     coalesce(
       (select jsonb_agg(jsonb_build_object(
                 'user_id', r.user_id, 'emoji', r.emoji) order by r.emoji)

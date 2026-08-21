@@ -435,7 +435,8 @@ security definer
 set search_path = public
 stable
 as $$
-  select p.id, p.pseudo, p.first_name, p.last_name, p.avatar_url
+  select p.id, p.pseudo, p.first_name, p.last_name,
+         coalesce('preset:' || p.avatar_preset, p.avatar_url)
   from public.profiles p
   where auth.uid() is not null
     and p.id <> auth.uid()
@@ -473,7 +474,8 @@ set search_path = public
 stable
 as $$
   select m.user_id, m.role::text, m.joined_at, m.expires_at,
-         p.pseudo, p.first_name, p.last_name, p.avatar_url
+         p.pseudo, p.first_name, p.last_name,
+         coalesce('preset:' || p.avatar_preset, p.avatar_url)
   from public.group_members m
   left join public.profiles p on p.id = m.user_id
   where m.group_id = p_group_id
@@ -513,7 +515,8 @@ as $$
   select
     case when c.requester_id = auth.uid() then c.addressee_id
          else c.requester_id end,
-    p.pseudo, p.first_name, p.last_name, p.avatar_url,
+    p.pseudo, p.first_name, p.last_name,
+    coalesce('preset:' || p.avatar_preset, p.avatar_url),
     c.status::text,
     case when c.requester_id = auth.uid() then 'sortant' else 'entrant' end,
     case when c.requester_id = auth.uid() then c.favorite_requester
@@ -576,7 +579,7 @@ as $$
     coalesce(nullif(trim(both ' ' from
       coalesce(e.first_name, '') || ' ' || coalesce(e.last_name, '')), ''),
       e.pseudo, 'Un membre'),
-    e.avatar_url,
+    coalesce('preset:' || e.avatar_preset, e.avatar_url),
     i.status::text,
     i.created_at,
     i.expires_at

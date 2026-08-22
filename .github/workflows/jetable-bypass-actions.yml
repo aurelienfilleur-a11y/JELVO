@@ -162,8 +162,14 @@ jobs:
           set -euo pipefail
 
           avant=$(gh api "repos/$GITHUB_REPOSITORY/rulesets/$RULESET")
-          echo "Configuration actuelle :"
-          printf '%s' "$avant" | jq '{name, target, enforcement, conditions, bypass_actors, regles: [.rules[].type]}'
+
+          # Affiché **tel que l'API le renvoie**, sans renommer ni traduire une
+          # seule clé. Une vue arrangée pour la lecture se prend pour la donnée
+          # dès qu'on cherche un défaut dedans : un champ `rules` présenté sous
+          # le nom `regles` a fait conclure, à juste titre, que le filtre
+          # francisait le corps de la requête.
+          echo "── Configuration actuelle, brute ──"
+          printf '%s' "$avant" | jq 'del(._links)'
 
           # Le mode compte autant que la présence : un acteur inscrit en
           # `pull_request` ne contourne rien sur une poussée directe, et c'est
@@ -174,34 +180,78 @@ jobs:
             exit 0
           fi
 
-          # Le corps du PUT reprend **toute** la configuration modifiable, et
-          # non le seul champ visé : un PUT partiel remplacerait les règles par
-          # rien. Les champs en lecture seule (id, source, node_id, dates) sont
-          # écartés en reconstruisant l'objet plutôt qu'en le filtrant.
-          #
           # Les acteurs déjà présents sont conservés ; celui qu'on ajoute est
           # d'abord retiré s'il existait sous un autre bypass_mode, pour qu'il
           # n'y ait jamais deux entrées pour la même application.
-          corps=$(printf '%s' "$avant" | jq '
-            {
-              name, target, enforcement,
-              rules,
-              bypass_actors: (
-                ((.bypass_actors // [])
-                  | map(select(.actor_id != 15368 or .actor_type != "Integration")))
-                + [{actor_id: 15368, actor_type: "Integration", bypass_mode: "always"}]
-              )
-            }
-            + (if .conditions then {conditions: .conditions} else {} end)')
+          acteurs=$(printf '%s' "$avant" | jq -c '
+            ((.bypass_actors // [])
+              | map(select(.actor_id != 15368 or .actor_type != "Integration")))
+            + [{actor_id: 15368, actor_type: "Integration", bypass_mode: "always"}]')
 
-          echo "Corps envoyé :"
-          printf '%s' "$corps" | jq '.bypass_actors'
+          # DEUX CORPS, ESSAYÉS DANS CET ORDRE
+          #
+          # L'API documente chaque champ du PUT comme facultatif : le corps
+          # minimal est donc légal, et c'est lui qui a le moins de surface pour
+          # être refusé. Renvoyer `rules` tel qu'il a été lu est au contraire
+          # un aller-retour risqué — GitHub ajoute régulièrement au GET des
+          # paramètres que le schéma d'écriture n'accepte pas encore, et le
+          # 422 désigne alors une règle que l'on ne voulait même pas toucher.
+          #
+          # Le corps complet reste en second, au cas où ce serait l'inverse.
+          # Les deux sont imprimés en entier, ainsi que la réponse : c'est ce
+          # qui manquait au passage précédent, où ni le corps ni le message de
+          # l'API n'atteignaient le journal.
+          jq -n --argjson a "$acteurs" '{bypass_actors: $a}' > corps-minimal.json
 
-          printf '%s' "$corps" \
-            | gh api --method PUT "repos/$GITHUB_REPOSITORY/rulesets/$RULESET" \
-                --input - > /dev/null
+          printf '%s' "$avant" | jq --argjson a "$acteurs" '
+            {name, target, enforcement, rules, bypass_actors: $a}
+            + (if .conditions then {conditions: .conditions} else {} end)' \
+            > corps-complet.json
 
-          echo "Mise à jour envoyée."
+          envoyer() {
+            fichier="$1"
+            echo
+            echo "── Corps exact envoyé ($fichier) ──"
+            cat "$fichier"
+            echo
+
+            # `gh api` résume l'erreur ; ici on veut le corps de la réponse en
+            # entier, dont le tableau `errors` qui nomme le champ fautif.
+            code=$(curl -sS -o reponse.json -w '%{http_code}' \
+              -X PUT \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              -H "Content-Type: application/json" \
+              --data-binary @"$fichier" \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/rulesets/$RULESET") || true
+            code=${code:-000}
+
+            echo "── Réponse HTTP $code ──"
+            if [ -s reponse.json ]; then
+              jq . reponse.json 2>/dev/null || cat reponse.json
+            else
+              echo "(réponse sans corps)"
+            fi
+            echo
+
+            [ "$code" -ge 200 ] && [ "$code" -lt 300 ]
+          }
+
+          if envoyer corps-minimal.json; then
+            echo "Accepté avec le corps minimal (bypass_actors seul)."
+            exit 0
+          fi
+
+          echo "::warning title=Corps minimal refusé::L'API a refusé le corps ne portant que bypass_actors. Seconde tentative avec la configuration complète relue — voir les deux réponses ci-dessus et ci-dessous."
+
+          if envoyer corps-complet.json; then
+            echo "Accepté avec la configuration complète."
+            exit 0
+          fi
+
+          echo "::error title=PUT refusé deux fois::Ni le corps minimal ni la configuration complète n'ont été acceptés. Le message détaillé de l'API est imprimé sous chaque « Réponse HTTP » : son tableau errors nomme le champ en cause."
+          exit 1
 
       # On relit depuis le serveur plutôt que de se fier au code de retour du
       # PUT : c'est l'état de la règle qui compte, pas l'absence d'erreur.
@@ -214,12 +264,8 @@ jobs:
           apres=$(gh api "repos/$GITHUB_REPOSITORY/rulesets/$RULESET")
           nom=$(printf '%s' "$apres" | jq -r '.name')
 
-          echo "Bypass list du ruleset #$RULESET « $nom » :"
-          printf '%s' "$apres" | jq -r '
-            (.bypass_actors // [])
-            | if length == 0 then "  (vide)"
-              else .[] | "  - actor_id \(.actor_id), \(.actor_type), \(.bypass_mode)"
-              end'
+          echo "── Bypass list du ruleset #$RULESET « $nom », brute ──"
+          printf '%s' "$apres" | jq '.bypass_actors'
 
           if printf '%s' "$apres" \
               | jq -e '(.bypass_actors // []) | any(.actor_id == 15368 and .actor_type == "Integration" and .bypass_mode == "always")' >/dev/null; then

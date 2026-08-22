@@ -1,0 +1,242 @@
+name: Jetable — contournement GitHub Actions
+
+# WORKFLOW JETABLE. À SUPPRIMER UNE FOIS LE RÉGLAGE CONFIRMÉ.
+#
+# Il ajoute l'application **GitHub Actions** (`actor_id: 15368`) à la liste de
+# contournement du ruleset qui protège `main`, pour que le workflow des
+# migrations puisse enfin y publier `supabase/schema_actuel.sql`.
+#
+# Pourquoi un workflow plutôt qu'un appel d'API direct : le réglage demande le
+# droit **Administration** sur le dépôt, que le `GITHUB_TOKEN` d'un job n'a
+# pas et ne peut pas avoir. Il passe donc par `ADMIN_TOKEN_TEMPORAIRE`, un
+# jeton personnel à durée limitée.
+#
+# Ce fichier **et le secret** doivent disparaître dès que la Bypass list est
+# vérifiée : un jeton d'administration atteignable depuis un workflow d'un
+# dépôt public est une porte qu'on ne laisse pas ouverte.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ruleset_id:
+        description: >-
+          Identifiant du ruleset à modifier. À ne renseigner que si le job a
+          signalé plusieurs règles visant main.
+        required: false
+        default: ''
+
+# Le `GITHUB_TOKEN` du job ne sert à rien ici : tout passe par le jeton
+# d'administration. Autant ne lui donner aucun droit.
+permissions: {}
+
+jobs:
+  contourner:
+    name: Ajouter GitHub Actions à la Bypass list
+    runs-on: ubuntu-latest
+
+    steps:
+      # Un secret collé depuis un téléphone emporte volontiers un saut de
+      # ligne final, invisible dans le champ de saisie. Même précaution que
+      # pour `SUPABASE_DB_URL` : on épure, on remasque la valeur nettoyée — le
+      # masque de GitHub porte sur la valeur *enregistrée*, pas sur celle-ci —
+      # et on le dit plutôt que de nettoyer en silence.
+      - name: Épurer et contrôler le jeton
+        env:
+          BRUT: ${{ secrets.ADMIN_TOKEN_TEMPORAIRE }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${BRUT:-}" ]; then
+            echo "::error title=Secret absent::ADMIN_TOKEN_TEMPORAIRE n'est pas défini sur ce dépôt (Settings, Secrets and variables, Actions)."
+            exit 1
+          fi
+
+          jeton=$(printf '%s' "$BRUT" | tr -d '[:space:]')
+          echo "::add-mask::$jeton"
+
+          if [ "$jeton" != "$BRUT" ]; then
+            echo "::warning title=Secret à recoller::ADMIN_TOKEN_TEMPORAIRE contient des blancs (saut de ligne ou espace). Ils ont été retirés pour ce passage, mais le secret reste fautif : recollez-le sans retour à la ligne."
+          fi
+
+          # Un jeton classique fait 40 caractères, un jeton à portée fine bien
+          # davantage. En deçà de 20, c'est un copier-coller amputé.
+          if [ "${#jeton}" -lt 20 ]; then
+            echo "::error title=Jeton tronqué::ADMIN_TOKEN_TEMPORAIRE ne fait que ${#jeton} caractères : le copier-coller est incomplet. Régénérez le jeton et recollez-le en entier."
+            exit 1
+          fi
+
+          case "$jeton" in
+            ghp_*|github_pat_*|gho_*) ;;
+            *)
+              echo "::warning title=Préfixe inattendu::Le jeton ne commence ni par ghp_ ni par github_pat_. Ce n'est pas bloquant, mais vérifiez que c'est bien un jeton GitHub."
+              ;;
+          esac
+
+          echo "GH_TOKEN=$jeton" >> "$GITHUB_ENV"
+          echo "Jeton lu : ${#jeton} caractères, sans blanc."
+
+      - name: Éprouver l'authentification
+        run: |
+          set -euo pipefail
+
+          if ! qui=$(gh api user --jq '.login' 2>&1); then
+            echo "$qui"
+            echo "::error title=Jeton refusé::GitHub n'accepte pas ADMIN_TOKEN_TEMPORAIRE (401). Il est expiré, révoqué, ou mal recopié. Régénérez-le."
+            exit 1
+          fi
+          echo "Authentifié en tant que $qui."
+
+          # `permissions.admin` décrit le rôle de la personne sur le dépôt. Un
+          # jeton à portée fine peut le montrer vrai sans porter pour autant
+          # le droit Administration : ce n'est donc qu'un premier filtre.
+          admin=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.permissions.admin // false')
+          echo "Rôle administrateur sur $GITHUB_REPOSITORY : $admin"
+          if [ "$admin" != 'true' ]; then
+            echo "::error title=Droit insuffisant::Le compte $qui n'est pas administrateur de $GITHUB_REPOSITORY. Le réglage des rulesets lui est inaccessible."
+            exit 1
+          fi
+
+      # La preuve réelle du droit **Administration** est ici : lire les
+      # rulesets l'exige. Un jeton correctement authentifié mais dépourvu de
+      # cette permission échoue en 403, pas en 401.
+      - name: Trouver le ruleset qui protège main
+        id: chercher
+        env:
+          RULESET_DEMANDE: ${{ inputs.ruleset_id }}
+        run: |
+          set -euo pipefail
+
+          # `includes_parents=false` écarte les rulesets d'organisation, qui
+          # ne se modifient pas par l'endpoint du dépôt.
+          if ! liste=$(gh api "repos/$GITHUB_REPOSITORY/rulesets?includes_parents=false" 2>&1); then
+            echo "$liste"
+            echo "::error title=Droit Administration manquant::La lecture des rulesets a été refusée (403). Le jeton s'authentifie mais ne porte pas la permission Administration en lecture et écriture sur $GITHUB_REPOSITORY. Régénérez-le en cochant Repository permissions, Administration, Read and write."
+            exit 1
+          fi
+
+          nombre=$(printf '%s' "$liste" | jq 'length')
+          echo "$nombre ruleset(s) déclaré(s) sur le dépôt :"
+          printf '%s' "$liste" | jq -r '.[] | "  - #\(.id) « \(.name) » (\(.target), \(.enforcement))"'
+
+          if [ "$nombre" -eq 0 ]; then
+            echo "::error title=Aucun ruleset::Le dépôt n'a aucun ruleset. La protection de main passe alors par la protection de branche classique (Settings, Branches), qui n'a pas de Bypass list d'application : il faut y cocher « Do not allow bypassing the above settings » à l'inverse, ou migrer la protection vers un ruleset."
+            exit 1
+          fi
+
+          if [ -n "${RULESET_DEMANDE:-}" ]; then
+            retenus="$RULESET_DEMANDE"
+            echo "Ruleset imposé à la main : #$retenus"
+          else
+            retenus=''
+            for id in $(printf '%s' "$liste" | jq -r '.[].id'); do
+              detail=$(gh api "repos/$GITHUB_REPOSITORY/rulesets/$id")
+              vise=$(printf '%s' "$detail" | jq -r '
+                if .target != "branch" then "non"
+                elif ((.conditions.ref_name.include // [])
+                      | (index("refs/heads/main") or index("~DEFAULT_BRANCH")))
+                then "oui" else "non" end')
+              if [ "$vise" = 'oui' ]; then
+                retenus="$retenus $id"
+              fi
+            done
+            retenus=$(echo $retenus)
+          fi
+
+          if [ -z "$retenus" ]; then
+            echo "::error title=Ruleset introuvable::Aucun ruleset de branche ne vise refs/heads/main ni ~DEFAULT_BRANCH. Relancez en indiquant l'identifiant à la main dans le champ ruleset_id."
+            exit 1
+          fi
+
+          if [ "$(echo "$retenus" | wc -w)" -gt 1 ]; then
+            echo "::error title=Plusieurs rulesets visent main::Identifiants candidats :$retenus. Relancez le workflow en renseignant ruleset_id avec celui à modifier."
+            exit 1
+          fi
+
+          echo "id=$retenus" >> "$GITHUB_OUTPUT"
+          echo "Ruleset retenu : #$retenus"
+
+      - name: Ajouter GitHub Actions à la Bypass list
+        env:
+          RULESET: ${{ steps.chercher.outputs.id }}
+        run: |
+          set -euo pipefail
+
+          avant=$(gh api "repos/$GITHUB_REPOSITORY/rulesets/$RULESET")
+          echo "Configuration actuelle :"
+          printf '%s' "$avant" | jq '{name, target, enforcement, conditions, bypass_actors, regles: [.rules[].type]}'
+
+          # Le mode compte autant que la présence : un acteur inscrit en
+          # `pull_request` ne contourne rien sur une poussée directe, et c'est
+          # exactement le cas que l'on vient corriger.
+          if printf '%s' "$avant" \
+              | jq -e '(.bypass_actors // []) | any(.actor_id == 15368 and .actor_type == "Integration" and .bypass_mode == "always")' >/dev/null; then
+            echo "GitHub Actions figure déjà dans la Bypass list en mode always — rien à changer."
+            exit 0
+          fi
+
+          # Le corps du PUT reprend **toute** la configuration modifiable, et
+          # non le seul champ visé : un PUT partiel remplacerait les règles par
+          # rien. Les champs en lecture seule (id, source, node_id, dates) sont
+          # écartés en reconstruisant l'objet plutôt qu'en le filtrant.
+          #
+          # Les acteurs déjà présents sont conservés ; celui qu'on ajoute est
+          # d'abord retiré s'il existait sous un autre bypass_mode, pour qu'il
+          # n'y ait jamais deux entrées pour la même application.
+          corps=$(printf '%s' "$avant" | jq '
+            {
+              name, target, enforcement,
+              rules,
+              bypass_actors: (
+                ((.bypass_actors // [])
+                  | map(select(.actor_id != 15368 or .actor_type != "Integration")))
+                + [{actor_id: 15368, actor_type: "Integration", bypass_mode: "always"}]
+              )
+            }
+            + (if .conditions then {conditions: .conditions} else {} end)')
+
+          echo "Corps envoyé :"
+          printf '%s' "$corps" | jq '.bypass_actors'
+
+          printf '%s' "$corps" \
+            | gh api --method PUT "repos/$GITHUB_REPOSITORY/rulesets/$RULESET" \
+                --input - > /dev/null
+
+          echo "Mise à jour envoyée."
+
+      # On relit depuis le serveur plutôt que de se fier au code de retour du
+      # PUT : c'est l'état de la règle qui compte, pas l'absence d'erreur.
+      - name: Relire et confirmer
+        env:
+          RULESET: ${{ steps.chercher.outputs.id }}
+        run: |
+          set -euo pipefail
+
+          apres=$(gh api "repos/$GITHUB_REPOSITORY/rulesets/$RULESET")
+          nom=$(printf '%s' "$apres" | jq -r '.name')
+
+          echo "Bypass list du ruleset #$RULESET « $nom » :"
+          printf '%s' "$apres" | jq -r '
+            (.bypass_actors // [])
+            | if length == 0 then "  (vide)"
+              else .[] | "  - actor_id \(.actor_id), \(.actor_type), \(.bypass_mode)"
+              end'
+
+          if printf '%s' "$apres" \
+              | jq -e '(.bypass_actors // []) | any(.actor_id == 15368 and .actor_type == "Integration" and .bypass_mode == "always")' >/dev/null; then
+            echo "SUCCÈS : GitHub Actions (actor_id 15368, Integration, always) figure dans la Bypass list du ruleset « $nom »."
+            {
+              echo '## Contournement posé'
+              echo
+              echo "GitHub Actions figure dans la Bypass list du ruleset **$nom** (#$RULESET)."
+              echo
+              echo 'Le workflow des migrations peut désormais publier'
+              echo '`supabase/schema_actuel.sql` sur `main`.'
+              echo
+              echo '> **À faire maintenant :** supprimer ce workflow'
+              echo '> (`.github/workflows/jetable-bypass-actions.yml`) et le secret'
+              echo '> `ADMIN_TOKEN_TEMPORAIRE`.'
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::error title=Réglage non pris en compte::Le PUT n'a pas levé d'erreur, mais la relecture ne montre pas GitHub Actions dans la Bypass list. Vérifiez si le ruleset vient d'une organisation (il ne se modifie alors qu'à son niveau)."
+            exit 1
+          fi

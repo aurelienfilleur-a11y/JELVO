@@ -83,10 +83,49 @@ fusions.** Le workflow pousse un commit direct, qui n'a aucune vérification à
 présenter : GitHub le refuse. La règle qui rend l'auto-merge armable est donc
 exactement celle qui empêche le relevé du schéma d'atteindre `main`.
 
-Le remède ne se code pas : il faut ajouter **`github-actions` à la liste de
-contournement** de la règle — Settings → Rules → règle de `main` → *Bypass
-list*. Tant que ce n'est pas fait, le job échoue à chaque migration ayant
-changé le schéma.
+##### L'application GitHub Actions ne peut pas être contournée ici
+
+La réponse évidente — inscrire **`github-actions` dans la Bypass list** — est
+**impossible sur ce dépôt**, et il a fallu trois passages pour l'établir.
+L'API refuse en `422` :
+
+```
+Actor GitHub Actions integration must be part of the ruleset source
+or owner organization
+```
+
+Une application n'entre dans une Bypass list que si elle appartient au
+propriétaire du ruleset. `JELVO` est un dépôt de **compte personnel** : il n'a
+pas d'organisation propriétaire, donc aucune application n'est jamais « la
+sienne ». La documentation générale de GitHub cite pourtant « GitHub Apps »
+parmi les acteurs éligibles — elle décrit le cas d'une organisation, et ne le
+dit pas.
+
+Le seul acteur inscriptible est le **rôle** : `RepositoryRole` `#5`,
+l'administrateur (`#2` maintien, `#4` écriture). `OrganizationAdmin` échoue
+comme l'application ; `DeployKey` n'est pas accepté par l'API malgré ce que
+suggère le type énuméré.
+
+**Un rôle désigne une personne, pas un automate**, et c'est toute la
+conséquence : le workflow doit pousser avec un **jeton personnel** appartenant
+à un administrateur, secret `JETON_POUSSEE_SCHEMA`, permission *Contents* en
+écriture et rien d'autre. `checkout` le reçoit par `token:`, ce qui remplace
+`GITHUB_TOKEN` dans les identifiants persistés.
+
+Les deux moitiés sont nécessaires et **aucune ne suffit seule** : sans le
+rôle, la poussée est refusée ; sans le jeton, elle est faite par
+`github-actions[bot]`, qui n'a pas ce rôle.
+
+Deux effets de bord à connaître :
+
+- **une poussée faite avec un jeton personnel déclenche les workflows**, là où
+  celle de `GITHUB_TOKEN` n'en déclenche aucun. C'est le `[skip ci]` du
+  message de commit qui empêche la boucle — il n'était qu'un confort, il
+  devient nécessaire ;
+- le contournement vaut pour **toutes** les poussées de cet administrateur,
+  pull requests comprises. Si l'auto-merge cessait d'être armable, ce serait
+  la cause à examiner en premier, et le workflow jetable sait retirer l'acteur
+  aussi bien que l'ajouter.
 
 Ce qui se code, en revanche, c'est de ne pas mentir sur le coupable. L'étape
 distingue désormais ce refus, l'annonce en toutes lettres — « les migrations
@@ -107,7 +146,7 @@ Le job peut échouer à trois endroits, et **le rouge ne dit pas lequel** :
 | --- | --- | --- |
 | connexion refusée | **rien n'est appliqué** | régénérer `SUPABASE_DB_URL` |
 | une migration | ce qui précède l'est, pas la suite | corriger le SQL |
-| publication de l'instantané | **tout est appliqué** | contournement `github-actions` |
+| publication de l'instantané | **tout est appliqué** | rôle `#5` en Bypass list **et** `JETON_POUSSEE_SCHEMA` |
 
 **Règle** : chercher les lignes `OK <fichier>` avant de conclure. Aucune ligne
 `OK` du tout signifie que la base n'a rien reçu.
@@ -2001,9 +2040,12 @@ sûr d'éprouver son caractère contextuel.
      code à 6 chiffres ;
   2. **planifier `envoyer-push` toutes les minutes** — sans quoi la file ne se
      vide pas et aucun rappel n'est empilé ;
-  3. ajouter **`github-actions` à la liste de contournement** de la règle de
-     protection de `main`, sans quoi `schema_actuel.sql` ne peut plus y être
-     publié.
+  3. pour que `schema_actuel.sql` atteigne `main` : le rôle
+     **`RepositoryRole` `#5`** dans la Bypass list du ruleset **et** le secret
+     **`JETON_POUSSEE_SCHEMA`** — jeton personnel d'un administrateur,
+     permission *Contents* en écriture. L'application `github-actions` n'y est
+     pas inscriptible : voir « L'application GitHub Actions ne peut pas être
+     contournée ici ».
 
   Les migrations, elles, s'appliquent seules à chaque push sur `main`.
 - **Une migration n'est éprouvée contre la vraie base qu'après fusion.** Le

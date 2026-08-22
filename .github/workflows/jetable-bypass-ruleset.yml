@@ -1,15 +1,41 @@
-name: Jetable — contournement GitHub Actions
+name: Jetable — contournement du ruleset
 
 # WORKFLOW JETABLE. À SUPPRIMER UNE FOIS LE RÉGLAGE CONFIRMÉ.
 #
-# Il ajoute l'application **GitHub Actions** (`actor_id: 15368`) à la liste de
-# contournement du ruleset qui protège `main`, pour que le workflow des
-# migrations puisse enfin y publier `supabase/schema_actuel.sql`.
+# Il ajoute un acteur à la liste de contournement du ruleset qui protège
+# `main`, pour que le workflow des migrations puisse enfin y publier
+# `supabase/schema_actuel.sql`.
 #
-# Pourquoi un workflow plutôt qu'un appel d'API direct : le réglage demande le
-# droit **Administration** sur le dépôt, que le `GITHUB_TOKEN` d'un job n'a
-# pas et ne peut pas avoir. Il passe donc par `ADMIN_TOKEN_TEMPORAIRE`, un
-# jeton personnel à durée limitée.
+#
+# POURQUOI PAS L'APPLICATION GITHUB ACTIONS
+#
+# C'était la première voie, et elle est fermée. L'API refuse en 422 :
+#
+#   Actor GitHub Actions integration must be part of the ruleset source
+#   or owner organization
+#
+# Une application ne peut figurer dans une Bypass list que si elle appartient
+# au propriétaire du ruleset. `aurelienfilleur-a11y/JELVO` est un dépôt de
+# **compte personnel** : il n'a pas d'organisation propriétaire, donc aucune
+# application n'est jamais « la sienne ». Aucune forme de corps n'y change
+# quoi que ce soit — la documentation générale de GitHub, qui cite
+# « GitHub Apps » parmi les acteurs éligibles, décrit le cas d'une
+# organisation.
+#
+# Reste le **rôle** : `RepositoryRole` avec `actor_id: 5`, l'administrateur du
+# dépôt. Ce type est accepté sur un dépôt personnel — contrairement à
+# `OrganizationAdmin`, qui échoue de la même façon que l'application.
+#
+# La conséquence porte sur qui pousse : le contournement vise une *personne*,
+# pas un automate. Le workflow des migrations doit donc pousser avec un jeton
+# personnel appartenant à un administrateur, et non avec `GITHUB_TOKEN`.
+#
+#
+# POURQUOI UN WORKFLOW PLUTÔT QU'UN APPEL D'API DIRECT
+#
+# Le réglage demande le droit **Administration** sur le dépôt, que le
+# `GITHUB_TOKEN` d'un job n'a pas et ne peut pas avoir. Il passe donc par
+# `ADMIN_TOKEN_TEMPORAIRE`, un jeton personnel à durée limitée.
 #
 # Ce fichier **et le secret** doivent disparaître dès que la Bypass list est
 # vérifiée : un jeton d'administration atteignable depuis un workflow d'un
@@ -24,6 +50,29 @@ on:
           signalé plusieurs règles visant main.
         required: false
         default: ''
+      actor_type:
+        description: Type d'acteur à inscrire dans la Bypass list.
+        required: true
+        default: RepositoryRole
+        type: choice
+        options:
+          - RepositoryRole
+          - Integration
+          - OrganizationAdmin
+          - DeployKey
+      actor_id:
+        description: >-
+          Identifiant de l'acteur. Pour RepositoryRole : 5 = administrateur,
+          2 = maintien, 4 = écriture. Laisser vide pour DeployKey.
+        required: false
+        default: '5'
+      retirer:
+        description: >-
+          Retirer cet acteur au lieu de l'ajouter. Sert à revenir en arrière
+          si le contournement a un effet de bord indésirable.
+        required: false
+        default: false
+        type: boolean
 
 # Le `GITHUB_TOKEN` du job ne sert à rien ici : tout passe par le jeton
 # d'administration. Autant ne lui donner aucun droit.
@@ -31,7 +80,7 @@ permissions: {}
 
 jobs:
   contourner:
-    name: Ajouter GitHub Actions à la Bypass list
+    name: Régler la Bypass list du ruleset
     runs-on: ubuntu-latest
 
     steps:
@@ -155,11 +204,26 @@ jobs:
           echo "id=$retenus" >> "$GITHUB_OUTPUT"
           echo "Ruleset retenu : #$retenus"
 
-      - name: Ajouter GitHub Actions à la Bypass list
+      - name: Régler la Bypass list
         env:
           RULESET: ${{ steps.chercher.outputs.id }}
+          ACTOR_TYPE: ${{ inputs.actor_type }}
+          ACTOR_ID: ${{ inputs.actor_id }}
+          RETIRER: ${{ inputs.retirer }}
         run: |
           set -euo pipefail
+
+          # `actor_id` n'est requis que pour Integration, RepositoryRole, Team
+          # et User. Pour DeployKey, l'entrée n'en porte pas.
+          if [ -n "${ACTOR_ID:-}" ]; then
+            vise=$(jq -n --arg t "$ACTOR_TYPE" --argjson i "$ACTOR_ID" \
+              '{actor_id: $i, actor_type: $t, bypass_mode: "always"}')
+          else
+            vise=$(jq -n --arg t "$ACTOR_TYPE" \
+              '{actor_type: $t, bypass_mode: "always"}')
+          fi
+          echo "Acteur visé : $(printf '%s' "$vise" | jq -c .)"
+          [ "$RETIRER" = 'true' ] && echo "Mode : retrait." || echo "Mode : ajout."
 
           avant=$(gh api "repos/$GITHUB_REPOSITORY/rulesets/$RULESET")
 
@@ -171,22 +235,28 @@ jobs:
           echo "── Configuration actuelle, brute ──"
           printf '%s' "$avant" | jq 'del(._links)'
 
-          # Le mode compte autant que la présence : un acteur inscrit en
-          # `pull_request` ne contourne rien sur une poussée directe, et c'est
-          # exactement le cas que l'on vient corriger.
-          if printf '%s' "$avant" \
-              | jq -e '(.bypass_actors // []) | any(.actor_id == 15368 and .actor_type == "Integration" and .bypass_mode == "always")' >/dev/null; then
-            echo "GitHub Actions figure déjà dans la Bypass list en mode always — rien à changer."
-            exit 0
+          # Les acteurs déjà présents sont conservés. L'acteur visé est
+          # d'abord retiré quel que soit son `bypass_mode`, pour qu'il n'y ait
+          # jamais deux entrées pour le même acteur — et parce que le mode
+          # compte autant que la présence : inscrit en `pull_request`, il ne
+          # contournerait rien sur une poussée directe, qui est justement le
+          # cas à couvrir.
+          sans=$(printf '%s' "$avant" | jq -c --argjson v "$vise" '
+            (.bypass_actors // [])
+            | map(select((.actor_id // null) != ($v.actor_id // null)
+                         or .actor_type != $v.actor_type))')
+
+          if [ "$RETIRER" = 'true' ]; then
+            acteurs="$sans"
+          else
+            acteurs=$(jq -nc --argjson s "$sans" --argjson v "$vise" '$s + [$v]')
           fi
 
-          # Les acteurs déjà présents sont conservés ; celui qu'on ajoute est
-          # d'abord retiré s'il existait sous un autre bypass_mode, pour qu'il
-          # n'y ait jamais deux entrées pour la même application.
-          acteurs=$(printf '%s' "$avant" | jq -c '
-            ((.bypass_actors // [])
-              | map(select(.actor_id != 15368 or .actor_type != "Integration")))
-            + [{actor_id: 15368, actor_type: "Integration", bypass_mode: "always"}]')
+          if [ "$(printf '%s' "$avant" | jq -c '.bypass_actors // []')" \
+             = "$(printf '%s' "$acteurs" | jq -c .)" ]; then
+            echo "La Bypass list est déjà dans l'état demandé — rien à envoyer."
+            exit 0
+          fi
 
           # DEUX CORPS, ESSAYÉS DANS CET ORDRE
           #
@@ -258,6 +328,9 @@ jobs:
       - name: Relire et confirmer
         env:
           RULESET: ${{ steps.chercher.outputs.id }}
+          ACTOR_TYPE: ${{ inputs.actor_type }}
+          ACTOR_ID: ${{ inputs.actor_id }}
+          RETIRER: ${{ inputs.retirer }}
         run: |
           set -euo pipefail
 
@@ -267,22 +340,47 @@ jobs:
           echo "── Bypass list du ruleset #$RULESET « $nom », brute ──"
           printf '%s' "$apres" | jq '.bypass_actors'
 
-          if printf '%s' "$apres" \
-              | jq -e '(.bypass_actors // []) | any(.actor_id == 15368 and .actor_type == "Integration" and .bypass_mode == "always")' >/dev/null; then
-            echo "SUCCÈS : GitHub Actions (actor_id 15368, Integration, always) figure dans la Bypass list du ruleset « $nom »."
-            {
-              echo '## Contournement posé'
-              echo
-              echo "GitHub Actions figure dans la Bypass list du ruleset **$nom** (#$RULESET)."
-              echo
-              echo 'Le workflow des migrations peut désormais publier'
-              echo '`supabase/schema_actuel.sql` sur `main`.'
-              echo
-              echo '> **À faire maintenant :** supprimer ce workflow'
-              echo '> (`.github/workflows/jetable-bypass-actions.yml`) et le secret'
-              echo '> `ADMIN_TOKEN_TEMPORAIRE`.'
-            } >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "${ACTOR_ID:-}" ]; then
+            present=$(printf '%s' "$apres" | jq --arg t "$ACTOR_TYPE" --argjson i "$ACTOR_ID" \
+              '(.bypass_actors // []) | any(.actor_id == $i and .actor_type == $t and .bypass_mode == "always")')
+            designation="$ACTOR_TYPE #$ACTOR_ID"
           else
-            echo "::error title=Réglage non pris en compte::Le PUT n'a pas levé d'erreur, mais la relecture ne montre pas GitHub Actions dans la Bypass list. Vérifiez si le ruleset vient d'une organisation (il ne se modifie alors qu'à son niveau)."
+            present=$(printf '%s' "$apres" | jq --arg t "$ACTOR_TYPE" \
+              '(.bypass_actors // []) | any(.actor_type == $t and .bypass_mode == "always")')
+            designation="$ACTOR_TYPE"
+          fi
+
+          # `a && b` en dernière commande d'une ligne ferait sortir le script
+          # sur un `set -e` quand le test est faux : la forme longue s'impose.
+          if [ "$RETIRER" = 'true' ]; then attendu='false'; else attendu='true'; fi
+
+          if [ "$present" != "$attendu" ]; then
+            echo "::error title=Réglage non pris en compte::Le PUT n'a pas levé d'erreur, mais la relecture ne montre pas l'état demandé pour $designation. Vérifiez si le ruleset vient d'une organisation (il ne se modifie alors qu'à son niveau)."
             exit 1
           fi
+
+          if [ "$RETIRER" = 'true' ]; then
+            echo "SUCCÈS : $designation ne figure plus dans la Bypass list du ruleset « $nom »."
+            exit 0
+          fi
+
+          echo "SUCCÈS : $designation (bypass_mode always) figure dans la Bypass list du ruleset « $nom »."
+          {
+            echo '## Contournement posé'
+            echo
+            echo "**$designation** figure dans la Bypass list du ruleset **$nom** (#$RULESET)."
+            echo
+            echo 'Le contournement vise un **rôle**, donc une personne : le'
+            echo 'workflow des migrations doit pousser avec un jeton personnel'
+            echo 'appartenant à un administrateur du dépôt, secret'
+            echo '`JETON_POUSSEE_SCHEMA`, et non avec `GITHUB_TOKEN`.'
+            echo
+            echo '> **À surveiller :** que l’auto-merge reste armable sur la'
+            echo '> prochaine pull request. Si ce n’est plus le cas, relancer'
+            echo '> ce workflow avec `retirer` coché remet la Bypass list dans'
+            echo '> son état d’avant.'
+            echo
+            echo '> **À faire ensuite :** supprimer ce workflow'
+            echo '> (`.github/workflows/jetable-bypass-ruleset.yml`) et le secret'
+            echo '> `ADMIN_TOKEN_TEMPORAIRE`.'
+          } >> "$GITHUB_STEP_SUMMARY"

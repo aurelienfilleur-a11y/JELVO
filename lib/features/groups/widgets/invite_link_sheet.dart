@@ -10,6 +10,7 @@ import '../../auth/models/auth_failure.dart';
 import '../models/group.dart';
 import '../models/group_invite.dart';
 import '../providers/group_providers.dart';
+import 'membership_term_picker.dart';
 
 /// Feuille de génération et de partage d'un lien d'invitation.
 ///
@@ -28,6 +29,12 @@ class InviteLinkSheet extends ConsumerStatefulWidget {
 class _InviteLinkSheetState extends ConsumerState<InviteLinkSheet> {
   bool _working = false;
   String? _errorMessage;
+
+  /// Terme de l'adhésion accordée par le **prochain** lien généré.
+  ///
+  /// Les liens déjà créés gardent le leur : leur durée est partie avec eux,
+  /// et la modifier après coup changerait une offre déjà envoyée.
+  DateTime? _terme;
 
   @override
   Widget build(BuildContext context) {
@@ -96,6 +103,17 @@ class _InviteLinkSheetState extends ConsumerState<InviteLinkSheet> {
               AppSpacing.gapMd,
             ],
 
+          if (widget.group.isAdmin) ...<Widget>[
+            AppSpacing.gapMd,
+            MembershipTermPicker(
+              now: now,
+              value: _terme,
+              enabled: !_working,
+              label: 'Durée accordée par le prochain lien',
+              onChanged: (DateTime? valeur) => setState(() => _terme = valeur),
+            ),
+          ],
+
           AppSpacing.gapMd,
           PrimaryButton(
             label: active.isEmpty ? 'Générer un lien' : 'Générer un autre lien',
@@ -116,7 +134,10 @@ class _InviteLinkSheetState extends ConsumerState<InviteLinkSheet> {
     try {
       await ref
           .read(groupActionsProvider)
-          .createInviteLink(groupId: widget.group.id);
+          .createInviteLink(
+            groupId: widget.group.id,
+            membershipExpiresAt: _terme,
+          );
     } catch (error) {
       if (mounted) {
         setState(() => _errorMessage = AuthFailure.from(error).message);
@@ -209,6 +230,20 @@ class _LinkCard extends StatelessWidget {
             '${AppDates.shortDate(link.expiresAt)}',
             style: AppTypography.caption,
           ),
+          // Deux dates que rien ne rapproche : celle du dessus dit jusqu'à
+          // quand le lien sert, celle-ci ce qu'il accorde. Un lien valable
+          // trente jours peut n'ouvrir qu'une adhésion d'une semaine.
+          if (link.isTemporaryMembership) ...<Widget>[
+            const SizedBox(height: 2),
+            Text(
+              'Adhésion jusqu’au '
+              '${AppDates.shortDate(link.membershipExpiresAt!)}',
+              style: AppTypography.caption.copyWith(
+                color: AppColors.warning,
+                fontWeight: AppTypography.semiBold,
+              ),
+            ),
+          ],
           AppSpacing.gapMd,
           Row(
             children: <Widget>[

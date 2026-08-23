@@ -205,6 +205,38 @@ class _InvitationScreenState extends ConsumerState<InvitationScreen> {
                 ),
               ),
 
+              // Annoncé avant les deux boutons, et non après : ce qui change
+              // la nature de l'offre se lit avant d'y répondre.
+              if (invitation.membershipExpiresAt != null) ...<Widget>[
+                AppSpacing.gapXl,
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  decoration: BoxDecoration(
+                    color: AppColors.warningSoft,
+                    borderRadius: AppRadii.fieldRadius,
+                  ),
+                  child: Row(
+                    children: <Widget>[
+                      const Icon(
+                        Icons.schedule_rounded,
+                        size: 18,
+                        color: AppColors.warning,
+                      ),
+                      AppSpacing.hGapSm,
+                      Expanded(
+                        child: Text(
+                          'Adhésion temporaire : jusqu’au '
+                          '${AppDates.fullDate(invitation.membershipExpiresAt!)}.',
+                          style: AppTypography.caption.copyWith(
+                            color: AppColors.midnight,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
               if (invitation.description != null &&
                   invitation.description!.isNotEmpty) ...<Widget>[
                 AppSpacing.gapXl,

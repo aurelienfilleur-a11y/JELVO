@@ -97,6 +97,10 @@ enum MemberOutcome {
   promu,
   retrograde,
   retire,
+  termeDefini,
+  termeRetire,
+  inchange,
+  termePasse,
   dejaAdmin,
   dernierAdmin,
   nonAdmin,
@@ -109,6 +113,10 @@ enum MemberOutcome {
     'promu' => MemberOutcome.promu,
     'retrograde' => MemberOutcome.retrograde,
     'retire' => MemberOutcome.retire,
+    'terme_defini' => MemberOutcome.termeDefini,
+    'terme_retire' => MemberOutcome.termeRetire,
+    'inchange' => MemberOutcome.inchange,
+    'terme_passe' => MemberOutcome.termePasse,
     'deja_admin' => MemberOutcome.dejaAdmin,
     'dernier_admin' => MemberOutcome.dernierAdmin,
     'non_admin' => MemberOutcome.nonAdmin,
@@ -121,13 +129,27 @@ enum MemberOutcome {
   bool get isSuccess =>
       this == MemberOutcome.promu ||
       this == MemberOutcome.retrograde ||
-      this == MemberOutcome.retire;
+      this == MemberOutcome.retire ||
+      this == MemberOutcome.termeDefini ||
+      this == MemberOutcome.termeRetire;
 
   /// [nom] est le prénom ou le nom affiché de la personne visée.
-  String message(String nom) => switch (this) {
+  ///
+  /// [terme] n'est lu que par les issues qui parlent d'une date ; il vaut
+  /// `null` partout ailleurs.
+  String message(String nom, {String? terme}) => switch (this) {
     MemberOutcome.promu => '$nom est désormais administrateur.',
     MemberOutcome.retrograde => '$nom n’est plus administrateur.',
     MemberOutcome.retire => '$nom a été retiré du groupe.',
+    MemberOutcome.termeDefini =>
+      terme == null
+          ? 'L’adhésion de $nom est désormais temporaire.'
+          : '$nom fait partie du groupe jusqu’au $terme.',
+    MemberOutcome.termeRetire => 'L’adhésion de $nom n’a plus de terme.',
+    MemberOutcome.inchange => 'C’était déjà le cas, rien n’a changé.',
+    MemberOutcome.termePasse =>
+      'Cette date est déjà passée. Pour un départ immédiat, utilisez '
+          '« Retirer du groupe ».',
     MemberOutcome.dejaAdmin => '$nom est déjà administrateur.',
     MemberOutcome.dernierAdmin =>
       'Un groupe doit garder au moins un administrateur. Nommez quelqu’un '
@@ -153,6 +175,7 @@ class GroupInvitePreview {
     this.description,
     this.photoUrl,
     this.memberCount = 0,
+    this.membershipExpiresAt,
   });
 
   factory GroupInvitePreview.fromRow(Map<String, dynamic> row) {
@@ -163,6 +186,9 @@ class GroupInvitePreview {
       description: row['description'] as String?,
       photoUrl: row['photo_url'] as String?,
       memberCount: (row['nombre_membres'] as int?) ?? 0,
+      membershipExpiresAt: DateTime.tryParse(
+        (row['membership_expires_at'] as String?) ?? '',
+      ),
     );
   }
 
@@ -172,6 +198,13 @@ class GroupInvitePreview {
   final String? description;
   final String? photoUrl;
   final int memberCount;
+
+  /// Terme de l'adhésion que ce lien accorde ; `null` = sans terme.
+  ///
+  /// Annoncé **avant** d'accepter : une adhésion qui s'arrête dans dix jours
+  /// n'est pas la même offre qu'une adhésion sans fin, et le découvrir après
+  /// coup serait une mauvaise surprise.
+  final DateTime? membershipExpiresAt;
 
   bool get isJoinable => status == InviteLinkStatus.valide && groupId != null;
 }
@@ -188,6 +221,7 @@ class GroupInviteLink {
     this.usesCount = 0,
     this.revokedAt,
     this.createdAt,
+    this.membershipExpiresAt,
   });
 
   factory GroupInviteLink.fromRow(Map<String, dynamic> row) {
@@ -202,6 +236,9 @@ class GroupInviteLink {
       usesCount: (row['uses_count'] as int?) ?? 0,
       revokedAt: DateTime.tryParse((row['revoked_at'] as String?) ?? ''),
       createdAt: DateTime.tryParse((row['created_at'] as String?) ?? ''),
+      membershipExpiresAt: DateTime.tryParse(
+        (row['membership_expires_at'] as String?) ?? '',
+      ),
     );
   }
 
@@ -214,9 +251,19 @@ class GroupInviteLink {
   final DateTime? revokedAt;
   final DateTime? createdAt;
 
+  /// Terme de l'adhésion accordée par ce lien ; `null` = sans terme.
+  ///
+  /// À ne pas confondre avec [expiresAt], qui dit jusqu'à quand **le lien**
+  /// peut servir. Les deux dates n'ont ni la même portée ni, en général, la
+  /// même valeur.
+  final DateTime? membershipExpiresAt;
+
+  bool get isTemporaryMembership => membershipExpiresAt != null;
+
   bool isActive(DateTime now) =>
       revokedAt == null &&
       expiresAt.isAfter(now) &&
+      (membershipExpiresAt == null || membershipExpiresAt!.isAfter(now)) &&
       (maxUses == null || usesCount < maxUses!);
 
   /// Résumé affiché sous le lien : « 2 utilisations sur 5 ».
@@ -253,6 +300,7 @@ class GroupInvitation {
     this.memberNames = const <String>[],
     this.createdAt,
     this.expiresAt,
+    this.membershipExpiresAt,
   });
 
   factory GroupInvitation.fromRow(Map<String, dynamic> row) {
@@ -272,6 +320,9 @@ class GroupInvitation {
           const <String>[],
       createdAt: DateTime.tryParse((row['created_at'] as String?) ?? ''),
       expiresAt: DateTime.tryParse((row['expires_at'] as String?) ?? ''),
+      membershipExpiresAt: DateTime.tryParse(
+        (row['membership_expires_at'] as String?) ?? '',
+      ),
     );
   }
 
@@ -289,6 +340,9 @@ class GroupInvitation {
 
   final DateTime? createdAt;
   final DateTime? expiresAt;
+
+  /// Terme de l'adhésion proposée ; `null` = adhésion permanente.
+  final DateTime? membershipExpiresAt;
 
   String get memberLabel => '$memberCount membre${memberCount > 1 ? 's' : ''}';
 

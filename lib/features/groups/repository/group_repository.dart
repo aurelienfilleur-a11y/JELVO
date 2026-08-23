@@ -66,6 +66,17 @@ abstract interface class GroupRepository {
     required String userId,
   });
 
+  /// Pose, déplace ou retire le terme d'une adhésion.
+  ///
+  /// Prolonger, écourter et rendre permanent sont **la même écriture** :
+  /// poser une date, ou poser `null`. Trois méthodes diraient trois fois la
+  /// même chose, et la troisième finirait par diverger.
+  Future<String> setMembershipTerm({
+    required String groupId,
+    required String userId,
+    required DateTime? expiresAt,
+  });
+
   Future<LeaveOutcome> leaveGroup(String groupId);
 
   // — Invitations par lien —
@@ -75,6 +86,7 @@ abstract interface class GroupRepository {
   Future<GroupInviteLink> createInviteLink({
     required String groupId,
     int? maxUses,
+    DateTime? membershipExpiresAt,
   });
 
   Future<void> revokeInviteLink(String linkId);
@@ -88,7 +100,11 @@ abstract interface class GroupRepository {
 
   Future<List<GroupInvitation>> fetchInvitations();
 
-  Future<String> invite({required String groupId, required String userId});
+  Future<String> invite({
+    required String groupId,
+    required String userId,
+    DateTime? membershipExpiresAt,
+  });
 
   Future<JoinOutcome> acceptInvitation(String invitationId);
 
@@ -365,6 +381,29 @@ class SupabaseGroupRepository implements GroupRepository {
     required String userId,
   }) => _administrer('retrograder_membre', groupId: groupId, userId: userId);
 
+  @override
+  Future<String> setMembershipTerm({
+    required String groupId,
+    required String userId,
+    required DateTime? expiresAt,
+  }) async {
+    try {
+      final Object? result = await _client.rpc<Object?>(
+        'definir_terme_adhesion',
+        params: <String, dynamic>{
+          'p_group_id': groupId,
+          'p_user_id': userId,
+          // `null` explicite, et non une clé absente : c'est lui qui rend
+          // l'adhésion permanente.
+          'p_expires_at': expiresAt?.toUtc().toIso8601String(),
+        },
+      );
+      return (result as String?) ?? 'inconnu';
+    } catch (error) {
+      throw AuthFailure.from(error);
+    }
+  }
+
   Future<String> _administrer(
     String fonction, {
     required String groupId,
@@ -414,6 +453,7 @@ class SupabaseGroupRepository implements GroupRepository {
   Future<GroupInviteLink> createInviteLink({
     required String groupId,
     int? maxUses,
+    DateTime? membershipExpiresAt,
   }) async {
     final String? userId = _userId;
     if (userId == null) {
@@ -434,6 +474,11 @@ class SupabaseGroupRepository implements GroupRepository {
             'expires_at': DateTime.now()
                 .toUtc()
                 .add(AppConfig.inviteLinkLifetime)
+                .toIso8601String(),
+            // Deux dates, deux portées : `expires_at` borne la validité du
+            // lien, celle-ci le terme de l'adhésion qu'il accorde.
+            'membership_expires_at': ?membershipExpiresAt
+                ?.toUtc()
                 .toIso8601String(),
           })
           .select()
@@ -507,11 +552,18 @@ class SupabaseGroupRepository implements GroupRepository {
   Future<String> invite({
     required String groupId,
     required String userId,
+    DateTime? membershipExpiresAt,
   }) async {
     try {
       final Object? result = await _client.rpc<Object?>(
         'inviter_dans_groupe',
-        params: <String, dynamic>{'p_group_id': groupId, 'p_invitee': userId},
+        params: <String, dynamic>{
+          'p_group_id': groupId,
+          'p_invitee': userId,
+          'p_membership_expires_at': membershipExpiresAt
+              ?.toUtc()
+              .toIso8601String(),
+        },
       );
       return (result as String?) ?? 'non_membre';
     } catch (error) {

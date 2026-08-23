@@ -872,11 +872,12 @@ Deux conséquences de forme :
 
 ### `expires_at` sur `group_members`
 
-Prépare l'adhésion temporaire — un membre invité le temps d'un voyage. `null`
-signifie « sans terme ». **Toute lecture de `group_members` filtre les adhésions
-échues**, en SQL comme côté client (`_activeMembership` dans le dépôt). Une
-adhésion échue laisse sa ligne : les fonctions d'adhésion la suppriment avant de
-réinsérer, la clé primaire étant le couple groupe / utilisateur.
+L'adhésion temporaire — un membre invité le temps d'un voyage. `null` signifie
+« sans terme ». **Toute lecture de `group_members` filtre les adhésions
+échues**, en SQL comme côté client (`_activeMembership` dans le dépôt).
+
+Voir « Adhésion temporaire » plus bas pour la façon dont un terme se pose et ce
+qu'il déclenche.
 
 ### Le `returning` d'une insertion passe par la politique SELECT
 
@@ -1002,6 +1003,115 @@ lien d'invitation porte un jeton variable. Attention à la dissymétrie du
 `redirect` — un utilisateur connecté est renvoyé à l'accueil depuis un écran
 d'authentification, **mais pas depuis `/rejoindre/…`**, qu'il doit pouvoir
 ouvrir. C'est même le cas courant : un membre qui teste son propre lien.
+
+---
+
+## Adhésion temporaire
+
+`group_members.expires_at` existait depuis la tranche 2, et toutes les lectures
+le filtraient déjà. `supabase/tranche6_adhesion_temporaire.sql` apporte de quoi
+**poser** un terme, et de quoi en tirer les conséquences.
+
+### Ce qui se passe tout seul, et ce qui demande une écriture
+
+**C'est la distinction qui commande toute la tranche.** À la seconde où
+`expires_at` est passé :
+
+- le groupe, ses tâches, ses événements et sa conversation **disparaissent
+  déjà** de l'application de l'intéressé, et il ne reçoit **déjà plus** aucune
+  notification du groupe. Rien à écrire : `est_membre_du_groupe` porte la
+  condition, et les rares endroits qui joignent `group_members` directement la
+  portent aussi ;
+- mais **ce qui a été écrit en son nom reste écrit**. Une tâche lui reste
+  assignée, une invitation à un événement lui reste attachée, une notification
+  déjà déposée reste dans sa boîte.
+
+`appliquer_adhesions_echues()` ne fait *que* la seconde moitié. Le battement
+n'est donc pas ce qui fait expirer l'adhésion — elle est déjà expirée — mais ce
+qui range derrière elle : assignations retirées, participations retirées,
+notifications du groupe refermées, file d'envoi purgée, ligne supprimée.
+
+Elle reprend aussi les deux garde-fous de `quitter_groupe` : plus aucun membre
+actif ferme le groupe, plus aucun administrateur promeut le plus ancien.
+
+### Deux `expires_at` qui ne parlent pas de la même chose
+
+`invitations.expires_at` et `group_invite_links.expires_at` disent jusqu'à
+quand **l'invitation** vaut. Le terme de l'adhésion est une autre date, et
+porte donc un autre nom : **`membership_expires_at`**, sur les deux tables. Les
+confondre donnerait une adhésion prenant fin le jour où l'invitation cesse
+d'être acceptable.
+
+Le terme voyage avec l'invitation et ne dépend pas du moment où elle est
+acceptée : « jusqu'au 31 août » vaut jusqu'au 31 août, qu'on accepte le 1er ou
+le 20.
+
+### La suppression de la ligne est la mémoire
+
+Une fois retirée de `group_members`, l'adhésion n'est plus sélectionnée : le
+passage suivant ne la retraite pas. Pas de colonne `traite_le`, pas de table de
+suivi, pas de course entre deux battements — même principe que la clé primaire
+de `push_reminders_sent`. Le contrôle négatif est dans `fumee.sql` : en
+retirant le `delete`, le second passage échoue.
+
+**Conséquence assumée** : une adhésion échue et rangée ne se prolonge plus. Il
+faut réinviter.
+
+### Le battement est celui qui existe déjà
+
+`envoyer-push` appelle `appliquer_adhesions_echues()` dans le **même** passage
+que `empiler_rappels()`, chaque minute. Une seconde planification serait une
+seconde cadence à tenir d'accord — le reproche déjà fait aux deux
+planifications écartées pour les rappels.
+
+L'ordre compte : ranger **avant** de lire la file écarte les notifications
+déposées à quelqu'un dont l'adhésion vient de prendre fin.
+
+### Poser, déplacer, effacer : une seule écriture
+
+`definir_terme_adhesion(groupe, membre, date)` couvre les trois gestes —
+prolonger, écourter, rendre permanent — parce que la base n'en connaît qu'un :
+poser une valeur, ou poser `null`. Trois fonctions diraient trois fois la même
+chose, et la troisième finirait par diverger. Côté écran, une seule entrée de
+menu et une feuille qui montre l'état actuel avant de le changer.
+
+Deux refus valent d'être connus :
+
+- **une date déjà passée est refusée** (`terme_passe`). Écourter jusqu'à hier,
+  c'est retirer quelqu'un du groupe — avec des conséquences que « Retirer du
+  groupe » annonce, confirmation comprise, et que ce chemin-ci n'annoncerait
+  pas ;
+- **le dernier administrateur ne peut pas devenir temporaire**
+  (`dernier_admin`). Ce serait programmer un groupe que personne ne peut plus
+  administrer. Même règle que `retrograder_membre` et `retirer_membre`.
+
+Fixer une durée est réservé aux **administrateurs**, y compris à l'invitation ;
+inviter tout court reste ouvert à tout membre, comme avant.
+
+### Le terme se dit avant d'accepter, pas après
+
+Une adhésion qui s'arrête n'est pas la même offre qu'une adhésion sans fin.
+`apercu_groupe_par_jeton` et `mes_invitations` renvoient donc
+`membership_expires_at`, et les deux écrans l'annoncent au-dessus des boutons.
+
+Cela a coûté **deux `drop function`** : un `returns table` ne gagne pas une
+colonne de sortie par `create or replace`. C'est l'inverse de l'arbitrage rendu
+pour `preset:`, où onze suppressions en production auraient été le prix d'un
+gain nul côté appelant ; ici le gain est pour l'invité, et il n'y a pas
+d'expression à détourner.
+
+`membership_expires_at` n'entre **pas** dans le `grant` de colonnes qui ouvre
+`group_invite_links` à `anon` : la lecture anonyme reste `(token, group_id)`, et
+c'est la fonction d'aperçu qui dit la durée une fois le jeton reconnu.
+
+### Une date choisie vaut toute sa journée
+
+`MembershipTermPicker.finDeJournee` retient 23 h 59. Une adhésion « jusqu'au
+31 août » qui expirerait à minuit s'arrêterait la veille au soir, ce que
+personne n'attend d'une date prise dans un calendrier.
+
+« Sans terme » est **l'état d'ouverture** du sélecteur, et doit le rester : une
+adhésion permanente est le cas courant, une durée est le cas qu'on choisit.
 
 ---
 
@@ -1900,6 +2010,13 @@ compteur vaut zéro.
   contact, l'encodage du QR code, et le « + » contextuel : depuis l'écran d'un
   groupe il n'offre plus d'en créer un, sa feuille ouvre `/creer` déjà réglée
   sur ce groupe, et les deux sections portent leur propre action « Ajouter ».
+  Côté adhésion temporaire : la date de fin lisible sur la ligne du membre —
+  et absente pour un membre permanent —, le réglage depuis le menu qui
+  n'écrit qu'à la confirmation, « Sans terme » qui rend l'adhésion permanente,
+  un refus de la base qui reste dans la feuille au lieu de la refermer, la
+  durée emportée par l'invitation nominative comme par le lien, l'absence de
+  terme quand on n'en choisit pas, et la page publique qui annonce la durée
+  avant d'accepter.
 - `test/notifications_test.dart` couvre la cloche, la répartition des pastilles
   par onglet, leur extinction, la liste et le marquage comme lu.
 - `test/tasks_events_test.dart` couvre les écrans de détail, l'assignation et
@@ -2060,10 +2177,13 @@ sûr d'éprouver son caractère contextuel.
   appelle les fonctions, mais son décor est recopié de cette documentation, et
   ne dit donc rien des colonnes réelles. C'est `supabase/schema_actuel.sql`,
   relevé après coup, qui fait foi.
-- Le test de fumée couvre les tranches 3, 3b, 4, 5a, 5b, 5c et 5d — plus de
+- Le test de fumée couvre les tranches 3, 3b, 4, 5a, 5b, 5c, 5d et 6 — plus de
   trente fonctions réellement appelées, contrôles négatifs de l'accès au
-  bucket et de la mémoire des rappels compris. Les fonctions des tranches 2 et
-  antérieures ne sont éprouvées que par l'usage en production.
+  bucket, de la mémoire des rappels et de celle du rangement des adhésions
+  compris. La tranche 6 y fait entrer `inviter_dans_groupe`,
+  `accepter_invitation`, `rejoindre_groupe_par_jeton` et
+  `apercu_groupe_par_jeton`, qui datent de la tranche 2 : le reste de cette
+  tranche n'est toujours éprouvé que par l'usage en production.
 - **Les disponibilités n'ont pas encore de lecture en dehors de la création
   d'événement.** Le statut d'un contact n'apparaît ni sur sa fiche, ni dans la
   liste des contacts ; c'est la suite naturelle, et elle ne demande aucun SQL
@@ -2076,9 +2196,11 @@ sûr d'éprouver son caractère contextuel.
   Android et iOS n'ont pas pu être compilées ici — `mobile_scanner` embarque du
   natif, et ni le SDK Android ni la chaîne iOS ne sont disponibles dans
   l'environnement de développement utilisé.
-- L'adhésion temporaire n'a pas d'interface : la colonne
-  `group_members.expires_at` existe et **toute lecture filtre déjà les adhésions
-  échues**, mais rien ne permet encore de fixer un terme depuis l'application.
+- **L'adhésion temporaire est complète** — voir sa section. Deux réserves :
+  une adhésion échue et rangée ne se prolonge plus, il faut réinviter ; et
+  personne n'est **prévenu** de l'échéance, ni le membre à l'approche du terme,
+  ni les administrateurs après coup. Un rappel « votre accès s'arrête
+  demain » relèverait de la file de la tranche 5c et n'est pas au périmètre.
 - L'écran `/creer` enregistre désormais pour de bon : événement ou tâche, avec
   choix du groupe — ou « Personnel » — et de la date. Le choix « Groupe »
   redirige vers l'écran de création dédié. Ouvert depuis un groupe, il arrive

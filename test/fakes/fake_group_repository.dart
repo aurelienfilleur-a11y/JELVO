@@ -17,6 +17,7 @@ class FakeGroupRepository implements GroupRepository {
     List<GroupInvitation>? invitations,
     this.previewStatus = InviteLinkStatus.valide,
     this.joinOutcome = JoinOutcome.rejoint,
+    this.previewMembershipExpiresAt,
   }) : _groups = List<Group>.of(groups ?? demoGroups),
        _members = List<GroupMember>.of(members ?? demoMembers),
        _invitations = List<GroupInvitation>.of(
@@ -34,6 +35,10 @@ class FakeGroupRepository implements GroupRepository {
   /// Résultat renvoyé par une adhésion.
   final JoinOutcome joinOutcome;
 
+  /// Terme annoncé par l'aperçu public d'un lien, pour éprouver que la page
+  /// le dit **avant** d'accepter.
+  final DateTime? previewMembershipExpiresAt;
+
   /// Dernier appel reçu, pour les assertions.
   String? lastJoinedToken;
   String? lastLeftGroupId;
@@ -42,6 +47,20 @@ class FakeGroupRepository implements GroupRepository {
   String? lastDemotedUserId;
   String? lastRemovedUserId;
   String? lastInvitedUserId;
+
+  /// Terme réglé sur une adhésion existante. `lastTerm` seul ne suffirait pas
+  /// à distinguer « rendu permanent » de « jamais appelé », les deux valant
+  /// `null` — d'où le drapeau.
+  String? lastTermUserId;
+  DateTime? lastTerm;
+  bool termSet = false;
+
+  /// Mot d'état imposé, pour éprouver un refus de la base.
+  String? termOutcome;
+
+  /// Terme demandé à la dernière invitation, nominative ou par lien.
+  DateTime? lastInvitedTerm;
+  DateTime? lastLinkTerm;
 
   /// Tous les identifiants invités, dans l'ordre : la création d'un groupe en
   /// invite plusieurs d'un coup, et `lastInvitedUserId` n'en garderait qu'un.
@@ -172,6 +191,39 @@ class FakeGroupRepository implements GroupRepository {
   }
 
   @override
+  Future<String> setMembershipTerm({
+    required String groupId,
+    required String userId,
+    required DateTime? expiresAt,
+  }) async {
+    lastTermUserId = userId;
+    lastTerm = expiresAt;
+    termSet = true;
+
+    if (termOutcome != null) return termOutcome!;
+
+    // Le membre est mis à jour pour de bon : la liste se relit après coup, et
+    // un faux dépôt qui ne changerait rien laisserait passer un écran qui
+    // n'affiche pas ce qu'il vient d'enregistrer.
+    final int index = _members.indexWhere(
+      (GroupMember m) => m.userId == userId,
+    );
+    if (index == -1) return 'non_membre';
+    final GroupMember avant = _members[index];
+    _members[index] = GroupMember(
+      userId: avant.userId,
+      role: avant.role,
+      joinedAt: avant.joinedAt,
+      expiresAt: expiresAt,
+      pseudo: avant.pseudo,
+      firstName: avant.firstName,
+      lastName: avant.lastName,
+      avatarUrl: avant.avatarUrl,
+    );
+    return expiresAt == null ? 'terme_retire' : 'terme_defini';
+  }
+
+  @override
   Future<LeaveOutcome> leaveGroup(String groupId) async {
     lastLeftGroupId = groupId;
     _groups.removeWhere((Group g) => g.id == groupId);
@@ -186,13 +238,16 @@ class FakeGroupRepository implements GroupRepository {
   Future<GroupInviteLink> createInviteLink({
     required String groupId,
     int? maxUses,
+    DateTime? membershipExpiresAt,
   }) async {
+    lastLinkTerm = membershipExpiresAt;
     final GroupInviteLink link = GroupInviteLink(
       id: 'l${_links.length + 1}',
       groupId: groupId,
       token: 'jeton-test-${_links.length + 1}',
       expiresAt: DateTime(2030),
       maxUses: maxUses,
+      membershipExpiresAt: membershipExpiresAt,
     );
     _links.add(link);
     return link;
@@ -207,12 +262,13 @@ class FakeGroupRepository implements GroupRepository {
     if (previewStatus != InviteLinkStatus.valide) {
       return GroupInvitePreview(status: previewStatus);
     }
-    return const GroupInvitePreview(
+    return GroupInvitePreview(
       status: InviteLinkStatus.valide,
       groupId: 'g2',
       name: 'Vacances en Corse',
       description: 'Billets, location et programme du séjour',
       memberCount: 4,
+      membershipExpiresAt: previewMembershipExpiresAt,
     );
   }
 
@@ -230,8 +286,10 @@ class FakeGroupRepository implements GroupRepository {
   Future<String> invite({
     required String groupId,
     required String userId,
+    DateTime? membershipExpiresAt,
   }) async {
     lastInvitedUserId = userId;
+    lastInvitedTerm = membershipExpiresAt;
     invitedUserIds.add(userId);
     if (refuseInvitationsPour.contains(userId)) return 'deja_membre';
     return 'invite';

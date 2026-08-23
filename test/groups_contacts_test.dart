@@ -10,6 +10,7 @@ import 'package:jelvo/data/data_providers.dart';
 import 'package:jelvo/features/contacts/providers/contact_providers.dart';
 import 'package:jelvo/features/contacts/widgets/qr_support.dart';
 import 'package:jelvo/features/groups/models/group_invite.dart';
+import 'package:jelvo/features/groups/models/group_member.dart';
 import 'package:jelvo/features/calendar/providers/calendar_providers.dart';
 import 'package:jelvo/features/chat/providers/chat_providers.dart';
 import 'package:jelvo/features/groups/providers/group_providers.dart';
@@ -387,6 +388,205 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(groups.lastJoinedToken, 'jeton-test');
+    });
+  });
+
+  group('Adhésion temporaire', () {
+    /// Léa, membre jusqu'au 20 août — deux semaines après l'horloge figée.
+    FakeGroupRepository avecMembreTemporaire() => FakeGroupRepository(
+      members: <GroupMember>[
+        FakeGroupRepository.demoMembers.first,
+        GroupMember(
+          userId: 'u2',
+          role: GroupRole.member,
+          pseudo: 'lea.marchand',
+          firstName: 'Léa',
+          lastName: 'Marchand',
+          expiresAt: DateTime(2026, 8, 20, 23, 59),
+        ),
+      ],
+    );
+
+    Future<void> ouvrirGroupe(WidgetTester tester) async {
+      await tester.tap(find.text('Groupes'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Famille Rousseau'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('un membre temporaire porte sa date de fin', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester, groupRepository: avecMembreTemporaire());
+      await ouvrirGroupe(tester);
+
+      // La date, et pas seulement une pastille : sans elle, un administrateur
+      // ne sait pas s'il doit prolonger.
+      expect(find.textContaining('Jusqu’au'), findsOneWidget);
+      expect(find.textContaining('20 août'), findsOneWidget);
+    });
+
+    testWidgets('un membre permanent n’affiche aucune date', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester);
+      await ouvrirGroupe(tester);
+
+      expect(find.textContaining('Jusqu’au'), findsNothing);
+    });
+
+    testWidgets('un administrateur prolonge depuis le menu du membre', (
+      WidgetTester tester,
+    ) async {
+      final FakeGroupRepository groups = avecMembreTemporaire();
+      await _pumpApp(tester, groupRepository: groups);
+      await ouvrirGroupe(tester);
+
+      await tester.tap(find.byTooltip('Gérer ce membre').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Modifier la durée de l’adhésion'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Durée de l’adhésion'), findsOneWidget);
+      // Ouvrir la feuille n'écrit rien : c'est « Enregistrer » qui décide.
+      expect(groups.termSet, isFalse);
+
+      await tester.tap(find.text('3 mois'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Enregistrer'));
+      await tester.pumpAndSettle();
+
+      expect(groups.lastTermUserId, 'u2');
+      // 3 novembre : 90 jours après le 3 août, à la fin de la journée.
+      expect(groups.lastTerm, DateTime(2026, 11, 1, 23, 59, 59));
+    });
+
+    testWidgets('« Sans terme » rend l’adhésion permanente', (
+      WidgetTester tester,
+    ) async {
+      final FakeGroupRepository groups = avecMembreTemporaire();
+      await _pumpApp(tester, groupRepository: groups);
+      await ouvrirGroupe(tester);
+
+      await tester.tap(find.byTooltip('Gérer ce membre').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Modifier la durée de l’adhésion'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Sans terme'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Enregistrer'));
+      await tester.pumpAndSettle();
+
+      // `null` seul ne prouverait rien — c'est aussi la valeur de « jamais
+      // appelé ». Le drapeau lève l'ambiguïté.
+      expect(groups.termSet, isTrue);
+      expect(groups.lastTerm, isNull);
+      expect(find.textContaining('n’a plus de terme'), findsOneWidget);
+    });
+
+    testWidgets('un refus de la base reste dans la feuille', (
+      WidgetTester tester,
+    ) async {
+      // Le dernier administrateur ne peut pas devenir temporaire : la feuille
+      // doit le dire sans se refermer, sinon on croit la date posée.
+      final FakeGroupRepository groups = avecMembreTemporaire();
+      groups.termOutcome = 'dernier_admin';
+      await _pumpApp(tester, groupRepository: groups);
+      await ouvrirGroupe(tester);
+
+      await tester.tap(find.byTooltip('Gérer ce membre').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Modifier la durée de l’adhésion'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('1 mois'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Enregistrer'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Enregistrer'), findsOneWidget);
+      expect(find.textContaining('au moins un administrateur'), findsOneWidget);
+    });
+
+    testWidgets('l’invitation nominative emporte la durée choisie', (
+      WidgetTester tester,
+    ) async {
+      final ({FakeContactRepository contacts, FakeGroupRepository groups})
+      fakes = await _pumpApp(tester);
+      await ouvrirGroupe(tester);
+
+      await tester.tap(find.text('Inviter'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Durée de l’adhésion'), findsOneWidget);
+      await tester.tap(find.text('1 semaine'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField).last, 'sarah');
+      // Laisse passer le débounce de la recherche par pseudo.
+      await tester.pumpAndSettle(const Duration(seconds: 1));
+      await tester.tap(find.text('Inviter').last);
+      await tester.pumpAndSettle();
+
+      expect(fakes.groups.lastInvitedTerm, DateTime(2026, 8, 10, 23, 59, 59));
+    });
+
+    testWidgets('sans choix, l’invitation reste permanente', (
+      WidgetTester tester,
+    ) async {
+      // « Sans terme » est l'état d'ouverture : une durée doit se choisir,
+      // jamais s'appliquer par défaut.
+      final ({FakeContactRepository contacts, FakeGroupRepository groups})
+      fakes = await _pumpApp(tester);
+      await ouvrirGroupe(tester);
+
+      await tester.tap(find.text('Inviter'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).last, 'sarah');
+      // Laisse passer le débounce de la recherche par pseudo.
+      await tester.pumpAndSettle(const Duration(seconds: 1));
+      await tester.tap(find.text('Inviter').last);
+      await tester.pumpAndSettle();
+
+      expect(fakes.groups.lastInvitedUserId, isNotNull);
+      expect(fakes.groups.lastInvitedTerm, isNull);
+    });
+
+    testWidgets('le lien généré emporte la durée et l’affiche', (
+      WidgetTester tester,
+    ) async {
+      final ({FakeContactRepository contacts, FakeGroupRepository groups})
+      fakes = await _pumpApp(tester);
+      await ouvrirGroupe(tester);
+
+      await tester.tap(find.text('Partager un lien'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('1 semaine'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Générer un lien'));
+      await tester.pumpAndSettle();
+
+      expect(fakes.groups.lastLinkTerm, DateTime(2026, 8, 10, 23, 59, 59));
+      // Deux dates coexistent sur la carte : celle du lien et celle de
+      // l'adhésion. C'est la seconde qu'on éprouve.
+      expect(find.textContaining('Adhésion jusqu’au'), findsWidgets);
+    });
+
+    testWidgets('la page publique annonce la durée avant d’accepter', (
+      WidgetTester tester,
+    ) async {
+      await _pumpJoinScreen(
+        tester,
+        groups: FakeGroupRepository(
+          previewMembershipExpiresAt: DateTime(2026, 8, 20, 23, 59),
+        ),
+      );
+
+      expect(find.textContaining('Adhésion temporaire'), findsOneWidget);
+      expect(find.textContaining('20 août 2026'), findsOneWidget);
+      // Le bouton reste : l'adhésion est temporaire, pas refusée.
+      expect(find.text('Rejoindre le groupe'), findsOneWidget);
     });
   });
 

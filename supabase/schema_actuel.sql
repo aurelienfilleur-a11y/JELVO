@@ -82,6 +82,7 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 --   uses_count           integer                      NOT NULL, défaut 0
 --   revoked_at           timestamp with time zone     
 --   created_at           timestamp with time zone     NOT NULL, défaut now()
+--   membership_expires_at timestamp with time zone     
 
 -- group_members [RLS activée]
 --   group_id             uuid                         NOT NULL, sans défaut
@@ -111,6 +112,7 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 --   status               invitation_status            NOT NULL, défaut 'pending'::invitation_status
 --   created_at           timestamp with time zone     NOT NULL, défaut now()
 --   expires_at           timestamp with time zone     NOT NULL, défaut (now() + '30 days'::interval)
+--   membership_expires_at timestamp with time zone     
 
 -- message_reactions [RLS activée]
 --   message_id           uuid                         NOT NULL, sans défaut
@@ -464,7 +466,8 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 -- accepter_invitation(p_invitation_id uuid) → text   [security definer, postgres]
 -- add_creator_as_admin() → trigger   [security definer, postgres]
 -- ajouter_article(p_task_id uuid, p_label text) → uuid   [security definer, postgres]
--- apercu_groupe_par_jeton(jeton text) → TABLE(statut text, group_id uuid, nom text, description text, photo_url text, nombre_membres integer)   [security definer, postgres]
+-- apercu_groupe_par_jeton(jeton text) → TABLE(statut text, group_id uuid, nom text, description text, photo_url text, nombre_membres integer, membership_expires_at timestamp with time zone)   [security definer, postgres]
+-- appliquer_adhesions_echues() → integer   [security definer, postgres]
 -- articles_de_tache(p_task_id uuid) → TABLE(id uuid, label text, "position" integer, checked_at timestamp with time zone, checked_by uuid, coche_par text)   [security definer, postgres]
 -- chercher_profils_par_pseudo(terme text) → TABLE(id uuid, pseudo text, first_name text, last_name text, avatar_url text)   [security definer, postgres]
 -- clore_notification_contact() → trigger   [security definer, postgres]
@@ -478,6 +481,7 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 -- definir_assignes_tache(p_task_id uuid, p_assignees uuid[]) → integer   [security definer, postgres]
 -- definir_disponibilite(p_kind text, p_start time without time zone, p_end time without time zone, p_status text DEFAULT 'available'::text, p_weekday integer DEFAULT NULL::integer, p_on_date date DEFAULT NULL::date, p_id uuid DEFAULT NULL::uuid) → availabilities   [security definer, postgres]
 -- definir_preference_notification(p_type text, p_enabled boolean) → boolean   [security definer, postgres]
+-- definir_terme_adhesion(p_group_id uuid, p_user_id uuid, p_expires_at timestamp with time zone) → text   [security definer, postgres]
 -- email_pour_pseudo(pseudo_recherche text) → text   [security definer, postgres]
 -- empiler_push(p_user_id uuid, p_type text, p_title text, p_body text, p_url text DEFAULT NULL::text) → boolean   [security definer, postgres]
 -- empiler_rappels(p_fenetre interval DEFAULT '00:10:00'::interval) → integer   [security definer, postgres]
@@ -488,7 +492,7 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 -- get_availability_status(target uuid, at_ts timestamp with time zone) → text   [security definer, postgres]
 -- groupe_du_chemin(p_name text) → uuid   [security invoker, postgres]
 -- has_social_link(other uuid) → boolean   [security definer, postgres]
--- inviter_dans_groupe(p_group_id uuid, p_invitee uuid) → text   [security definer, postgres]
+-- inviter_dans_groupe(p_group_id uuid, p_invitee uuid, p_membership_expires_at timestamp with time zone DEFAULT NULL::timestamp with time zone) → text   [security definer, postgres]
 -- is_group_admin(gid uuid) → boolean   [security definer, postgres]
 -- is_group_member(gid uuid) → boolean   [security definer, postgres]
 -- marquer_lu(p_group_id uuid, p_jusqua timestamp with time zone DEFAULT NULL::timestamp with time zone) → timestamp with time zone   [security definer, postgres]
@@ -496,7 +500,7 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 -- membres_du_groupe(p_group_id uuid) → TABLE(user_id uuid, role text, joined_at timestamp with time zone, expires_at timestamp with time zone, pseudo text, first_name text, last_name text, avatar_url text)   [security definer, postgres]
 -- mes_contacts() → TABLE(autre_id uuid, pseudo text, first_name text, last_name text, avatar_url text, statut text, sens text, favori boolean, created_at timestamp with time zone)   [security definer, postgres]
 -- mes_disponibilites() → TABLE(id uuid, kind text, weekday integer, on_date date, start_time time without time zone, end_time time without time zone, status text, created_at timestamp with time zone)   [security definer, postgres]
--- mes_invitations() → TABLE(id uuid, group_id uuid, nom text, description text, photo_url text, nombre_membres integer, membres_apercu text[], emetteur text, emetteur_avatar text, statut text, created_at timestamp with time zone, expires_at timestamp with time zone)   [security definer, postgres]
+-- mes_invitations() → TABLE(id uuid, group_id uuid, nom text, description text, photo_url text, nombre_membres integer, membres_apercu text[], emetteur text, emetteur_avatar text, statut text, created_at timestamp with time zone, expires_at timestamp with time zone, membership_expires_at timestamp with time zone)   [security definer, postgres]
 -- mes_preferences_notification() → TABLE(type text, libelle text, description text, enabled boolean)   [security definer, postgres]
 -- mes_taches(p_group_id uuid DEFAULT NULL::uuid) → TABLE(id uuid, group_id uuid, created_by uuid, title text, description text, due_at timestamp with time zone, priority text, reminder_at timestamp with time zone, rrule text, completed_at timestamp with time zone, created_at timestamp with time zone, mon_statut text, assignes jsonb, articles integer, articles_coches integer)   [security definer, postgres]
 -- messages_du_groupe(p_group_id uuid, p_avant timestamp with time zone DEFAULT NULL::timestamp with time zone, p_limite integer DEFAULT 50) → TABLE(id uuid, group_id uuid, sender_id uuid, content text, media_url text, media_kind text, created_at timestamp with time zone, deleted_at timestamp with time zone, pseudo text, first_name text, last_name text, avatar_url text, reactions jsonb, lu_par integer)   [security definer, postgres]

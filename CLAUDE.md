@@ -2047,6 +2047,11 @@ sûr d'éprouver son caractère contextuel.
      pas inscriptible : voir « L'application GitHub Actions ne peut pas être
      contournée ici ».
 
+     **Posé et constaté** le 23 août 2026 : le commit `ee268eb`, « Relève le
+     schéma réel de la base », est la première publication d'instantané à
+     avoir atteint `main`. Le prérequis reste listé parce qu'il ne tient qu'à
+     ces deux réglages — le jeton expire, et le rôle se retire d'un clic.
+
   Les migrations, elles, s'appliquent seules à chaque push sur `main`.
 - **Une migration n'est éprouvée contre la vraie base qu'après fusion.** Le
   workflow qui l'applique ne peut pas tourner sur une pull request — le dépôt

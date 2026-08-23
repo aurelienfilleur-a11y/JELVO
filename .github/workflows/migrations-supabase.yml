@@ -40,8 +40,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Le jeton personnel, quand il existe, remplace `GITHUB_TOKEN` dans les
+      # identifiants que `checkout` persiste — c'est donc lui qui poussera
+      # l'instantané, plus bas.
+      #
+      # Ce n'est pas une préférence : sur un dépôt de **compte personnel**,
+      # une application ne peut pas figurer dans la Bypass list du ruleset
+      # (« Actor GitHub Actions integration must be part of the ruleset source
+      # or owner organization »). Le seul acteur inscriptible est le **rôle**
+      # d'administrateur, et un rôle désigne une personne : la poussée doit
+      # donc être faite au nom d'un administrateur, pas d'un automate.
+      #
+      # Sans le secret, on retombe sur `GITHUB_TOKEN` et le comportement
+      # d'avant : les migrations s'appliquent, seul l'instantané est refusé.
       - name: Récupérer le dépôt
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.JETON_POUSSEE_SCHEMA || github.token }}
 
       - name: Installer psql au besoin
         run: |
@@ -129,18 +144,31 @@ jobs:
       # fusion et n'a donc aucune vérification à présenter. GitHub répond
       # `GH013` et refuse.
       #
-      # Le remède ne se code pas : il faut ajouter `github-actions` à la liste
-      # de contournement de la règle (Settings → Rules → la règle de `main` →
-      # « Bypass list »). Le message ci-dessous le dit en toutes lettres,
-      # parce que l'échec brut désigne le mauvais coupable : il ressemble à
-      # une migration ratée alors que les migrations, elles, sont passées.
+      # Le remède est en deux moitiés, et **aucune ne suffit seule** :
+      #
+      #   1. le rôle `RepositoryRole` #5 — administrateur — dans la Bypass
+      #      list du ruleset (l'application GitHub Actions n'y est pas
+      #      inscriptible sur un dépôt personnel) ;
+      #   2. le secret `JETON_POUSSEE_SCHEMA`, jeton personnel d'un
+      #      administrateur, sans quoi la poussée est faite par
+      #      `github-actions[bot]`, qui n'a pas ce rôle.
+      #
+      # Le message ci-dessous nomme les deux, parce que l'échec brut désigne
+      # le mauvais coupable : il ressemble à une migration ratée alors que les
+      # migrations, elles, sont passées.
       - name: Publier l'instantané du schéma
         id: instantane
+        env:
+          JETON_PERSONNEL: ${{ secrets.JETON_POUSSEE_SCHEMA }}
         run: |
           if git diff --quiet -- supabase/schema_actuel.sql; then
             echo "Schéma inchangé, rien à commiter."
             exit 0
           fi
+
+          # `[skip ci]` évite la boucle, et il compte doublement ici : une
+          # poussée faite avec un jeton personnel **déclenche** les workflows,
+          # là où celle de `GITHUB_TOKEN` n'en déclenche aucun.
           git config user.name  'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add supabase/schema_actuel.sql
@@ -153,7 +181,11 @@ jobs:
 
           cat push.log
           echo "refuse=1" >> "$GITHUB_OUTPUT"
-          echo "::error title=Instantané non publié::Les migrations SONT appliquées ; seul le relevé du schéma n'a pas pu être poussé sur main, la règle de protection refusant toute poussée directe. Remède : ajouter github-actions à la liste de contournement de la règle (Settings, Rules, main, Bypass list). En attendant, le relevé est en pièce jointe de ce job, sous le nom schema_actuel."
+          if [ -z "${JETON_PERSONNEL:-}" ]; then
+            echo "::error title=Instantané non publié — jeton absent::Les migrations SONT appliquées ; seul le relevé du schéma n'a pas pu être poussé sur main. Le secret JETON_POUSSEE_SCHEMA n'est pas défini : la poussée a donc été faite par github-actions[bot], qui n'a pas le rôle d'administrateur et ne peut pas contourner le ruleset. Le relevé est en pièce jointe de ce job, sous le nom schema_actuel."
+          else
+            echo "::error title=Instantané non publié — contournement absent ou jeton expiré::Les migrations SONT appliquées ; seul le relevé du schéma n'a pas pu être poussé sur main. Vérifiez que le rôle RepositoryRole #5 (administrateur) figure dans la Bypass list du ruleset, et que JETON_POUSSEE_SCHEMA appartient bien à un administrateur du dépôt et n'a pas expiré. Le relevé est en pièce jointe de ce job, sous le nom schema_actuel."
+          fi
           exit 1
 
       - name: Résumé
@@ -178,8 +210,10 @@ jobs:
               echo '> la publication de `supabase/schema_actuel.sql` sur `main` :'
               echo '> la règle de protection refuse toute poussée directe.'
               echo '>'
-              echo '> Remède, une fois pour toutes : ajouter `github-actions` à'
-              echo '> la liste de contournement de la règle.'
+              echo '> Remède, en **deux** moitiés dont aucune ne suffit seule :'
+              echo '> le rôle `RepositoryRole` #5 dans la Bypass list du ruleset,'
+              echo '> et le secret `JETON_POUSSEE_SCHEMA` — jeton personnel d’un'
+              echo '> administrateur, permission Contents en écriture.'
               echo '>'
               echo '> Le relevé est en pièce jointe de ce job (`schema_actuel`).'
             else

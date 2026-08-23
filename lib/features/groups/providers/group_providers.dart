@@ -201,6 +201,23 @@ class GroupActions {
     () => _repository.demoteToMember(groupId: groupId, userId: userId),
   );
 
+  /// Prolonge, écourte, ou rend permanente une adhésion.
+  ///
+  /// [expiresAt] à `null` retire le terme. Une seule méthode pour les trois
+  /// gestes, parce que la base n'en connaît qu'un : poser une valeur.
+  Future<MemberOutcome> setMembershipTerm({
+    required String groupId,
+    required String userId,
+    required DateTime? expiresAt,
+  }) => _administrer(
+    groupId,
+    () => _repository.setMembershipTerm(
+      groupId: groupId,
+      userId: userId,
+      expiresAt: expiresAt,
+    ),
+  );
+
   /// Rafraîchit la liste des membres, et le groupe lui-même : mon propre rôle
   /// a pu changer, et avec lui l'accès aux actions d'administration.
   Future<MemberOutcome> _administrer(
@@ -225,10 +242,12 @@ class GroupActions {
   Future<GroupInviteLink> createInviteLink({
     required String groupId,
     int? maxUses,
+    DateTime? membershipExpiresAt,
   }) async {
     final GroupInviteLink link = await _repository.createInviteLink(
       groupId: groupId,
       maxUses: maxUses,
+      membershipExpiresAt: membershipExpiresAt,
     );
     _ref.invalidate(groupInviteLinksProvider(groupId));
     return link;
@@ -260,8 +279,15 @@ class GroupActions {
     return joinByToken(token);
   }
 
-  Future<String> invite({required String groupId, required String userId}) =>
-      _repository.invite(groupId: groupId, userId: userId);
+  Future<String> invite({
+    required String groupId,
+    required String userId,
+    DateTime? membershipExpiresAt,
+  }) => _repository.invite(
+    groupId: groupId,
+    userId: userId,
+    membershipExpiresAt: membershipExpiresAt,
+  );
 
   /// Invite plusieurs personnes, et renvoie **combien n'ont pas reçu leur
   /// invitation**.
@@ -274,11 +300,16 @@ class GroupActions {
   Future<int> inviteAll({
     required String groupId,
     required Iterable<String> userIds,
+    DateTime? membershipExpiresAt,
   }) async {
     int echecs = 0;
     for (final String userId in userIds) {
       try {
-        final String issue = await invite(groupId: groupId, userId: userId);
+        final String issue = await invite(
+          groupId: groupId,
+          userId: userId,
+          membershipExpiresAt: membershipExpiresAt,
+        );
         if (issue != 'invite') echecs++;
       } catch (_) {
         echecs++;

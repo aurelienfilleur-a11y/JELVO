@@ -214,6 +214,23 @@ async function passage(
     console.error('empiler_rappels :', erreurRappels.message);
   }
 
+  // Les adhésions temporaires arrivées à terme, dans le **même** passage.
+  //
+  // Une base ne se réveille pas toute seule, et une seconde planification
+  // serait une seconde cadence à tenir d'accord — le reproche fait aux deux
+  // planifications qu'on avait écartées pour les rappels. Ce battement-ci
+  // existe déjà, il tourne chaque minute, il suffit.
+  //
+  // L'ordre a son importance : ranger **avant** de lire la file écarte les
+  // notifications déposées à quelqu'un dont l'adhésion vient de prendre fin.
+  // Ranger après les aurait laissées partir une dernière fois.
+  const { data: adhesions, error: erreurAdhesions } = await supabase.rpc(
+    'appliquer_adhesions_echues',
+  );
+  if (erreurAdhesions) {
+    console.error('appliquer_adhesions_echues :', erreurAdhesions.message);
+  }
+
   const { data, error } = await supabase.rpc('push_a_envoyer', {
     p_limite: LOT,
   });
@@ -249,6 +266,7 @@ async function passage(
   // combien de temps il a pris.
   console.log(JSON.stringify({
     rappels: erreurRappels ? null : (rappels ?? 0),
+    adhesions_echues: erreurAdhesions ? null : (adhesions ?? 0),
     lues: lignes.length,
     envoyes,
     echecs,

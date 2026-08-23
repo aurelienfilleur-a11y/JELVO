@@ -16,6 +16,7 @@ class MemberTile extends StatelessWidget {
     this.onPromote,
     this.onDemote,
     this.onRemove,
+    this.onEditTerm,
   });
 
   final GroupMember member;
@@ -28,6 +29,9 @@ class MemberTile extends StatelessWidget {
   final VoidCallback? onDemote;
 
   final VoidCallback? onRemove;
+
+  /// Régler la durée de l'adhésion : la poser, la déplacer, ou l'effacer.
+  final VoidCallback? onEditTerm;
 
   bool get _showMenu => canManage && !isMe;
 
@@ -68,6 +72,32 @@ class MemberTile extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
+                // La date, pas seulement la pastille : « temporaire » sans
+                // terme n'apprend rien à qui décide de prolonger ou non.
+                if (member.isTemporary) ...<Widget>[
+                  const SizedBox(height: 2),
+                  Row(
+                    children: <Widget>[
+                      const Icon(
+                        Icons.schedule_rounded,
+                        size: 13,
+                        color: AppColors.warning,
+                      ),
+                      AppSpacing.hGapXs,
+                      Flexible(
+                        child: Text(
+                          'Jusqu’au ${AppDates.shortDate(member.expiresAt!)}',
+                          style: AppTypography.caption.copyWith(
+                            color: AppColors.warning,
+                            fontWeight: AppTypography.semiBold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -93,6 +123,7 @@ class MemberTile extends StatelessWidget {
                 _MemberAction.promote => onPromote?.call(),
                 _MemberAction.demote => onDemote?.call(),
                 _MemberAction.remove => onRemove?.call(),
+                _MemberAction.term => onEditTerm?.call(),
               },
               itemBuilder: (BuildContext context) =>
                   <PopupMenuEntry<_MemberAction>>[
@@ -106,6 +137,17 @@ class MemberTile extends StatelessWidget {
                         value: _MemberAction.promote,
                         child: Text('Nommer administrateur'),
                       ),
+                    // Une seule entrée pour prolonger, écourter et rendre
+                    // permanent : c'est la même écriture, et la feuille
+                    // montre l'état actuel avant de le changer.
+                    PopupMenuItem<_MemberAction>(
+                      value: _MemberAction.term,
+                      child: Text(
+                        member.isTemporary
+                            ? 'Modifier la durée de l’adhésion'
+                            : 'Rendre l’adhésion temporaire',
+                      ),
+                    ),
                     const PopupMenuItem<_MemberAction>(
                       value: _MemberAction.remove,
                       child: Text('Retirer du groupe'),
@@ -118,4 +160,4 @@ class MemberTile extends StatelessWidget {
   }
 }
 
-enum _MemberAction { promote, demote, remove }
+enum _MemberAction { promote, demote, term, remove }

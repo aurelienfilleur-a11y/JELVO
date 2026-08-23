@@ -39,3 +39,4 @@ tranche5a_chat.sql
 tranche5b_medias_chat.sql
 tranche5c_notifications_push.sql
 tranche5d_rappels.sql
+tranche6_adhesion_temporaire.sql

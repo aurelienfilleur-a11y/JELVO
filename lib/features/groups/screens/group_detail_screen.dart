@@ -24,6 +24,8 @@ import '../providers/group_providers.dart';
 import '../widgets/group_banner.dart';
 import '../widgets/invite_link_sheet.dart';
 import '../widgets/member_tile.dart';
+import '../widgets/membership_term_picker.dart';
+import '../widgets/membership_term_sheet.dart';
 
 /// Écran d'un groupe : bandeau photo, description, membres et actions.
 ///
@@ -249,6 +251,12 @@ class _GroupView extends ConsumerWidget {
                         a.demote(groupId: group.id, userId: member.userId),
                   ),
                   onRemove: () => _confirmRemove(context, ref, member),
+                  onEditTerm: () => showModalBottomSheet<void>(
+                    context: context,
+                    isScrollControlled: true,
+                    builder: (_) =>
+                        MembershipTermSheet(groupId: group.id, member: member),
+                  ),
                 );
               },
             ),
@@ -649,6 +657,9 @@ class _InviteMemberSheetState extends ConsumerState<_InviteMemberSheet> {
   String _term = '';
   String? _message;
 
+  /// Terme de l'adhésion proposée ; `null` = permanente, et c'est le défaut.
+  DateTime? _terme;
+
   @override
   void dispose() {
     _controller.dispose();
@@ -675,6 +686,22 @@ class _InviteMemberSheetState extends ConsumerState<_InviteMemberSheet> {
             'à accepter.',
             style: AppTypography.bodyMuted,
           ),
+
+          // Fixer une durée relève de l'administration du groupe, et la base
+          // le refuse à quiconque n'est pas admin : autant ne pas proposer un
+          // réglage qui serait rejeté.
+          if (widget.group.isAdmin) ...<Widget>[
+            AppSpacing.gapXl,
+            MembershipTermPicker(
+              now: ref.watch(nowProvider),
+              value: _terme,
+              onChanged: (DateTime? valeur) => setState(() {
+                _terme = valeur;
+                _message = null;
+              }),
+            ),
+          ],
+
           AppSpacing.gapXl,
           AppTextField(
             controller: _controller,
@@ -702,13 +729,24 @@ class _InviteMemberSheetState extends ConsumerState<_InviteMemberSheet> {
     try {
       final String outcome = await ref
           .read(groupActionsProvider)
-          .invite(groupId: widget.group.id, userId: userId);
+          .invite(
+            groupId: widget.group.id,
+            userId: userId,
+            membershipExpiresAt: _terme,
+          );
       if (!mounted) return;
+      final DateTime? terme = _terme;
       setState(() {
         _message = switch (outcome) {
+          'invite' when terme != null =>
+            '$name a reçu votre invitation, jusqu’au '
+                '${AppDates.shortDate(terme)}.',
           'invite' => '$name a reçu votre invitation.',
           'deja_membre' => '$name fait déjà partie du groupe.',
           'deja_invite' => '$name a déjà une invitation en attente.',
+          'terme_passe' => 'La date de fin choisie est déjà passée.',
+          'non_admin' =>
+            'Seul un administrateur peut fixer une durée d’adhésion.',
           _ => 'Seuls les membres du groupe peuvent inviter.',
         };
       });

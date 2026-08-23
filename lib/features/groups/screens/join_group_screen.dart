@@ -105,6 +105,40 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
                 Text(preview.description!, style: AppTypography.bodyMuted),
               ],
 
+              // Une adhésion qui s'arrête n'est pas la même offre qu'une
+              // adhésion sans fin : elle se dit **avant** d'accepter, pas
+              // après.
+              if (preview.membershipExpiresAt != null) ...<Widget>[
+                AppSpacing.gapMd,
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  decoration: BoxDecoration(
+                    color: AppColors.warningSoft,
+                    borderRadius: AppRadii.fieldRadius,
+                  ),
+                  child: Row(
+                    children: <Widget>[
+                      const Icon(
+                        Icons.schedule_rounded,
+                        size: 18,
+                        color: AppColors.warning,
+                      ),
+                      AppSpacing.hGapSm,
+                      Expanded(
+                        child: Text(
+                          'Adhésion temporaire : vous ferez partie du groupe '
+                          'jusqu’au '
+                          '${AppDates.fullDate(preview.membershipExpiresAt!)}.',
+                          style: AppTypography.caption.copyWith(
+                            color: AppColors.midnight,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
               if (_resultMessage != null) ...<Widget>[
                 AppSpacing.gapLg,
                 Container(

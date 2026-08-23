@@ -747,4 +747,193 @@ begin
 end;
 $rappels$;
 
+
+-- ---------------------------------------------------------------------------
+-- Adhésion temporaire (tranche 6).
+--
+-- Le rôle courant est `postgres` : `appliquer_adhesions_echues` est réservée
+-- au rôle de service, et les appels côté application posent leur propre
+-- `role authenticated` le temps qu'il faut.
+-- ---------------------------------------------------------------------------
+
+do $temporaire$
+declare
+  camille   uuid := '11111111-1111-1111-1111-111111111111'::uuid;
+  lea       uuid := '33333333-3333-3333-3333-333333333333'::uuid;
+  groupe    uuid := '22222222-2222-2222-2222-222222222222'::uuid;
+  passager  uuid := '44444444-4444-4444-4444-444444444444'::uuid;
+  autre     uuid := '55555555-5555-5555-5555-555555555555'::uuid;
+  tache     uuid;
+  evenement uuid;
+  invit     uuid;
+  jeton     text := 'fumee-jeton-temporaire';
+begin
+  insert into auth.users (id, email) values
+    (passager, 'passager@exemple.test'),
+    (autre,    'autre2@exemple.test');
+  insert into public.profiles (id, pseudo, first_name, last_name) values
+    (passager, 'passager', 'Noé',  'Berger'),
+    (autre,    'autre2',   'Zoé',  'Perrin');
+
+  -- 1. Inviter avec un terme, accepter, et vérifier que le terme a suivi ----
+  perform set_config('request.jwt.claims',
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}',
+    true);
+  set local role authenticated;
+
+  assert public.inviter_dans_groupe(
+           groupe, passager, now() + interval '7 days') = 'invite',
+         'l''invitation à durée n''est pas partie';
+
+  -- Un terme déjà passé donnerait une adhésion morte-née.
+  assert public.inviter_dans_groupe(
+           groupe, autre, now() - interval '1 day') = 'terme_passe',
+         'un terme déjà passé aurait dû être refusé';
+
+  select id into invit from public.invitations
+   where invitee_id = passager and group_id = groupe;
+
+  perform set_config('request.jwt.claims',
+    '{"sub":"44444444-4444-4444-4444-444444444444","role":"authenticated"}',
+    true);
+  assert public.accepter_invitation(invit) = 'rejoint',
+         'l''invitation à durée n''a pas pu être acceptée';
+  reset role;
+
+  assert (select expires_at is not null from public.group_members
+           where group_id = groupe and user_id = passager),
+         'le terme de l''invitation n''a pas été recopié sur l''adhésion';
+
+  -- 2. Le même terme par lien ----------------------------------------------
+  insert into public.group_invite_links
+    (group_id, created_by, token, membership_expires_at)
+  values (groupe, camille, jeton, now() + interval '7 days');
+
+  perform set_config('request.jwt.claims',
+    '{"sub":"55555555-5555-5555-5555-555555555555","role":"authenticated"}',
+    true);
+  set local role authenticated;
+  assert public.rejoindre_groupe_par_jeton(jeton) = 'rejoint',
+         'le lien à durée n''a pas fait adhérer';
+  reset role;
+
+  assert (select expires_at is not null from public.group_members
+           where group_id = groupe and user_id = autre),
+         'le terme du lien n''a pas été recopié sur l''adhésion';
+
+  -- L'aperçu doit annoncer la durée : c'est ce que verra quelqu'un qui n'a
+  -- pas encore de compte.
+  assert (select membership_expires_at is not null
+            from public.apercu_groupe_par_jeton(jeton)),
+         'l''aperçu du lien ne dit pas que l''adhésion est temporaire';
+
+  -- 3. Régler le terme d'une adhésion existante -----------------------------
+  perform set_config('request.jwt.claims',
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}',
+    true);
+  set local role authenticated;
+
+  assert public.definir_terme_adhesion(
+           groupe, lea, now() + interval '30 days') = 'terme_defini',
+         'poser un terme sur un membre permanent a échoué';
+  assert public.definir_terme_adhesion(
+           groupe, lea, null) = 'terme_retire',
+         'rendre l''adhésion permanente a échoué';
+  assert public.definir_terme_adhesion(groupe, lea, null) = 'inchange',
+         'reposer la même valeur devrait être annoncé comme sans effet';
+  assert public.definir_terme_adhesion(
+           groupe, lea, now() - interval '1 day') = 'terme_passe',
+         'écourter jusqu''à une date passée doit être refusé';
+
+  -- **Contrôle négatif du dernier administrateur.** Camille est seule admin :
+  -- lui poser un terme programmerait un groupe que personne ne peut plus
+  -- administrer.
+  assert public.definir_terme_adhesion(
+           groupe, camille, now() + interval '3 days') = 'dernier_admin',
+         'le dernier administrateur ne doit pas pouvoir devenir temporaire';
+
+  -- Un membre ordinaire ne règle pas les durées.
+  perform set_config('request.jwt.claims',
+    '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}',
+    true);
+  assert public.definir_terme_adhesion(
+           groupe, passager, null) = 'non_admin',
+         'un membre non administrateur a pu régler un terme';
+  reset role;
+
+  -- 4. Ce que l'échéance range derrière elle --------------------------------
+  insert into public.tasks (group_id, created_by, title)
+  values (groupe, camille, 'Fumée — tâche du passager')
+  returning id into tache;
+  insert into public.task_assignees (task_id, user_id, status)
+  values (tache, passager, 'accepted'::assignee_status);
+
+  insert into public.events (group_id, owner_id, title, starts_at)
+  values (groupe, passager, 'Fumée — événement du passager',
+          now() + interval '2 days')
+  returning id into evenement;
+  insert into public.event_participants (event_id, user_id, response)
+  values (evenement, passager, 'yes'::event_response)
+  on conflict do nothing;
+
+  insert into public.notifications (user_id, type, payload)
+  values (passager, 'group_invitation',
+          jsonb_build_object('group_id', groupe));
+
+  -- L'échéance elle-même : la ligne est antidatée, comme le ferait le temps.
+  update public.group_members
+     set expires_at = now() - interval '1 minute'
+   where group_id = groupe and user_id = passager;
+
+  -- Avant le battement, le groupe a **déjà** disparu pour lui : c'est la
+  -- lecture qui filtre, pas le rangement.
+  assert not public.est_membre_du_groupe(groupe, passager),
+         'une adhésion échue devrait cesser de compter sans attendre';
+
+  assert public.appliquer_adhesions_echues() >= 1,
+         'aucune adhésion échue n''a été rangée';
+
+  assert not exists (select 1 from public.task_assignees
+                      where task_id = tache and user_id = passager),
+         'la tâche est restée assignée à quelqu''un qui n''est plus là';
+  assert not exists (select 1 from public.event_participants
+                      where event_id = evenement and user_id = passager),
+         'il reste convié à un événement du groupe';
+  -- Aucune n'est restée ouverte, et non « celle-ci est fermée » : le
+  -- déclencheur d'invitation en a déposé une de son côté, et une pastille
+  -- allumée sur un groupe qu'on ne peut plus ouvrir est un cul-de-sac quelle
+  -- que soit son origine.
+  assert not exists (select 1 from public.notifications
+                      where user_id = passager
+                        and read_at is null
+                        and payload ->> 'group_id' = groupe::text),
+         'une notification du groupe est restée ouverte';
+  assert not exists (select 1 from public.group_members
+                      where group_id = groupe and user_id = passager),
+         'l''adhésion échue n''a pas été retirée';
+
+  -- L'événement qu'il avait créé **reste**, avec son propriétaire : il a été
+  -- organisé pour les autres, et un administrateur peut le supprimer.
+  assert (select deleted_at is null and owner_id = passager
+            from public.events where id = evenement),
+         'l''événement créé par le partant a disparu ou changé de main';
+
+  -- **Contrôle négatif de l'idempotence.** La suppression de la ligne est la
+  -- seule mémoire : un second passage ne doit rien retrouver.
+  assert public.appliquer_adhesions_echues() = 0,
+         'un second passage a retraité la même adhésion';
+
+  -- 5. Un administrateur peut supprimer l'événement du partant --------------
+  perform set_config('request.jwt.claims',
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}',
+    true);
+  set local role authenticated;
+  assert public.supprimer_evenement(evenement),
+         'un administrateur ne peut pas supprimer l''événement du partant';
+  reset role;
+
+  raise notice 'Fumée : l''adhésion temporaire de la tranche 6 répond.';
+end;
+$temporaire$;
+
 rollback;

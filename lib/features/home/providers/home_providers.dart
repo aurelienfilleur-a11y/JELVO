@@ -9,25 +9,48 @@ import '../../tasks/providers/task_providers.dart';
 import '../widgets/tasks_card.dart';
 import '../widgets/week_overview.dart';
 
-/// La journée en cours pour la carte « Mon agenda » : **les événements
-/// seuls**.
+/// La journée en cours pour la carte « Mon agenda » : événements **et** tâches
+/// datées, mêlés dans l'ordre des heures.
 ///
-/// `dayAgendaProvider` mêle aussi les tâches datées et les créneaux de
-/// disponibilité, ce qui a du sens au calendrier — une journée s'y lit d'un
-/// bloc. Sur l'accueil, non : les tâches ont leur propre carte juste dessous,
-/// et une tâche affichée aux deux endroits se lit deux fois. Les créneaux, eux,
-/// décrivent le fond de la journée et n'ont pas leur place dans un résumé.
+/// C'est le but premier de la carte — voir sa journée d'un coup d'œil —, et
+/// une chronologie qui tairait les tâches ne la montrerait qu'à moitié. La
+/// même liste alimente le calendrier, où la journée se lit déjà d'un bloc.
+///
+/// **Les créneaux de disponibilité en restent écartés** : ils ne décrivent pas
+/// ce qui arrive mais ce qui se peut, et ils occuperaient la moitié d'une
+/// carte qui doit tenir en trois lignes.
 final Provider<List<AgendaEntry>> todayAgendaProvider =
     Provider<List<AgendaEntry>>((Ref ref) {
       return ref
           .watch(dayAgendaProvider(ref.watch(nowProvider)))
-          .where(
-            (AgendaEntry e) =>
-                e.kind == AgendaEntryKind.groupEvent ||
-                e.kind == AgendaEntryKind.personalEvent,
-          )
+          .where((AgendaEntry e) => e.kind != AgendaEntryKind.availability)
           .toList();
     });
+
+/// Les tâches à lister **sous** les compteurs, une fois retirées celles que la
+/// chronologie montre déjà.
+///
+/// La répétition entre les deux cartes est assumée dans son principe : les
+/// compteurs ne bougent pas, et « en retard » continue de compter une tâche
+/// affichée plus haut. Ce qui est retiré, c'est seulement la **ligne** en
+/// double, à quelques centimètres de la première.
+///
+/// Le filtre passe par l'identifiant, et non par le titre : deux tâches
+/// peuvent porter le même nom dans deux groupes différents.
+final Provider<List<Task>> homeTaskRowsProvider = Provider<List<Task>>((
+  Ref ref,
+) {
+  final Set<String> dejaDansLAgenda = ref
+      .watch(todayAgendaProvider)
+      .where((AgendaEntry e) => e.kind == AgendaEntryKind.task)
+      .map((AgendaEntry e) => e.id)
+      .toSet();
+
+  return ref
+      .watch(focusTasksProvider)
+      .where((Task t) => !dejaDansLAgenda.contains(t.id))
+      .toList();
+});
 
 /// Les trois chiffres de la carte « Mes tâches ».
 ///

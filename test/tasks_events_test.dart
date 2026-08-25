@@ -97,6 +97,12 @@ void main() {
       final ({FakeEventRepository agenda, FakeTaskRepository taches}) faux =
           await _pumpApp(tester);
 
+      // Depuis la liste des tâches : sur l'accueil, une tâche datée du jour
+      // vit dans la chronologie, qui ne porte pas de case à cocher — elle est
+      // retirée de la liste du bas pour ne pas s'y lire deux fois.
+      await tester.tap(find.text('Voir toutes mes tâches'));
+      await tester.pumpAndSettle();
+
       // La case porte une étiquette d'accessibilité : c'est la façon la plus
       // sûre de la viser, la ligne entière étant elle aussi tactile.
       await tester.tap(

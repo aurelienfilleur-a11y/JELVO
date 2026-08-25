@@ -1877,11 +1877,35 @@ ce groupe. Une URL morte y retombe aussi : `errorBuilder` et `loadingBuilder`
 renvoient le même repli, pour qu'un lien expiré ne laisse pas un rectangle
 gris.
 
-**La carte « Mon agenda » ne montre que les événements.** `dayAgendaProvider`
-mêle aussi les tâches datées et les créneaux, ce qui a du sens au calendrier —
-une journée s'y lit d'un bloc — mais pas sur l'accueil, où les tâches ont leur
-propre carte : la même tâche s'y lisait deux fois. D'où `todayAgendaProvider`,
-qui filtre.
+**La carte « Mon agenda » montre la journée complète** — événements et tâches
+datées mêlés dans l'ordre des heures. C'est le but premier de la carte : voir
+sa journée d'un coup d'œil, sans distinguer ce qui arrive de ce qu'on a à
+faire. Une chronologie qui tairait les tâches ne la montrerait qu'à moitié.
+
+**Les créneaux de disponibilité en sont écartés** (`todayAgendaProvider`) : ils
+décrivent ce qui se peut et non ce qui arrive, et rempliraient une carte qui
+doit tenir en trois lignes. Ils restent au calendrier, où la journée se lit en
+entier.
+
+**La ligne en double est retirée, pas la répétition.** Une tâche du jour figure
+dans la chronologie *et* dans les compteurs — c'est voulu, « en retard »
+continue de la compter. Mais elle n'est pas répétée dans la **liste** du bas, à
+quelques centimètres de la première : `homeTaskRowsProvider` retire de
+`focusTasksProvider` les identifiants que la chronologie porte déjà. Le filtre
+passe par l'identifiant, jamais par le titre — deux groupes peuvent avoir une
+tâche du même nom.
+
+Deux conséquences à connaître :
+
+- **une liste vide ne veut pas dire la même chose selon le compteur.** Sans
+  tâche ouverte, « Tout est à jour » ; avec des tâches toutes remontées dans
+  la chronologie, « Déjà dans votre agenda ». Dire « tout est à jour » dans le
+  second cas serait un mensonge à quelques centimètres de la preuve du
+  contraire ;
+- **une tâche remontée dans la chronologie perd sa case à cocher** sur
+  l'accueil : `DayTimeline` n'en porte pas, et lui en ajouter changerait aussi
+  le calendrier. Elle se coche depuis son écran de détail, à une touche, ou
+  depuis `/taches`.
 
 **`DayTimeline` est la même** qu'au calendrier, avec un drapeau
 `dansUneCarte` : lignes teintées sans ombre au lieu de cartes blanches, et la
@@ -2200,8 +2224,9 @@ s'en passe.
   le prénom et la date sans année, la photo qui ouvre le profil, le bouton
   calendrier de l'en-tête, la bande des groupes — nom, nombre de membres,
   initiale de repli quand il n'y a pas de photo, image demandée quand il y en
-  a une —, la carte d'agenda avec sa plage horaire et sans les tâches, les
-  trois compteurs, et les trois cas vides.
+  a une —, la carte d'agenda avec sa plage horaire, la chronologie qui mêle
+  événements et tâches sans laisser entrer les créneaux, la ligne de tâche non
+  répétée dans la liste du bas, les trois compteurs, et les cas vides.
 - `test/auth_flow_test.dart` couvre la garde de navigation, les erreurs de
   connexion, la disponibilité du pseudo et la déconnexion.
 - `test/credentials_rules_test.dart` couvre les règles de validation, sans

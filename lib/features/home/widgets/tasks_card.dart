@@ -113,14 +113,28 @@ class TasksCard extends StatelessWidget {
             ),
           ),
 
+          // **Une liste vide ne veut pas dire la même chose selon le
+          // compteur.** Sans tâche ouverte, il n'y a effectivement rien à
+          // faire. Mais une liste vide alors que le compteur en annonce
+          // signifie que la chronologie du dessus les montre déjà — dire
+          // « tout est à jour » serait alors un mensonge, à quelques
+          // centimètres de la preuve du contraire.
           if (rows.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
-              child: EmptyState(
-                icon: Icons.task_alt_rounded,
-                title: 'Tout est à jour',
-                message: 'Aucune tâche n’attend d’être traitée.',
-              ),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+              child: counts.open == 0
+                  ? const EmptyState(
+                      icon: Icons.task_alt_rounded,
+                      title: 'Tout est à jour',
+                      message: 'Aucune tâche n’attend d’être traitée.',
+                    )
+                  : const EmptyState(
+                      icon: Icons.north_rounded,
+                      title: 'Déjà dans votre agenda',
+                      message:
+                          'Vos tâches du jour figurent dans la chronologie '
+                          'ci-dessus.',
+                    ),
             )
           else ...<Widget>[
             AppSpacing.gapSm,

@@ -66,6 +66,7 @@ declare
   creneau    uuid;
   message    uuid;
   message2   uuid;
+  invit      uuid;
 begin
   -- Tâches -----------------------------------------------------------------
   tache := (public.creer_tache(
@@ -283,14 +284,57 @@ begin
   assert not public.supprimer_disponibilite(creneau),
          'supprimer deux fois doit renvoyer faux';
 
+  -- **CONTRÔLE NÉGATIF de la tranche 7.** L'insertion directe ci-dessous
+  -- fonctionnait, et c'était le trou principal : n'importe qui pouvait
+  -- s'inscrire dans n'importe quel groupe, au rôle de son choix, en
+  -- connaissant son identifiant — lequel circule dans les liens
+  -- d'invitation et les charges utiles de notification.
+  begin
+    insert into public.group_members (group_id, user_id, role)
+    values ('22222222-2222-2222-2222-222222222222',
+            '33333333-3333-3333-3333-333333333333', 'admin');
+    raise exception
+      'un client a pu écrire directement dans group_members';
+  exception
+    when insufficient_privilege then null;
+  end;
+
+  -- Même contrôle sur les fonctions réservées au rôle de service :
+  -- `push_a_envoyer` renvoie les endpoints et les clés Web Push de tout le
+  -- monde, et `EXECUTE` est accordé à PUBLIC par défaut.
+  begin
+    perform public.push_a_envoyer(1);
+    raise exception 'un client a pu appeler push_a_envoyer';
+  exception
+    when insufficient_privilege then null;
+  end;
+
   -- Chat (tranche 5a) --------------------------------------------------------
   -- Le bloc « administration » ci-dessus a éprouvé `retirer_membre`, et Léa
-  -- n'est donc plus dans le groupe. On l'y remet : sans second membre, ni
-  -- l'accusé de lecture ni le compteur de non-lus n'ont de sens à éprouver.
-  insert into public.group_members (group_id, user_id, role)
-  values ('22222222-2222-2222-2222-222222222222',
-          '33333333-3333-3333-3333-333333333333', 'member')
-  on conflict do nothing;
+  -- n'est donc plus dans le groupe. On l'y remet par le **chemin légitime** —
+  -- inviter, puis accepter —, seul chemin qui reste ouvert : sans second
+  -- membre, ni l'accusé de lecture ni le compteur de non-lus n'ont de sens à
+  -- éprouver.
+  perform public.inviter_dans_groupe(
+    '22222222-2222-2222-2222-222222222222'::uuid,
+    '33333333-3333-3333-3333-333333333333'::uuid);
+
+  select i.id into invit
+  from public.invitations i
+  where i.invitee_id = '33333333-3333-3333-3333-333333333333'
+    and i.group_id = '22222222-2222-2222-2222-222222222222'
+    and i.status = 'pending'
+  order by i.created_at desc
+  limit 1;
+
+  perform set_config('request.jwt.claims',
+    '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}',
+    true);
+  assert public.accepter_invitation(invit) = 'rejoint',
+         'Léa n''a pas pu revenir dans le groupe par le chemin légitime';
+  perform set_config('request.jwt.claims',
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}',
+    true);
 
   message := public.envoyer_message(
     '22222222-2222-2222-2222-222222222222'::uuid, 'Bonjour tout le monde');

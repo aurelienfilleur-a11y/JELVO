@@ -1957,6 +1957,166 @@ compteur vaut zéro.
 
 ---
 
+## Sécurité — ce que la tranche 7 a fermé
+
+`supabase/tranche7_durcissement.sql`. Revue avant ouverture à de vrais
+utilisateurs, menée sur `schema_actuel.sql` — le schéma **réel** — et non sur
+ce que les fichiers de migration croient avoir posé.
+
+### Le principe : six tables, et pas une de plus
+
+L'application n'écrit directement que dans **`profiles`, `contacts`,
+`notifications`, `groups`, `group_invite_links`**, et lit `group_members`.
+Tout le reste passe par des fonctions `security definer`.
+
+Relevé en recensant les `.from('…')` de `lib/` : c'est le seul point d'entrée
+PostgREST vers une table. Les politiques d'écriture des quinze autres tables
+n'avaient donc **aucun usage légitime** — chacune était une porte qu'aucun
+code n'empruntait.
+
+Elles sont retirées, et le privilège avec : `revoke insert, update, delete…`.
+Le privilège est la vraie barrière, contrôlée avant même que RLS n'entre en
+jeu.
+
+**Une fonction `security definer` appartenant à `postgres` contourne RLS**,
+puisque `postgres` possède les tables. Retirer ces politiques ne gêne donc
+aucune écriture légitime — c'est déjà ce qui faisait marcher
+`definir_assignes_tache`, qui supprime dans `task_assignees` alors qu'aucune
+politique DELETE n'y a jamais existé.
+
+**Règle pour la suite** : une nouvelle table écrite par une fonction ne reçoit
+pas de politique d'écriture, et son privilège d'écriture est retiré à `anon`
+et `authenticated`.
+
+### Les quatre trous, du plus large au plus étroit
+
+**1. `EXECUTE` est accordé à `PUBLIC` par défaut.** C'est le plus large, et le
+plus contre-intuitif : un `grant execute … to service_role` *ajoute* un droit,
+il n'en retire aucun. Les fonctions réservées au rôle de service étaient donc
+appelables par n'importe quel porteur de la clé publiable, que PostgREST
+expose toutes. En particulier `push_a_envoyer`, qui renvoie les **endpoints et
+les clés Web Push** des notifications en attente de tout le monde — de quoi
+leur écrire directement — et `empiler_push`, qui dépose une notification
+arbitraire dans la boîte de n'importe qui.
+
+Le fichier retire `EXECUTE` sur **toutes** les fonctions de `public`, puis
+rouvre la liste exacte que `lib/` appelle. Une faute de frappe dans cette
+liste ferme une fonction utilisée, et le défaut ne se verrait qu'à l'usage :
+le bloc lève donc si un nom cité n'existe pas en base.
+
+**Conséquence pour toute nouvelle fonction** : sans `grant execute … to
+authenticated`, elle est fermée — mais rejouer la tranche 7 la refermerait de
+toute façon si son nom n'entre pas dans la liste. **Ajouter le nom à la liste
+fait partie de la livraison.**
+
+**2. `group_members` s'écrivait depuis le client.** `gm_insert with check
+(user_id = auth.uid())` autorisait à **s'inscrire soi-même dans n'importe quel
+groupe**, au rôle de son choix, en connaissant son identifiant. Or les
+identifiants circulent : liens d'invitation, charges utiles de notification,
+URL d'écran.
+
+**3. Une invitation se forgeait.** `inv_insert with check (inviter_id =
+auth.uid())` laissait créer une invitation pour soi-même vers n'importe quel
+groupe, puis l'accepter — `accepter_invitation` ne vérifiait pas que
+l'invitant en était membre. Elle le vérifie désormais, en plus du privilège
+retiré : deux barrières valent mieux qu'une.
+
+**4. Les liens d'invitation se lisaient anonymement.**
+`lien_invitation_lecture_publique SELECT {anon} using (true)` : le `grant` de
+colonnes restreignait bien la lecture à `(token, group_id)`, mais **rien ne
+restreignait les lignes**. Une requête sans session ramenait *tous* les jetons
+actifs du service, et chacun ouvre un groupe à qui le présente. La politique
+est supprimée ; la page publique passe par `apercu_groupe_par_jeton`, qui
+exige le jeton exact.
+
+### `profiles` était lisible par tout le monde
+
+```
+profiles_select : ((id = auth.uid()) OR has_social_link(id) OR true)
+```
+
+Le troisième terme rendait les deux premiers sans effet. Le `or true` est
+retiré ; `has_social_link`, prédicat du schéma initial, reprend son rôle.
+
+Le seul appel direct qui lisait le profil d'autrui était le contrôle de
+disponibilité d'un pseudo. Il passe désormais par `pseudo_disponible`, qui ne
+renvoie qu'un **booléen** : elle dit si le pseudo est libre, jamais à qui il
+appartient, et ne peut donc pas servir à dresser un annuaire.
+
+### Une politique UPDATE sans `with check` autorise le déplacement
+
+Piège général, rencontré cinq fois. PostgreSQL retombe alors sur l'expression
+`using`, qui décrit la ligne **avant** modification :
+
+```sql
+create policy msg_update on public.messages
+  for update using (sender_id = auth.uid());   -- with check implicite
+```
+
+L'auteur d'un message pouvait donc changer son `group_id` et le poser dans un
+groupe dont il n'est pas membre. Même défaut sur `events`, `event_participants`,
+`task_assignees`, `contacts`, et sur `chat_media_maj` côté stockage — un média
+déplaçable vers le dossier d'un autre groupe.
+
+**Règle** : toute politique UPDATE porte un `with check` explicite, même
+identique au `using`. Ce qui compte, c'est ce qu'il dit de la ligne
+**d'après**.
+
+### Une politique ne borne pas les colonnes ; un `grant` si
+
+RLS dit « cette ligne », jamais « cette colonne ». Là où le client écrit
+encore, les colonnes modifiables sont donc bornées par un `grant` :
+
+| Table | Colonnes ouvertes en écriture |
+| --- | --- |
+| `contacts` | `status`, `favorite_requester`, `favorite_addressee` |
+| `notifications` | `read_at` |
+| `group_invite_links` | `revoked_at` |
+| `groups` | `name`, `description`, `photo_url`, `is_private`, `deleted_at` |
+| `profiles` | tout sauf `id` |
+
+Sans borne sur `contacts`, on pouvait réécrire `requester_id` d'une ligne où
+l'on figure — donc **fabriquer un lien social avec n'importe qui**, ce que
+`has_social_link` prend pour argent comptant, et qui ouvre désormais la
+lecture d'un profil. Les deux défauts se renforçaient.
+
+Sans borne sur `group_invite_links`, le compteur d'utilisations se remettait à
+zéro : un lien épuisé redevenait utilisable.
+
+### Buckets
+
+| Bucket | Lecture | Écriture | Poids | Types |
+| --- | --- | --- | --- | --- |
+| `avatars` | publique | son propre dossier | 2 Mio | images |
+| `group-photos` | publique | administrateurs du groupe | 2 Mio | images |
+| `chat-media` | membres du groupe | membres du groupe | 25 Mio | images + vidéos |
+
+**La convention de chemin porte l'autorisation**, comme en tranche 5b : le
+premier segment est l'identifiant du propriétaire — utilisateur ou groupe.
+
+`avatars` et `group-photos` restent **publics en lecture**, et c'est un choix
+assumé : l'application enregistre l'URL publique dans `profiles.avatar_url` et
+`groups.photo_url`, si bien que les rendre privés invaliderait toutes les URL
+déjà stockées. Y passer demanderait de stocker le **chemin** et de signer à la
+volée, comme `chat-media` — c'est un arbitrage, pas un oubli.
+
+Le poids et les types sont bornés **côté serveur**, dans `storage.buckets` :
+la borne de l'application ne protège que l'application, et une requête directe
+s'en passe.
+
+### Ce qui reste ouvert, et pourquoi
+
+- **`email_pour_pseudo` est accessible à `anon`**, et le doit : se connecter
+  par pseudo suppose de n'avoir pas encore de session. C'est un oracle
+  pseudo → adresse e-mail, inhérent à la fonctionnalité. Le supprimer, c'est
+  supprimer la connexion par pseudo.
+- **`chercher_profils_par_pseudo` permet d'énumérer les comptes** par préfixe.
+  Nécessaire pour inviter quelqu'un ; à surveiller si le service grandit.
+- Les avatars et photos de groupe sont **lisibles de qui a l'URL**, voir
+  ci-dessus.
+
+---
+
 ## Conventions
 
 - **Langue** : identifiants, commentaires et documentation en français ; le

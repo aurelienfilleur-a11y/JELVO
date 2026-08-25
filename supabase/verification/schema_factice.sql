@@ -37,12 +37,20 @@ create type public.task_priority    as enum ('low', 'medium', 'high');
 create type public.assignee_status  as enum ('pending', 'accepted', 'declined', 'done');
 create type public.event_response   as enum ('yes', 'no', 'maybe', 'pending');
 
+-- Colonnes recopiées de `schema_actuel.sql`, le relevé de la vraie base : la
+-- tranche 7 borne les colonnes modifiables par un `grant`, et un décor
+-- incomplet ferait échouer le rejeu sur une colonne pourtant bien réelle.
 create table public.profiles (
-  id         uuid primary key,
-  pseudo     text,
-  first_name text,
-  last_name  text,
-  avatar_url text
+  id           uuid primary key,
+  pseudo       text,
+  first_name   text,
+  last_name    text,
+  avatar_url   text,
+  bio          text,
+  interests    text[] default '{}'::text[],
+  timezone     text not null default 'Europe/Paris',
+  last_seen_at timestamptz,
+  created_at   timestamptz not null default now()
 );
 
 create table public.groups (
@@ -126,6 +134,14 @@ create function public.est_membre_du_groupe(p_group_id uuid, p_user_id uuid)
 returns boolean language sql stable as $$ select true $$;
 
 create function public.est_admin_du_groupe(p_group_id uuid, p_user_id uuid)
+returns boolean language sql stable as $$ select true $$;
+
+-- Prédicat du **schéma initial**, dont le corps réel n'est pas connu de ce
+-- dépôt : seule sa signature compte ici. `profiles_select` s'appuie dessus
+-- depuis toujours, et la tranche 7 se contente de retirer le `or true` qui le
+-- rendait sans effet. Ce que la vraie fonction accepte — contacts seuls, ou
+-- aussi les co-membres de groupe — reste à vérifier sur le projet.
+create function public.has_social_link(other uuid)
 returns boolean language sql stable as $$ select true $$;
 
 -- Complément pour rejouer aussi les fichiers des tranches précédentes.
@@ -241,10 +257,15 @@ create table public.message_reads (
 -- éprouver `groupe_du_chemin`.
 create schema if not exists storage;
 
+-- `file_size_limit` et `allowed_mime_types` viennent du vrai schéma de
+-- Supabase : ce sont elles que la tranche 7 renseigne, et un décor sans ces
+-- colonnes ne dirait rien de l'instruction qui les pose.
 create table storage.buckets (
-  id     text primary key,
-  name   text not null,
-  public boolean not null default false
+  id                 text primary key,
+  name               text not null,
+  public             boolean not null default false,
+  file_size_limit    bigint,
+  allowed_mime_types text[]
 );
 
 create table storage.objects (
@@ -257,8 +278,10 @@ create table storage.objects (
 
 alter table storage.objects enable row level security;
 
-insert into storage.buckets (id, name, public)
-values ('chat-media', 'chat-media', false)
+insert into storage.buckets (id, name, public) values
+  ('chat-media',   'chat-media',   false),
+  ('avatars',      'avatars',      true),
+  ('group-photos', 'group-photos', true)
 on conflict (id) do nothing;
 
 grant usage on schema storage to authenticated, anon;

@@ -183,25 +183,24 @@ void main() {
     });
   });
 
-  group('Récapitulatif de l’accueil', () {
-    testWidgets('le compteur de tâches ouvre la liste des tâches', (
+  group('Cartes de l’accueil', () {
+    testWidgets('la carte des tâches ouvre la liste des tâches', (
       WidgetTester tester,
     ) async {
       await _pumpApp(tester);
 
-      await tester.tap(find.text('tâches'));
+      await tester.tap(find.text('Voir toutes mes tâches'));
       await tester.pumpAndSettle();
 
       expect(find.text('Tâches'), findsWidgets);
-      expect(find.text('À faire'), findsOneWidget);
     });
 
-    testWidgets('le compteur de groupes ouvre la liste des groupes', (
+    testWidgets('la bande des groupes ouvre la liste des groupes', (
       WidgetTester tester,
     ) async {
       await _pumpApp(tester);
 
-      await tester.tap(find.text('groupes'));
+      await tester.tap(find.text('Voir tout'));
       await tester.pumpAndSettle();
 
       expect(find.text('Famille Rousseau'), findsWidgets);

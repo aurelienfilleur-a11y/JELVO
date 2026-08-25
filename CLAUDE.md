@@ -1854,12 +1854,52 @@ en filtrant ferait disparaître ce fond.
 élément — et une bande discrète, sans carte ni ombre, pour les créneaux, qui
 ne sont pas des choses qui arrivent mais des choses qui se peuvent.
 
+### L'accueil suit une maquette, et s'arrête où les données s'arrêtent
+
+Quatre blocs, dans cet ordre : **en-tête**, **bande des groupes**, **carte
+Mon agenda**, **carte Mes tâches**. L'ordre descend du « où suis-je » vers le
+« qu'ai-je à faire ».
+
+**Trois éléments de la maquette n'ont pas été repris, faute de données** — et
+c'est une règle, pas un renoncement ponctuel : *un écran ne montre que ce que
+la base sait*.
+
+| Écarté | Pourquoi |
+| --- | --- |
+| pastille de présence sur la photo | `profiles.last_seen_at` existe mais **n'est écrit nulle part**. Une pastille verte permanente serait un mensonge |
+| avatars des participants sur une ligne d'agenda | `mon_agenda` les renvoie, mais à cette largeur ils poussent l'heure hors du cadre. Ils restent sur l'écran de détail |
+| icônes de catégorie sur les cartes de groupe | `groups` ne porte ni thème ni pictogramme. Les déduire du nom serait une devinette |
+| l'emoji 👋 du titre | règle antérieure : sans police emoji, le glyphe manque et s'affiche en carré « tofu » |
+
+**Le repli d'une carte de groupe sans photo est l'initiale du nom**, sur
+l'accent dérivé de l'identifiant — la même couleur que partout ailleurs pour
+ce groupe. Une URL morte y retombe aussi : `errorBuilder` et `loadingBuilder`
+renvoient le même repli, pour qu'un lien expiré ne laisse pas un rectangle
+gris.
+
+**La carte « Mon agenda » ne montre que les événements.** `dayAgendaProvider`
+mêle aussi les tâches datées et les créneaux, ce qui a du sens au calendrier —
+une journée s'y lit d'un bloc — mais pas sur l'accueil, où les tâches ont leur
+propre carte : la même tâche s'y lisait deux fois. D'où `todayAgendaProvider`,
+qui filtre.
+
+**`DayTimeline` est la même** qu'au calendrier, avec un drapeau
+`dansUneCarte` : lignes teintées sans ombre au lieu de cartes blanches, et la
+plage horaire à droite. Deux chronologies séparées auraient fini par diverger.
+
+**Les trois compteurs de tâches ne sont pas disjoints** : « en retard » est un
+sous-ensemble d'« à faire ». Les soustraire donnerait un « à faire » qui ne
+correspond à aucune liste consultable.
+
 ### La semaine sur l'accueil
 
-`WeekOverview`, posé **sous le bandeau violet**, montre les sept jours de la
-semaine en cours : initiale, quantième, jour courant plein, et deux marqueurs
-par jour — violet pour les événements, vert pour les tâches. Toucher un jour
-règle `selectedDayProvider` puis ouvre le calendrier à cette date.
+`WeekOverview`, posé **sous l'en-tête**, montre les sept jours de la semaine en
+cours : initiale, quantième, jour courant plein, et deux marqueurs par jour —
+violet pour les événements, vert pour les tâches. Toucher un jour règle
+`selectedDayProvider` puis ouvre le calendrier à cette date.
+
+Elle **ne figure pas sur la maquette** et a été gardée : c'est le seul endroit
+d'où l'on ouvre le calendrier à une date précise.
 
 Les marqueurs sont des pastilles et non des chiffres : à cette taille, un « 3 »
 et un « 8 » ne se distinguent pas d'un coup d'œil, alors qu'une pastille
@@ -2156,6 +2196,12 @@ s'en passe.
 - `test/widget_test.dart` couvre le parcours principal : accueil, navigation
   entre les quatre onglets, ouverture de `/creer`, validation du formulaire et
   filtrage des contacts.
+- `test/home_screen_test.dart` couvre l'accueil refondu : la salutation avec
+  le prénom et la date sans année, la photo qui ouvre le profil, le bouton
+  calendrier de l'en-tête, la bande des groupes — nom, nombre de membres,
+  initiale de repli quand il n'y a pas de photo, image demandée quand il y en
+  a une —, la carte d'agenda avec sa plage horaire et sans les tâches, les
+  trois compteurs, et les trois cas vides.
 - `test/auth_flow_test.dart` couvre la garde de navigation, les erreurs de
   connexion, la disponibilité du pseudo et la déconnexion.
 - `test/credentials_rules_test.dart` couvre les règles de validation, sans

@@ -12,12 +12,25 @@ import '../models/agenda_entry.dart';
 /// Les créneaux de disponibilité y figurent en retrait — pas de carte, pas
 /// d'ombre : ils décrivent le fond de la journée, pas ce qui s'y passe.
 class DayTimeline extends StatelessWidget {
-  const DayTimeline({super.key, required this.entries, required this.onTap});
+  const DayTimeline({
+    super.key,
+    required this.entries,
+    required this.onTap,
+    this.dansUneCarte = false,
+  });
 
   final List<AgendaEntry> entries;
 
   /// Ouvre l'élément touché. Les créneaux n'appellent jamais ce rappel.
   final ValueChanged<AgendaEntry> onTap;
+
+  /// Rendu à poser **dans** une carte — celle de l'accueil.
+  ///
+  /// Une carte blanche ombrée dans une autre carte blanche ne se lit pas :
+  /// les lignes deviennent des fonds teintés de l'accent, sans ombre. Le
+  /// squelette — gouttière d'heures, rail, pastilles — reste identique, parce
+  /// que deux chronologies séparées finiraient par diverger.
+  final bool dansUneCarte;
 
   @override
   Widget build(BuildContext context) {
@@ -29,6 +42,7 @@ class DayTimeline extends StatelessWidget {
             premiere: i == 0,
             derniere: i == entries.length - 1,
             onTap: onTap,
+            dansUneCarte: dansUneCarte,
           ),
       ],
     );
@@ -41,12 +55,14 @@ class _Ligne extends StatelessWidget {
     required this.premiere,
     required this.derniere,
     required this.onTap,
+    required this.dansUneCarte,
   });
 
   final AgendaEntry entry;
   final bool premiere;
   final bool derniere;
   final ValueChanged<AgendaEntry> onTap;
+  final bool dansUneCarte;
 
   static const double _gouttiere = 48;
 
@@ -83,7 +99,11 @@ class _Ligne extends StatelessWidget {
               ),
               child: entry.kind == AgendaEntryKind.availability
                   ? _Creneau(entry: entry)
-                  : _Carte(entry: entry, onTap: () => onTap(entry)),
+                  : _Carte(
+                      entry: entry,
+                      onTap: () => onTap(entry),
+                      dansUneCarte: dansUneCarte,
+                    ),
             ),
           ),
         ],
@@ -149,22 +169,26 @@ class _Rail extends StatelessWidget {
 }
 
 class _Carte extends StatelessWidget {
-  const _Carte({required this.entry, required this.onTap});
+  const _Carte({
+    required this.entry,
+    required this.onTap,
+    this.dansUneCarte = false,
+  });
 
   final AgendaEntry entry;
   final VoidCallback onTap;
+  final bool dansUneCarte;
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      padding: EdgeInsets.zero,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: AppRadii.cardRadius,
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Row(
-            children: <Widget>[
+    final Widget contenu = InkWell(
+      onTap: onTap,
+      borderRadius: AppRadii.cardRadius,
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Row(
+          children: <Widget>[
+            if (!dansUneCarte) ...<Widget>[
               Container(
                 width: 3,
                 height: 34,
@@ -174,55 +198,81 @@ class _Carte extends StatelessWidget {
                 ),
               ),
               AppSpacing.hGapMd,
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Row(
-                      children: <Widget>[
-                        Icon(
-                          _icone(entry.kind),
-                          size: 15,
-                          color: AppColors.textSecondary,
-                        ),
-                        AppSpacing.hGapSm,
-                        Expanded(
-                          child: Text(
-                            entry.title,
-                            style: AppTypography.h3,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (entry.subtitle != null && entry.subtitle!.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 2),
+            ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      Icon(
+                        _icone(entry.kind),
+                        size: 15,
+                        color: dansUneCarte
+                            ? entry.accent
+                            : AppColors.textSecondary,
+                      ),
+                      AppSpacing.hGapSm,
+                      Expanded(
                         child: Text(
-                          entry.subtitle!,
-                          style: AppTypography.caption.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
+                          entry.title,
+                          style: AppTypography.h3,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                  ],
+                    ],
+                  ),
+                  if (entry.subtitle != null && entry.subtitle!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        entry.subtitle!,
+                        style: AppTypography.caption.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            // Dans la carte de l'accueil, la plage horaire est portée à
+            // droite de la ligne : la gouttière ne donne que l'heure de
+            // début, et « 09:00 – 10:30 » dit ce qu'elle ne dit pas.
+            if (dansUneCarte && entry.kind != AgendaEntryKind.task) ...<Widget>[
+              AppSpacing.hGapSm,
+              Text(
+                AppDates.timeRange(entry.start, entry.end),
+                style: AppTypography.caption.copyWith(
+                  color: AppColors.textSecondary,
                 ),
               ),
-              if (entry.statusTone != null) ...<Widget>[
-                AppSpacing.hGapSm,
-                StatusDot(
-                  tone: entry.statusTone!,
-                  label: entry.statusLabel,
-                  filled: true,
-                ),
-              ],
+            ] else if (entry.statusTone != null) ...<Widget>[
+              AppSpacing.hGapSm,
+              StatusDot(
+                tone: entry.statusTone!,
+                label: entry.statusLabel,
+                filled: true,
+              ),
             ],
-          ),
+          ],
         ),
       ),
+    );
+
+    if (!dansUneCarte) {
+      return AppCard(padding: EdgeInsets.zero, child: contenu);
+    }
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        // Le fond reprend l'accent de l'élément, très dilué : c'est ce qui
+        // distingue une ligne d'agenda d'une autre sans ajouter de trait.
+        color: entry.accent.withValues(alpha: 0.08),
+        borderRadius: AppRadii.cardRadius,
+      ),
+      child: contenu,
     );
   }
 

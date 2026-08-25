@@ -23,6 +23,13 @@ abstract final class AppDates {
   static String fullDate(DateTime value) =>
       _capitalize(DateFormat('EEEE d MMMM y', locale).format(value));
 
+  /// « Jeudi 6 août » — sans l'année.
+  ///
+  /// Sous une salutation, l'année n'apprend rien : on sait en quelle année on
+  /// est, et elle allonge une ligne qui doit se lire d'un coup d'œil.
+  static String dayAndMonth(DateTime value) =>
+      _capitalize(DateFormat('EEEE d MMMM', locale).format(value));
+
   /// « Août 2026 »
   static String monthYear(DateTime value) =>
       _capitalize(DateFormat('MMMM y', locale).format(value));

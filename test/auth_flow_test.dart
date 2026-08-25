@@ -308,7 +308,10 @@ void main() {
   ) async {
     await _pumpApp(tester, signedIn: true);
 
-    await tester.tap(find.byIcon(Icons.person_outline_rounded).first);
+    // Par l'infobulle : depuis la refonte de l'accueil, le profil s'ouvre
+    // par la photo de l'en-tête, et `person_outline_rounded` est désormais
+    // l'icône de l'onglet Contacts.
+    await tester.tap(find.byTooltip('Profil'));
     await tester.pumpAndSettle();
     expect(find.text('Camille Rousseau'), findsOneWidget);
 

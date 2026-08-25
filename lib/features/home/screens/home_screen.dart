@@ -5,35 +5,46 @@ import 'package:go_router/go_router.dart';
 import '../../../core/core.dart';
 import '../../../data/data_providers.dart';
 import '../../../router/app_routes.dart';
-import '../../calendar/models/calendar_event.dart';
+import '../../calendar/models/agenda_entry.dart';
 import '../../calendar/providers/calendar_providers.dart';
 import '../../groups/models/group.dart';
 import '../../groups/providers/group_providers.dart';
 import '../../notifications/providers/notification_providers.dart';
+import '../../profile/models/profile.dart';
+import '../../profile/providers/profile_providers.dart';
 import '../../tasks/models/task.dart';
 import '../../tasks/providers/task_providers.dart';
 import '../../tasks/widgets/task_tile.dart';
 import '../providers/home_providers.dart';
-import '../widgets/summary_banner.dart';
+import '../widgets/agenda_card.dart';
+import '../widgets/group_strip.dart';
+import '../widgets/tasks_card.dart';
 import '../widgets/week_overview.dart';
 
-/// Écran d'accueil : résumé du jour, agenda, tâches urgentes et groupes actifs.
+/// Écran d'accueil.
+///
+/// Quatre blocs, dans cet ordre : l'en-tête qui dit à qui l'on parle et quel
+/// jour on est, la bande des groupes, la journée en cours, puis les tâches.
+/// L'ordre n'est pas décoratif — il descend du « où suis-je » vers le « qu'ai-je
+/// à faire », et c'est la première moitié qu'on regarde en ouvrant.
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final DateTime now = ref.watch(nowProvider);
-    final HomeSummary summary = ref.watch(homeSummaryProvider);
-    final List<CalendarEvent> todayEvents = ref.watch(todayEventsProvider);
-    final List<Task> focusTasks = ref.watch(focusTasksProvider);
+    final Profile? profil = ref.watch(currentProfileProvider).value;
     final List<Group> groups = ref.watch(activeGroupsProvider);
+    final List<AgendaEntry> agenda = ref.watch(todayAgendaProvider);
+    final List<Task> focusTasks = ref.watch(focusTasksProvider);
 
     return AppScreen(
-      // Pas d'emoji dans le titre : sans police emoji installée, le glyphe
-      // manquant s'affiche en carré « tofu » au tout premier écran.
-      title: ref.watch(greetingProvider),
-      subtitle: 'Voici votre journée en un coup d’œil.',
+      // Pas d'emoji dans le titre, contrairement à la maquette : sans police
+      // emoji installée, le glyphe manquant s'affiche en carré « tofu » au
+      // tout premier écran.
+      title: _salutation(ref, profil),
+      subtitle: AppDates.dayAndMonth(now),
+      leading: _Avatar(profil: profil),
       headerAction: Row(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
@@ -47,34 +58,23 @@ class HomeScreen extends ConsumerWidget {
           ),
           AppSpacing.hGapSm,
           AppScreenAction(
-            icon: Icons.person_outline_rounded,
-            tooltip: 'Profil',
-            onPressed: () => context.pushNamed(AppRoutes.profile),
+            icon: Icons.calendar_today_rounded,
+            tooltip: 'Calendrier',
+            accented: true,
+            onPressed: () => context.goNamed(AppRoutes.calendar),
           ),
         ],
       ),
       slivers: <Widget>[
-        SliverPadding(
-          padding: AppSpacing.screenHorizontal,
-          sliver: SliverToBoxAdapter(
-            child: SummaryBanner(
-              summary: summary,
-              dateLabel: AppDates.fullDate(now),
-              onEventsPressed: () => context.goNamed(AppRoutes.calendar),
-              onTasksPressed: () => context.pushNamed(AppRoutes.tasks),
-              onGroupsPressed: () => context.goNamed(AppRoutes.groups),
-            ),
-          ),
-        ),
-
-        // La semaine d'un coup d'œil, sous le bandeau : c'est la première
-        // chose qu'on veut voir en ouvrant l'application.
+        // La semaine reste sous l'en-tête. Elle ne figure pas sur la maquette,
+        // mais c'est le seul endroit d'où l'on ouvre le calendrier à une date
+        // précise, et elle est éprouvée par les tests.
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(
             AppSpacing.screenMargin,
-            AppSpacing.md,
-            AppSpacing.screenMargin,
             0,
+            AppSpacing.screenMargin,
+            AppSpacing.lg,
           ),
           sliver: SliverToBoxAdapter(
             child: WeekOverview(
@@ -88,142 +88,146 @@ class HomeScreen extends ConsumerWidget {
           ),
         ),
 
-        _sectionSliver(
-          SectionHeader(
-            title: "Aujourd'hui",
-            subtitle: todayEvents.isEmpty
-                ? 'Aucun événement prévu'
-                : '${todayEvents.length} événement${todayEvents.length > 1 ? 's' : ''}',
-            actionLabel: 'Calendrier',
-            onActionPressed: () => context.goNamed(AppRoutes.calendar),
+        // — Mes groupes —
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.screenMargin,
+            0,
+            AppSpacing.screenMargin,
+            AppSpacing.md,
+          ),
+          sliver: SliverToBoxAdapter(
+            child: SectionHeader(
+              title: 'Mes groupes',
+              actionLabel: groups.isEmpty ? null : 'Voir tout',
+              onActionPressed: groups.isEmpty
+                  ? null
+                  : () => context.goNamed(AppRoutes.groups),
+            ),
           ),
         ),
-        if (todayEvents.isEmpty)
-          const SliverToBoxAdapter(
-            child: EmptyState(
-              icon: Icons.event_available_rounded,
-              title: 'Journée libre',
-              message: 'Rien n’est encore planifié pour aujourd’hui.',
-            ),
-          )
-        else
-          _cardListSliver(
-            count: todayEvents.length,
-            builder: (BuildContext context, int index) {
-              final CalendarEvent event = todayEvents[index];
-              return _EventTile(event: event);
-            },
-          ),
-
-        _sectionSliver(
-          SectionHeader(
-            title: 'À faire bientôt',
-            subtitle: focusTasks.isEmpty
-                ? 'Rien d’urgent'
-                : '${focusTasks.length} tâche${focusTasks.length > 1 ? 's' : ''} à échéance proche',
-          ),
-        ),
-        if (focusTasks.isEmpty)
-          const SliverToBoxAdapter(
-            child: EmptyState(
-              icon: Icons.task_alt_rounded,
-              title: 'Tout est à jour',
-              message: 'Aucune tâche n’arrive à échéance dans les 48 heures.',
-            ),
-          )
-        else
-          SliverPadding(
-            padding: AppSpacing.screenHorizontal,
-            sliver: SliverToBoxAdapter(
-              child: AppCard(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                child: Column(
-                  children: <Widget>[
-                    for (int i = 0; i < focusTasks.length; i++)
-                      _TacheDAccueil(
-                        task: focusTasks[i],
-                        now: now,
-                        showDivider: i < focusTasks.length - 1,
-                      ),
-                  ],
+        SliverToBoxAdapter(
+          child: groups.isEmpty
+              ? Padding(
+                  padding: AppSpacing.screenHorizontal,
+                  child: EmptyState(
+                    icon: Icons.groups_2_outlined,
+                    title: 'Aucun groupe pour le moment',
+                    message:
+                        'Créez un groupe pour partager un agenda, des tâches '
+                        'et une conversation.',
+                    actionLabel: 'Créer un groupe',
+                    onActionPressed: () =>
+                        context.pushNamed(AppRoutes.groupCreate),
+                  ),
+                )
+              : GroupStrip(
+                  groups: groups,
+                  onOpen: (Group group) => context.pushNamed(
+                    AppRoutes.groupDetail,
+                    pathParameters: <String, String>{'id': group.id},
+                  ),
                 ),
-              ),
+        ),
+
+        // — Mon agenda —
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.screenMargin,
+            AppSpacing.lg,
+            AppSpacing.screenMargin,
+            0,
+          ),
+          sliver: SliverToBoxAdapter(
+            child: AgendaCard(
+              entries: agenda,
+              onOpenCalendar: () => context.goNamed(AppRoutes.calendar),
+              onOpenEntry: (AgendaEntry entry) => _ouvrir(context, entry),
             ),
           ),
-
-        _sectionSliver(
-          SectionHeader(
-            title: 'Mes groupes',
-            subtitle: 'Les plus actifs en ce moment',
-            actionLabel: 'Tout voir',
-            onActionPressed: () => context.goNamed(AppRoutes.groups),
-          ),
         ),
-        _cardListSliver(
-          count: groups.length > 2 ? 2 : groups.length,
-          builder: (BuildContext context, int index) =>
-              _GroupTile(group: groups[index]),
+
+        // — Mes tâches —
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.screenMargin,
+            AppSpacing.lg,
+            AppSpacing.screenMargin,
+            0,
+          ),
+          sliver: SliverToBoxAdapter(
+            child: TasksCard(
+              counts: ref.watch(taskCountsProvider),
+              onOpenTasks: () => context.pushNamed(AppRoutes.tasks),
+              rows: <Widget>[
+                for (int i = 0; i < focusTasks.length; i++)
+                  _TacheDAccueil(
+                    task: focusTasks[i],
+                    now: now,
+                    showDivider: i < focusTasks.length - 1,
+                  ),
+              ],
+            ),
+          ),
         ),
       ],
     );
   }
 
-  /// En-tête de section, avec l'espacement vertical standard au-dessus.
-  static Widget _sectionSliver(Widget child) {
-    return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.screenMargin,
-        AppSpacing.xl,
-        AppSpacing.screenMargin,
-        AppSpacing.md,
-      ),
-      sliver: SliverToBoxAdapter(child: child),
-    );
+  /// « Bonjour Camille », ou « Bonjour » seul tant que le profil se charge.
+  ///
+  /// Le prénom n'est pas attendu : un écran qui reste blanc le temps d'une
+  /// lecture réseau donne l'impression d'une application lente, alors que la
+  /// salutation seule est déjà juste.
+  static String _salutation(WidgetRef ref, Profile? profil) {
+    final String base = ref.watch(greetingProvider);
+    final String prenom = profil?.firstName.trim() ?? '';
+    return prenom.isEmpty ? base : '$base $prenom';
   }
 
-  /// Liste de cartes séparées de 12, à la marge d'écran.
-  static Widget _cardListSliver({
-    required int count,
-    required Widget Function(BuildContext, int) builder,
-  }) {
-    return SliverPadding(
-      padding: AppSpacing.screenHorizontal,
-      sliver: SliverList.separated(
-        itemCount: count,
-        separatorBuilder: (_, _) => AppSpacing.gapMd,
-        itemBuilder: builder,
-      ),
-    );
+  static void _ouvrir(BuildContext context, AgendaEntry entry) {
+    switch (entry.kind) {
+      case AgendaEntryKind.task:
+        context.pushNamed(
+          AppRoutes.taskDetail,
+          pathParameters: <String, String>{'id': entry.id},
+        );
+      case AgendaEntryKind.groupEvent:
+      case AgendaEntryKind.personalEvent:
+        context.pushNamed(
+          AppRoutes.eventDetail,
+          pathParameters: <String, String>{'id': entry.id},
+        );
+      case AgendaEntryKind.availability:
+        break;
+    }
   }
 }
 
-/// Carte d'événement câblée sur le domaine : résout le groupe et les
-/// participants avant de déléguer à `EventCard`.
-class _EventTile extends ConsumerWidget {
-  const _EventTile({required this.event});
+/// Photo de profil de l'en-tête, qui ouvre le profil.
+///
+/// **Pas de pastille de présence**, contrairement à la maquette : Jelvo ne
+/// sait pas qui est en ligne. `profiles.last_seen_at` existe mais n'est écrit
+/// nulle part, et une pastille verte permanente serait un mensonge.
+class _Avatar extends StatelessWidget {
+  const _Avatar({required this.profil});
 
-  final CalendarEvent event;
+  final Profile? profil;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final Group? group = event.groupId == null
-        ? null
-        : ref.watch(groupByIdProvider(event.groupId!));
-
-    return EventCard(
-      title: event.title,
-      timeLabel: AppDates.timeRange(event.start, event.end),
-      location: event.location,
-      groupName: group?.name,
-      accentColor: group?.accent.color ?? AppColors.primary,
-      participants: event.avatars,
-      statusTone: event.myResponse == EventResponse.yes
-          ? null
-          : event.myResponse.tone,
-      statusLabel: event.myResponse.label,
-      onTap: () => context.pushNamed(
-        AppRoutes.eventDetail,
-        pathParameters: <String, String>{'id': event.id},
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Profil',
+      child: InkWell(
+        onTap: () => context.pushNamed(AppRoutes.profile),
+        customBorder: const CircleBorder(),
+        child: AvatarImage(
+          data: AvatarData(
+            name: profil?.displayName ?? 'Vous',
+            imageUrl: profil?.avatarAAfficher,
+          ),
+          size: 52,
+        ),
       ),
     );
   }
@@ -252,28 +256,6 @@ class _TacheDAccueil extends ConsumerWidget {
       now: now,
       groupName: group?.name,
       showDivider: showDivider,
-    );
-  }
-}
-
-/// Carte de groupe câblée sur le domaine.
-class _GroupTile extends StatelessWidget {
-  const _GroupTile({required this.group});
-
-  final Group group;
-
-  @override
-  Widget build(BuildContext context) {
-    return GroupCard(
-      name: group.name,
-      description: group.description,
-      icon: group.icon,
-      accentColor: group.accent.color,
-      trailingLabel: group.memberLabel,
-      onTap: () => context.pushNamed(
-        AppRoutes.groupDetail,
-        pathParameters: <String, String>{'id': group.id},
-      ),
     );
   }
 }

@@ -264,12 +264,16 @@ class SupabaseAuthRepository implements AuthRepository {
   @override
   Future<PseudoAvailability> checkPseudoAvailability(String pseudo) async {
     try {
-      final Map<String, dynamic>? row = await _client
-          .from('profiles')
-          .select('id')
-          .eq('pseudo', pseudo.toLowerCase())
-          .maybeSingle();
-      return row == null
+      // Par fonction, et non par lecture directe de `profiles` : depuis la
+      // tranche 7, on ne lit que sa propre ligne et celles auxquelles un lien
+      // social donne droit. `pseudo_disponible` ne renvoie qu'un booléen —
+      // elle dit si le pseudo est libre, jamais à qui il appartient, et ne
+      // peut donc pas servir à dresser un annuaire.
+      final Object? libre = await _client.rpc<Object?>(
+        'pseudo_disponible',
+        params: <String, dynamic>{'p_pseudo': pseudo},
+      );
+      return (libre as bool? ?? false)
           ? PseudoAvailability.available
           : PseudoAvailability.taken;
     } catch (_) {

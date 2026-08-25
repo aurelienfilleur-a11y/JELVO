@@ -1,40 +1,62 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/data_providers.dart';
+import '../../calendar/models/agenda_entry.dart';
 import '../../calendar/models/calendar_event.dart';
 import '../../calendar/providers/calendar_providers.dart';
-import '../../groups/providers/group_providers.dart';
 import '../../tasks/models/task.dart';
 import '../../tasks/providers/task_providers.dart';
+import '../widgets/tasks_card.dart';
 import '../widgets/week_overview.dart';
 
-/// Chiffres affichés dans le bandeau de résumé de l'accueil.
-class HomeSummary {
-  const HomeSummary({
-    required this.todayEventCount,
-    required this.openTaskCount,
-    required this.groupCount,
-  });
-
-  final int todayEventCount;
-  final int openTaskCount;
-  final int groupCount;
-
-  bool get isEmpty =>
-      todayEventCount == 0 && openTaskCount == 0 && groupCount == 0;
-}
-
-/// Agrège les features calendrier, tâches et groupes pour la page d'accueil.
+/// La journée en cours pour la carte « Mon agenda » : **les événements
+/// seuls**.
 ///
-/// L'accueil ne connaît ainsi aucun dépôt : il ne dépend que de ce provider et
-/// des listes déjà filtrées par chaque feature.
-final Provider<HomeSummary> homeSummaryProvider = Provider<HomeSummary>((
-  Ref ref,
-) {
-  return HomeSummary(
-    todayEventCount: ref.watch(todayEventsProvider).length,
-    openTaskCount: ref.watch(openTasksProvider).length,
-    groupCount: ref.watch(activeGroupsProvider).length,
+/// `dayAgendaProvider` mêle aussi les tâches datées et les créneaux de
+/// disponibilité, ce qui a du sens au calendrier — une journée s'y lit d'un
+/// bloc. Sur l'accueil, non : les tâches ont leur propre carte juste dessous,
+/// et une tâche affichée aux deux endroits se lit deux fois. Les créneaux, eux,
+/// décrivent le fond de la journée et n'ont pas leur place dans un résumé.
+final Provider<List<AgendaEntry>> todayAgendaProvider =
+    Provider<List<AgendaEntry>>((Ref ref) {
+      return ref
+          .watch(dayAgendaProvider(ref.watch(nowProvider)))
+          .where(
+            (AgendaEntry e) =>
+                e.kind == AgendaEntryKind.groupEvent ||
+                e.kind == AgendaEntryKind.personalEvent,
+          )
+          .toList();
+    });
+
+/// Les trois chiffres de la carte « Mes tâches ».
+///
+/// L'agrégation vit ici, pas dans le widget : la liste affichée dessous vient
+/// de la même source, et deux comptages parallèles finiraient par afficher un
+/// nombre que la liste contredit.
+final Provider<TaskCounts> taskCountsProvider = Provider<TaskCounts>((Ref ref) {
+  final DateTime now = ref.watch(nowProvider);
+  final DateTime lundi = DateTime(
+    now.year,
+    now.month,
+    now.day,
+  ).subtract(Duration(days: now.weekday - 1));
+
+  final List<Task> ouvertes = ref.watch(openTasksProvider);
+  final List<Task> toutes = ref.watch(tasksProvider).value ?? const <Task>[];
+
+  return TaskCounts(
+    open: ouvertes.length,
+    doneThisWeek: toutes
+        .where(
+          (Task t) => t.completedAt != null && !t.completedAt!.isBefore(lundi),
+        )
+        .length,
+    // « En retard » se lit sur l'échéance, jamais sur un état stocké :
+    // `completed_at` reste la seule source du statut d'une tâche.
+    overdue: ouvertes
+        .where((Task t) => t.dueDate != null && t.dueDate!.isBefore(now))
+        .length,
   );
 });
 

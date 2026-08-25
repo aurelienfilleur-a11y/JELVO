@@ -16,6 +16,7 @@ class AppScreen extends StatelessWidget {
     required this.slivers,
     this.subtitle,
     this.headerAction,
+    this.leading,
   });
 
   final String title;
@@ -23,6 +24,10 @@ class AppScreen extends StatelessWidget {
 
   /// Action affichée à droite du titre (bouton icône, avatar…).
   final Widget? headerAction;
+
+  /// Élément posé **avant** le titre — l'avatar de l'accueil. Les autres
+  /// onglets n'en ont pas : leur en-tête commence au titre.
+  final Widget? leading;
 
   /// Contenu de l'écran, sous forme de slivers.
   final List<Widget> slivers;
@@ -44,8 +49,12 @@ class AppScreen extends StatelessWidget {
               ),
               sliver: SliverToBoxAdapter(
                 child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: <Widget>[
+                    if (leading != null) ...<Widget>[
+                      leading!,
+                      AppSpacing.hGapMd,
+                    ],
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -84,6 +93,7 @@ class AppScreenAction extends StatelessWidget {
     required this.onPressed,
     this.tooltip,
     this.badged = false,
+    this.accented = false,
   });
 
   final IconData icon;
@@ -92,6 +102,11 @@ class AppScreenAction extends StatelessWidget {
 
   /// Affiche une pastille violette en haut à droite (élément non lu).
   final bool badged;
+
+  /// Fond violet clair et icône violette, pour l'action mise en avant d'un
+  /// en-tête. Un seul bouton par en-tête doit la porter : deux accents côte à
+  /// côte ne désignent plus rien.
+  final bool accented;
 
   @override
   Widget build(BuildContext context) {
@@ -104,14 +119,20 @@ class AppScreenAction extends StatelessWidget {
           width: 44,
           height: 44,
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: accented ? AppColors.primarySoft : AppColors.surface,
             borderRadius: BorderRadius.circular(AppSpacing.md),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(
+              color: accented ? AppColors.primarySoft : AppColors.border,
+            ),
           ),
           child: Stack(
             alignment: Alignment.center,
             children: <Widget>[
-              Icon(icon, size: 20, color: AppColors.midnight),
+              Icon(
+                icon,
+                size: 20,
+                color: accented ? AppColors.primary : AppColors.midnight,
+              ),
               if (badged)
                 Positioned(
                   top: 11,

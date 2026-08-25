@@ -26,6 +26,34 @@ class AvatarPicker extends StatefulWidget {
   final VoidCallback onRemoved;
   final String initials;
 
+  /// Ouvre la galerie de photos et renvoie l'image choisie, ou `null`.
+  ///
+  /// Exposée pour que l'écran de profil ouvre exactement la **même** sélection
+  /// que l'inscription — mêmes bornes de taille, même compression. Deux appels
+  /// à `ImagePicker` auraient fini par diverger, et c'est le poids envoyé au
+  /// bucket qui en aurait pâti.
+  static Future<({Uint8List bytes, String extension})?> choisirPhoto() async {
+    final XFile? file = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      // Une photo de profil n'a pas besoin d'être en pleine résolution ; cela
+      // réduit aussi le temps de téléversement.
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 85,
+    );
+    if (file == null) return null;
+    return (
+      bytes: await file.readAsBytes(),
+      extension: _extensionOf(file.name),
+    );
+  }
+
+  static String _extensionOf(String fileName) {
+    final int dot = fileName.lastIndexOf('.');
+    if (dot == -1 || dot == fileName.length - 1) return 'jpg';
+    return fileName.substring(dot + 1).toLowerCase();
+  }
+
   @override
   State<AvatarPicker> createState() => _AvatarPickerState();
 }
@@ -149,19 +177,10 @@ class _AvatarPickerState extends State<AvatarPicker> {
       _error = null;
     });
     try {
-      final XFile? file = await ImagePicker().pickImage(
-        source: ImageSource.gallery,
-        // Une photo de profil n'a pas besoin d'être en pleine résolution ;
-        // cela réduit aussi le temps de téléversement.
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 85,
-      );
-      if (file == null) return;
-
-      final Uint8List bytes = await file.readAsBytes();
-      if (!mounted) return;
-      widget.onPicked(bytes, _extensionOf(file.name));
+      final ({Uint8List bytes, String extension})? choix =
+          await AvatarPicker.choisirPhoto();
+      if (choix == null || !mounted) return;
+      widget.onPicked(choix.bytes, choix.extension);
     } catch (_) {
       if (mounted) {
         setState(() => _error = "La photo n'a pas pu être ouverte. Réessayez.");
@@ -169,11 +188,5 @@ class _AvatarPickerState extends State<AvatarPicker> {
     } finally {
       if (mounted) setState(() => _picking = false);
     }
-  }
-
-  static String _extensionOf(String fileName) {
-    final int dot = fileName.lastIndexOf('.');
-    if (dot == -1 || dot == fileName.length - 1) return 'jpg';
-    return fileName.substring(dot + 1).toLowerCase();
   }
 }

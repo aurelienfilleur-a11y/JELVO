@@ -1,63 +1,42 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../core/core.dart';
 import '../../../router/app_routes.dart';
 import '../../auth/models/auth_failure.dart';
 import '../../auth/providers/auth_providers.dart';
-import '../../auth/widgets/avatar_picker.dart';
+import '../../contacts/widgets/qr_support.dart';
 import '../models/profile.dart';
 import '../providers/profile_providers.dart';
+import '../widgets/avatar_choice_sheet.dart';
+import '../widgets/profile_about_card.dart';
+import '../widgets/profile_header_card.dart';
+import '../widgets/profile_stats_card.dart';
 
-/// Écran Profil, branché sur la table `profiles`.
-class ProfileScreen extends ConsumerStatefulWidget {
+/// Écran « Mon profil » : trois cartes, qui se lisent sans rien remplir.
+///
+/// Il était un formulaire ; il ne l'est plus. La modification vit dans
+/// `ProfileEditScreen`, ouverte par l'action « Modifier » — un profil se
+/// consulte bien plus souvent qu'il ne se change.
+class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
   @override
-  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
-}
-
-class _ProfileScreenState extends ConsumerState<ProfileScreen> {
-  final TextEditingController _firstNameController = TextEditingController();
-  final TextEditingController _lastNameController = TextEditingController();
-  final TextEditingController _bioController = TextEditingController();
-
-  /// Profil dont les contrôleurs reflètent le contenu, pour ne pas écraser une
-  /// saisie en cours à chaque reconstruction.
-  String? _loadedProfileId;
-
-  bool _saving = false;
-  String? _errorMessage;
-
-  @override
-  void dispose() {
-    _firstNameController.dispose();
-    _lastNameController.dispose();
-    _bioController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final AsyncValue<Profile?> profileAsync = ref.watch(currentProfileProvider);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AsyncValue<Profile?> profilAsync = ref.watch(currentProfileProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Profil'),
+        title: const Text('Mon profil'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           tooltip: 'Retour',
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         actions: <Widget>[
-          IconButton(
-            icon: const Icon(Icons.qr_code_rounded),
-            tooltip: 'Mon QR code',
-            onPressed: () => context.pushNamed(AppRoutes.myQrCode),
-          ),
           IconButton(
             icon: const Icon(Icons.settings_outlined),
             tooltip: 'Paramètres',
@@ -66,234 +45,92 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ],
       ),
       body: SafeArea(
-        child: profileAsync.when(
+        child: profilAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (Object error, _) => _ErrorView(
+          error: (Object error, _) => EmptyState(
+            icon: Icons.cloud_off_rounded,
+            title: 'Profil indisponible',
             message: AuthFailure.from(error).message,
-            onRetry: () => ref.invalidate(currentProfileProvider),
+            actionLabel: 'Réessayer',
+            onActionPressed: () => ref.invalidate(currentProfileProvider),
           ),
-          data: (Profile? profile) {
-            if (profile == null) {
-              return const EmptyState(
-                icon: Icons.person_off_outlined,
-                title: 'Profil introuvable',
-                message:
-                    'Votre profil n’a pas encore été créé. Reconnectez-vous '
-                    'pour le finaliser.',
-              );
-            }
-            _syncControllers(profile);
-            return _form(profile);
-          },
+          data: (Profile? profil) => profil == null
+              ? const EmptyState(
+                  icon: Icons.person_off_outlined,
+                  title: 'Profil introuvable',
+                  message:
+                      'Votre profil n’a pas encore été créé. Reconnectez-vous '
+                      'pour le finaliser.',
+                )
+              : _contenu(context, ref, profil),
         ),
       ),
     );
   }
 
-  void _syncControllers(Profile profile) {
-    if (_loadedProfileId == profile.id) return;
-    _loadedProfileId = profile.id;
-    _firstNameController.text = profile.firstName;
-    _lastNameController.text = profile.lastName;
-    _bioController.text = profile.bio ?? '';
-  }
-
-  Widget _form(Profile profile) {
-    final String? email = ref.watch(currentEmailProvider);
-
+  Widget _contenu(BuildContext context, WidgetRef ref, Profile profil) {
     return ListView(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.screenMargin,
-        AppSpacing.lg,
+        AppSpacing.md,
         AppSpacing.screenMargin,
         AppSpacing.xxl,
       ),
       children: <Widget>[
-        if (_errorMessage != null) ...<Widget>[
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            decoration: BoxDecoration(
-              color: AppColors.dangerSoft,
-              borderRadius: AppRadii.fieldRadius,
-            ),
-            child: Text(
-              _errorMessage!,
-              style: AppTypography.caption.copyWith(color: AppColors.danger),
-            ),
+        ProfileHeaderCard(
+          profile: profil,
+          onChangeAvatar: () => AvatarChoiceSheet.ouvrir(
+            context,
+            aUnAvatar: profil.avatarAAfficher != null,
           ),
-          AppSpacing.gapLg,
-        ],
-
-        Center(
-          child: AvatarPicker(
-            bytes: null,
-            // `avatarAAfficher` et non `avatarUrl` : un avatar prédéfini doit
-            // apparaître ici comme il apparaît partout ailleurs.
-            imageUrl: profile.avatarAAfficher,
-            initials: _initialsOf(profile),
-            onPicked: _changeAvatar,
-            onRemoved: _retirerAvatar,
-          ),
-        ),
-        AppSpacing.gapSm,
-        // Les deux voies au même endroit et de même poids : la photo se prend
-        // en touchant l'aperçu ci-dessus, la galerie s'ouvre par ce bouton.
-        Center(
-          child: TextButton.icon(
-            onPressed: () => context.pushNamed(AppRoutes.avatarGallery),
-            icon: const Icon(Icons.face_retouching_natural_rounded, size: 18),
-            label: const Text('Choisir un avatar'),
-          ),
-        ),
-        AppSpacing.gapMd,
-        Center(child: Text(profile.displayName, style: AppTypography.h2)),
-        Center(
-          child: Text(profile.pseudoHandle, style: AppTypography.bodyMuted),
-        ),
-
-        AppSpacing.gapXl,
-        const SectionHeader(title: 'Informations'),
-        AppSpacing.gapLg,
-
-        AppTextField(
-          label: 'Prénom',
-          controller: _firstNameController,
-          textCapitalization: TextCapitalization.words,
-          prefixIcon: Icons.badge_outlined,
-          textInputAction: TextInputAction.next,
-          onChanged: (_) => _clearError(),
-        ),
-        AppSpacing.gapLg,
-        AppTextField(
-          label: 'Nom',
-          controller: _lastNameController,
-          textCapitalization: TextCapitalization.words,
-          prefixIcon: Icons.badge_outlined,
-          textInputAction: TextInputAction.next,
-          onChanged: (_) => _clearError(),
-        ),
-        AppSpacing.gapLg,
-        AppTextField(
-          label: 'Bio',
-          hint: 'Quelques mots sur vous',
-          controller: _bioController,
-          maxLines: 4,
-          minLines: 3,
-          maxLength: 280,
-          helperText: 'Visible par vos contacts',
-          onChanged: (_) => _clearError(),
+          onQrCode: () => context.pushNamed(AppRoutes.myQrCode),
+          onEdit: () => context.pushNamed(AppRoutes.profileEdit),
+          onShare: () => _partager(context, profil),
         ),
 
         AppSpacing.gapLg,
-        AppCard(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Row(
-            children: <Widget>[
-              const Icon(
-                Icons.alternate_email_rounded,
-                size: 20,
-                color: AppColors.textSecondary,
-              ),
-              AppSpacing.hGapMd,
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text('Pseudo et e-mail', style: AppTypography.caption),
-                    const SizedBox(height: 2),
-                    Text(
-                      email == null
-                          ? profile.pseudoHandle
-                          : '${profile.pseudoHandle} · $email',
-                      style: AppTypography.body,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+        ProfileAboutCard(
+          bio: profil.bio,
+          email: ref.watch(currentEmailProvider),
+          onEditBio: () => context.pushNamed(AppRoutes.profileEdit),
+        ),
+
+        AppSpacing.gapLg,
+        ProfileStatsCard(
+          stats: ref.watch(profileStatsProvider),
+          onOpenGroups: () => context.goNamed(AppRoutes.groups),
+          onOpenCalendar: () => context.goNamed(AppRoutes.calendar),
+          onOpenTasks: () => context.pushNamed(AppRoutes.tasks),
         ),
 
         AppSpacing.gapLg,
         _LigneDisponibilites(
           onTap: () => context.pushNamed(AppRoutes.availability),
         ),
-
-        AppSpacing.gapXl,
-        PrimaryButton(
-          label: 'Enregistrer',
-          isLoading: _saving,
-          onPressed: _save,
-        ),
       ],
     );
   }
 
-  static String _initialsOf(Profile profile) {
-    final String first = profile.firstName;
-    final String last = profile.lastName;
-    final String initials =
-        (first.isEmpty ? '' : first[0]) + (last.isEmpty ? '' : last[0]);
-    return initials.isEmpty
-        ? profile.pseudo.characters.take(1).toString().toUpperCase()
-        : initials.toUpperCase();
-  }
-
-  void _clearError() {
-    if (_errorMessage != null) setState(() => _errorMessage = null);
-  }
-
-  Future<void> _retirerAvatar() async {
-    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+  /// Partage exactement ce que porte le QR code : le pseudo.
+  ///
+  /// Jelvo n'a pas d'adresse publique de profil ; inventer un lien qui
+  /// n'ouvrirait rien serait pire que de partager le pseudo, avec lequel on
+  /// se retrouve par la recherche.
+  static Future<void> _partager(BuildContext context, Profile profil) async {
+    final ScaffoldMessengerState messager = ScaffoldMessenger.of(context);
+    final String texte =
+        'Retrouvez-moi sur Jelvo : ${profil.pseudoHandle}\n'
+        '${QrContact.encode(profil.pseudo)}';
     try {
-      await ref.read(profileActionsProvider).effacerAvatar();
-    } catch (error) {
-      messenger.showSnackBar(
-        SnackBar(content: Text(AuthFailure.from(error).message)),
+      await SharePlus.instance.share(
+        ShareParams(text: texte, subject: 'Mon profil Jelvo'),
       );
-    }
-  }
-
-  Future<void> _changeAvatar(Uint8List bytes, String extension) async {
-    setState(() {
-      _saving = true;
-      _errorMessage = null;
-    });
-    try {
-      await ref.read(profileActionsProvider).changeAvatar(bytes, extension);
-    } catch (error) {
-      if (mounted) {
-        setState(() => _errorMessage = AuthFailure.from(error).message);
-      }
-    } finally {
-      if (mounted) setState(() => _saving = false);
-    }
-  }
-
-  Future<void> _save() async {
-    setState(() {
-      _saving = true;
-      _errorMessage = null;
-    });
-    try {
-      await ref
-          .read(profileActionsProvider)
-          .save(
-            firstName: _firstNameController.text.trim(),
-            lastName: _lastNameController.text.trim(),
-            bio: _bioController.text.trim(),
-          );
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Profil enregistré.')));
-    } catch (error) {
-      if (!mounted) return;
-      setState(() => _errorMessage = AuthFailure.from(error).message);
-    } finally {
-      if (mounted) setState(() => _saving = false);
+    } catch (_) {
+      // Pas de feuille de partage (certains navigateurs) : le pseudo reste
+      // copiable, ce qui couvre le même besoin.
+      messager.showSnackBar(
+        SnackBar(content: Text('Votre pseudo : ${profil.pseudoHandle}')),
+      );
     }
   }
 }
@@ -301,8 +138,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 /// Entrée vers la saisie des disponibilités.
 ///
 /// Elle vit dans le profil et non dans les paramètres : une disponibilité
-/// décrit la personne, pas le fonctionnement de l'application. Le sous-titre
-/// rappelle la règle de confidentialité avant même d'ouvrir l'écran.
+/// décrit la personne, pas le fonctionnement de l'application. Absente de la
+/// maquette, elle est gardée — c'est le seul chemin vers cet écran.
 class _LigneDisponibilites extends StatelessWidget {
   const _LigneDisponibilites({required this.onTap});
 
@@ -319,24 +156,35 @@ class _LigneDisponibilites extends StatelessWidget {
           padding: const EdgeInsets.all(AppSpacing.md),
           child: Row(
             children: <Widget>[
-              const Icon(
-                Icons.event_available_outlined,
-                size: 20,
-                color: AppColors.primary,
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.primarySoft,
+                  borderRadius: AppRadii.fieldRadius,
+                ),
+                child: const Icon(
+                  Icons.event_available_outlined,
+                  size: 18,
+                  color: AppColors.primary,
+                ),
               ),
               AppSpacing.hGapMd,
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text('Mes disponibilités', style: AppTypography.h3),
+                    Text(
+                      'Mes disponibilités',
+                      style: AppTypography.body.copyWith(
+                        fontWeight: AppTypography.semiBold,
+                      ),
+                    ),
                     const SizedBox(height: 2),
                     Text(
                       'Les autres n’y voient qu’un mot : disponible, '
                       'indisponible ou inconnu.',
-                      style: AppTypography.caption.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
+                      style: AppTypography.caption,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -351,24 +199,6 @@ class _LigneDisponibilites extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _ErrorView extends StatelessWidget {
-  const _ErrorView({required this.message, required this.onRetry});
-
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return EmptyState(
-      icon: Icons.cloud_off_rounded,
-      title: 'Profil indisponible',
-      message: message,
-      actionLabel: 'Réessayer',
-      onActionPressed: onRetry,
     );
   }
 }

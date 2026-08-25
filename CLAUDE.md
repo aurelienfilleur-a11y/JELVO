@@ -1937,6 +1937,80 @@ ligne des quantièmes danserait.
 
 ---
 
+## Écran « Mon profil »
+
+Trois cartes, dans l'ordre de la maquette : **identité**, **À propos**,
+**Mes statistiques**.
+
+### Il ne s'écrit plus là où il se lit
+
+L'écran était un formulaire ; il ne l'est plus. `ProfileEditScreen`
+(`/profil/modifier`) porte prénom, nom et bio ; l'écran de profil se lit d'un
+coup d'œil. Un profil se consulte bien plus souvent qu'il ne se change, et un
+bouton « Enregistrer » permanent laissait croire qu'il fallait valider pour
+partir.
+
+L'enregistrement **referme** la feuille sur le profil : rester sur le
+formulaire ferait douter de l'effet.
+
+### Le bouton d'appareil photo ouvre les deux voies
+
+La pastille posée sur l'avatar ouvre `AvatarChoiceSheet` : photo de l'appareil,
+avatar Jelvo, et retrait quand il y a quelque chose à retirer. **Les avatars
+prédéfinis y sont de même rang que la photo** — les cacher derrière un second
+bouton en aurait fait une option de repli.
+
+`AvatarPicker.choisirPhoto()` est le point unique de sélection : l'inscription
+et le profil ouvrent la **même** boîte, avec les mêmes bornes de taille et la
+même compression. Deux appels à `ImagePicker` auraient fini par diverger, et
+c'est le poids envoyé au bucket qui en aurait pâti.
+
+### Ce que la maquette proposait et qui n'existe pas
+
+| Écarté | Pourquoi |
+| --- | --- |
+| badge « En ligne » | `profiles.last_seen_at` n'est écrit nulle part |
+| ligne Téléphone | Jelvo ne collecte pas de numéro |
+| ligne Localisation | ni de localisation |
+
+Les afficher vides aurait suggéré qu'il manque quelque chose à remplir.
+
+**L'e-mail n'a pas de chevron**, contrairement aux autres lignes : il vient de
+la session, et le changer relèverait d'un parcours d'authentification que
+l'application n'a pas. Un chevron qui n'ouvre rien est pire qu'une ligne
+inerte.
+
+### Les trois statistiques, et la nuance du troisième
+
+| Compteur | Source |
+| --- | --- |
+| Groupes | `activeGroupsProvider.length` — exact |
+| Événements | `eventsProvider`, soit `mon_agenda` **sans bornes de dates** : rien n'est tronqué |
+| Tâches terminées | tâches visibles dont `completed_at` est renseigné |
+
+Le troisième porte un libellé plus prudent que la maquette : **« Tâches
+terminées » et non « réalisées »**. `tasks` ne connaît que `completed_at`,
+jamais qui a coché — attribuer l'action à quelqu'un serait inventer ce que la
+base ne sait pas. Le jour où une colonne `completed_by` existerait, le libellé
+pourrait changer.
+
+Chaque compteur **ouvre la liste qu'il résume** : un chiffre qu'on ne peut pas
+ouvrir n'apprend rien de plus que lui-même.
+
+### Le QR code existait déjà
+
+`MyQrCodeScreen` et `QrContact` datent de la feature contacts : le code
+n'encode que le **pseudo**, ni adresse e-mail ni agenda. La refonte ne fait
+que le remonter au premier rang des actions, là où on le cherche quand on est
+en face de quelqu'un.
+
+« Partager profil » partage **exactement la même chose** que le QR code. Jelvo
+n'a pas d'adresse publique de profil, et inventer un lien qui n'ouvrirait rien
+serait pire que de partager le pseudo, avec lequel on se retrouve par la
+recherche.
+
+---
+
 ## Internationalisation
 
 Les textes vivent dans `lib/l10n/app_fr.arb` et sont exposés par la classe
@@ -2260,8 +2334,14 @@ s'en passe.
   générée confrontée au dossier, les trois trous de numérotation, l'existence
   de chaque fichier, et la résolution d'une valeur `preset:` — y compris le
   préfixe nu, qui ne doit pas produire un chemin bancal.
+- `test/profile_screen_test.dart` couvre l'écran de profil refondu : le nom,
+  le pseudo et les trois actions, le QR code, le formulaire pré-rempli qui
+  referme sur le profil, la pastille qui ouvre le choix photo ou avatar Jelvo,
+  la bio vide qui invite à la remplir, l'absence de téléphone, de localisation
+  et de badge de présence, les trois compteurs, et un compteur qui ouvre la
+  liste qu'il résume.
 - `test/avatar_gallery_test.dart` couvre la galerie : les deux voies
-  cohabitant sur le profil, la sélection qui n'enregistre pas seule, la
+  cohabitant dans la feuille de choix du profil, la sélection qui n'enregistre pas seule, la
   confirmation qui enregistre, l'inertie sans choix, l'anneau sur l'avatar
   courant, et la photo effacée par le choix d'un avatar.
 - `test/availability_weekday_test.dart` couvre la conversion ISO ↔

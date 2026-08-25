@@ -6,7 +6,6 @@ import 'package:jelvo/core/core.dart';
 import 'package:jelvo/data/clock.dart';
 import 'package:jelvo/data/data_providers.dart';
 import 'package:jelvo/features/auth/providers/auth_providers.dart';
-import 'package:jelvo/features/auth/widgets/avatar_picker.dart';
 import 'package:jelvo/features/availability/providers/availability_providers.dart';
 import 'package:jelvo/features/calendar/providers/calendar_providers.dart';
 import 'package:jelvo/features/chat/providers/chat_providers.dart';
@@ -75,7 +74,11 @@ Future<FakeProfileRepository> _pumpApp(
 Future<void> _ouvrirGalerie(WidgetTester tester) async {
   await tester.tap(find.byTooltip('Profil'));
   await tester.pumpAndSettle();
-  await tester.tap(find.text('Choisir un avatar'));
+  // Depuis la refonte du profil, la galerie s'ouvre par la pastille
+  // d'appareil photo posée sur l'avatar, puis la feuille de choix.
+  await tester.tap(find.byTooltip('Changer de photo'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Choisir un avatar Jelvo'));
   await tester.pumpAndSettle();
 }
 
@@ -91,12 +94,16 @@ void main() {
       await tester.tap(find.byTooltip('Profil'));
       await tester.pumpAndSettle();
 
-      // Les deux voies cohabitent : l'aperçu prend une photo, le bouton ouvre
-      // la galerie.
-      expect(find.text('Choisir un avatar'), findsOneWidget);
-      expect(find.byType(AvatarPicker), findsOneWidget);
+      await tester.tap(find.byTooltip('Changer de photo'));
+      await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Choisir un avatar'));
+      // Les deux voies cohabitent dans la feuille, et de même rang : cacher
+      // les avatars prédéfinis derrière un second bouton en aurait fait une
+      // option de repli.
+      expect(find.text('Choisir une photo'), findsOneWidget);
+      expect(find.text('Choisir un avatar Jelvo'), findsOneWidget);
+
+      await tester.tap(find.text('Choisir un avatar Jelvo'));
       await tester.pumpAndSettle();
 
       expect(find.text('Utiliser cet avatar'), findsOneWidget);

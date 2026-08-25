@@ -90,6 +90,13 @@ abstract final class AppRoutes {
   static const String profile = 'profile';
   static const String profilePath = '/profil';
 
+  /// Modification du profil — prénom, nom, bio.
+  ///
+  /// Séparée de l'affichage : l'écran de profil se lit, et n'est un formulaire
+  /// que lorsqu'on demande à le modifier.
+  static const String profileEdit = 'profileEdit';
+  static const String profileEditPath = '/profil/modifier';
+
   /// Galerie des avatars prédéfinis, empilée sur le profil.
   static const String avatarGallery = 'avatarGallery';
   static const String avatarGalleryPath = '/profil/avatar';

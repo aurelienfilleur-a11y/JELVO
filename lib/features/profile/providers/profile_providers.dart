@@ -1,9 +1,13 @@
-import 'dart:typed_data';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/supabase_providers.dart';
 import '../../auth/providers/auth_providers.dart';
+import '../../calendar/models/calendar_event.dart';
+import '../../calendar/providers/calendar_providers.dart';
+import '../../groups/providers/group_providers.dart';
+import '../../tasks/models/task.dart';
+import '../../tasks/providers/task_providers.dart';
 import '../models/profile.dart';
 import '../repository/profile_repository.dart';
 
@@ -22,6 +26,52 @@ final FutureProvider<Profile?> currentProfileProvider =
       if (userId == null) return null;
       return ref.watch(profileRepositoryProvider).fetchProfile(userId);
     });
+
+/// Les trois chiffres de la carte « Mes statistiques ».
+///
+/// **Aucun n'est inventé** : les trois se lisent sur des listes que
+/// l'application charge déjà.
+@immutable
+class ProfileStats {
+  const ProfileStats({
+    required this.groups,
+    required this.events,
+    required this.completedTasks,
+  });
+
+  /// Groupes dont l'adhésion est active. Exact.
+  final int groups;
+
+  /// Événements visibles dans l'agenda — ceux de ses groupes et ses
+  /// rendez-vous personnels, passés comme à venir. `mon_agenda` est appelée
+  /// sans bornes de dates, donc rien n'est tronqué.
+  final int events;
+
+  /// Tâches terminées **visibles**, et non « terminées par moi » : `tasks` ne
+  /// porte pas de `completed_by`, seulement `completed_at`. Le libellé dit
+  /// donc « Tâches terminées », pas « réalisées » — attribuer l'action à
+  /// quelqu'un serait inventer ce que la base ne sait pas.
+  final int completedTasks;
+}
+
+/// Agrège les trois compteurs depuis les listes déjà chargées.
+///
+/// Le profil ne connaît ainsi aucun dépôt de plus : il lit les mêmes
+/// providers que les écrans qui affichent ces listes, et un chiffre ne peut
+/// donc pas contredire ce qu'on voit ailleurs.
+final Provider<ProfileStats> profileStatsProvider = Provider<ProfileStats>((
+  Ref ref,
+) {
+  final List<CalendarEvent> evenements =
+      ref.watch(eventsProvider).value ?? const <CalendarEvent>[];
+  final List<Task> taches = ref.watch(tasksProvider).value ?? const <Task>[];
+
+  return ProfileStats(
+    groups: ref.watch(activeGroupsProvider).length,
+    events: evenements.length,
+    completedTasks: taches.where((Task t) => t.isDone).length,
+  );
+});
 
 /// Écritures sur le profil, exposées aux écrans.
 final Provider<ProfileActions> profileActionsProvider =

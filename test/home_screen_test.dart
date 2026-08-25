@@ -13,7 +13,9 @@ import 'package:jelvo/features/contacts/providers/contact_providers.dart';
 import 'package:jelvo/features/groups/models/group.dart';
 import 'package:jelvo/features/groups/models/group_member.dart';
 import 'package:jelvo/features/groups/providers/group_providers.dart';
+import 'package:jelvo/features/home/widgets/agenda_card.dart';
 import 'package:jelvo/features/home/widgets/group_strip.dart';
+import 'package:jelvo/features/home/widgets/tasks_card.dart';
 import 'package:jelvo/features/notifications/providers/notification_providers.dart';
 import 'package:jelvo/features/notifications/providers/push_providers.dart';
 import 'package:jelvo/features/profile/providers/profile_providers.dart';
@@ -123,10 +125,16 @@ void main() {
     ) async {
       await _pumpApp(tester);
 
-      expect(find.text('Famille Rousseau'), findsOneWidget);
-      expect(find.text('3 membres'), findsOneWidget);
-      expect(find.text('Vacances en Corse'), findsOneWidget);
-      expect(find.text('4 membres'), findsOneWidget);
+      // Bornée à la bande : le nom d'un groupe se lit aussi en sous-titre
+      // d'une ligne d'agenda, juste dessous.
+      Finder dansLaBande(String texte) => find.descendant(
+        of: find.byType(GroupStrip),
+        matching: find.text(texte),
+      );
+      expect(dansLaBande('Famille Rousseau'), findsOneWidget);
+      expect(dansLaBande('3 membres'), findsOneWidget);
+      expect(dansLaBande('Vacances en Corse'), findsOneWidget);
+      expect(dansLaBande('4 membres'), findsOneWidget);
     });
 
     testWidgets('sans photo de couverture, l’initiale prend la place', (
@@ -204,25 +212,78 @@ void main() {
       expect(find.text('09:30 – 11:30'), findsOneWidget);
     });
 
-    testWidgets('les tâches restent dans leur carte, pas dans l’agenda', (
+    testWidgets('une tâche de la chronologie n’est pas répétée en bas', (
       WidgetTester tester,
     ) async {
       await _pumpApp(tester);
 
-      // La tâche du jour figure dans `dayAgendaProvider`, qui alimente le
-      // calendrier. L'accueil ne garde que les événements : affichée aux deux
-      // endroits, elle se lirait deux fois.
+      // La répétition entre les deux cartes est assumée dans son principe —
+      // les compteurs continuent de la compter —, mais la **ligne** en double
+      // à quelques centimètres de la première ne l'est pas.
       expect(find.text('Réserver le restaurant pour samedi'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(TasksCard),
+          matching: find.text('Réserver le restaurant pour samedi'),
+        ),
+        findsNothing,
+      );
     });
 
-    testWidgets('sans événement, la carte annonce une journée libre', (
+    testWidgets('une journée sans rien annonce une journée libre', (
       WidgetTester tester,
     ) async {
-      await _pumpApp(tester, eventRepository: FakeEventRepository(events: []));
+      // Sans événement **ni** tâche datée : la chronologie montre les deux,
+      // et il suffit d'une tâche du jour pour qu'elle ne soit pas vide.
+      await _pumpApp(
+        tester,
+        eventRepository: FakeEventRepository(events: []),
+        taskRepository: FakeTaskRepository(tasks: []),
+      );
 
       expect(find.text('Journée libre'), findsOneWidget);
       // Le pied « voir tout » ne s'affiche pas : il n'y a rien de plus.
       expect(find.textContaining('Voir tout mon agenda'), findsNothing);
+    });
+
+    testWidgets('la chronologie mêle événements et tâches du jour', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester);
+
+      // C'est le but de la carte : voir sa journée d'un coup d'œil, sans
+      // distinguer ce qui arrive de ce qu'on a à faire.
+      final Finder carte = find.byType(AgendaCard);
+      expect(
+        find.descendant(
+          of: carte,
+          matching: find.text('Brunch chez les parents'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: carte,
+          matching: find.text('Réserver le restaurant pour samedi'),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('les créneaux de disponibilité restent dehors', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester);
+
+      // Ils décrivent ce qui se peut, pas ce qui arrive, et rempliraient une
+      // carte qui doit tenir en trois lignes. Ils restent au calendrier.
+      expect(
+        find.descendant(
+          of: find.byType(AgendaCard),
+          matching: find.textContaining('Disponible'),
+        ),
+        findsNothing,
+      );
     });
   });
 

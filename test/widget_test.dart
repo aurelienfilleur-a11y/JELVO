@@ -83,9 +83,9 @@ void main() {
 
     expect(find.textContaining('Bonjour'), findsOneWidget);
     expect(find.text('Brunch chez les parents'), findsOneWidget);
-    // « Aujourd'hui » titre la section agenda et sert aussi de pastille
-    // d'échéance sur les tâches du jour.
-    expect(find.text("Aujourd'hui"), findsWidgets);
+    // La chronologie du jour porte son titre ; l'échéance s'y lit à l'heure,
+    // et non plus par une pastille « Aujourd'hui ».
+    expect(find.text('Mon agenda'), findsOneWidget);
     expect(find.text('Réserver le restaurant pour samedi'), findsOneWidget);
   });
 

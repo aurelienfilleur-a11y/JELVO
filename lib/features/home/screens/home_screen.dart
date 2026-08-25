@@ -13,7 +13,6 @@ import '../../notifications/providers/notification_providers.dart';
 import '../../profile/models/profile.dart';
 import '../../profile/providers/profile_providers.dart';
 import '../../tasks/models/task.dart';
-import '../../tasks/providers/task_providers.dart';
 import '../../tasks/widgets/task_tile.dart';
 import '../providers/home_providers.dart';
 import '../widgets/agenda_card.dart';
@@ -36,7 +35,7 @@ class HomeScreen extends ConsumerWidget {
     final Profile? profil = ref.watch(currentProfileProvider).value;
     final List<Group> groups = ref.watch(activeGroupsProvider);
     final List<AgendaEntry> agenda = ref.watch(todayAgendaProvider);
-    final List<Task> focusTasks = ref.watch(focusTasksProvider);
+    final List<Task> focusTasks = ref.watch(homeTaskRowsProvider);
 
     return AppScreen(
       // Pas d'emoji dans le titre, contrairement à la maquette : sans police

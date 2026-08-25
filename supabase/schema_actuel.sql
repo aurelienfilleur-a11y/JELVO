@@ -304,42 +304,28 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 -- =========================================================
 -- POLITIQUES RLS
 -- =========================================================
--- availabilities           av_all                       ALL    {public}
+-- availabilities           av_select                    SELECT {public}
 --   using       : (user_id = auth.uid())
---   with check  : (user_id = auth.uid())
+--   with check  : —
 -- contacts                 contacts_delete              DELETE {public}
 --   using       : ((requester_id = auth.uid()) OR (addressee_id = auth.uid()))
 --   with check  : —
--- contacts                 contacts_insert              INSERT {public}
+-- contacts                 contacts_insert              INSERT {authenticated}
 --   using       : —
---   with check  : (requester_id = auth.uid())
+--   with check  : ((requester_id = auth.uid()) AND (addressee_id <> auth.uid()))
 -- contacts                 contacts_select              SELECT {public}
 --   using       : ((requester_id = auth.uid()) OR (addressee_id = auth.uid()))
 --   with check  : —
 -- contacts                 contacts_update              UPDATE {public}
---   using       : ((addressee_id = auth.uid()) OR (requester_id = auth.uid()))
---   with check  : —
--- event_participants       ep_insert                    INSERT {public}
---   using       : —
---   with check  : (EXISTS ( SELECT 1
-   FROM events e
-  WHERE ((e.id = event_participants.event_id) AND (e.group_id IS NOT NULL) AND is_group_member(e.group_id))))
+--   using       : ((requester_id = auth.uid()) OR (addressee_id = auth.uid()))
+--   with check  : ((requester_id = auth.uid()) OR (addressee_id = auth.uid()))
 -- event_participants       ep_select                    SELECT {public}
 --   using       : (EXISTS ( SELECT 1
    FROM events e
   WHERE ((e.id = event_participants.event_id) AND ((e.owner_id = auth.uid()) OR ((e.group_id IS NOT NULL) AND is_group_member(e.group_id))))))
 --   with check  : —
--- event_participants       ep_update                    UPDATE {public}
---   using       : (user_id = auth.uid())
---   with check  : —
--- events                   events_insert                INSERT {public}
---   using       : —
---   with check  : ((owner_id = auth.uid()) AND ((group_id IS NULL) OR is_group_member(group_id)))
 -- events                   events_select                SELECT {public}
 --   using       : ((deleted_at IS NULL) AND (((group_id IS NULL) AND (owner_id = auth.uid())) OR ((group_id IS NOT NULL) AND is_group_member(group_id))))
---   with check  : —
--- events                   events_update                UPDATE {public}
---   using       : ((owner_id = auth.uid()) OR ((group_id IS NOT NULL) AND is_group_admin(group_id)))
 --   with check  : —
 -- group_invite_links       lien_invitation_creation     INSERT {authenticated}
 --   using       : —
@@ -347,23 +333,11 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 -- group_invite_links       lien_invitation_lecture_membre SELECT {authenticated}
 --   using       : est_membre_du_groupe(group_id, auth.uid())
 --   with check  : —
--- group_invite_links       lien_invitation_lecture_publique SELECT {anon}
---   using       : true
---   with check  : —
 -- group_invite_links       lien_invitation_revocation   UPDATE {authenticated}
 --   using       : ((created_by = auth.uid()) OR est_admin_du_groupe(group_id, auth.uid()))
 --   with check  : ((created_by = auth.uid()) OR est_admin_du_groupe(group_id, auth.uid()))
--- group_members            gm_delete                    DELETE {public}
---   using       : ((user_id = auth.uid()) OR is_group_admin(group_id))
---   with check  : —
--- group_members            gm_insert                    INSERT {public}
---   using       : —
---   with check  : (user_id = auth.uid())
 -- group_members            gm_select                    SELECT {public}
 --   using       : is_group_member(group_id)
---   with check  : —
--- group_members            gm_update                    UPDATE {public}
---   using       : is_group_admin(group_id)
 --   with check  : —
 -- groups                   groups_insert                INSERT {public}
 --   using       : —
@@ -371,38 +345,26 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 -- groups                   groups_select                SELECT {public}
 --   using       : (is_group_member(id) AND (deleted_at IS NULL))
 --   with check  : —
--- groups                   groups_update                UPDATE {public}
+-- groups                   groups_update                UPDATE {authenticated}
 --   using       : is_group_admin(id)
---   with check  : —
--- invitations              inv_insert                   INSERT {public}
---   using       : —
---   with check  : (inviter_id = auth.uid())
+--   with check  : is_group_admin(id)
 -- invitations              inv_select                   SELECT {public}
 --   using       : ((inviter_id = auth.uid()) OR (invitee_id = auth.uid()))
 --   with check  : —
--- invitations              inv_update                   UPDATE {public}
---   using       : (invitee_id = auth.uid())
---   with check  : —
--- message_reactions        mr_all                       ALL    {public}
+-- message_reactions        mr_select                    SELECT {public}
 --   using       : (EXISTS ( SELECT 1
    FROM messages m
-  WHERE ((m.id = message_reactions.message_id) AND is_group_member(m.group_id))))
---   with check  : (user_id = auth.uid())
--- message_reads            reads_all                    ALL    {public}
+  WHERE ((m.id = message_reactions.message_id) AND est_membre_du_groupe(m.group_id, auth.uid()))))
+--   with check  : —
+-- message_reads            reads_select                 SELECT {public}
 --   using       : (user_id = auth.uid())
---   with check  : (user_id = auth.uid())
--- messages                 msg_insert                   INSERT {public}
---   using       : —
---   with check  : ((sender_id = auth.uid()) AND is_group_member(group_id))
+--   with check  : —
 -- messages                 msg_select                   SELECT {public}
 --   using       : is_group_member(group_id)
 --   with check  : —
--- messages                 msg_update                   UPDATE {public}
---   using       : (sender_id = auth.uid())
---   with check  : —
--- notification_preferences np_all                       ALL    {authenticated}
+-- notification_preferences np_select                    SELECT {authenticated}
 --   using       : (user_id = auth.uid())
---   with check  : (user_id = auth.uid())
+--   with check  : —
 -- notifications            notif_insert_declencheur     INSERT {postgres}
 --   using       : —
 --   with check  : true
@@ -412,51 +374,31 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 -- notifications            notif_update                 UPDATE {public}
 --   using       : (user_id = auth.uid())
 --   with check  : —
--- profiles                 profiles_insert              INSERT {public}
+-- profiles                 profiles_insert              INSERT {authenticated}
 --   using       : —
 --   with check  : (id = auth.uid())
 -- profiles                 profiles_select              SELECT {public}
---   using       : ((id = auth.uid()) OR has_social_link(id) OR true)
+--   using       : ((id = auth.uid()) OR has_social_link(id))
 --   with check  : —
--- profiles                 profiles_update              UPDATE {public}
+-- profiles                 profiles_update              UPDATE {authenticated}
 --   using       : (id = auth.uid())
---   with check  : —
+--   with check  : (id = auth.uid())
 -- push_outbox              outbox_select                SELECT {authenticated}
 --   using       : (user_id = auth.uid())
 --   with check  : —
--- push_tokens              pt_all                       ALL    {public}
+-- push_tokens              pt_select                    SELECT {public}
 --   using       : (user_id = auth.uid())
---   with check  : (user_id = auth.uid())
--- task_assignees           ta_insert                    INSERT {public}
---   using       : —
---   with check  : (EXISTS ( SELECT 1
-   FROM tasks t
-  WHERE ((t.id = task_assignees.task_id) AND is_group_member(t.group_id))))
+--   with check  : —
 -- task_assignees           ta_select                    SELECT {public}
 --   using       : (EXISTS ( SELECT 1
    FROM tasks t
   WHERE ((t.id = task_assignees.task_id) AND is_group_member(t.group_id))))
 --   with check  : —
--- task_assignees           ta_update                    UPDATE {public}
---   using       : ((user_id = auth.uid()) OR (EXISTS ( SELECT 1
-   FROM tasks t
-  WHERE ((t.id = task_assignees.task_id) AND (t.created_by = auth.uid())))))
+-- task_list_items          tli_select                   SELECT {public}
+--   using       : peut_voir_tache(task_id)
 --   with check  : —
--- task_list_items          tli_all                      ALL    {public}
---   using       : (EXISTS ( SELECT 1
-   FROM tasks t
-  WHERE ((t.id = task_list_items.task_id) AND is_group_member(t.group_id))))
---   with check  : (EXISTS ( SELECT 1
-   FROM tasks t
-  WHERE ((t.id = task_list_items.task_id) AND is_group_member(t.group_id))))
--- tasks                    tasks_insert                 INSERT {public}
---   using       : —
---   with check  : ((created_by = auth.uid()) AND is_group_member(group_id))
 -- tasks                    tasks_select                 SELECT {public}
 --   using       : ((deleted_at IS NULL) AND is_group_member(group_id))
---   with check  : —
--- tasks                    tasks_update                 UPDATE {public}
---   using       : is_group_member(group_id)
 --   with check  : —
 
 
@@ -517,6 +459,7 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 -- peut_voir_tache(p_task_id uuid) → boolean   [security definer, postgres]
 -- prochaine_occurrence(p_base timestamp with time zone, p_rrule text, p_apres timestamp with time zone) → timestamp with time zone   [security invoker, postgres]
 -- promouvoir_membre(p_group_id uuid, p_user_id uuid) → text   [security definer, postgres]
+-- pseudo_disponible(p_pseudo text) → boolean   [security definer, postgres]
 -- purger_push(p_token text) → integer   [security definer, postgres]
 -- push_a_envoyer(p_limite integer DEFAULT 50) → TABLE(id uuid, user_id uuid, type text, title text, body text, url text, token text, platform text, p256dh text, auth_key text)   [security definer, postgres]
 -- push_date_changee() → trigger   [security definer, postgres]
@@ -566,42 +509,42 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 -- =========================================================
 -- PRIVILÈGES (anon, authenticated)
 -- =========================================================
--- availabilities           anon             DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- availabilities           authenticated    DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- contacts                 anon             DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- contacts                 authenticated    DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- event_participants       anon             DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- event_participants       authenticated    DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- events                   anon             DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- events                   authenticated    DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- group_invite_links       authenticated    INSERT, SELECT, UPDATE
--- group_members            anon             DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- group_members            authenticated    DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- groups                   anon             DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- groups                   authenticated    DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- invitations              anon             DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- invitations              authenticated    DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- message_reactions        anon             DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- message_reactions        authenticated    DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- message_reads            anon             DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- message_reads            authenticated    DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- messages                 anon             DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- messages                 authenticated    DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- notification_preferences anon             DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- notification_preferences authenticated    DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- notifications            anon             DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- notifications            authenticated    DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- profiles                 anon             DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- profiles                 authenticated    DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- push_outbox              anon             DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- push_outbox              authenticated    DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- push_reminders_sent      anon             DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- push_reminders_sent      authenticated    DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- push_tokens              anon             DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- push_tokens              authenticated    DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- task_assignees           anon             DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- task_assignees           authenticated    DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- task_list_items          anon             DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- task_list_items          authenticated    DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- tasks                    anon             DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
--- tasks                    authenticated    DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
+-- availabilities           anon             SELECT
+-- availabilities           authenticated    SELECT
+-- contacts                 anon             DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE
+-- contacts                 authenticated    DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE
+-- event_participants       anon             SELECT
+-- event_participants       authenticated    SELECT
+-- events                   anon             SELECT
+-- events                   authenticated    SELECT
+-- group_invite_links       authenticated    INSERT, SELECT
+-- group_members            anon             SELECT
+-- group_members            authenticated    SELECT
+-- groups                   anon             DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE
+-- groups                   authenticated    DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE
+-- invitations              anon             SELECT
+-- invitations              authenticated    SELECT
+-- message_reactions        anon             SELECT
+-- message_reactions        authenticated    SELECT
+-- message_reads            anon             SELECT
+-- message_reads            authenticated    SELECT
+-- messages                 anon             SELECT
+-- messages                 authenticated    SELECT
+-- notification_preferences anon             SELECT
+-- notification_preferences authenticated    SELECT
+-- notifications            anon             DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE
+-- notifications            authenticated    DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE
+-- profiles                 anon             DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE
+-- profiles                 authenticated    DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE
+-- push_outbox              anon             SELECT
+-- push_outbox              authenticated    SELECT
+-- push_reminders_sent      anon             SELECT
+-- push_reminders_sent      authenticated    SELECT
+-- push_tokens              anon             SELECT
+-- push_tokens              authenticated    SELECT
+-- task_assignees           anon             SELECT
+-- task_assignees           authenticated    SELECT
+-- task_list_items          anon             SELECT
+-- task_list_items          authenticated    SELECT
+-- tasks                    anon             SELECT
+-- tasks                    authenticated    SELECT

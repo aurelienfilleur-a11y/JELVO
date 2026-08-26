@@ -2721,6 +2721,74 @@ s'en passe.
 
 ---
 
+## Écran Paramètres
+
+Trois cartes titrées — **Compte**, **Notifications**, **Autre** — puis la
+déconnexion dans la sienne, en rouge. Chaque ligne porte une icône, un
+libellé, l'état courant en violet et un chevron.
+
+### Ce que la maquette proposait, et ce qui existe
+
+**Aucune ligne ne s'affiche sans mener quelque part.** Une carte de trois
+lignes vraies vaut mieux qu'une de six dont la moitié est décorative — c'est
+la même règle que le chevron de l'e-mail sur le profil, et que les lignes
+Téléphone et Localisation écartées.
+
+| Ligne de la maquette | Verdict | Coût si on la voulait |
+| --- | --- | --- |
+| Informations personnelles | **existait** — `/profil/modifier` | — |
+| Changer de mot de passe | **ajoutée** | l'écriture `updatePassword` existait pour « mot de passe oublié » ; il manquait le chemin |
+| À propos de Jelvo | **ajoutée** | un écran, et `AppConfig.version` |
+| Notifications (4 lignes) | **existaient**, rangées autrement | — |
+| Sécurité et confidentialité | écartée | recouvre ce que les autres lignes font déjà ; le reste — blocage, visibilité — n'existe pas en base |
+| Sessions actives | écartée | **impossible côté client** : gotrue ne liste les sessions qu'avec la clé `service_role`. Il faudrait une fonction Edge |
+| Apparence (thème sombre) | écartée | une palette entière à définir et chaque écran à revoir. `themeMode` reste figé sur `light` |
+| Langue | écartée | une seule locale, et la migration vers l'ARB est partielle. Un sélecteur sans second choix ne réglerait rien |
+| Fuseau horaire | écartée | `profiles.timezone` **existe** et vaut `Europe/Paris`, mais **rien ne le lit** : les rappels sont rendus en Europe/Paris en dur, côté SQL. L'afficher laisserait croire à un réglage sans effet |
+| Aide et support | écartée | il n'y a ni adresse de support ni page d'aide à ouvrir |
+
+Les deux dernières se rejoignent : ce ne sont pas des chantiers techniques,
+ce sont des décisions produit — quelle adresse, quel contenu — qui ne se
+devinent pas.
+
+### Les huit types, rangés en trois familles
+
+La ligne du haut **coupe tout** : sans autorisation, aucun type ne part, quel
+que soit son interrupteur. Les trois suivantes détaillent.
+
+| Famille | Types |
+| --- | --- |
+| Groupes et discussions | `chat_message`, `group_invitation` |
+| Événements | `event_invitation`, `event_response`, `event_changed` |
+| Tâches et rappels | `task_assigned`, `task_response`, `reminder` |
+
+**Aucun type n'est fusionné en base.** `types_de_notification()` reste la
+seule source ; une famille n'est qu'une liste de ses noms, et les huit
+interrupteurs vivent dans la feuille qu'ouvre la ligne. Ce que la ligne
+annonce — **Activées**, **Partielles**, **Désactivées** — se déduit des types
+qu'elle couvre.
+
+**Un type ajouté en base sans toucher à ce fichier reste réglable** : la
+famille `autres` recueille tout ce qu'aucune ne réclame, et n'apparaît que si
+elle a quelque chose à montrer. Sans elle, ajouter un type SQL le rendrait
+muet côté écran — exactement le défaut qu'on répare ailleurs.
+
+### `AppConfig.version` est recopiée, et vérifiée
+
+Lire `pubspec.yaml` à l'exécution demanderait `package_info_plus`, une
+dépendance pour une chaîne. La version est donc une constante, et
+`test/app_version_test.dart` la confronte au pubspec : une version qui diverge
+fait échouer les tests plutôt que de mentir à l'écran.
+
+### L'ancien mot de passe n'est pas redemandé
+
+gotrue ne le vérifie pas : `updateUser` s'appuie sur la session, pas sur une
+confirmation. Un champ « mot de passe actuel » existerait donc sans rien
+contrôler — et un champ qui ne contrôle rien donne un faux sentiment de
+sécurité.
+
+---
+
 ## Conventions
 
 - **Langue** : identifiants, commentaires et documentation en français ; le
@@ -2870,7 +2938,13 @@ s'en passe.
   l'activation qui enregistre l'abonnement en base, le refus et sa marche à
   suivre, la désactivation des deux côtés, la consigne d'installation iOS sans
   bouton, les huit types désactivables, l'interrupteur qui revient si l'écriture
-  échoue, et le réenregistrement au démarrage.
+  échoue, et le réenregistrement au démarrage. Côté écran refondu : les trois
+  cartes titrées, l'absence de toute ligne qui ne mènerait nulle part, le
+  rangement des huit types dans leurs trois familles, le changement de mot de
+  passe enfin atteignable, et la version annoncée par « À propos ».
+- `test/app_version_test.dart` confronte `AppConfig.version` au `pubspec.yaml`,
+  sans widget : la version est recopiée à la main, et une version fausse est
+  pire qu'une version absente.
 
 Onze faux dépôts vivent dans `test/fakes/` : authentification, profil, groupes,
 contacts, notifications, tâches, agenda, disponibilités, chat, navigateur
@@ -3046,7 +3120,14 @@ sûr d'éprouver son caractère contextuel.
   fois ; que le navigateur affiche bien la notification dépend de la
   planification, des clés VAPID et d'un vrai appareil.
 - Le mode sombre n'est pas au périmètre : `themeMode` est figé sur
-  `ThemeMode.light`.
+  `ThemeMode.light`. L'écran Paramètres ne propose donc **aucune** ligne
+  « Apparence » — voir l'inventaire de sa section.
+- **`profiles.timezone` existe et n'est lu par personne.** Les rappels sont
+  rendus en Europe/Paris en dur, côté SQL. Offrir un sélecteur de fuseau
+  demanderait de le lire dans `empiler_rappels` **et** de formater les dates
+  côté client dans cette zone — deux chantiers, pas un réglage.
+- **Les sessions actives ne sont pas listables depuis le client** : gotrue ne
+  les expose qu'à la clé `service_role`. Il faudrait une fonction Edge.
 - `google_fonts` télécharge Inter au premier lancement. Pour un fonctionnement
   hors ligne garanti, il faudra embarquer la police dans `assets/`.
 - Les dossiers `android/` et `ios/` sont générés et configurés (`com.jelvo.jelvo`,

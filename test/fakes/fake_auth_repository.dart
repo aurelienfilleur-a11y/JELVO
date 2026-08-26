@@ -30,6 +30,7 @@ class FakeAuthRepository implements AuthRepository {
   String? lastSignInIdentifier;
   String? lastSignUpEmail;
   String? lastVerifiedCode;
+  String? lastUpdatedPassword;
   int resendCount = 0;
   bool completeSignUpCalled = false;
 
@@ -105,7 +106,8 @@ class FakeAuthRepository implements AuthRepository {
   }) async => setSignedIn(true);
 
   @override
-  Future<void> updatePassword(String password) async {}
+  Future<void> updatePassword(String password) async =>
+      lastUpdatedPassword = password;
 
   @override
   Future<PseudoAvailability> checkPseudoAvailability(String pseudo) async {

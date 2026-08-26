@@ -109,6 +109,16 @@ abstract final class AppRoutes {
   static const String profileEdit = 'profileEdit';
   static const String profileEditPath = '/profil/modifier';
 
+  /// Changement de mot de passe depuis les paramètres.
+  ///
+  /// L'écriture existait déjà pour la fin du parcours « mot de passe
+  /// oublié » ; ce qui manquait, c'était le chemin.
+  static const String changePassword = 'changePassword';
+  static const String changePasswordPath = '/parametres/mot-de-passe';
+
+  static const String about = 'about';
+  static const String aboutPath = '/parametres/a-propos';
+
   /// Galerie des avatars prédéfinis, empilée sur le profil.
   static const String avatarGallery = 'avatarGallery';
   static const String avatarGalleryPath = '/profil/avatar';

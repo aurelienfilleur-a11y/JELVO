@@ -102,5 +102,13 @@ abstract final class AppConfig {
   ///
   /// Il est délibérément absent de `kDebugMode` : les tests de widget
   /// tournent en debug et assertent sur les messages exacts.
+  /// Version affichée dans « À propos ».
+  ///
+  /// Recopiée de `pubspec.yaml` à la main : lire le pubspec à l'exécution
+  /// demanderait `package_info_plus`, une dépendance de plus pour une chaîne.
+  /// `test/app_version_test.dart` confronte les deux — une version qui
+  /// diverge fait échouer les tests plutôt que de mentir à l'écran.
+  static const String version = '1.0.0';
+
   static const bool diagnosticErrors = bool.fromEnvironment('JELVO_DIAGNOSTIC');
 }

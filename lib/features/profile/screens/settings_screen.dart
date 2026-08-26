@@ -1,14 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/core.dart';
+import '../../../data/app_config.dart';
+import '../../../router/app_routes.dart';
 import '../../auth/models/auth_failure.dart';
 import '../../auth/providers/auth_providers.dart';
-import '../../notifications/widgets/push_settings_section.dart';
-import '../models/profile.dart';
-import '../providers/profile_providers.dart';
+import '../../notifications/models/notification_category.dart';
+import '../../notifications/providers/push_providers.dart';
+import '../../notifications/push/push_service.dart';
+import '../../notifications/repository/push_repository.dart';
+import '../../notifications/widgets/notification_sheets.dart';
+import '../widgets/settings_card.dart';
 
-/// Écran Paramètres : compte, préférences à venir et déconnexion.
+/// Écran Paramètres : trois cartes titrées, puis la déconnexion.
+///
+/// **Aucune ligne ne s'affiche sans mener quelque part.** La maquette en
+/// proposait douze ; celles que Jelvo ne sait pas encore tenir — sécurité et
+/// confidentialité, sessions actives, thème sombre, langue, fuseau horaire,
+/// aide et support — sont absentes plutôt que grisées ou décoratives. Une
+/// carte de trois lignes vraies vaut mieux qu'une de six dont la moitié
+/// ment. Voir « Écran Paramètres » dans `CLAUDE.md` pour l'inventaire et le
+/// coût de chacune.
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
@@ -17,12 +31,15 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  bool _signingOut = false;
+  bool _deconnexion = false;
 
   @override
   Widget build(BuildContext context) {
-    final Profile? profile = ref.watch(currentProfileProvider).value;
-    final String? email = ref.watch(currentEmailProvider);
+    final PushStatus statutPush =
+        ref.watch(pushStatusProvider).value ?? PushStatus.nonSupporte;
+    final List<NotificationPreference> preferences =
+        ref.watch(notificationPreferencesProvider).value ??
+        const <NotificationPreference>[];
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -43,68 +60,79 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             AppSpacing.xxl,
           ),
           children: <Widget>[
-            const SectionHeader(title: 'Compte'),
-            AppSpacing.gapMd,
+            SettingsCard(
+              titre: 'Compte',
+              lignes: <Widget>[
+                SettingsRow(
+                  icone: Icons.person_outline_rounded,
+                  libelle: 'Informations personnelles',
+                  onTap: () => context.pushNamed(AppRoutes.profileEdit),
+                ),
+                SettingsRow(
+                  icone: Icons.lock_outline_rounded,
+                  libelle: 'Changer de mot de passe',
+                  onTap: () => context.pushNamed(AppRoutes.changePassword),
+                ),
+              ],
+            ),
+
+            AppSpacing.gapLg,
+            SettingsCard(
+              titre: 'Notifications',
+              lignes: <Widget>[
+                // La ligne du haut coupe tout : sans autorisation, aucun type
+                // ne part, quel que soit son interrupteur.
+                SettingsRow(
+                  icone: Icons.notifications_none_rounded,
+                  libelle: 'Notifications push',
+                  valeur: libellePush(statutPush),
+                  couleurValeur: statutPush == PushStatus.actif
+                      ? AppColors.primary
+                      : AppColors.textSecondary,
+                  onTap: () => PushPermissionSheet.ouvrir(context),
+                ),
+                for (final NotificationCategory categorie
+                    in NotificationCategory.visibles(preferences))
+                  _ligneCategorie(categorie, preferences),
+              ],
+            ),
+
+            AppSpacing.gapLg,
+            SettingsCard(
+              titre: 'Autre',
+              lignes: <Widget>[
+                SettingsRow(
+                  icone: Icons.info_outline_rounded,
+                  libelle: 'À propos de Jelvo',
+                  valeur: 'v${AppConfig.version}',
+                  onTap: () => context.pushNamed(AppRoutes.about),
+                ),
+              ],
+            ),
+
+            AppSpacing.gapLg,
             AppCard(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: Column(
-                children: <Widget>[
-                  _InfoRow(
-                    icon: Icons.person_outline_rounded,
-                    label: 'Nom',
-                    value: profile?.displayName ?? '—',
-                  ),
-                  const Divider(height: AppSpacing.xl),
-                  _InfoRow(
-                    icon: Icons.alternate_email_rounded,
-                    label: 'Pseudo',
-                    value: profile?.pseudoHandle ?? '—',
-                  ),
-                  const Divider(height: AppSpacing.xl),
-                  _InfoRow(
-                    icon: Icons.mail_outline_rounded,
-                    label: 'Adresse e-mail',
-                    value: email ?? '—',
-                  ),
-                ],
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.xs,
               ),
-            ),
-
-            AppSpacing.gapXl,
-            const PushSettingsSection(),
-
-            AppSpacing.gapXl,
-            const SectionHeader(
-              title: 'Apparence',
-              subtitle: 'Le mode sombre arrivera prochainement',
-            ),
-            AppSpacing.gapMd,
-            AppCard(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: Row(
-                children: <Widget>[
-                  const Icon(
-                    Icons.info_outline_rounded,
-                    size: 20,
-                    color: AppColors.textSecondary,
-                  ),
-                  AppSpacing.hGapMd,
-                  Expanded(
-                    child: Text(
-                      'Le mode sombre n’est pas encore disponible.',
-                      style: AppTypography.caption,
+              child: _deconnexion
+                  ? const Padding(
+                      padding: EdgeInsets.all(AppSpacing.md),
+                      child: Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                    )
+                  : SettingsRow(
+                      icone: Icons.logout_rounded,
+                      libelle: 'Déconnexion',
+                      destructif: true,
+                      onTap: _confirmerDeconnexion,
                     ),
-                  ),
-                ],
-              ),
-            ),
-
-            AppSpacing.gapXxl,
-            SecondaryButton(
-              label: 'Se déconnecter',
-              icon: Icons.logout_rounded,
-              isDestructive: true,
-              onPressed: _signingOut ? null : _confirmSignOut,
             ),
           ],
         ),
@@ -112,22 +140,38 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Future<void> _confirmSignOut() async {
-    final bool confirmed =
+  Widget _ligneCategorie(
+    NotificationCategory categorie,
+    List<NotificationPreference> preferences,
+  ) {
+    final CategoryState etat = CategoryState.depuis(
+      categorie.preferencesDe(preferences),
+    );
+    return SettingsRow(
+      icone: categorie.icon,
+      libelle: categorie.label,
+      valeur: etat.label,
+      couleurValeur: etat.color,
+      onTap: () => NotificationCategorySheet.ouvrir(context, categorie),
+    );
+  }
+
+  Future<void> _confirmerDeconnexion() async {
+    final bool confirme =
         await showDialog<bool>(
           context: context,
-          builder: (BuildContext dialogContext) => AlertDialog(
+          builder: (BuildContext dialogue) => AlertDialog(
             title: const Text('Se déconnecter'),
             content: const Text(
               'Vous devrez saisir à nouveau vos identifiants pour revenir.',
             ),
             actions: <Widget>[
               TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
+                onPressed: () => Navigator.of(dialogue).pop(false),
                 child: const Text('Annuler'),
               ),
               TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(true),
+                onPressed: () => Navigator.of(dialogue).pop(true),
                 style: TextButton.styleFrom(foregroundColor: AppColors.danger),
                 child: const Text('Se déconnecter'),
               ),
@@ -136,9 +180,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ) ??
         false;
 
-    if (!confirmed || !mounted) return;
+    if (!confirme || !mounted) return;
 
-    setState(() => _signingOut = true);
+    setState(() => _deconnexion = true);
     try {
       await ref.read(authRepositoryProvider).signOut();
       // La garde du routeur ramène à la connexion dès la session fermée.
@@ -148,44 +192,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text(AuthFailure.from(error).message)));
     } finally {
-      if (mounted) setState(() => _signingOut = false);
+      if (mounted) setState(() => _deconnexion = false);
     }
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: <Widget>[
-        Icon(icon, size: 20, color: AppColors.textSecondary),
-        AppSpacing.hGapMd,
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(label, style: AppTypography.caption),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                style: AppTypography.body,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
   }
 }

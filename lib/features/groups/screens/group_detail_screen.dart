@@ -21,7 +21,7 @@ import '../models/group.dart';
 import '../models/group_invite.dart';
 import '../models/group_member.dart';
 import '../providers/group_providers.dart';
-import '../widgets/group_banner.dart';
+
 import '../widgets/invite_link_sheet.dart';
 import '../widgets/member_tile.dart';
 import '../widgets/membership_term_picker.dart';
@@ -134,7 +134,7 @@ class _GroupView extends ConsumerWidget {
             ),
           ],
           flexibleSpace: FlexibleSpaceBar(
-            background: GroupBanner(
+            background: CoverBanner(
               name: group.name,
               subtitle: group.memberLabel,
               accentColor: group.accent.color,

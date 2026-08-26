@@ -171,7 +171,7 @@ void main() {
     });
   });
 
-  group('Les sept types', () {
+  group('Les huit types', () {
     testWidgets('chacun est désactivable', (WidgetTester tester) async {
       final ({FakePushRepository depot, FakePushService service}) faux =
           await _pumpApp(tester);
@@ -184,6 +184,7 @@ void main() {
         'Tâches assignées',
         'Rappels',
         'Réponses aux événements',
+        'Réponses aux tâches',
         'Changements de date',
       ]) {
         expect(find.text(libelle), findsOneWidget);

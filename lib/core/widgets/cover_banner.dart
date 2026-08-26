@@ -1,14 +1,22 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/core.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
 
-/// Bandeau d'en-tête d'un groupe : photo si elle existe, dégradé d'accent
+/// Bandeau d'en-tête : photo de couverture si elle existe, dégradé d'accent
 /// sinon, et nom en surimpression.
+///
+/// Il vivait dans la feature `groups`, ce qui l'y enfermait : les écrans
+/// d'invitation à un événement et d'attribution d'une tâche montrent la même
+/// couverture, et une feature ne lit pas les widgets d'une autre. Comme tout
+/// composant de `core`, il ne prend que des `String`, une `Color` et une
+/// `IconData` — jamais un `Group`.
 ///
 /// Le dégradé sombre en bas n'est pas décoratif : sans lui, un texte blanc
 /// posé sur une photo claire devient illisible.
-class GroupBanner extends StatelessWidget {
-  const GroupBanner({
+class CoverBanner extends StatelessWidget {
+  const CoverBanner({
     super.key,
     required this.name,
     required this.accentColor,

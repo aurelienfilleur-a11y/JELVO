@@ -8,7 +8,6 @@ import '../../auth/models/auth_failure.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../models/group_invite.dart';
 import '../providers/group_providers.dart';
-import '../widgets/group_banner.dart';
 
 /// Page publique d'un lien de partage : `/rejoindre/<jeton>`.
 ///
@@ -74,7 +73,7 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
           borderRadius: const BorderRadius.vertical(
             bottom: Radius.circular(AppSpacing.lg),
           ),
-          child: GroupBanner(
+          child: CoverBanner(
             name: preview.name ?? 'Groupe',
             subtitle:
                 '${preview.memberCount} membre'

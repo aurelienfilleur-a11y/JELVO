@@ -12,6 +12,7 @@ enum NotificationType {
   contactRequest('contact_request'),
   eventInvitation('event_invitation'),
   taskAssigned('task_assigned'),
+  taskResponse('task_response'),
   autre('autre');
 
   const NotificationType(this.dbValue);
@@ -23,6 +24,7 @@ enum NotificationType {
     'contact_request' => NotificationType.contactRequest,
     'event_invitation' => NotificationType.eventInvitation,
     'task_assigned' => NotificationType.taskAssigned,
+    'task_response' => NotificationType.taskResponse,
     _ => NotificationType.autre,
   };
 
@@ -36,6 +38,7 @@ enum NotificationType {
     // Les tâches n'ont pas d'onglet : elles vivent dans l'accueil, d'où la
     // liste complète s'ouvre.
     NotificationType.taskAssigned => 0,
+    NotificationType.taskResponse => 0,
     NotificationType.autre => 0,
   };
 
@@ -44,6 +47,7 @@ enum NotificationType {
     NotificationType.contactRequest => Icons.person_add_alt_rounded,
     NotificationType.eventInvitation => Icons.event_rounded,
     NotificationType.taskAssigned => Icons.task_alt_rounded,
+    NotificationType.taskResponse => Icons.mark_chat_read_outlined,
     NotificationType.autre => Icons.notifications_none_rounded,
   };
 
@@ -52,6 +56,7 @@ enum NotificationType {
     NotificationType.contactRequest => AppColors.success,
     NotificationType.eventInvitation => AppColors.warning,
     NotificationType.taskAssigned => AppColors.primaryDark,
+    NotificationType.taskResponse => AppColors.success,
     NotificationType.autre => AppColors.textSecondary,
   };
 }
@@ -99,6 +104,7 @@ class AppNotification {
     NotificationType.contactRequest => _text('name') ?? 'Quelqu’un',
     NotificationType.eventInvitation => _text('auteur') ?? 'Un membre',
     NotificationType.taskAssigned => _text('auteur') ?? 'Un membre',
+    NotificationType.taskResponse => _text('auteur') ?? 'Un membre',
     NotificationType.autre => 'Jelvo',
   };
 
@@ -107,6 +113,7 @@ class AppNotification {
     NotificationType.contactRequest => _text('avatar_url'),
     NotificationType.eventInvitation => null,
     NotificationType.taskAssigned => null,
+    NotificationType.taskResponse => null,
     NotificationType.autre => null,
   };
 
@@ -139,11 +146,19 @@ class AppNotification {
   DateTime? get taskDueAt =>
       DateTime.tryParse(_text('due_at') ?? '')?.toLocal();
 
+  /// Réponse portée par un `task_response`.
+  ///
+  /// Une valeur inconnue tombe du côté « décline » : mieux vaut annoncer un
+  /// refus à tort — qui se vérifie d'une touche — que faire croire à une
+  /// acceptation qui n'a pas eu lieu.
+  bool get taskResponseAccepted => _text('reponse') == 'accepted';
+
   String get title => switch (type) {
     NotificationType.groupInvitation => 'Invitation à rejoindre $groupName',
     NotificationType.contactRequest => 'Demande de contact',
     NotificationType.eventInvitation => eventTitle,
     NotificationType.taskAssigned => taskTitle,
+    NotificationType.taskResponse => taskTitle,
     NotificationType.autre => 'Notification',
   };
 
@@ -155,6 +170,10 @@ class AppNotification {
     NotificationType.eventInvitation =>
       '$senderName vous convie${_text('group_name') == null ? '' : ' avec « $groupName »'}.',
     NotificationType.taskAssigned => '$senderName vous a confié cette tâche.',
+    NotificationType.taskResponse =>
+      taskResponseAccepted
+          ? '$senderName accepte cette tâche.'
+          : '$senderName décline cette tâche.',
     NotificationType.autre => 'Vous avez une nouvelle notification.',
   };
 
@@ -164,6 +183,7 @@ class AppNotification {
     NotificationType.contactRequest => 'Voir la demande',
     NotificationType.eventInvitation => 'Voir l’événement',
     NotificationType.taskAssigned => 'Voir la tâche',
+    NotificationType.taskResponse => 'Voir la tâche',
     NotificationType.autre => null,
   };
 

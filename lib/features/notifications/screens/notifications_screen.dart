@@ -209,6 +209,16 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             pathParameters: <String, String>{'id': taskId},
           );
         }
+      case NotificationType.taskResponse:
+        // Le **détail**, pas l'écran d'attribution : celui qui a confié la
+        // tâche n'y est pas assigné, et n'aurait rien à y répondre.
+        final String? taskId = notification.taskId;
+        if (taskId != null) {
+          router.pushNamed(
+            AppRoutes.taskDetail,
+            pathParameters: <String, String>{'id': taskId},
+          );
+        }
       case NotificationType.autre:
         break;
     }

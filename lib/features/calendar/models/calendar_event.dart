@@ -83,6 +83,8 @@ class CalendarEvent {
     this.yesCount = 0,
     this.authorName,
     this.authorAvatarUrl,
+    this.groupName,
+    this.groupPhotoUrl,
   });
 
   factory CalendarEvent.fromRow(Map<String, dynamic> row) {
@@ -114,6 +116,8 @@ class CalendarEvent {
       yesCount: (row['nombre_oui'] as int?) ?? 0,
       authorName: row['auteur'] as String?,
       authorAvatarUrl: row['auteur_avatar'] as String?,
+      groupName: row['groupe_nom'] as String?,
+      groupPhotoUrl: row['groupe_photo'] as String?,
     );
   }
 
@@ -145,6 +149,16 @@ class CalendarEvent {
   final String? authorName;
 
   final String? authorAvatarUrl;
+
+  /// Nom et photo de couverture du groupe organisateur, renvoyés par
+  /// `mon_agenda`.
+  ///
+  /// Lus ici plutôt que par `groupByIdProvider` : un convive n'est pas
+  /// forcément membre du groupe, et sa liste de groupes ne contiendrait alors
+  /// ni l'un ni l'autre.
+  final String? groupName;
+
+  final String? groupPhotoUrl;
 
   Duration get duration => end.difference(start);
 

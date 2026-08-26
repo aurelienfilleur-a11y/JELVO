@@ -79,7 +79,7 @@ $$;
 grant select, insert, update, delete on public.notification_preferences
   to authenticated;
 
--- Les six types envoyés. Le texte est libre côté base — comme
+-- Les types envoyés. Le texte est libre côté base — comme
 -- `notifications.type` —, mais cette fonction fait autorité pour l'interface :
 -- ajouter un type ici le fait apparaître dans les réglages sans autre code.
 create or replace function public.types_de_notification()
@@ -100,6 +100,8 @@ as $$
      'Avant une tâche ou un événement'),
     ('event_response',   'Réponses aux événements',
      'Quand quelqu''un répond à un événement que vous organisez'),
+    ('task_response',    'Réponses aux tâches',
+     'Quand quelqu''un accepte ou décline une tâche que vous avez confiée'),
     ('event_changed',    'Changements de date',
      'Quand un événement auquel vous participez est déplacé');
 $$;

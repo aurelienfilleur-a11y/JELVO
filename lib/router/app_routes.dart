@@ -144,6 +144,14 @@ abstract final class AppRoutes {
 
   // Parcours d'authentification, hors du shell : la barre de navigation ne
   // doit pas apparaître tant que l'utilisateur n'est pas connecté.
+
+  /// Présentation de l'application, avant toute authentification.
+  ///
+  /// Elle précède `loginPath` à la première ouverture seulement — voir
+  /// `welcomeSeenProvider` et la redirection du routeur.
+  static const String welcome = 'welcome';
+  static const String welcomePath = '/bienvenue';
+
   static const String login = 'login';
   static const String loginPath = '/connexion';
 
@@ -164,6 +172,7 @@ abstract final class AppRoutes {
 
   /// Routes accessibles sans session.
   static const Set<String> publicPaths = <String>{
+    welcomePath,
     loginPath,
     signUpPath,
     signUpIdentityPath,

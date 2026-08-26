@@ -80,6 +80,10 @@ flutter:
   # se désynchroniserait au premier ajout.
   assets:
     - assets/avatars/
+    # Le dossier est déclaré même quand l'illustration n'y est pas encore :
+    # `WelcomeScreen` a un repli, mais un dossier absent ferait échouer la
+    # compilation. Voir assets/illustrations/README.md.
+    - assets/illustrations/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

@@ -324,8 +324,9 @@ lib/
 supabase/                     # SQL à exécuter sur le projet Supabase
 ```
 
-Features existantes : `auth`, `profile`, `home`, `groups`, `calendar`,
-`contacts`, `notifications`, `tasks`, `availability`, `chat`, `create`.
+Features existantes : `auth`, `onboarding`, `profile`, `home`, `groups`,
+`calendar`, `contacts`, `notifications`, `tasks`, `availability`, `chat`,
+`create`.
 
 `lib/l10n/` porte les fichiers ARB et la classe `AppTexts` générée.
 
@@ -653,13 +654,105 @@ donnera des liens plus propres et fera disparaître ce `#`.
 un `redirect` qui lit `authStatusProvider` de façon **synchrone** :
 
 - session absente → tout chemin hors `AppRoutes.publicPaths` renvoie vers
-  `/connexion` ;
+  `/connexion`, ou vers `/bienvenue` à la toute première ouverture ;
 - session présente → un chemin public renvoie vers `/`.
 
 `AuthRefreshNotifier` est un `ChangeNotifier` alimenté par un `ref.listen` :
 GoRouter ne sait pas observer un provider, il faut ce pont. Le statut est un
 `Notifier` et non un `StreamProvider` parce qu'une redirection ne peut pas
 attendre un `AsyncValue`.
+
+---
+
+## Écran de bienvenue
+
+`/bienvenue` (feature `onboarding`) présente l'application **avant toute
+authentification**, à quelqu'un qui n'a pas encore de compte : il précède donc
+l'écran de connexion, et non l'inscription. « Commencer » mène à `/connexion`,
+d'où l'on crée un compte ou l'on se connecte.
+
+**Une seule page, pas de carrousel** : ni points de pagination, ni « Passer ».
+Trois arguments tiennent sur un écran, et un « Passer » posé à côté d'un
+« Commencer » demande de choisir entre deux boutons qui font la même chose —
+sortir de là.
+
+### Le drapeau ne peut pas vivre en base
+
+L'écran s'affiche à quelqu'un **sans compte** : il n'existe aucune ligne
+`profiles` où écrire « déjà vu », et rien à lire au démarrage. C'est donc une
+mémoire d'appareil, et elle l'est doublement à raison — une application
+installée sur l'écran d'accueil a son propre stockage, et y revoir la
+présentation une fois est le comportement juste.
+
+`OnboardingStorage` reprend la brique de `SessionPersistence` : un
+`LocalStorage` de gotrue détourné en booléen, sous la clé
+`jelvo-bienvenue-vue`. L'usage est détourné, mais il évite une dépendance de
+plus pour un seul `bool` — c'est déjà l'arbitrage rendu pour « Se souvenir de
+moi ». Il est chargé dans `main()` **avant `runApp`**, la redirection le lisant
+de façon synchrone.
+
+### Trois façons de ne plus le revoir
+
+| Situation | Ce qui le retient |
+| --- | --- |
+| « Commencer » touché | `welcomeSeenProvider.marquerVu()` |
+| une session s'ouvre | `ref.listen` sur `authStatusProvider` |
+| une session est **déjà** ouverte au démarrage | contrôle explicite dans `build()` |
+
+La troisième ligne n'est pas de la redondance : `ref.listen` ne se déclenche
+qu'au **changement**, et une session restaurée au lancement ne le réveillerait
+pas — c'est pourtant le cas le plus courant.
+
+**Une session ouverte vaut présentation faite.** Sans cette règle, quelqu'un
+arrivé par un lien d'invitation — qui n'a donc jamais vu l'écran — se le verrait
+proposer le jour où il se déconnecte, longtemps après avoir appris à quoi sert
+l'application.
+
+Conséquence sur la redirection : `welcomeSeenProvider` est lu **dans tous les
+cas**, connecté compris. C'est cette lecture qui construit le provider, et un
+provider jamais construit ne retiendrait rien.
+
+### Un chemin public demandé explicitement passe avant
+
+```dart
+if (AppRoutes.isPublic(location)) return null;
+return bienvenueVue ? AppRoutes.loginPath : AppRoutes.welcomePath;
+```
+
+L'ordre compte. Rediriger `/rejoindre/<jeton>` vers la présentation **perdrait
+le jeton en silence** — la panne la plus pénible, parce qu'elle ne laisse
+aucune trace, exactement celle décrite sous « Liens externes et stratégie
+d'URL ». Un test le vérifie.
+
+L'écran de bienvenue remplace donc le point d'entrée *par défaut*, jamais une
+destination demandée.
+
+### L'illustration vient du dehors
+
+**Elle ne se dessine pas ici** — même règle que le logo. L'emplacement est
+câblé, `assets/illustrations/README.md` porte le format attendu :
+`bienvenue.png`, PNG-24 avec alpha, 1200 × 800 (3:2), fond transparent.
+
+Le dossier est déclaré dans `pubspec.yaml` **même vide** : un chemin d'asset
+absent fait échouer la compilation, là où un fichier absent ne fait que
+déclencher l'`errorBuilder`.
+
+Le repli ne dessine **pas** une illustration de remplacement : un aplat teinté
+et un pictogramme discret, visiblement un emplacement en attente. La bande
+garde sa hauteur de 240 dp dans les deux cas, pour que la carte des arguments
+commence au même endroit ; `BoxFit.contain` s'accommode ensuite de tout rapport
+de forme sans jamais rogner.
+
+### Pas d'emoji dans le titre
+
+La maquette écrit « Bienvenue sur Jelvo 👋 ». Le projet n'embarque aucune police
+emoji : le glyphe manquerait et s'afficherait en carré « tofu ». C'est le même
+arbitrage — et le même emoji — que le titre de l'accueil. Un test vérifie que
+le titre ne porte aucun caractère au-delà de `U+1F000`.
+
+Les trois teintes des pictogrammes viennent du design system — `primary`,
+`success`, `warning` : le violet, le vert et l'orange de la maquette y tombent
+exactement, aucune couleur n'a été ajoutée.
 
 ---
 
@@ -3169,6 +3262,15 @@ sécurité.
 - `test/app_version_test.dart` confronte `AppConfig.version` au `pubspec.yaml`,
   sans widget : la version est recopiée à la main, et une version fausse est
   pire qu'une version absente.
+- `test/welcome_screen_test.dart` couvre l'écran de bienvenue : l'installation
+  neuve qui s'ouvre dessus, les trois arguments et leurs pictogrammes,
+  l'absence de « Passer » et de `PageView`, le titre sans emoji, la bande
+  d'illustration qui garde sa hauteur sans le fichier, et « Commencer » qui
+  mène à la connexion. Côté mémoire : le drapeau posé au départ, l'ouverture
+  directe sur la connexion quand il l'est déjà, la session qui vaut
+  présentation faite — **même sur une mémoire vierge** —, et le contrôle
+  négatif qui compte le plus, `/rejoindre/<jeton>` que la présentation ne
+  préempte jamais.
 - `test/creation_screens_test.dart` couvre les trois écrans de création. Côté
   tâche : personne de présélectionné et la mention qui l'annonce, la mention
   qui change dès qu'on coche un avatar, **la liste vide et non nulle** envoyée

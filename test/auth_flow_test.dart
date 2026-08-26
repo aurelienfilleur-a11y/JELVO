@@ -5,6 +5,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:jelvo/core/core.dart';
 import 'package:jelvo/data/clock.dart';
 import 'package:jelvo/data/data_providers.dart';
+import 'package:jelvo/data/onboarding_storage.dart';
 import 'package:jelvo/data/session_persistence.dart';
 import 'package:jelvo/features/auth/models/auth_failure.dart';
 import 'package:jelvo/features/auth/providers/auth_providers.dart';
@@ -39,6 +40,7 @@ Future<FakeAuthRepository> _pumpApp(
   required bool signedIn,
   Set<String> pseudosTaken = const <String>{},
   SignUpOutcome signUpOutcome = SignUpOutcome.codeSent,
+  bool bienvenueVue = true,
 }) async {
   _persistance = SessionPersistence(
     session: const EphemeralSessionStorage(),
@@ -60,6 +62,11 @@ Future<FakeAuthRepository> _pumpApp(
     ProviderScope(
       overrides: [
         sessionPersistenceProvider.overrideWithValue(_persistance),
+        // Sauf mention contraire, ces tests décrivent quelqu'un qui revient :
+        // la présentation précède la connexion, mais une seule fois.
+        onboardingStorageProvider.overrideWithValue(
+          EphemeralOnboardingStorage(dejaVu: bienvenueVue),
+        ),
         // Les tests tournent sur la VM : sans cela, la consigne réservée au
         // web ne serait jamais éprouvée.
         estSurLeWebProvider.overrideWithValue(true),

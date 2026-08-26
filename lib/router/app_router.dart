@@ -28,6 +28,8 @@ import '../features/groups/screens/invitation_screen.dart';
 import '../features/groups/screens/join_group_screen.dart';
 import '../features/home/screens/home_screen.dart';
 import '../features/notifications/screens/notifications_screen.dart';
+import '../features/onboarding/providers/onboarding_providers.dart';
+import '../features/onboarding/screens/welcome_screen.dart';
 import '../features/profile/screens/avatar_gallery_screen.dart';
 import '../features/profile/screens/about_screen.dart';
 import '../features/profile/screens/change_password_screen.dart';
@@ -59,9 +61,21 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
     redirect: (BuildContext context, GoRouterState state) {
       final AuthStatus status = ref.read(authStatusProvider);
       final String location = state.matchedLocation;
+      // Lu dans tous les cas, y compris connecté : c'est cette lecture qui
+      // construit `welcomeSeenProvider`, et lui qui retient qu'une session
+      // ouverte vaut présentation faite.
+      final bool bienvenueVue = ref.read(welcomeSeenProvider);
 
       if (status == AuthStatus.signedOut) {
-        return AppRoutes.isPublic(location) ? null : AppRoutes.loginPath;
+        // **Un chemin public demandé explicitement passe avant la
+        // présentation.** C'est ce qui protège `/rejoindre/<jeton>` : rediriger
+        // un lien d'invitation vers l'écran de bienvenue perdrait le jeton en
+        // silence, panne d'autant plus pénible qu'elle ne laisse aucune trace.
+        if (AppRoutes.isPublic(location)) return null;
+
+        // Sinon, l'écran de bienvenue remplace la connexion comme point
+        // d'entrée — la première fois, et une seule.
+        return bienvenueVue ? AppRoutes.loginPath : AppRoutes.welcomePath;
       }
       // Connecté : seuls les écrans d'authentification n'ont plus lieu d'être.
       // Un lien d'invitation, lui, reste ouvrable avec une session — c'est même
@@ -347,6 +361,13 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
       // Parcours d'authentification : hors du shell, donc sans barre de
       // navigation. L'inscription est une pile, pour que le retour arrière
       // revienne à l'étape précédente sans perdre la saisie.
+      GoRoute(
+        path: AppRoutes.welcomePath,
+        name: AppRoutes.welcome,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (BuildContext context, GoRouterState state) =>
+            const WelcomeScreen(),
+      ),
       GoRoute(
         path: AppRoutes.loginPath,
         name: AppRoutes.login,

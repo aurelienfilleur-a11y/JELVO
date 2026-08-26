@@ -8,11 +8,13 @@ import '../../auth/providers/auth_providers.dart';
 import '../../availability/widgets/peer_availability_list.dart';
 import '../../groups/models/group_member.dart';
 import '../../groups/providers/group_providers.dart';
-import '../../tasks/widgets/assignee_picker.dart';
-import '../../tasks/widgets/option_row.dart';
 import '../models/calendar_event.dart';
 import '../models/recurrence.dart';
 import '../providers/calendar_providers.dart';
+import 'group_selector.dart';
+
+/// Limite de la description, celle que le compteur annonce.
+const int _descriptionMaxLength = 200;
 
 /// Ouvre le formulaire d'événement en feuille. Passer [event] bascule en
 /// modification.
@@ -53,7 +55,6 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
   TimeOfDay? _debut;
   TimeOfDay? _fin;
 
-  bool _plusDOptions = false;
   bool _envoi = false;
   String? _erreurTitre;
   String? _erreur;
@@ -80,7 +81,6 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
       _titre.text = event.title;
       _lieu.text = event.location ?? '';
       _description.text = event.notes ?? '';
-      _plusDOptions = event.notes?.isNotEmpty ?? false;
     }
   }
 
@@ -125,24 +125,26 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
               errorText: _erreurTitre,
               autofocus: !_modification,
               textInputAction: TextInputAction.next,
+              suffixIcon: const Icon(
+                Icons.event_outlined,
+                color: AppColors.primary,
+              ),
               onChanged: (_) {
                 if (_erreurTitre != null) setState(() => _erreurTitre = null);
               },
             ),
 
-            if (_groupId != null) ...<Widget>[
+            // Le groupe ne se choisit qu'à la création : le déplacer ensuite
+            // changerait qui voit l'événement, et personne n'en serait
+            // prévenu.
+            if (!_modification) ...<Widget>[
               AppSpacing.gapLg,
-              AssigneePicker(
-                titre: 'Participants',
-                membres: membres,
-                selection: _participants,
-                aideLibre:
-                    'Personne de sélectionné : tous les membres du groupe '
-                    'seront conviés.',
-                onToggle: (String userId) => setState(() {
-                  if (!_participants.remove(userId)) {
-                    _participants.add(userId);
-                  }
+              GroupSelector(
+                groupId: _groupId,
+                onChanged: (String? id) => setState(() {
+                  _groupId = id;
+                  // Les convives d'un groupe n'ont aucun sens dans un autre.
+                  _participants = <String>{};
                 }),
               ),
             ],
@@ -158,6 +160,28 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
               hint: 'Ex. : Le Petit Comptoir',
               controller: _lieu,
               prefixIcon: Icons.place_outlined,
+              // Le lieu est facultatif : effacer doit être aussi rapide que
+              // saisir, sans avoir à maintenir la touche retour.
+              suffixIcon: _lieu.text.isEmpty
+                  ? null
+                  : IconButton(
+                      icon: const Icon(Icons.cancel_rounded, size: 20),
+                      color: AppColors.textSecondary,
+                      tooltip: 'Effacer le lieu',
+                      onPressed: () => setState(_lieu.clear),
+                    ),
+              onChanged: (_) => setState(() {}),
+            ),
+
+            AppSpacing.gapLg,
+            AppTextField(
+              label: 'Description',
+              hint: 'Ce qu’il faut savoir, ce qu’il faut apporter',
+              controller: _description,
+              maxLines: 3,
+              minLines: 2,
+              maxLength: _descriptionMaxLength,
+              showCounter: true,
             ),
 
             AppSpacing.gapLg,
@@ -165,7 +189,18 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
               child: Column(
                 children: <Widget>[
+                  if (_groupId != null) ...<Widget>[
+                    OptionRow(
+                      icon: Icons.group_outlined,
+                      label: 'Participants',
+                      hint: 'Inviter des membres du groupe',
+                      value: _libelleParticipants(membres),
+                      onTap: () => _choisirParticipants(membres),
+                    ),
+                    const Divider(height: 1, color: AppColors.border),
+                  ],
                   OptionRow(
+                    icon: Icons.notifications_none_rounded,
                     label: 'Rappel',
                     hint: 'Jelvo préviendra les participants',
                     value: _rappel.label,
@@ -173,6 +208,7 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
                   ),
                   const Divider(height: 1, color: AppColors.border),
                   OptionRow(
+                    icon: Icons.repeat_rounded,
                     label: 'Répéter',
                     hint: 'Pour les rendez-vous réguliers',
                     value: _recurrence.label,
@@ -181,9 +217,6 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
                 ],
               ),
             ),
-
-            AppSpacing.gapLg,
-            _blocPlusDOptions(),
 
             if (_erreur != null) ...<Widget>[
               AppSpacing.gapLg,
@@ -217,46 +250,87 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
     );
   }
 
-  /// Date, heure de début **et heure de fin**.
+  /// Date et heure côte à côte, **et l'heure de fin juste dessous**.
   ///
-  /// La durée était figée à une heure : un déjeuner de famille et un
-  /// week-end entier ne se ressemblent pourtant pas.
+  /// La maquette ne montre qu'une heure ; la garder seule figerait la durée à
+  /// une heure, ce qu'elle a déjà été — un déjeuner de famille et un week-end
+  /// entier ne se ressemblent pourtant pas. La fin descend donc d'une ligne,
+  /// sous la colonne de l'heure à laquelle elle se rapporte, plutôt que de
+  /// disparaître.
   Widget _blocHoraires() {
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text('Quand ?', style: AppTypography.h3),
-          AppSpacing.gapMd,
-          SecondaryButton(
-            label: _jour == null
-                ? 'Choisir la date *'
-                : AppDates.fullDate(_jour!),
-            icon: Icons.calendar_today_rounded,
-            onPressed: _choisirDate,
-          ),
-          AppSpacing.gapMd,
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: SecondaryButton(
-                  label: _debut == null ? 'Début' : _debut!.format(context),
-                  icon: Icons.schedule_rounded,
-                  onPressed: () => _choisirHeure(debut: true),
-                ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Expanded(
+              child: _Champ(
+                label: 'Date *',
+                icon: Icons.calendar_today_rounded,
+                valeur: _jour == null ? null : AppDates.shortDate(_jour!),
+                placeholder: 'Choisir',
+                onTap: _choisirDate,
               ),
-              AppSpacing.hGapMd,
-              Expanded(
-                child: SecondaryButton(
-                  label: _fin == null ? 'Fin' : _fin!.format(context),
-                  icon: Icons.schedule_outlined,
-                  onPressed: () => _choisirHeure(debut: false),
-                ),
+            ),
+            AppSpacing.hGapMd,
+            Expanded(
+              child: _Champ(
+                label: 'Heure *',
+                icon: Icons.schedule_rounded,
+                valeur: _debut?.format(context),
+                placeholder: 'Choisir',
+                onTap: () => _choisirHeure(debut: true),
               ),
-            ],
+            ),
+          ],
+        ),
+        AppSpacing.gapMd,
+        Row(
+          children: <Widget>[
+            const Spacer(),
+            Expanded(
+              child: _Champ(
+                label: 'Fin',
+                icon: Icons.schedule_outlined,
+                valeur: _fin?.format(context),
+                placeholder: '+ 1 h',
+                onTap: () => _choisirHeure(debut: false),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// Ce qu'annonce la ligne « Participants » à droite.
+  ///
+  /// Aucun coché veut dire « tous les membres » — c'est ce que fait
+  /// `creer_evenement` quand la liste est `null`, et non « personne ».
+  String _libelleParticipants(List<GroupMember> membres) {
+    if (_participants.isEmpty) return 'Tous les membres';
+    return '${_participants.length} sur ${membres.length}';
+  }
+
+  Future<void> _choisirParticipants(List<GroupMember> membres) {
+    return PersonPickerSheet.ouvrir(
+      context,
+      titre: 'Participants',
+      aide: 'Sans sélection, tous les membres du groupe sont conviés.',
+      personnes: <PickablePerson>[
+        for (final GroupMember membre in membres)
+          PickablePerson(
+            id: membre.userId,
+            name: membre.displayName,
+            shortName: membre.shortName,
+            avatarUrl: membre.avatarUrl,
           ),
-        ],
-      ),
+      ],
+      selection: _participants,
+      onToggle: (String userId) => setState(() {
+        if (!_participants.remove(userId)) _participants.add(userId);
+      }),
     );
   }
 
@@ -290,47 +364,6 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
       AppSpacing.gapLg,
       PeerAvailabilityList(candidates: candidats, at: debut),
     ];
-  }
-
-  Widget _blocPlusDOptions() {
-    return AppCard(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-      child: Column(
-        children: <Widget>[
-          InkWell(
-            onTap: () => setState(() => _plusDOptions = !_plusDOptions),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-              child: Row(
-                children: <Widget>[
-                  Expanded(
-                    child: Text('Plus d’options', style: AppTypography.h3),
-                  ),
-                  Icon(
-                    _plusDOptions
-                        ? Icons.expand_less_rounded
-                        : Icons.expand_more_rounded,
-                    color: AppColors.textSecondary,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (_plusDOptions) ...<Widget>[
-            const Divider(height: 1, color: AppColors.border),
-            AppSpacing.gapMd,
-            AppTextField(
-              label: 'Description',
-              hint: 'Ce qu’il faut savoir, ce qu’il faut apporter',
-              controller: _description,
-              maxLines: 3,
-              minLines: 2,
-            ),
-            AppSpacing.gapMd,
-          ],
-        ],
-      ),
-    );
   }
 
   Future<void> _choisirRappel() async {
@@ -517,5 +550,79 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
     } finally {
       if (mounted) setState(() => _envoi = false);
     }
+  }
+}
+
+/// Champ qui ouvre un sélecteur : libellé au-dessus, icône violette à gauche,
+/// valeur ou invite à droite.
+///
+/// Il a l'apparence d'`AppTextField` — même rayon, même contour, même libellé
+/// en `caption` — alors qu'il ne se saisit pas. C'est voulu : sur la maquette,
+/// date, heure et lieu forment une seule grille, et un bouton au milieu de
+/// deux champs romprait l'alignement.
+class _Champ extends StatelessWidget {
+  const _Champ({
+    required this.label,
+    required this.icon,
+    required this.valeur,
+    required this.placeholder,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final String? valeur;
+  final String placeholder;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool rempli = valeur != null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          label,
+          style: AppTypography.caption.copyWith(
+            fontWeight: AppTypography.medium,
+            color: AppColors.midnight,
+          ),
+        ),
+        AppSpacing.gapSm,
+        InkWell(
+          onTap: onTap,
+          borderRadius: AppRadii.fieldRadius,
+          child: Container(
+            height: 52,
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: AppRadii.fieldRadius,
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
+              children: <Widget>[
+                Icon(icon, size: 18, color: AppColors.primary),
+                AppSpacing.hGapSm,
+                Expanded(
+                  child: Text(
+                    valeur ?? placeholder,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.body.copyWith(
+                      color: rempli
+                          ? AppColors.midnight
+                          : AppColors.textSecondary,
+                      fontWeight: rempli ? AppTypography.medium : null,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }

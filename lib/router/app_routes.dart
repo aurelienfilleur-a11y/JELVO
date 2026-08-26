@@ -98,6 +98,14 @@ abstract final class AppRoutes {
   static const String createKindParam = 'type';
   static const String createGroupParam = 'groupe';
 
+  /// Ouvre la feuille du lien d'invitation en arrivant sur un groupe.
+  ///
+  /// C'est ce qui rend réelle la carte « Inviter par lien » de l'écran de
+  /// création : un lien ne peut pas être tiré avant que le groupe existe, mais
+  /// l'intention, elle, se déclare avant — elle voyage donc par l'URL jusqu'à
+  /// l'écran qui sait la satisfaire.
+  static const String groupLinkParam = 'lien';
+
   // Profil et réglages, empilés sur le navigateur racine.
   static const String profile = 'profile';
   static const String profilePath = '/profil';

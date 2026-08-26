@@ -13,6 +13,8 @@ class FakeEventRepository implements EventRepository {
 
   /// Dernier appel reçu, pour les assertions.
   String? lastCreatedTitle;
+  String? lastCreatedGroupId;
+  List<String>? lastCreatedParticipants;
   String? lastRespondedId;
   String? lastUpdatedTitle;
   String? lastDeletedId;
@@ -74,6 +76,8 @@ class FakeEventRepository implements EventRepository {
     List<String>? participants,
   }) async {
     lastCreatedTitle = title;
+    lastCreatedGroupId = groupId;
+    lastCreatedParticipants = participants;
     final CalendarEvent event = CalendarEvent(
       id: 'e${_events.length + 1}',
       title: title,

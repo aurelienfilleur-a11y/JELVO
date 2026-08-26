@@ -31,16 +31,57 @@ import '../widgets/membership_term_sheet.dart';
 ///
 /// Les actions dépendent du rôle : un membre peut inviter et quitter, un admin
 /// peut en plus modifier, gérer les membres et supprimer.
-class GroupDetailScreen extends ConsumerWidget {
-  const GroupDetailScreen({super.key, required this.groupId});
+/// Ouvre la feuille du lien d'invitation d'un groupe.
+///
+/// Hors de `_GroupView` parce que deux appelants la demandent : le bouton de
+/// l'écran, et l'arrivée avec `?lien=1` juste après une création.
+void ouvrirFeuilleDeLien(BuildContext context, Group group) {
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (_) => InviteLinkSheet(group: group),
+  );
+}
+
+class GroupDetailScreen extends ConsumerStatefulWidget {
+  const GroupDetailScreen({
+    super.key,
+    required this.groupId,
+    this.ouvrirLeLien = false,
+  });
 
   final String groupId;
 
+  /// Ouvre la feuille du lien d'invitation dès l'arrivée.
+  ///
+  /// Posé par `?lien=1`, que l'écran de création ajoute quand on a choisi
+  /// « Inviter par lien » : le lien se tire sur un groupe qui existe, donc
+  /// après la création et pas avant.
+  final bool ouvrirLeLien;
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<GroupDetailScreen> createState() => _GroupDetailScreenState();
+}
+
+class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
+  /// Une seule fois : revenir sur cet écran ne doit pas rouvrir la feuille.
+  bool _lienOuvert = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final String groupId = widget.groupId;
     final AsyncValue<Group?> groupAsync = ref.watch(
       groupDetailProvider(groupId),
     );
+
+    final Group? charge = groupAsync.value;
+    if (widget.ouvrirLeLien && !_lienOuvert && charge != null) {
+      _lienOuvert = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) ouvrirFeuilleDeLien(context, charge);
+      });
+    }
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -425,14 +466,8 @@ class _GroupView extends ConsumerWidget {
     }
   }
 
-  void _openLinkSheet(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (_) => InviteLinkSheet(group: group),
-    );
-  }
+  void _openLinkSheet(BuildContext context) =>
+      ouvrirFeuilleDeLien(context, group);
 
   void _openInviteSheet(BuildContext context) {
     showModalBottomSheet<void>(

@@ -21,6 +21,8 @@ export 'widgets/event_card.dart';
 export 'widgets/group_card.dart';
 export 'widgets/invitation_header.dart';
 export 'widgets/nav_badge.dart';
+export 'widgets/option_row.dart';
+export 'widgets/person_picker.dart';
 export 'widgets/primary_button.dart';
 export 'widgets/secondary_button.dart';
 export 'widgets/section_header.dart';

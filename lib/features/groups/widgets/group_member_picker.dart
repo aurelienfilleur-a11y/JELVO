@@ -5,25 +5,33 @@ import '../../../core/core.dart';
 import '../../contacts/models/contact.dart';
 import '../../contacts/providers/contact_providers.dart';
 
-/// Choix des personnes à inviter, dans l'écran de création d'un groupe.
+/// Section « Ajouter des membres » de l'écran de création d'un groupe.
 ///
 /// **Le groupe et ses premiers membres se décident au même endroit.** Avant,
 /// il fallait créer le groupe, ouvrir son écran, puis inviter — trois étapes
 /// pour une seule intention, et un groupe vide entre-temps.
 ///
-/// La rangée d'avatars est l'état d'ouverture, et la recherche ne sert qu'à
-/// retrouver quelqu'un qu'elle ne montre pas : dans un carnet de quelques
-/// dizaines de contacts, taper un nom est plus long que le reconnaître.
+/// Trois chemins, et ils ne font pas double emploi : la recherche retrouve
+/// **quelqu'un** qu'on sait nommer, « Choisir dans mes contacts » ouvre le
+/// carnet **entier** quand on veut en cocher plusieurs, et la rangée de
+/// suggestions propose ceux qu'on invite le plus probablement sans rien taper.
 class GroupMemberPicker extends ConsumerStatefulWidget {
   const GroupMemberPicker({
     super.key,
     required this.selected,
     required this.onChanged,
+    required this.lienDemande,
+    required this.onLienChanged,
     this.enabled = true,
   });
 
   final Set<String> selected;
   final ValueChanged<Set<String>> onChanged;
+
+  /// « Inviter par lien » retenu pour l'après-création.
+  final bool lienDemande;
+  final ValueChanged<bool> onLienChanged;
+
   final bool enabled;
 
   @override
@@ -34,8 +42,8 @@ class _GroupMemberPickerState extends ConsumerState<GroupMemberPicker> {
   final TextEditingController _recherche = TextEditingController();
   String _terme = '';
 
-  /// Combien d'avatars la rangée propose avant de renvoyer à la recherche.
-  static const int _suggestions = 12;
+  /// Combien d'avatars la rangée de suggestions propose.
+  static const int _suggestions = 8;
 
   @override
   void dispose() {
@@ -52,17 +60,19 @@ class _GroupMemberPickerState extends ConsumerState<GroupMemberPicker> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        const SectionHeader(
-          title: 'Choisir dans mes contacts',
-          subtitle: 'Les invitations partent à la création du groupe',
+        Text(
+          'Ajouter des membres',
+          style: AppTypography.caption.copyWith(
+            fontWeight: AppTypography.medium,
+            color: AppColors.midnight,
+          ),
         ),
-        AppSpacing.gapMd,
+        AppSpacing.gapSm,
 
         if (contacts.isEmpty)
           _SansContact()
         else ...<Widget>[
           AppTextField(
-            label: '',
             hint: 'Rechercher un contact',
             controller: _recherche,
             enabled: widget.enabled,
@@ -72,14 +82,45 @@ class _GroupMemberPickerState extends ConsumerState<GroupMemberPicker> {
           ),
           AppSpacing.gapMd,
 
-          if (_terme.isEmpty)
+          if (_terme.isEmpty) ...<Widget>[
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: _ActionCard(
+                    icon: Icons.groups_2_outlined,
+                    titre: 'Choisir dans mes contacts',
+                    sousTitre: 'Parcourir mon carnet Jelvo',
+                    onTap: widget.enabled
+                        ? () => _ouvrirCarnet(contacts)
+                        : null,
+                  ),
+                ),
+                AppSpacing.hGapMd,
+                Expanded(
+                  child: _ActionCard(
+                    icon: Icons.link_rounded,
+                    titre: 'Inviter par lien',
+                    sousTitre: widget.lienDemande
+                        ? 'Proposé après la création'
+                        : 'Partager un lien d’invitation',
+                    actif: widget.lienDemande,
+                    onTap: widget.enabled
+                        ? () => widget.onLienChanged(!widget.lienDemande)
+                        : null,
+                  ),
+                ),
+              ],
+            ),
+            AppSpacing.gapLg,
+            Text('Suggestions', style: AppTypography.caption),
+            AppSpacing.gapSm,
             _Rangee(
               contacts: contacts.take(_suggestions).toList(),
               selected: widget.selected,
               enabled: widget.enabled,
               onToggle: _basculer,
-            )
-          else
+            ),
+          ] else
             _Resultats(
               contacts: _filtres(contacts),
               selected: widget.selected,
@@ -99,12 +140,43 @@ class _GroupMemberPickerState extends ConsumerState<GroupMemberPicker> {
     );
   }
 
-  /// Favoris d'abord : ce sont les personnes qu'on invite le plus souvent, et
-  /// la rangée n'en montre qu'une douzaine.
+  Future<void> _ouvrirCarnet(List<Contact> contacts) {
+    return PersonPickerSheet.ouvrir(
+      context,
+      titre: 'Mes contacts',
+      aide: 'Les invitations partent à la création du groupe.',
+      personnes: <PickablePerson>[
+        for (final Contact contact in contacts)
+          PickablePerson(
+            id: contact.id,
+            name: contact.fullName,
+            shortName: contact.shortName,
+            avatarUrl: contact.avatarUrl,
+          ),
+      ],
+      selection: widget.selected,
+      onToggle: _basculer,
+    );
+  }
+
+  /// **Le critère des suggestions** : favoris d'abord, puis le nombre de
+  /// groupes en commun, puis l'ordre alphabétique.
+  ///
+  /// Les deux premiers disent la même chose de deux façons — qui l'on
+  /// fréquente. Le favori est déclaré, les groupes en commun se constatent :
+  /// quelqu'un avec qui on organise déjà trois choses est un candidat plus
+  /// probable qu'un contact rencontré une fois, et l'ordre alphabétique n'en
+  /// sait rien.
+  ///
+  /// Rien n'est lu de plus pour cela : `mes_contacts` renvoie déjà
+  /// `groupes_communs` depuis la tranche 10.
   List<Contact> _ordonnes(List<Contact> contacts) {
     final List<Contact> copie = List<Contact>.of(contacts)
       ..sort((Contact a, Contact b) {
         if (a.isFavorite != b.isFavorite) return a.isFavorite ? -1 : 1;
+        if (a.sharedGroups != b.sharedGroups) {
+          return b.sharedGroups.compareTo(a.sharedGroups);
+        }
         return a.sortKey.compareTo(b.sortKey);
       });
     return copie;
@@ -125,7 +197,71 @@ class _GroupMemberPickerState extends ConsumerState<GroupMemberPicker> {
   }
 }
 
-/// Rangée d'avatars, état d'ouverture du sélecteur.
+/// Une des deux cartes d'action, côte à côte sous la recherche.
+class _ActionCard extends StatelessWidget {
+  const _ActionCard({
+    required this.icon,
+    required this.titre,
+    required this.sousTitre,
+    required this.onTap,
+    this.actif = false,
+  });
+
+  final IconData icon;
+  final String titre;
+  final String sousTitre;
+  final VoidCallback? onTap;
+
+  /// Choix retenu : la carte prend le violet plutôt qu'une coche de plus.
+  final bool actif;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      onTap: onTap,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      borderColor: actif ? AppColors.primary : AppColors.border,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              OptionIcon(icon: icon),
+              const Spacer(),
+              Icon(
+                actif
+                    ? Icons.check_circle_rounded
+                    : Icons.chevron_right_rounded,
+                size: 20,
+                color: actif ? AppColors.primary : AppColors.textSecondary,
+              ),
+            ],
+          ),
+          AppSpacing.gapSm,
+          Text(
+            titre,
+            style: AppTypography.body.copyWith(
+              fontWeight: AppTypography.medium,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            sousTitre,
+            style: AppTypography.caption.copyWith(
+              color: actif ? AppColors.primary : AppColors.textSecondary,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Rangée d'avatars, chacun portant un « + » qui devient une coche.
 class _Rangee extends StatelessWidget {
   const _Rangee({
     required this.contacts,
@@ -144,7 +280,7 @@ class _Rangee extends StatelessWidget {
     return SizedBox(
       // Hauteur réservée en dur : la rangée défile horizontalement et son
       // contenu ne peut pas mesurer sa propre hauteur dans un ListView.
-      height: 96,
+      height: 92,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: contacts.length,
@@ -209,23 +345,28 @@ class _Pastille extends StatelessWidget {
                         ? Border.all(color: AppColors.primary, width: 3)
                         : null,
                   ),
-                  if (choisi)
-                    Positioned(
-                      right: -2,
-                      bottom: -2,
-                      child: Container(
-                        padding: const EdgeInsets.all(2),
-                        decoration: const BoxDecoration(
-                          color: AppColors.surface,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.check_circle_rounded,
-                          size: 18,
-                          color: AppColors.primary,
-                        ),
+                  // Le « + » dit que l'avatar s'ajoute — sans lui, une rangée
+                  // de visages ne se distingue pas d'une simple illustration.
+                  Positioned(
+                    right: -2,
+                    bottom: -2,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: const BoxDecoration(
+                        color: AppColors.surface,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        choisi
+                            ? Icons.check_circle_rounded
+                            : Icons.add_circle_rounded,
+                        size: 18,
+                        color: choisi
+                            ? AppColors.primary
+                            : AppColors.textSecondary,
                       ),
                     ),
+                  ),
                 ],
               ),
               AppSpacing.gapXs,

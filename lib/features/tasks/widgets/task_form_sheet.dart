@@ -10,7 +10,9 @@ import '../../groups/providers/group_providers.dart';
 import '../models/task.dart';
 import '../providers/task_providers.dart';
 import 'assignee_picker.dart';
-import 'option_row.dart';
+
+/// Limite de la description, alignée sur celle d'un événement.
+const int _descriptionMaxLength = 200;
 
 /// Ouvre le formulaire de tâche en feuille.
 ///
@@ -132,6 +134,10 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
               errorText: _erreurTitre,
               autofocus: !_modification,
               textInputAction: TextInputAction.next,
+              suffixIcon: const Icon(
+                Icons.assignment_outlined,
+                color: AppColors.primary,
+              ),
               onChanged: (_) {
                 if (_erreurTitre != null) setState(() => _erreurTitre = null);
               },
@@ -142,6 +148,7 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
               AssigneePicker(
                 membres: membres,
                 selection: _assignes,
+                mention: _mentionAssignation(membres),
                 onToggle: (String userId) => setState(() {
                   if (!_assignes.remove(userId)) _assignes.add(userId);
                 }),
@@ -154,6 +161,7 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
               child: Column(
                 children: <Widget>[
                   OptionRow(
+                    icon: Icons.notifications_none_rounded,
                     label: 'Rappel',
                     hint:
                         'Jelvo enverra une notification à la personne assignée',
@@ -162,6 +170,7 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
                   ),
                   const Divider(height: 1, color: AppColors.border),
                   OptionRow(
+                    icon: Icons.repeat_rounded,
                     label: 'Répéter',
                     hint: 'Pour les tâches récurrentes',
                     value: _recurrence.label,
@@ -206,78 +215,89 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
     );
   }
 
+  /// Ce que la sélection courante veut dire, en une phrase.
+  ///
+  /// **Aucun avatar coché n'est pas un formulaire incomplet** : c'est un choix
+  /// qui produit une tâche proposée au groupe, avec sa carte à boutons dans la
+  /// conversation. Rien dans une rangée d'avatars ne dit cela — la phrase, si.
+  String _mentionAssignation(List<GroupMember> membres) {
+    if (_assignes.isEmpty) {
+      return 'Proposée à tout le groupe : une carte s’affichera dans la '
+          'conversation, et le premier qui accepte la prend.';
+    }
+
+    final List<String> noms = <String>[
+      for (final GroupMember membre in membres)
+        if (_assignes.contains(membre.userId)) membre.shortName,
+    ];
+    // Un assigné qui ne figure pas encore dans la liste chargée ne doit pas
+    // faire disparaître la phrase : on retombe sur le compte.
+    if (noms.isEmpty) {
+      return 'Confiée à ${_assignes.length} personne'
+          '${_assignes.length > 1 ? 's' : ''}, qui recevront une notification.';
+    }
+    final String liste = switch (noms.length) {
+      1 => noms.first,
+      2 => '${noms[0]} et ${noms[1]}',
+      _ =>
+        '${noms[0]}, ${noms[1]} et ${noms.length - 2} autre'
+            '${noms.length - 2 > 1 ? 's' : ''}',
+    };
+    return noms.length == 1
+        ? 'Confiée à $liste, qui recevra une notification.'
+        : 'Confiée à $liste, qui recevront une notification.';
+  }
+
   /// Échéance, priorité et description : utiles, mais pas à chaque fois.
   Widget _blocPlusDOptions() {
-    return AppCard(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-      child: Column(
-        children: <Widget>[
-          InkWell(
-            onTap: () => setState(() => _plusDOptions = !_plusDOptions),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-              child: Row(
-                children: <Widget>[
-                  Expanded(
-                    child: Text('Plus d’options', style: AppTypography.h3),
-                  ),
-                  Icon(
-                    _plusDOptions
-                        ? Icons.expand_less_rounded
-                        : Icons.expand_more_rounded,
-                    color: AppColors.textSecondary,
-                  ),
-                ],
+    return ExpandableOptions(
+      expanded: _plusDOptions,
+      hint: 'Échéance, priorité, description…',
+      onToggle: () => setState(() => _plusDOptions = !_plusDOptions),
+      children: <Widget>[
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: SecondaryButton(
+                label: _echeance == null
+                    ? 'Échéance'
+                    : AppDates.shortDate(_echeance!),
+                icon: Icons.calendar_today_rounded,
+                onPressed: _choisirDate,
               ),
             ),
-          ),
-          if (_plusDOptions) ...<Widget>[
-            const Divider(height: 1, color: AppColors.border),
-            AppSpacing.gapMd,
-            Row(
-              children: <Widget>[
-                Expanded(
-                  child: SecondaryButton(
-                    label: _echeance == null
-                        ? 'Échéance'
-                        : AppDates.shortDate(_echeance!),
-                    icon: Icons.calendar_today_rounded,
-                    onPressed: _choisirDate,
-                  ),
-                ),
-                AppSpacing.hGapMd,
-                Expanded(
-                  child: SecondaryButton(
-                    label: _heure == null ? 'Heure' : _heure!.format(context),
-                    icon: Icons.schedule_rounded,
-                    onPressed: _choisirHeure,
-                  ),
-                ),
-              ],
+            AppSpacing.hGapMd,
+            Expanded(
+              child: SecondaryButton(
+                label: _heure == null ? 'Heure' : _heure!.format(context),
+                icon: Icons.schedule_rounded,
+                onPressed: _choisirHeure,
+              ),
             ),
-            AppSpacing.gapMd,
-            SegmentedButton<TaskPriority>(
-              segments: <ButtonSegment<TaskPriority>>[
-                for (final TaskPriority p in TaskPriority.values)
-                  ButtonSegment<TaskPriority>(value: p, label: Text(p.label)),
-              ],
-              selected: <TaskPriority>{_priorite},
-              showSelectedIcon: false,
-              onSelectionChanged: (Set<TaskPriority> choix) =>
-                  setState(() => _priorite = choix.first),
-            ),
-            AppSpacing.gapMd,
-            AppTextField(
-              label: 'Description',
-              hint: 'Ce qu’il faut savoir pour s’en occuper',
-              controller: _description,
-              maxLines: 3,
-              minLines: 2,
-            ),
-            AppSpacing.gapMd,
           ],
-        ],
-      ),
+        ),
+        AppSpacing.gapMd,
+        SegmentedButton<TaskPriority>(
+          segments: <ButtonSegment<TaskPriority>>[
+            for (final TaskPriority p in TaskPriority.values)
+              ButtonSegment<TaskPriority>(value: p, label: Text(p.label)),
+          ],
+          selected: <TaskPriority>{_priorite},
+          showSelectedIcon: false,
+          onSelectionChanged: (Set<TaskPriority> choix) =>
+              setState(() => _priorite = choix.first),
+        ),
+        AppSpacing.gapMd,
+        AppTextField(
+          label: 'Description',
+          hint: 'Ce qu’il faut savoir pour s’en occuper',
+          controller: _description,
+          maxLines: 3,
+          minLines: 2,
+          maxLength: _descriptionMaxLength,
+          showCounter: true,
+        ),
+      ],
     );
   }
 

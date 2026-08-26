@@ -5,65 +5,83 @@ import '../../groups/models/group_member.dart';
 
 /// Carte « Assigner à » : les membres du groupe en rangée d'avatars.
 ///
-/// La sélection se fait au doigt, sur l'avatar lui-même : dans une famille, on
-/// reconnaît un visage plus vite qu'on ne lit une liste déroulante. L'avatar
-/// choisi porte un contour violet et une pastille de validation — deux
-/// signaux plutôt qu'un, pour que le choix reste lisible sans la couleur.
+/// **Personne n'est présélectionné, et c'est le cœur du composant.** Aucun
+/// assigné ne veut pas dire « pour moi » : la tâche est alors *proposée au
+/// groupe*, et c'est ce qui produit la carte à boutons Oui / Non dans la
+/// conversation. Ce sens est invisible dans une rangée d'avatars — d'où la
+/// mention sous la rangée, qui **change avec la sélection** plutôt que de
+/// n'apparaître qu'à vide.
 ///
-/// **Aucun sélectionné signifie « tâche libre »**, et non « pour moi » : elle
-/// apparaît alors sans preneur, et n'importe quel membre peut s'en charger
-/// depuis son écran de détail.
+/// Le rendu lui-même vit dans `core` (`PersonAvatarRow`) : ce widget-ci ne fait
+/// que traduire des `GroupMember` en `PickablePerson`.
 class AssigneePicker extends StatelessWidget {
   const AssigneePicker({
     super.key,
     required this.membres,
     required this.selection,
     required this.onToggle,
+    required this.mention,
     this.titre = 'Assigner à',
-    this.aideLibre =
-        'Personne de sélectionné : la tâche restera libre, et '
-        'n’importe quel membre pourra s’en charger.',
   });
 
   final List<GroupMember> membres;
   final Set<String> selection;
   final ValueChanged<String> onToggle;
+
+  /// Ce que la sélection courante veut dire, en une phrase.
+  final String mention;
+
   final String titre;
-  final String aideLibre;
+
+  /// Au-delà, la rangée n'en montre qu'une partie et « Autre » ouvre le reste.
+  ///
+  /// En deçà, la rangée montre déjà tout le monde : un bouton qui n'ouvrirait
+  /// que les mêmes visages n'irait nulle part.
+  static const int _seuilRangee = 6;
 
   @override
   Widget build(BuildContext context) {
+    final List<PickablePerson> personnes = <PickablePerson>[
+      for (final GroupMember membre in membres)
+        PickablePerson(
+          id: membre.userId,
+          name: membre.displayName,
+          shortName: membre.shortName,
+          avatarUrl: membre.avatarUrl,
+        ),
+    ];
+    final bool tropNombreux = personnes.length > _seuilRangee;
+
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Text(titre, style: AppTypography.h3),
           AppSpacing.gapMd,
-          if (membres.isEmpty)
+          if (personnes.isEmpty)
             Text(
               'Les membres du groupe n’ont pas encore été chargés.',
               style: AppTypography.bodyMuted,
             )
-          else
-            SizedBox(
-              height: 88,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: membres.length,
-                separatorBuilder: (_, _) => AppSpacing.hGapMd,
-                itemBuilder: (BuildContext context, int index) {
-                  final GroupMember membre = membres[index];
-                  return _Avatar(
-                    membre: membre,
-                    choisi: selection.contains(membre.userId),
-                    onTap: () => onToggle(membre.userId),
-                  );
-                },
-              ),
+          else ...<Widget>[
+            PersonAvatarRow(
+              personnes: tropNombreux
+                  ? personnes.take(_seuilRangee).toList()
+                  : personnes,
+              selection: selection,
+              onToggle: onToggle,
+              onAutre: tropNombreux
+                  ? () => PersonPickerSheet.ouvrir(
+                      context,
+                      titre: titre,
+                      personnes: personnes,
+                      selection: selection,
+                      onToggle: onToggle,
+                    )
+                  : null,
             ),
-          if (selection.isEmpty && membres.isNotEmpty) ...<Widget>[
             AppSpacing.gapSm,
-            Text(aideLibre, style: AppTypography.caption),
+            _Mention(texte: mention, libre: selection.isEmpty),
           ],
         ],
       ),
@@ -71,94 +89,38 @@ class AssigneePicker extends StatelessWidget {
   }
 }
 
-class _Avatar extends StatelessWidget {
-  const _Avatar({
-    required this.membre,
-    required this.choisi,
-    required this.onTap,
-  });
+/// La phrase sous la rangée.
+///
+/// Elle est teintée selon ce qu'elle annonce : violet quand la tâche est
+/// confiée à quelqu'un, gris quand elle reste ouverte au groupe. La couleur
+/// n'est jamais seule à porter le sens — c'est le texte qui le dit.
+class _Mention extends StatelessWidget {
+  const _Mention({required this.texte, required this.libre});
 
-  final GroupMember membre;
-  final bool choisi;
-  final VoidCallback onTap;
+  final String texte;
+  final bool libre;
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      selected: choisi,
-      button: true,
-      label: membre.displayName,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: AppRadii.cardRadius,
-        child: SizedBox(
-          width: 64,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Stack(
-                clipBehavior: Clip.none,
-                children: <Widget>[
-                  Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: choisi ? AppColors.primary : Colors.transparent,
-                        width: 2,
-                      ),
-                    ),
-                    child: AvatarStack(
-                      avatars: <AvatarData>[
-                        AvatarData(
-                          name: membre.displayName,
-                          imageUrl: membre.avatarUrl,
-                        ),
-                      ],
-                      size: 48,
-                    ),
-                  ),
-                  if (choisi)
-                    Positioned(
-                      right: -2,
-                      bottom: -2,
-                      child: Container(
-                        width: 20,
-                        height: 20,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: AppColors.surface,
-                            width: 2,
-                          ),
-                        ),
-                        child: const Icon(
-                          Icons.check_rounded,
-                          size: 12,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                membre.shortName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: AppTypography.caption.copyWith(
-                  color: choisi ? AppColors.primary : AppColors.textSecondary,
-                  fontWeight: choisi
-                      ? AppTypography.semiBold
-                      : AppTypography.medium,
-                ),
-              ),
-            ],
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Icon(
+          libre ? Icons.campaign_outlined : Icons.person_outline_rounded,
+          size: 16,
+          color: libre ? AppColors.textSecondary : AppColors.primary,
+        ),
+        AppSpacing.hGapXs,
+        Expanded(
+          child: Text(
+            texte,
+            style: AppTypography.caption.copyWith(
+              color: libre ? AppColors.textSecondary : AppColors.primary,
+              fontWeight: libre ? null : AppTypography.medium,
+            ),
           ),
         ),
-      ),
+      ],
     );
   }
 }

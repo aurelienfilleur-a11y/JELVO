@@ -12,6 +12,8 @@ class FakeTaskRepository implements TaskRepository {
 
   /// Dernier appel reçu, pour les assertions.
   String? lastCreatedTitle;
+  String? lastCreatedGroupId;
+  List<String>? lastCreatedAssignees;
   String? lastToggledId;
   bool? lastToggledDone;
   String? lastCheckedItemId;
@@ -60,6 +62,10 @@ class FakeTaskRepository implements TaskRepository {
     List<String>? items,
   }) async {
     lastCreatedTitle = title;
+    lastCreatedGroupId = groupId;
+    // `null` et `[]` ne veulent pas dire la même chose côté SQL : le test doit
+    // pouvoir les distinguer.
+    lastCreatedAssignees = assignees;
     final Task task = Task(
       id: 't${_tasks.length + 1}',
       title: title,

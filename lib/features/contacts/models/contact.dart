@@ -41,6 +41,7 @@ class Contact {
     this.direction = ContactDirection.outgoing,
     this.isFavorite = false,
     this.createdAt,
+    this.sharedGroups = 0,
   });
 
   factory Contact.fromRow(Map<String, dynamic> row) {
@@ -54,6 +55,7 @@ class Contact {
       direction: ContactDirection.fromDb(row['sens'] as String?),
       isFavorite: (row['favori'] as bool?) ?? false,
       createdAt: DateTime.tryParse((row['created_at'] as String?) ?? ''),
+      sharedGroups: (row['groupes_communs'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -66,6 +68,38 @@ class Contact {
   final ContactDirection direction;
   final bool isFavorite;
   final DateTime? createdAt;
+
+  /// Groupes **vivants** dont on est tous les deux membres actifs.
+  ///
+  /// Compté par `mes_contacts` : croiser `group_members` côté client
+  /// demanderait de connaître les adhésions d'autrui, que RLS ne donne pas.
+  /// Une adhésion temporaire échue n'y compte plus, ni d'un côté ni de
+  /// l'autre.
+  final int sharedGroups;
+
+  String get sharedGroupsLabel =>
+      '$sharedGroups groupe${sharedGroups > 1 ? 's' : ''}';
+
+  /// Lettre de section dans le carnet. `#` pour tout ce qui ne commence pas
+  /// par une lettre — un pseudo numérique, un nom vide.
+  String get indexLetter {
+    final String nom = fullName.replaceFirst('@', '').trim();
+    if (nom.isEmpty) return '#';
+    final String premiere = nom.substring(0, 1).toUpperCase();
+    return RegExp(r'^[A-ZÀ-Ö]').hasMatch(premiere)
+        ? _sansAccent(premiere)
+        : '#';
+  }
+
+  static String _sansAccent(String lettre) => switch (lettre) {
+    'À' || 'Á' || 'Â' || 'Ã' || 'Ä' || 'Å' => 'A',
+    'Ç' => 'C',
+    'È' || 'É' || 'Ê' || 'Ë' => 'E',
+    'Ì' || 'Í' || 'Î' || 'Ï' => 'I',
+    'Ñ' => 'N',
+    'Ò' || 'Ó' || 'Ô' || 'Õ' || 'Ö' => 'O',
+    _ => lettre,
+  };
 
   bool get isAccepted => status == ContactStatus.accepted;
 
@@ -109,6 +143,7 @@ class Contact {
       direction: direction,
       isFavorite: isFavorite ?? this.isFavorite,
       createdAt: createdAt,
+      sharedGroups: sharedGroups,
     );
   }
 

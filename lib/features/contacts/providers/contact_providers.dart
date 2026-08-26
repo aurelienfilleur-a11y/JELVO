@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/widgets/avatar_stack.dart';
@@ -62,6 +63,40 @@ final Provider<List<Contact>> favoriteContactsProvider =
           .toList(),
     );
 
+/// Sens du tri du carnet. Un seul bouton bascule entre les deux : c'est le
+/// seul réglage de tri que la maquette propose, et deux valeurs n'ont pas
+/// besoin d'un menu.
+enum ContactSort {
+  asc('A–Z'),
+  desc('Z–A');
+
+  const ContactSort(this.label);
+
+  final String label;
+
+  ContactSort get inverse =>
+      this == ContactSort.asc ? ContactSort.desc : ContactSort.asc;
+}
+
+final NotifierProvider<ContactSortNotifier, ContactSort> contactSortProvider =
+    NotifierProvider<ContactSortNotifier, ContactSort>(ContactSortNotifier.new);
+
+class ContactSortNotifier extends Notifier<ContactSort> {
+  @override
+  ContactSort build() => ContactSort.asc;
+
+  void toggle() => state = state.inverse;
+}
+
+/// Une section du carnet : une lettre, et ce qu'elle contient.
+@immutable
+class ContactSection {
+  const ContactSection({required this.letter, required this.contacts});
+
+  final String letter;
+  final List<Contact> contacts;
+}
+
 /// Terme de recherche saisi dans l'écran Contacts.
 final NotifierProvider<ContactQuery, String> contactQueryProvider =
     NotifierProvider<ContactQuery, String>(ContactQuery.new);
@@ -87,6 +122,46 @@ final Provider<List<Contact>> filteredContactsProvider =
             (c.pseudo?.toLowerCase().contains(query) ?? false);
       }).toList();
     });
+
+/// Le carnet filtré, trié, puis découpé par lettre.
+///
+/// Le regroupement vit ici et non dans l'écran : l'index alphabétique de
+/// droite et la liste doivent lire **la même** découpe, faute de quoi une
+/// lettre du rail pourrait ne correspondre à aucune section.
+final Provider<List<ContactSection>> contactSectionsProvider =
+    Provider<List<ContactSection>>((Ref ref) {
+      final ContactSort tri = ref.watch(contactSortProvider);
+      final List<Contact> contacts =
+          List<Contact>.of(ref.watch(filteredContactsProvider))..sort(
+            (Contact a, Contact b) => tri == ContactSort.asc
+                ? a.sortKey.compareTo(b.sortKey)
+                : b.sortKey.compareTo(a.sortKey),
+          );
+
+      final List<ContactSection> sections = <ContactSection>[];
+      for (final Contact contact in contacts) {
+        final String lettre = contact.indexLetter;
+        if (sections.isNotEmpty && sections.last.letter == lettre) {
+          sections.last.contacts.add(contact);
+        } else {
+          sections.add(
+            ContactSection(letter: lettre, contacts: <Contact>[contact]),
+          );
+        }
+      }
+      return sections;
+    });
+
+/// Lettres réellement présentes, dans l'ordre du carnet.
+///
+/// Le rail ne montre que celles-là : une lettre sans contact serait une cible
+/// qui ne mène nulle part.
+final Provider<List<String>> contactLettersProvider = Provider<List<String>>(
+  (Ref ref) => ref
+      .watch(contactSectionsProvider)
+      .map((ContactSection s) => s.letter)
+      .toList(),
+);
 
 /// Recherche de nouveaux profils par pseudo, avec débounce de saisie.
 // Riverpod 3 n'exporte pas les types `*Family` : on laisse l'inférence faire.

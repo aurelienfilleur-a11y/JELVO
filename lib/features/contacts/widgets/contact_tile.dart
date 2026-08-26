@@ -14,6 +14,8 @@ class ContactTile extends StatelessWidget {
     this.onTap,
     this.onFavoriteToggled,
     this.trailing,
+    this.showSharedGroups = false,
+    this.showChevron = false,
   });
 
   final Contact contact;
@@ -22,6 +24,14 @@ class ContactTile extends StatelessWidget {
 
   /// Remplace le bouton favori, pour les demandes en attente.
   final Widget? trailing;
+
+  /// Pastille du nombre de groupes en commun. Réservée au carnet : une
+  /// demande encore en attente n'en partage aucun par définition.
+  final bool showSharedGroups;
+
+  /// Chevron d'ouverture. Il n'apparaît que si la ligne mène quelque part —
+  /// un chevron qui n'ouvre rien est pire qu'une ligne inerte.
+  final bool showChevron;
 
   @override
   Widget build(BuildContext context) {
@@ -66,7 +76,8 @@ class ContactTile extends StatelessWidget {
           ),
           if (trailing != null)
             trailing!
-          else
+          else ...<Widget>[
+            if (showSharedGroups) _PastilleGroupes(contact: contact),
             IconButton(
               onPressed: onFavoriteToggled,
               visualDensity: VisualDensity.compact,
@@ -83,6 +94,57 @@ class ContactTile extends StatelessWidget {
                     : AppColors.textSecondary,
               ),
             ),
+            if (showChevron)
+              const Icon(
+                Icons.chevron_right_rounded,
+                size: 20,
+                color: AppColors.textSecondary,
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Le nombre de groupes partagés, dans une pastille.
+///
+/// Zéro se dit aussi : « 0 groupe » est une information — on se connaît sans
+/// rien organiser ensemble —, là où une pastille absente se lirait comme une
+/// donnée manquante.
+class _PastilleGroupes extends StatelessWidget {
+  const _PastilleGroupes({required this.contact});
+
+  final Contact contact;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.primarySoft,
+        borderRadius: AppRadii.pillRadius,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Text(
+            '${contact.sharedGroups}',
+            style: AppTypography.caption.copyWith(
+              color: AppColors.primary,
+              fontWeight: AppTypography.semiBold,
+            ),
+          ),
+          Text(
+            contact.sharedGroups > 1 ? 'groupes' : 'groupe',
+            style: AppTypography.caption.copyWith(
+              color: AppColors.primary,
+              fontSize: 10,
+            ),
+          ),
         ],
       ),
     );

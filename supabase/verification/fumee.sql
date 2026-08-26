@@ -1376,4 +1376,87 @@ begin
 end;
 $cartes$;
 
+-- ---------------------------------------------------------------------------
+-- Le carnet (tranche 10).
+--
+-- Le nombre de groupes en commun est la seule donnée de l'écran Contacts qui
+-- ne se lisait pas déjà. Ce qui est éprouvé ici, c'est qu'il **compte ce qu'il
+-- faut** : un groupe vivant, et deux adhésions actives.
+-- ---------------------------------------------------------------------------
+
+do $carnet$
+declare
+  camille uuid := '11111111-1111-1111-1111-111111111111'::uuid;
+  lea     uuid := '33333333-3333-3333-3333-333333333333'::uuid;
+  groupe  uuid := '22222222-2222-2222-2222-222222222222'::uuid;
+  second  uuid;
+  compte  integer;
+begin
+  set local role postgres;
+  insert into public.contacts (requester_id, addressee_id, status)
+  values (camille, lea, 'accepted'::contact_status)
+  on conflict do nothing;
+
+  perform set_config('request.jwt.claims',
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}',
+    true);
+  set local role authenticated;
+
+  select groupes_communs into compte
+    from public.mes_contacts() where autre_id = lea;
+  assert compte = 1,
+         format('un groupe en commun attendu, reçu %s', compte);
+
+  -- Un second groupe partagé compte pour un de plus.
+  second := (public.creer_groupe('Fumée — second groupe')).id;
+  reset role;
+  insert into public.group_members (group_id, user_id, role)
+  values (second, lea, 'member') on conflict do nothing;
+
+  perform set_config('request.jwt.claims',
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}',
+    true);
+  set local role authenticated;
+  select groupes_communs into compte
+    from public.mes_contacts() where autre_id = lea;
+  assert compte = 2, format('deux groupes attendus, reçu %s', compte);
+
+  -- **Contrôle négatif de l'adhésion échue.** La tranche 6 veut qu'une
+  -- adhésion passée cesse de compter partout ; le carnet ne fait pas
+  -- exception.
+  reset role;
+  update public.group_members
+     set expires_at = now() - interval '1 minute'
+   where group_id = second and user_id = lea;
+
+  perform set_config('request.jwt.claims',
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}',
+    true);
+  set local role authenticated;
+  select groupes_communs into compte
+    from public.mes_contacts() where autre_id = lea;
+  assert compte = 1,
+         format('une adhésion échue compte encore, reçu %s', compte);
+
+  -- **Contrôle négatif du groupe supprimé.**
+  reset role;
+  update public.group_members
+     set expires_at = null
+   where group_id = second and user_id = lea;
+  update public.groups set deleted_at = now() where id = second;
+
+  perform set_config('request.jwt.claims',
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}',
+    true);
+  set local role authenticated;
+  select groupes_communs into compte
+    from public.mes_contacts() where autre_id = lea;
+  assert compte = 1,
+         format('un groupe supprimé compte encore, reçu %s', compte);
+
+  reset role;
+  raise notice 'Fumée : le carnet de la tranche 10 répond.';
+end;
+$carnet$;
+
 rollback;

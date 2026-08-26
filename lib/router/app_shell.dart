@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/core.dart';
+import '../features/contacts/widgets/contact_sheets.dart';
 import '../features/groups/widgets/group_creation_sheet.dart';
 import '../features/notifications/providers/notification_providers.dart';
 import 'app_bottom_nav.dart';
@@ -85,9 +86,11 @@ class AppShell extends ConsumerWidget {
         label: 'Nouvel événement',
         open: (BuildContext context) => context.pushNamed(AppRoutes.create),
       ),
+      // La même feuille que le « + » de l'en-tête des contacts : « comment
+      // j'ajoute quelqu'un ? » n'a qu'une réponse, et elle en propose trois.
       _ => _CreateAction(
         label: 'Ajouter un contact',
-        open: (BuildContext context) => context.pushNamed(AppRoutes.addContact),
+        open: AddContactSheet.ouvrir,
       ),
     };
   }

@@ -8,6 +8,7 @@ import 'core/core.dart';
 import 'l10n/app_localizations.dart';
 import 'data/app_config.dart';
 import 'data/data_providers.dart';
+import 'data/onboarding_storage.dart';
 import 'data/session_persistence.dart';
 import 'data/diagnostic_mode.dart';
 import 'features/notifications/providers/push_providers.dart';
@@ -34,11 +35,23 @@ Future<void> main() async {
     authOptions: FlutterAuthClientOptions(localStorage: persistance),
   );
 
+  // La redirection lit ce drapeau de façon synchrone dès le premier `build` :
+  // il doit être chargé avant `runApp`, comme la session.
+  //
+  // Une session déjà ouverte vaut présentation faite, mais cette règle-là vit
+  // dans `welcomeSeenProvider` : deux endroits qui décident de la même chose
+  // finiraient par diverger.
+  final OnboardingStorage accueil = OnboardingStorage();
+  await accueil.initialize();
+
   runApp(
     ProviderScope(
       // `Override` n'est pas exporté par Riverpod 3 : inférence, comme dans
       // les tests.
-      overrides: [sessionPersistenceProvider.overrideWithValue(persistance)],
+      overrides: [
+        sessionPersistenceProvider.overrideWithValue(persistance),
+        onboardingStorageProvider.overrideWithValue(accueil),
+      ],
       child: const JelvoApp(),
     ),
   );

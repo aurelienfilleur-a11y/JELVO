@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'clock.dart';
+import 'onboarding_storage.dart';
 import 'session_persistence.dart';
 
 /// Vrai si l'on tourne dans un navigateur.
@@ -24,6 +25,13 @@ final Provider<SessionPersistence> sessionPersistenceProvider =
         drapeau: const EphemeralSessionStorage(),
       ),
     );
+
+/// Mémoire de l'écran de bienvenue.
+///
+/// Surchargé dans `main()` par l'instance déjà chargée : la redirection le lit
+/// de façon synchrone dès le premier `build`.
+final Provider<OnboardingStorage> onboardingStorageProvider =
+    Provider<OnboardingStorage>((Ref ref) => EphemeralOnboardingStorage());
 
 /// Horloge de l'application.
 ///

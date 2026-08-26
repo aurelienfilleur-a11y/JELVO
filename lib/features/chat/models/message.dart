@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import 'message_card.dart';
+
 /// Nature d'un média joint. Reflète le type `media_type` du schéma initial,
 /// qui ne connaît que ces deux valeurs — c'est **lui**, et non une règle
 /// d'écran, qui interdit les documents.
@@ -63,6 +65,9 @@ class Message {
     this.readCount = 0,
     this.pending = false,
     this.failed = false,
+    this.taskId,
+    this.eventId,
+    this.card,
   });
 
   factory Message.fromRow(Map<String, dynamic> row) {
@@ -90,6 +95,9 @@ class Message {
             ]
           : const <MessageReaction>[],
       readCount: (row['lu_par'] as num?)?.toInt() ?? 0,
+      taskId: row['task_id'] as String?,
+      eventId: row['event_id'] as String?,
+      card: MessageCard.fromJson(row['carte']),
     );
   }
 
@@ -127,6 +135,22 @@ class Message {
   /// L'envoi a échoué. Distinct de [pending] : un message en attente finira
   /// peut-être par partir, celui-ci non.
   final bool failed;
+
+  /// Élément porté par la carte, quand ce message en est une.
+  ///
+  /// Une carte **est** une ligne de `messages` : c'est ce qui la garde à sa
+  /// place chronologique, la fait passer par le temps réel déjà en place et la
+  /// compte dans les non-lus, sans qu'aucun code n'ait à fusionner deux listes
+  /// triées ni à faire coïncider deux paginations.
+  final String? taskId;
+
+  final String? eventId;
+
+  /// L'état de l'élément au moment de la lecture. `null` sur un message
+  /// ordinaire.
+  final MessageCard? card;
+
+  bool get isCard => card != null;
 
   bool get isDeleted => deletedAt != null;
 
@@ -175,6 +199,9 @@ class Message {
       readCount: readCount ?? this.readCount,
       pending: pending ?? this.pending,
       failed: failed ?? this.failed,
+      taskId: taskId,
+      eventId: eventId,
+      card: card,
     );
   }
 

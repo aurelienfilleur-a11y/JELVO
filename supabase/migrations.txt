@@ -45,4 +45,5 @@ tranche6_adhesion_temporaire.sql
 # n'existe pas en base. Il doit donc rester le dernier passage, quel que soit
 # le numéro des tranches qui s'ajoutent.
 tranche8_ecrans_invitation.sql
+tranche9_cartes_conversation.sql
 tranche7_durcissement.sql

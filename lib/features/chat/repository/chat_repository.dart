@@ -182,19 +182,30 @@ class SupabaseChatRepository implements ChatRepository {
     return _canaux.putIfAbsent(groupId, () {
       final RealtimeChannel canal = _client.channel('groupe:$groupId');
 
+      // `task_assignees` et `event_participants` s'y ajoutent depuis la
+      // tranche 9 : répondre sur une carte n'écrit dans aucune des trois
+      // premières, et la carte des autres resterait figée. `prendre_tache`,
+      // lui, touche `messages` — il n'avait pas besoin de ce détour.
       for (final String table in const <String>[
         'messages',
         'message_reactions',
         'message_reads',
+        'task_assignees',
+        'event_participants',
       ]) {
         canal.onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: table,
-          // `message_reactions` n'a pas de `group_id` : on ne peut pas la
+          // Trois de ces tables n'ont pas de `group_id` : on ne peut pas les
           // filtrer côté serveur, et le signal est donc plus large que
           // nécessaire. Sans conséquence — il ne déclenche qu'une relecture.
-          filter: table == 'message_reactions'
+          filter:
+              const <String>{
+                'message_reactions',
+                'task_assignees',
+                'event_participants',
+              }.contains(table)
               ? null
               : PostgresChangeFilter(
                   type: PostgresChangeFilterType.eq,

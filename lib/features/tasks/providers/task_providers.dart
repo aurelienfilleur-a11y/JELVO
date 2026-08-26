@@ -161,6 +161,23 @@ class TaskActions {
     await _refresh();
   }
 
+  /// Prend la tâche, et renvoie ce que la base a réellement fait.
+  ///
+  /// Le mot d'état est rendu à l'appelant plutôt que consommé ici : c'est lui,
+  /// et non l'absence d'exception, qui décide du message affiché — la leçon
+  /// des écritures PostgREST sans effet qui répondent 200.
+  Future<TakeOutcome> take(String taskId) async {
+    final String mot = await _repository.takeTask(taskId);
+    await _refresh();
+    return TakeOutcome.fromDb(mot);
+  }
+
+  Future<TakeOutcome> withdraw(String taskId) async {
+    final String mot = await _repository.withdrawFromTask(taskId);
+    await _refresh();
+    return TakeOutcome.fromDb(mot);
+  }
+
   Future<void> respond(String taskId, AssigneeStatus status) async {
     await _repository.respond(taskId: taskId, status: status);
     await _refresh();

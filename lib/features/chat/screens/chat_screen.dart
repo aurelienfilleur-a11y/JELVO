@@ -11,6 +11,7 @@ import '../models/media_selection.dart';
 import '../models/message.dart';
 import '../providers/chat_providers.dart';
 import '../widgets/message_bubble.dart';
+import '../widgets/message_card_tile.dart';
 import '../widgets/media_picker_sheet.dart';
 import '../widgets/message_composer.dart';
 
@@ -154,6 +155,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       itemCount: messages.length,
       itemBuilder: (BuildContext context, int index) {
         final Message message = messages[index];
+
+        // Une carte n'est pas une bulle : elle occupe toute la largeur, ne
+        // porte ni avatar ni réaction, et se répond sur place. Elle reste en
+        // revanche **à sa place**, puisque c'est une ligne de `messages` comme
+        // les autres.
+        if (message.isCard) return MessageCardTile(message: message);
+
         // La liste est inversée : le message « suivant » à l'écran est celui
         // d'indice supérieur, donc plus ancien.
         final Message? precedent = index + 1 < messages.length
@@ -169,8 +177,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         return MessageBubble(
           message: message,
           isMine: message.senderId == moi,
-          showSender: precedent?.senderId != message.senderId,
-          showAvatar: suivant?.senderId != message.senderId,
+          // Une carte coupe la série : la bulle qui la suit recommence par
+          // son nom, celle qui la précède reprend son avatar.
+          showSender:
+              precedent == null ||
+              precedent.isCard ||
+              precedent.senderId != message.senderId,
+          showAvatar:
+              suivant == null ||
+              suivant.isCard ||
+              suivant.senderId != message.senderId,
           timeLabel: AppDates.time(message.createdAt),
           onLongPress: () => _ouvrirActions(message, moi),
           onReactionTap: (String emoji) => _reagir(message, emoji),

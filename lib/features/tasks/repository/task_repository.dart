@@ -42,6 +42,18 @@ abstract interface class TaskRepository {
   /// `s_attribuer_tache` : `pris`, `lache`, `deja_pris`, `deja_assignee`…
   Future<String> claim({required String taskId, required bool take});
 
+  /// Prendre une tâche proposée au groupe depuis sa carte de conversation.
+  ///
+  /// Renvoie un mot d'état — `prise`, `deja_prise`, `supprimee`,
+  /// `non_membre` — et non `void` : deux personnes peuvent toucher « Oui » à
+  /// la même seconde, et celle qui arrive seconde doit se voir refuser
+  /// proprement plutôt que de croire avoir pris la tâche.
+  Future<String> takeTask(String taskId);
+
+  /// Rendre une tâche qu'on avait prise. `desiste`, `non_assigne`,
+  /// `non_desistable`…
+  Future<String> withdrawFromTask(String taskId);
+
   /// L'assigné accepte ou refuse.
   Future<void> respond({
     required String taskId,
@@ -169,6 +181,26 @@ class SupabaseTaskRepository implements TaskRepository {
         params: <String, dynamic>{'p_task_id': taskId, 'p_prendre': take},
       );
       return (result as String?) ?? 'inconnu';
+    } catch (error) {
+      throw AuthFailure.from(error);
+    }
+  }
+
+  @override
+  Future<String> takeTask(String taskId) async =>
+      _motDEtat('prendre_tache', taskId);
+
+  @override
+  Future<String> withdrawFromTask(String taskId) async =>
+      _motDEtat('se_desister', taskId);
+
+  Future<String> _motDEtat(String fonction, String taskId) async {
+    try {
+      final Object? resultat = await _client.rpc<Object?>(
+        fonction,
+        params: <String, dynamic>{'p_task_id': taskId},
+      );
+      return (resultat as String?) ?? 'inconnu';
     } catch (error) {
       throw AuthFailure.from(error);
     }

@@ -29,6 +29,8 @@ import '../features/groups/screens/join_group_screen.dart';
 import '../features/home/screens/home_screen.dart';
 import '../features/notifications/screens/notifications_screen.dart';
 import '../features/profile/screens/avatar_gallery_screen.dart';
+import '../features/profile/screens/about_screen.dart';
+import '../features/profile/screens/change_password_screen.dart';
 import '../features/profile/screens/profile_edit_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
 import '../features/profile/screens/settings_screen.dart';
@@ -272,6 +274,20 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
         parentNavigatorKey: _rootNavigatorKey,
         builder: (BuildContext context, GoRouterState state) =>
             const AvailabilityScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.changePasswordPath,
+        name: AppRoutes.changePassword,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (BuildContext context, GoRouterState state) =>
+            const ChangePasswordScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.aboutPath,
+        name: AppRoutes.about,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (BuildContext context, GoRouterState state) =>
+            const AboutScreen(),
       ),
       GoRoute(
         path: AppRoutes.settingsPath,

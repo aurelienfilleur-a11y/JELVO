@@ -322,13 +322,13 @@ void main() {
     // allongent : il faut y descendre plutôt que compter sur la hauteur de la
     // surface de test.
     await tester.scrollUntilVisible(
-      find.text('Se déconnecter'),
+      find.text('Déconnexion'),
       200,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Se déconnecter').last);
+    await tester.tap(find.text('Déconnexion'));
     await tester.pumpAndSettle();
     // Confirme dans la boîte de dialogue.
     await tester.tap(find.text('Se déconnecter').last);

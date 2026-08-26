@@ -47,6 +47,50 @@ enum AssigneeStatus {
   String get dbValue => name;
 }
 
+/// Ce que la base a fait quand on a touché « Oui » sur une carte.
+///
+/// Un mot d'état plutôt qu'un `void` : deux personnes peuvent prendre la même
+/// tâche à la même seconde, et celle qui arrive seconde doit se voir refuser
+/// **proprement** — pas croire avoir pris la tâche parce qu'aucune exception
+/// n'a été levée.
+enum TakeOutcome {
+  prise,
+  desiste,
+  dejaPrise,
+  nonAssigne,
+  nonDesistable,
+  supprimee,
+  nonMembre,
+  inconnu;
+
+  static TakeOutcome fromDb(String? value) => switch (value) {
+    'prise' => TakeOutcome.prise,
+    'desiste' => TakeOutcome.desiste,
+    'deja_prise' => TakeOutcome.dejaPrise,
+    'non_assigne' => TakeOutcome.nonAssigne,
+    'non_desistable' => TakeOutcome.nonDesistable,
+    'supprimee' => TakeOutcome.supprimee,
+    'non_membre' || 'non_connecte' => TakeOutcome.nonMembre,
+    _ => TakeOutcome.inconnu,
+  };
+
+  bool get isSuccess =>
+      this == TakeOutcome.prise || this == TakeOutcome.desiste;
+
+  String get message => switch (this) {
+    TakeOutcome.prise => 'Vous avez pris cette tâche.',
+    TakeOutcome.desiste => 'Vous avez rendu cette tâche au groupe.',
+    TakeOutcome.dejaPrise => 'Quelqu’un vient de la prendre avant vous.',
+    TakeOutcome.nonAssigne => 'Cette tâche n’est pas la vôtre.',
+    TakeOutcome.nonDesistable =>
+      'Cette tâche vous a été confiée : refusez-la plutôt que de la rendre.',
+    TakeOutcome.supprimee => 'Cette tâche a été supprimée.',
+    TakeOutcome.nonMembre => 'Vous ne faites plus partie de ce groupe.',
+    TakeOutcome.inconnu =>
+      'L’action n’a pas abouti. Réessayez dans un instant.',
+  };
+}
+
 /// Une personne assignée, avec son profil et sa réponse.
 @immutable
 class TaskAssignee {

@@ -121,6 +121,75 @@ class FakeTaskRepository implements TaskRepository {
     return take ? 'pris' : 'lache';
   }
 
+  /// Mot d'état imposé, pour éprouver la course : la seconde personne à
+  /// toucher « Oui » doit se voir refuser proprement.
+  String? takeOutcome;
+
+  String? lastTakenId;
+  String? lastWithdrawnId;
+
+  @override
+  Future<String> takeTask(String taskId) async {
+    lastTakenId = taskId;
+    final String mot = takeOutcome ?? 'prise';
+    if (mot == 'prise') {
+      _remplacerAssignes(taskId, <TaskAssignee>[
+        const TaskAssignee(
+          userId: 'moi',
+          status: AssigneeStatus.accepted,
+          name: 'Camille Rousseau',
+        ),
+      ], prise: true);
+    }
+    return mot;
+  }
+
+  @override
+  Future<String> withdrawFromTask(String taskId) async {
+    lastWithdrawnId = taskId;
+    final String mot = takeOutcome ?? 'desiste';
+    if (mot == 'desiste') {
+      _remplacerAssignes(taskId, const <TaskAssignee>[], prise: false);
+    }
+    return mot;
+  }
+
+  /// Reflète sur la tâche ce que la fonction SQL ferait, pour que la relecture
+  /// qui suit l'action montre le nouvel état.
+  void _remplacerAssignes(
+    String taskId,
+    List<TaskAssignee> assignes, {
+    required bool prise,
+  }) {
+    for (int i = 0; i < _tasks.length; i++) {
+      if (_tasks[i].id != taskId) continue;
+      final Task t = _tasks[i];
+      _tasks[i] = Task(
+        id: t.id,
+        title: t.title,
+        notes: t.notes,
+        dueDate: t.dueDate,
+        groupId: t.groupId,
+        createdBy: t.createdBy,
+        completedAt: t.completedAt,
+        priority: t.priority,
+        reminderAt: t.reminderAt,
+        rrule: t.rrule,
+        myStatus: assignes.isEmpty ? null : assignes.first.status,
+        assignees: assignes,
+        itemCount: t.itemCount,
+        checkedCount: t.checkedCount,
+        authorName: t.authorName,
+        authorAvatarUrl: t.authorAvatarUrl,
+        groupName: t.groupName,
+        groupPhotoUrl: t.groupPhotoUrl,
+      );
+    }
+    lastTakePrise = prise;
+  }
+
+  bool? lastTakePrise;
+
   @override
   Future<void> respond({
     required String taskId,

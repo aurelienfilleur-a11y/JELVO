@@ -912,7 +912,7 @@ diagnostic à l'écart.
 **L'ordre du fichier n'est pas celui des numéros**, et ne peut pas l'être :
 `tranche7_durcissement.sql` referme l'exécution de toute fonction absente de sa
 liste et **lève si un nom de sa liste n'existe pas en base**. Il reste donc le
-dernier passage, et la tranche 8 s'insère avant lui.
+dernier passage, et les tranches 8 et 9 s'insèrent avant lui.
 
 Trois entrées de `supabase/` ne sont **pas** des migrations : elles n'écrivent
 rien et ne changent rien.
@@ -1327,8 +1327,9 @@ fois.
 `tranche7_durcissement.sql` retire l'exécution de toute fonction absente de sa
 liste, et **lève si un nom de cette liste n'existe pas en base**. Il doit donc
 rester le dernier passage de `migrations.txt`, quel que soit le numéro des
-tranches qui s'ajoutent. `invitation_par_id` est ajoutée à sa liste ; le
-fichier de la tranche 8 est inséré **avant** lui.
+tranches qui s'ajoutent. `invitation_par_id`, puis `prendre_tache` et
+`se_desister`, sont ajoutées à sa liste ; les fichiers des tranches 8 et 9
+sont insérés **avant** lui.
 
 ---
 
@@ -1469,6 +1470,132 @@ chaque `returns table` et les noms d'argument de chaque fonction à la liste
 
 ---
 
+## Les cartes de la conversation
+
+Une tâche proposée au groupe n'avait **aucun endroit où être vue de tous** :
+l'écran d'attribution s'adresse à un assigné, et une tâche sans assigné ne
+s'adressait donc à personne. La conversation est le seul endroit que tout le
+groupe regarde — les tâches et les événements d'un groupe y déposent
+désormais une carte, à laquelle on répond sur place.
+
+### Une carte **est** une ligne de `messages`
+
+Ce n'est pas un détail d'implémentation : c'est ce qui fait tenir trois
+exigences d'un coup, sans une ligne de code pour chacune.
+
+| Exigence | Ce qui la tient |
+| --- | --- |
+| rester à sa place chronologique | `order by created_at`, comme le reste |
+| se mettre à jour chez les autres | `messages` est dans la publication depuis la tranche 5a |
+| compter dans les non-lus | `messages_non_lus` ne fait pas de différence |
+
+L'alternative — fusionner côté client la liste des messages et celle des
+tâches — demandait de faire coïncider **deux paginations** : « les trente
+derniers messages » et « les tâches créées dans le même intervalle ». Deux
+fenêtres qui glissent l'une par rapport à l'autre, et un « charger plus » qui
+ne sait plus où il en est.
+
+`messages` gagne donc `task_id` et `event_id`, deux clés étrangères nullables
+— la forme qu'a déjà `invitations`. Une ligne ordinaire les a toutes deux à
+`null`. `content` porte le titre : `messages_check` exige un contenu **ou** un
+média, et un client qui ne connaîtrait pas les cartes lirait au moins de quoi
+savoir de quoi il s'agit.
+
+**Une carte ne pousse pas comme un message.** `push_nouveau_message` les
+écarte : l'élément qu'elles portent a déjà sa propre notification —
+`task_assigned`, `event_invitation` —, et sans ce garde-fou l'assigné en
+recevrait deux. La pastille de conversation, elle, s'allume normalement.
+
+### `tache_prise` — ce qu'aucun état ne dit
+
+Une tâche à un seul assigné se lit de deux façons **opposées** :
+
+- « Thomas a pris la tâche » — il s'est proposé, il peut se désister ;
+- « Tâche attribuée à Thomas » — on la lui a confiée, il répond mais ne se
+  retire pas.
+
+Les deux situations sont **identiques** dans `task_assignees` : une ligne, un
+statut. Seule l'histoire les sépare, et c'est elle que retient
+`messages.tache_prise`, posé par `prendre_tache` et retiré par `se_desister`.
+Le nom du preneur, lui, n'est pas recopié : il reste dans `task_assignees`,
+qui en est la seule source.
+
+Conséquence assumée : une tâche créée sans assigné puis attribuée depuis
+l'écran de détail devient « Tâche attribuée à X ». C'est ce qui s'est passé.
+
+### Deux personnes qui acceptent au même instant
+
+**C'est le point qui justifie une fonction plutôt qu'une insertion.** Toutes
+deux liraient une tâche sans assigné, toutes deux s'insèreraient : la tâche
+serait prise deux fois, et personne ne saurait par qui.
+
+```sql
+select * into tache from public.tasks t where t.id = p_task_id for update;
+if exists (select 1 from public.task_assignees a where a.task_id = p_task_id)
+then return 'deja_prise';
+```
+
+Le `for update` sérialise les deux transactions : la seconde attend la
+première, puis voit l'assigné qu'elle vient de poser. Un test préalable sans
+verrou se doublerait d'une course entre le test et l'insertion — même raison
+que la clé primaire de `message_reactions` ou celle de `push_reminders_sent`,
+à ceci près qu'ici aucune contrainte d'unicité ne peut porter la règle : elle
+dit « aucun assigné », pas « pas deux fois le même ».
+
+`prendre_tache` renvoie donc un **mot d'état** — `prise`, `deja_prise`,
+`supprimee`, `non_membre` —, et c'est lui qui décide du message affiché. La
+seconde personne lit « Quelqu'un vient de la prendre avant vous », et non le
+silence d'une écriture sans effet.
+
+### Se désister n'est pas refuser
+
+`se_desister` ne s'applique qu'à ce qui a été **pris depuis la carte**. Une
+tâche qu'on vous a confiée se refuse — `repondre_tache` —, elle ne se rend
+pas : le refus reste visible pour celui qui l'a confiée, la disparition non.
+La fonction ressort `non_desistable` dans ce cas, et le test de fumée en fait
+un contrôle négatif.
+
+### Répondre doit se voir chez les autres
+
+`prendre_tache` et `se_desister` écrivent dans `messages` — le temps réel déjà
+en place suffit. Répondre à une tâche confiée ou à un événement, en revanche,
+ne touche que `task_assignees` ou `event_participants`, que le canal du groupe
+n'écoutait pas. Les deux tables entrent donc dans la publication, et le canal
+s'y abonne **sans filtre** : elles n'ont pas de `group_id`, comme
+`message_reactions`. Sans conséquence — le signal ne transporte rien d'autre
+qu'un « relis la fenêtre ».
+
+### Ce que la base ne sait pas dire
+
+**« Non » sur une tâche proposée ne s'écrit nulle part.** `assignee_status`
+suppose une ligne d'assignation, et refuser une tâche qu'on ne vous a pas
+confiée n'en crée aucune. Le bouton est donc un accusé de réception — « la
+tâche reste proposée au groupe » — et non une écriture. L'inventer demanderait
+une table de refus dont rien d'autre n'a besoin, et un « Non » qui masquerait
+la carte à celui qui l'a touché priverait le groupe d'un avis qu'il ne verrait
+jamais.
+
+### `null` et `[]` ne veulent pas dire la même chose
+
+`creer_tache` interprète une liste d'assignés **absente** comme « assigne
+l'auteur », et une liste **vide** comme « proposée au groupe ». La distinction
+existait déjà — le formulaire passe `<String>[]` quand aucun avatar n'est
+sélectionné — et c'est elle qui décide de la carte qu'on obtient. La confondre
+donnerait une tâche déjà prise par son auteur, sans boutons, ce que personne
+n'attend d'une tâche qu'on propose.
+
+### La carte est pleine largeur, la bulle non
+
+Ce n'est pas quelqu'un qui parle, c'est quelque chose qui arrive au groupe :
+la distinction doit se voir avant d'être lue. La carte ne porte ni avatar ni
+réaction, et **coupe la série** — la bulle qui la suit recommence par son nom.
+
+Un appui ouvre le détail ; les boutons répondent sur place. Une carte
+supprimée n'ouvre plus rien et **garde son titre** : sans lui, elle ne dirait
+plus de quoi il s'agissait.
+
+---
+
 ## Disponibilités
 
 `availabilities` et `get_availability_status` **viennent du schéma initial** :
@@ -1565,7 +1692,7 @@ n'en crée aucune, il n'ajoute que six fonctions.
 
 | Table | Colonnes | Ce que la forme impose |
 | --- | --- | --- |
-| `messages` | `id`, `group_id`, `sender_id`, `content`, `media_url`, `media_kind`, `created_at`, `deleted_at` | `CHECK (content is not null or media_url is not null)`, contenu ≤ 2000 |
+| `messages` | `id`, `group_id`, `sender_id`, `content`, `media_url`, `media_kind`, `created_at`, `deleted_at`, **`task_id`**, **`event_id`**, **`tache_prise`** | `CHECK (content is not null or media_url is not null)`, contenu ≤ 2000 |
 | `message_reactions` | `message_id`, `user_id`, `emoji` — **PK `(message_id, user_id)`** | une réaction par personne et par message, **tenu par la base** |
 | `message_reads` | `group_id`, `user_id`, `last_read_at` — **PK `(group_id, user_id)`** | l'accusé de lecture est **par conversation**, jamais par message |
 
@@ -2641,7 +2768,13 @@ s'en passe.
   médias : le sélecteur qui ne propose jamais de document, la
   vignette qui ne laisse pas fuiter le chemin de stockage, la vidéo annoncée
   comme telle, le média qui disparaît à la suppression, et les bornes de poids
-  et d'extension, sans widget. Côté avatars : une série de trois messages ne
+  et d'extension, sans widget. Côté cartes : la tâche proposée au groupe et ses
+  deux boutons, la prise qui appelle le dépôt, **la course** — la seconde
+  personne lit « quelqu'un vient de la prendre avant vous » —, le preneur
+  annoncé sans boutons pour les autres, le désistement réservé à celui qui a
+  pris, la tâche confiée et son refus, les deux suppressions qui laissent une
+  carte parlante, les trois réponses d'un événement avec son décompte, et la
+  place chronologique de la carte entre deux messages. Côté avatars : une série de trois messages ne
   porte qu'un seul visage, posé sur le dernier, la gouttière garde les bulles
   alignées, ses propres messages n'en ont pas, et l'avatar prédéfini de
   l'expéditeur est rendu par le même point que partout ailleurs.
@@ -2770,11 +2903,19 @@ sûr d'éprouver son caractère contextuel.
   bucket, de la mémoire des rappels, du rangement des adhésions, de la portée
   d'`invitation_par_id` et de l'auto-attribution qui ne notifie pas. Le retour
   à l'auteur y est éprouvé des deux côtés : la ligne déposée dans la boîte et
-  celle empilée pour le téléphone.
+  celle empilée pour le téléphone. La tranche 9 y ajoute **la course** — la
+  seconde prise ressort `deja_prise` —, le désistement qui rouvre la tâche,
+  celui qu'une tâche confiée refuse, et la carte d'un élément supprimé qui
+  garde son titre.
   La tranche 6 y fait entrer `inviter_dans_groupe`,
   `accepter_invitation`, `rejoindre_groupe_par_jeton` et
   `apercu_groupe_par_jeton`, qui datent de la tranche 2 : le reste de cette
   tranche n'est toujours éprouvé que par l'usage en production.
+- **« Non » sur une tâche proposée au groupe ne s'écrit pas.** Le bouton
+  accuse réception, la tâche reste proposée : `assignee_status` suppose une
+  ligne d'assignation, et refuser une tâche qu'on ne vous a pas confiée n'en
+  crée aucune. Une table de refus serait le seul moyen de le retenir, et rien
+  d'autre n'en a besoin.
 - **Une invitation à un événement et une tâche confiée n'ont pas d'âge.** Les
   deux écrans le taisent plutôt que de l'approcher : `event_participants` ne
   porte que `responded_at`, `task_assignees` aucune date. Le combler

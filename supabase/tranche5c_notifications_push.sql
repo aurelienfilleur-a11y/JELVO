@@ -372,6 +372,14 @@ declare
   groupe     text;
   membre     record;
 begin
+  -- **Une carte n'est pas un message.** Les cartes de tâche et d'événement de
+  -- la tranche 9 sont des lignes de `messages`, mais l'élément qu'elles
+  -- portent a déjà sa propre notification — `task_assigned`,
+  -- `event_invitation`. Sans ce garde-fou, l'assigné recevrait les deux.
+  if new.task_id is not null or new.event_id is not null then
+    return new;
+  end if;
+
   expediteur := coalesce(public.nom_affiche(new.sender_id), 'Quelqu''un');
 
   select g.name into groupe from public.groups g where g.id = new.group_id;

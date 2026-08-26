@@ -384,6 +384,7 @@ declare
     -- Tâches
     'creer_tache', 'modifier_tache', 'supprimer_tache', 'mes_taches',
     'terminer_tache', 'repondre_tache', 's_attribuer_tache',
+    'prendre_tache', 'se_desister',
     'definir_assignes_tache',
     'articles_de_tache', 'ajouter_article', 'cocher_article',
     'supprimer_article',

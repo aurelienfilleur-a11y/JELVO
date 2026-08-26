@@ -13,9 +13,11 @@ import 'package:jelvo/features/availability/providers/availability_providers.dar
 import 'package:jelvo/features/calendar/providers/calendar_providers.dart';
 import 'package:jelvo/features/chat/models/media_selection.dart';
 import 'package:jelvo/features/chat/models/message.dart';
+import 'package:jelvo/features/chat/models/message_card.dart';
 import 'package:jelvo/features/chat/providers/chat_providers.dart';
 import 'package:jelvo/features/chat/repository/chat_repository.dart';
 import 'package:jelvo/features/chat/widgets/chat_media.dart';
+import 'package:jelvo/features/chat/widgets/message_card_tile.dart';
 import 'package:jelvo/features/contacts/providers/contact_providers.dart';
 import 'package:jelvo/features/groups/providers/group_providers.dart';
 import 'package:jelvo/features/notifications/models/app_notification.dart';
@@ -43,6 +45,8 @@ Future<FakeChatRepository> _pumpApp(
   Map<String, int>? unread,
   bool avecNotifications = true,
   List<Message>? messages,
+  FakeTaskRepository? tasks,
+  FakeEventRepository? events,
 }) async {
   tester.view.physicalSize = const Size(420, 1600);
   tester.view.devicePixelRatio = 1;
@@ -64,8 +68,10 @@ Future<FakeChatRepository> _pumpApp(
         authRepositoryProvider.overrideWithValue(auth),
         profileRepositoryProvider.overrideWithValue(FakeProfileRepository()),
         groupRepositoryProvider.overrideWithValue(FakeGroupRepository()),
-        taskRepositoryProvider.overrideWithValue(FakeTaskRepository()),
-        eventRepositoryProvider.overrideWithValue(FakeEventRepository()),
+        taskRepositoryProvider.overrideWithValue(tasks ?? FakeTaskRepository()),
+        eventRepositoryProvider.overrideWithValue(
+          events ?? FakeEventRepository(),
+        ),
         contactRepositoryProvider.overrideWithValue(FakeContactRepository()),
         chatRepositoryProvider.overrideWithValue(chat),
         pushServiceProvider.overrideWithValue(FakePushService()),
@@ -698,6 +704,398 @@ void main() {
         AvatarData.assetPourAvatar(avatar.data.imageUrl),
         'assets/avatars/p2_07.png',
       );
+    });
+  });
+
+  group('Les cartes de tâche et d’événement', () {
+    Message carteTache({
+      required Map<String, dynamic> carte,
+      String id = 'c1',
+      DateTime? quand,
+    }) => Message(
+      id: id,
+      groupId: 'g1',
+      senderId: 'autre',
+      createdAt: quand ?? DateTime(2026, 8, 3, 8, 30),
+      content: carte['titre'] as String?,
+      senderName: 'Julie Martin',
+      taskId: 't-carte',
+      card: MessageCard.fromJson(<String, dynamic>{'sorte': 'tache', ...carte}),
+    );
+
+    Message carteEvenement(Map<String, dynamic> carte) => Message(
+      id: 'c2',
+      groupId: 'g1',
+      senderId: 'autre',
+      createdAt: DateTime(2026, 8, 3, 8, 31),
+      content: carte['titre'] as String?,
+      senderName: 'Julie Martin',
+      eventId: 'e-carte',
+      card: MessageCard.fromJson(<String, dynamic>{
+        'sorte': 'evenement',
+        ...carte,
+      }),
+    );
+
+    testWidgets('une tâche proposée au groupe porte Oui et Non', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(
+        tester,
+        avecNotifications: false,
+        messages: <Message>[
+          carteTache(
+            carte: <String, dynamic>{
+              'titre': 'Acheter du pain',
+              'supprimee': false,
+              'prise': false,
+              'terminee': false,
+              'due_at': DateTime(2026, 8, 4, 18).toIso8601String(),
+              'assignes': <dynamic>[],
+            },
+          ),
+        ],
+      );
+      await _ouvrirDiscussion(tester);
+
+      expect(find.byType(MessageCardTile), findsOneWidget);
+      expect(find.text('Acheter du pain'), findsOneWidget);
+      expect(find.text('Oui'), findsOneWidget);
+      expect(find.text('Non'), findsOneWidget);
+      expect(
+        find.textContaining('personne ne l’a encore prise'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('« Oui » prend la tâche et la carte le dit', (
+      WidgetTester tester,
+    ) async {
+      final FakeTaskRepository taches = FakeTaskRepository();
+      await _pumpApp(
+        tester,
+        avecNotifications: false,
+        tasks: taches,
+        messages: <Message>[
+          carteTache(
+            carte: <String, dynamic>{
+              'titre': 'Acheter du pain',
+              'supprimee': false,
+              'prise': false,
+              'terminee': false,
+              'assignes': <dynamic>[],
+            },
+          ),
+        ],
+      );
+      await _ouvrirDiscussion(tester);
+
+      await tester.tap(find.text('Oui'));
+      await tester.pumpAndSettle();
+
+      expect(taches.lastTakenId, 't-carte');
+      expect(find.text('Vous avez pris cette tâche.'), findsOneWidget);
+    });
+
+    testWidgets('deux personnes ne prennent pas la même tâche', (
+      WidgetTester tester,
+    ) async {
+      // La base a tranché : quelqu’un est passé avant. L’écran doit le dire
+      // proprement, et non se taire parce qu’aucune exception n’a été levée.
+      final FakeTaskRepository taches = FakeTaskRepository()
+        ..takeOutcome = 'deja_prise';
+      await _pumpApp(
+        tester,
+        avecNotifications: false,
+        tasks: taches,
+        messages: <Message>[
+          carteTache(
+            carte: <String, dynamic>{
+              'titre': 'Acheter du pain',
+              'supprimee': false,
+              'prise': false,
+              'terminee': false,
+              'assignes': <dynamic>[],
+            },
+          ),
+        ],
+      );
+      await _ouvrirDiscussion(tester);
+
+      await tester.tap(find.text('Oui'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Quelqu’un vient de la prendre avant vous.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('une tâche prise annonce son preneur, sans boutons', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(
+        tester,
+        avecNotifications: false,
+        messages: <Message>[
+          carteTache(
+            carte: <String, dynamic>{
+              'titre': 'Acheter du pain',
+              'supprimee': false,
+              'prise': true,
+              'terminee': false,
+              'assignes': <dynamic>[
+                <String, dynamic>{
+                  'user_id': 'u-thomas',
+                  'status': 'accepted',
+                  'nom': 'Thomas',
+                },
+              ],
+            },
+          ),
+        ],
+      );
+      await _ouvrirDiscussion(tester);
+
+      expect(find.text('Thomas a pris la tâche'), findsOneWidget);
+      // Les boutons ont disparu pour les autres.
+      expect(find.text('Oui'), findsNothing);
+      expect(find.text('Non'), findsNothing);
+      // Et il n’est pas proposé à un tiers de se désister.
+      expect(find.text('Me désister'), findsNothing);
+    });
+
+    testWidgets('celui qui l’a prise peut se désister', (
+      WidgetTester tester,
+    ) async {
+      final FakeTaskRepository taches = FakeTaskRepository();
+      await _pumpApp(
+        tester,
+        avecNotifications: false,
+        tasks: taches,
+        messages: <Message>[
+          carteTache(
+            carte: <String, dynamic>{
+              'titre': 'Acheter du pain',
+              'supprimee': false,
+              'prise': true,
+              'terminee': false,
+              'mon_statut': 'accepted',
+              'assignes': <dynamic>[
+                <String, dynamic>{
+                  'user_id': 'moi',
+                  'status': 'accepted',
+                  'nom': 'Camille Rousseau',
+                },
+              ],
+            },
+          ),
+        ],
+      );
+      await _ouvrirDiscussion(tester);
+
+      expect(find.text('Me désister'), findsOneWidget);
+      await tester.tap(find.text('Me désister'));
+      await tester.pumpAndSettle();
+
+      expect(taches.lastWithdrawnId, 't-carte');
+      expect(
+        find.text('Vous avez rendu cette tâche au groupe.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('une tâche confiée annonce son assigné et sa réponse', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(
+        tester,
+        avecNotifications: false,
+        messages: <Message>[
+          carteTache(
+            carte: <String, dynamic>{
+              'titre': 'Acheter du pain',
+              'supprimee': false,
+              // Confiée, donc **pas** prise : c’est ce drapeau qui sépare les
+              // deux phrases, l’état de `task_assignees` étant le même.
+              'prise': false,
+              'terminee': false,
+              'assignes': <dynamic>[
+                <String, dynamic>{
+                  'user_id': 'u-thomas',
+                  'status': 'pending',
+                  'nom': 'Thomas',
+                },
+              ],
+            },
+          ),
+        ],
+      );
+      await _ouvrirDiscussion(tester);
+
+      expect(find.text('Tâche attribuée à Thomas'), findsOneWidget);
+      expect(find.text('Oui'), findsNothing);
+      expect(find.text('Me désister'), findsNothing);
+    });
+
+    testWidgets('la carte suit le refus de l’assigné', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(
+        tester,
+        avecNotifications: false,
+        messages: <Message>[
+          carteTache(
+            carte: <String, dynamic>{
+              'titre': 'Acheter du pain',
+              'supprimee': false,
+              'prise': false,
+              'terminee': false,
+              'assignes': <dynamic>[
+                <String, dynamic>{
+                  'user_id': 'u-thomas',
+                  'status': 'declined',
+                  'nom': 'Thomas',
+                },
+              ],
+            },
+          ),
+        ],
+      );
+      await _ouvrirDiscussion(tester);
+
+      expect(find.text('Thomas a refusé la tâche'), findsOneWidget);
+    });
+
+    testWidgets('une tâche supprimée laisse une carte qui le dit', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(
+        tester,
+        avecNotifications: false,
+        messages: <Message>[
+          carteTache(
+            carte: <String, dynamic>{
+              'titre': 'Acheter du pain',
+              'supprimee': true,
+              'prise': false,
+              'terminee': false,
+              'assignes': <dynamic>[],
+            },
+          ),
+        ],
+      );
+      await _ouvrirDiscussion(tester);
+
+      expect(find.text('Cette tâche a été supprimée.'), findsOneWidget);
+      // Le titre reste : une carte sans titre ne dirait plus de quoi il
+      // s’agissait.
+      expect(find.text('Acheter du pain'), findsOneWidget);
+      expect(find.text('Oui'), findsNothing);
+    });
+
+    testWidgets('un événement porte trois réponses et son décompte', (
+      WidgetTester tester,
+    ) async {
+      final FakeEventRepository evenements = FakeEventRepository();
+      await _pumpApp(
+        tester,
+        avecNotifications: false,
+        events: evenements,
+        messages: <Message>[
+          carteEvenement(<String, dynamic>{
+            'titre': 'Randonnée du lac Blanc',
+            'supprimee': false,
+            'starts_at': DateTime(2026, 8, 10, 9).toIso8601String(),
+            'ends_at': DateTime(2026, 8, 10, 17).toIso8601String(),
+            'lieu': 'Chamonix',
+            'oui': 3,
+            'peut_etre': 1,
+            'non': 2,
+          }),
+        ],
+      );
+      await _ouvrirDiscussion(tester);
+
+      expect(find.text('Randonnée du lac Blanc'), findsOneWidget);
+      expect(find.text('3 oui · 1 peut-être · 2 non'), findsOneWidget);
+
+      final double non = tester.getCenter(find.text('Non')).dx;
+      final double oui = tester.getCenter(find.text('Oui')).dx;
+      expect(non, lessThan(oui));
+
+      await tester.tap(find.text('Peut-être'));
+      await tester.pumpAndSettle();
+      expect(evenements.lastRespondedId, 'e-carte');
+    });
+
+    testWidgets('un événement supprimé laisse une carte qui le dit', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(
+        tester,
+        avecNotifications: false,
+        messages: <Message>[
+          carteEvenement(<String, dynamic>{
+            'titre': 'Randonnée du lac Blanc',
+            'supprimee': true,
+            'starts_at': DateTime(2026, 8, 10, 9).toIso8601String(),
+            'ends_at': DateTime(2026, 8, 10, 17).toIso8601String(),
+          }),
+        ],
+      );
+      await _ouvrirDiscussion(tester);
+
+      expect(find.text('Cet événement a été supprimé.'), findsOneWidget);
+      expect(find.text('Peut-être'), findsNothing);
+    });
+
+    testWidgets('la carte reste à sa place chronologique', (
+      WidgetTester tester,
+    ) async {
+      // Une carte **est** un message : elle se range à son heure, sans
+      // qu'aucun code n'ait à fusionner deux listes triées.
+      await _pumpApp(
+        tester,
+        avecNotifications: false,
+        messages: <Message>[
+          Message(
+            id: 'apres',
+            groupId: 'g1',
+            senderId: 'autre',
+            createdAt: DateTime(2026, 8, 3, 9),
+            content: 'après la carte',
+            senderName: 'Julie Martin',
+          ),
+          carteTache(
+            quand: DateTime(2026, 8, 3, 8, 30),
+            carte: <String, dynamic>{
+              'titre': 'Acheter du pain',
+              'supprimee': false,
+              'prise': false,
+              'terminee': false,
+              'assignes': <dynamic>[],
+            },
+          ),
+          Message(
+            id: 'avant',
+            groupId: 'g1',
+            senderId: 'autre',
+            createdAt: DateTime(2026, 8, 3, 8),
+            content: 'avant la carte',
+            senderName: 'Julie Martin',
+          ),
+        ],
+      );
+      await _ouvrirDiscussion(tester);
+
+      // La conversation se lit du haut vers le bas : le plus ancien est le
+      // plus haut.
+      final double avant = tester.getCenter(find.text('avant la carte')).dy;
+      final double carte = tester.getCenter(find.byType(MessageCardTile)).dy;
+      final double apres = tester.getCenter(find.text('après la carte')).dy;
+      expect(avant, lessThan(carte));
+      expect(carte, lessThan(apres));
     });
   });
 }

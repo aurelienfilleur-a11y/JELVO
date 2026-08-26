@@ -345,9 +345,20 @@ begin
     '22222222-2222-2222-2222-222222222222'::uuid,
     p_media_url => 'chat-media/22222222/photo.jpg', p_media_kind => 'image');
 
+  -- Deux messages **écrits**, et non deux lignes : depuis la tranche 9, les
+  -- tâches et les événements du groupe déposent leur carte dans la même
+  -- table. Compter les lignes ferait dépendre ce test du nombre d'éléments
+  -- créés plus haut.
   assert (select count(*) from public.messages_du_groupe(
-            '22222222-2222-2222-2222-222222222222'::uuid)) = 2,
+            '22222222-2222-2222-2222-222222222222'::uuid)
+           where task_id is null and event_id is null) = 2,
          'messages_du_groupe';
+
+  -- Et les cartes, elles, sont bien là — à leur place dans la conversation.
+  assert (select count(*) from public.messages_du_groupe(
+            '22222222-2222-2222-2222-222222222222'::uuid)
+           where task_id is not null) >= 1,
+         'aucune carte de tâche déposée dans la conversation';
 
   -- La clé primaire tient la règle : une seule réaction par personne. Poser un
   -- second emoji remplace le premier, il ne s'y ajoute pas.
@@ -1197,5 +1208,172 @@ begin
   raise notice 'Fumée : les écrans d''invitation de la tranche 8 répondent.';
 end;
 $invitations$;
+
+-- ---------------------------------------------------------------------------
+-- Les cartes de la conversation (tranche 9).
+--
+-- Ce qui est éprouvé ici, c'est surtout **la course** : deux personnes qui
+-- touchent « Oui » au même instant ne doivent pas prendre la tâche toutes les
+-- deux. Le reste — l'état renvoyé par la carte — se lit dans la foulée.
+-- ---------------------------------------------------------------------------
+
+do $cartes$
+declare
+  camille uuid := '11111111-1111-1111-1111-111111111111'::uuid;
+  lea     uuid := '33333333-3333-3333-3333-333333333333'::uuid;
+  groupe  uuid := '22222222-2222-2222-2222-222222222222'::uuid;
+  tache   uuid;
+  evenement uuid;
+  carte   jsonb;
+begin
+  -- 1. Une tâche de groupe dépose sa carte ----------------------------------
+  perform set_config('request.jwt.claims',
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}',
+    true);
+  set local role authenticated;
+
+  -- Liste **vide** et non omise : `creer_tache` interprète `null` comme
+  -- « assigne l'auteur », et une liste vide comme « proposée au groupe ».
+  -- C'est déjà la distinction que fait le formulaire de création.
+  tache := (public.creer_tache(
+    p_title     => 'Fumée — acheter du pain',
+    p_group_id  => groupe,
+    p_assignees => array[]::uuid[])).id;
+
+  assert exists (select 1 from public.messages m
+                  where m.task_id = tache and m.group_id = groupe),
+         'la tâche n''a pas déposé de carte dans la conversation';
+
+  select c.carte into carte
+    from public.messages_du_groupe(groupe) c where c.task_id = tache;
+
+  assert carte ->> 'sorte' = 'tache', 'la carte ne se dit pas tâche';
+  assert (carte ->> 'supprimee')::boolean is false;
+  assert (carte ->> 'prise')::boolean is false,
+         'une tâche neuve ne devrait pas être annoncée comme prise';
+  assert jsonb_array_length(carte -> 'assignes') = 0,
+         'une tâche proposée au groupe ne devrait avoir aucun assigné';
+
+  -- 2. **La course.** Camille prend, Léa arrive juste après ------------------
+  assert public.prendre_tache(tache) = 'prise',
+         'la première prise a échoué';
+
+  perform set_config('request.jwt.claims',
+    '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}',
+    true);
+  assert public.prendre_tache(tache) = 'deja_prise',
+         'la tâche a pu être prise deux fois';
+
+  perform set_config('request.jwt.claims',
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}',
+    true);
+  select c.carte into carte
+    from public.messages_du_groupe(groupe) c where c.task_id = tache;
+  assert (carte ->> 'prise')::boolean,
+         'la carte ne dit pas que la tâche a été prise';
+  assert jsonb_array_length(carte -> 'assignes') = 1,
+         'la prise n''a pas posé exactement un assigné';
+
+  -- 3. Se désister rouvre la tâche ------------------------------------------
+  -- **Contrôle négatif** : quelqu'un qui n'a pas pris la tâche ne s'en
+  -- désiste pas.
+  perform set_config('request.jwt.claims',
+    '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}',
+    true);
+  assert public.se_desister(tache) = 'non_assigne',
+         'un tiers a pu se désister d''une tâche qu''il n''avait pas prise';
+
+  perform set_config('request.jwt.claims',
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}',
+    true);
+  assert public.se_desister(tache) = 'desiste',
+         'le preneur n''a pas pu se désister';
+
+  select c.carte into carte
+    from public.messages_du_groupe(groupe) c where c.task_id = tache;
+  assert (carte ->> 'prise')::boolean is false,
+         'la carte reste marquée « prise » après un désistement';
+  assert jsonb_array_length(carte -> 'assignes') = 0,
+         'le désistement n''a pas retiré l''assignation';
+
+  -- Et elle est reprenable : c'est tout l'objet du désistement.
+  assert public.prendre_tache(tache) = 'prise',
+         'une tâche rendue n''a pas pu être reprise';
+
+  -- 4. Une tâche **confiée** n'est pas une tâche prise -----------------------
+  -- Le drapeau `tache_prise` est ce qui sépare « Thomas a pris la tâche » de
+  -- « Tâche attribuée à Thomas » : sans lui, les deux se liraient pareil.
+  tache := (public.creer_tache(
+    p_title     => 'Fumée — tâche confiée depuis la carte',
+    p_group_id  => groupe,
+    p_assignees => array[lea])).id;
+
+  select c.carte into carte
+    from public.messages_du_groupe(groupe) c where c.task_id = tache;
+  assert (carte ->> 'prise')::boolean is false,
+         'une tâche confiée ne doit pas être annoncée comme prise';
+  assert jsonb_array_length(carte -> 'assignes') = 1,
+         'la tâche confiée n''a pas son assigné';
+
+  -- Elle se refuse, elle ne se rend pas.
+  perform set_config('request.jwt.claims',
+    '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}',
+    true);
+  assert public.se_desister(tache) = 'non_desistable',
+         'une tâche confiée a pu être rendue au lieu d''être refusée';
+  assert public.repondre_tache(tache, 'declined') = 'declined',
+         'le refus d''une tâche confiée a échoué';
+
+  perform set_config('request.jwt.claims',
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}',
+    true);
+  select c.carte into carte
+    from public.messages_du_groupe(groupe) c where c.task_id = tache;
+  assert carte -> 'assignes' -> 0 ->> 'status' = 'declined',
+         'la carte ne reflète pas le refus';
+
+  -- 5. Un événement de groupe dépose la sienne, avec son décompte ------------
+  evenement := (public.creer_evenement(
+    p_title     => 'Fumée — carte d''événement',
+    p_starts_at => now() + interval '5 days',
+    p_ends_at   => now() + interval '5 days 2 hours',
+    p_group_id  => groupe)).id;
+
+  select c.carte into carte
+    from public.messages_du_groupe(groupe) c where c.event_id = evenement;
+  assert carte ->> 'sorte' = 'evenement', 'la carte ne se dit pas événement';
+
+  perform public.repondre_evenement(evenement, 'yes');
+  select c.carte into carte
+    from public.messages_du_groupe(groupe) c where c.event_id = evenement;
+  assert (carte ->> 'oui')::integer >= 1,
+         'le décompte des oui ne bouge pas';
+  assert carte ->> 'ma_reponse' = 'yes',
+         'la carte ne rappelle pas sa propre réponse';
+
+  -- 6. Supprimé n'est pas introuvable ---------------------------------------
+  -- Une carte morte ne dirait rien ; celle-ci dit ce qui est arrivé.
+  assert public.supprimer_evenement(evenement),
+         'la suppression de l''événement a échoué';
+  select c.carte into carte
+    from public.messages_du_groupe(groupe) c where c.event_id = evenement;
+  assert (carte ->> 'supprimee')::boolean,
+         'la carte d''un événement supprimé ne le dit pas';
+  assert carte ->> 'titre' is not null,
+         'la carte supprimée a perdu son titre';
+
+  -- 7. Une carte ne pousse pas comme un message -----------------------------
+  -- L'élément qu'elle porte a déjà sa propre notification ; sans ce garde-fou
+  -- l'assigné en recevrait deux.
+  reset role;
+  assert not exists (
+    select 1 from public.push_outbox o
+     where o.type = 'chat_message'
+       and o.body like '%acheter du pain%'),
+         'une carte a été poussée comme un message de conversation';
+
+  raise notice 'Fumée : les cartes de la tranche 9 répondent.';
+end;
+$cartes$;
 
 rollback;

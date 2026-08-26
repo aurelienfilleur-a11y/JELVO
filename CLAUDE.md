@@ -2167,6 +2167,71 @@ reste la seule source du statut.
 
 ## Calendrier personnel et semaine d'accueil
 
+### L'en-tête porte quatre choses, et deux n'existaient pas
+
+Photo de profil, titre, **recherche**, **filtres**, et le « + ». Les deux du
+milieu sont nouvelles.
+
+**La recherche** cherche par titre dans les événements et les tâches datées —
+tout l'agenda, pas le seul jour affiché : c'est justement quand on ne sait
+plus *quand* a lieu quelque chose qu'on cherche. Toucher un résultat ouvre le
+calendrier à sa date. Rien de nouveau n'est lu : `mon_agenda` et `mes_taches`
+sont déjà chargées sans bornes de dates.
+
+**Les filtres** ne créent pas de mécanisme : le filtre par groupe existait,
+en rangée de puces sous la bande des jours. Il passe derrière l'icône, et
+gagne le seul réglage d'affichage qui manquait — montrer ou non les créneaux.
+Les créneaux restent **hors** du filtre par groupe : ils ne dépendent d'aucun
+groupe, et les y mêler ferait disparaître le fond de la journée dès qu'on
+choisit un groupe. Une pastille sur l'icône dit qu'un filtre est posé, sans
+quoi une journée vide se lirait comme une journée sans rien.
+
+### Le code couleur est celui du design system, pas un nouveau
+
+Vert, rouge, violet de la maquette tombent exactement sur trois jetons
+existants : `success`, `danger`, `primary`. Aucune couleur n'a été ajoutée.
+
+| Couleur | Jeton | Ce qu'elle dit |
+| --- | --- | --- |
+| vert | `success` | créneau déclaré disponible, et tâche |
+| rouge | `danger` | créneau déclaré **indisponible** |
+| violet | `primary` | événement — ou l'accent du groupe, quand il en a un |
+
+Deux nuances à connaître. `danger` sert ailleurs aux actions destructives ;
+ici il ne dit pas « attention », il dit « occupé » — c'est le même mot que
+`AvailabilityStatus.unavailable`, et la cohérence est celle de la donnée.
+Et un événement de groupe prend **l'accent de son groupe** plutôt que le
+violet générique : c'est déjà ce que fait le reste de l'application, et le
+perdre ferait ressembler tous les groupes entre eux.
+
+### Les trois chiffres de la maquette sortent tous des données
+
+| Chiffre | D'où il vient |
+| --- | --- |
+| temps disponible | `availableMinutesForDayProvider`, somme des créneaux `available` du jour, exceptions appliquées |
+| invitations en attente | invitations de groupe `pending` + événements et tâches sans réponse |
+| pastilles sous les dates | `weekMarkersProvider` : un événement, une tâche datée, une indisponibilité déclarée |
+
+Aucun n'est approché. Les pastilles sont calculées **pour la seule semaine
+affichée** — sept lectures de `slotsForDayProvider`, et non une par jour de
+l'année.
+
+**Trois pastilles au plus, et jamais de chiffre** : à cette taille, un « 3 »
+et un « 8 » ne se distinguent pas d'un coup d'œil, alors qu'une pastille
+présente ou absente, si.
+
+### Une journée vide, une journée chargée
+
+La journée vide distingue **deux causes** : rien ce jour-là, ou un filtre qui
+cache. L'action proposée diffère en conséquence — créer, ou tout revoir.
+Confondre les deux enverrait créer un événement là où il en existe peut-être
+déjà un, masqué.
+
+La journée chargée passe par `DayTimeline.enSlivers` : une journée de
+calendrier n'a pas de borne, et une `Column` bâtirait toutes ses lignes d'un
+coup. La carte de l'accueil, elle, tient en trois lignes et garde la
+`Column` — le squelette reste partagé, seule la façon de le poser change.
+
 ### Le calendrier n'a pas de contenu propre
 
 Il **agrège** quatre sources : événements de tous les groupes, rendez-vous
@@ -2910,7 +2975,11 @@ sécurité.
   jours, marqueurs, ouverture du calendrier à la date touchée), les quatre
   compteurs, l'agrégation d'un événement, d'une tâche et d'un créneau sur la
   même journée, le filtre par groupe — qui ne masque pas les créneaux —, et
-  l'écran de disponibilités ouvert depuis le profil.
+  l'écran de disponibilités ouvert depuis le profil. Côté calendrier refondu :
+  l'en-tête à quatre entrées, la ligne du jour et son bouton de retour qui
+  n'apparaît que si l'on s'est éloigné, les pastilles sous les dates, la
+  recherche qui trouve un événement et ouvre sa date, les créneaux masqués
+  depuis les filtres sans toucher au reste, et la journée vide.
 
 - `test/chat_test.dart` couvre l'entrée depuis l'écran du groupe et sa
   pastille, l'ordre inversé de la conversation, l'envoi, le refus d'un message

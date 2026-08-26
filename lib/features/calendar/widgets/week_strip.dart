@@ -1,25 +1,32 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/core.dart';
+import '../providers/calendar_providers.dart';
 
 /// Bande de sept jours sélectionnables, centrée sur la semaine du jour choisi.
 ///
-/// Une pastille sous la date indique qu'au moins un événement y est planifié.
+/// Sous chaque date, **jusqu'à trois pastilles** disent ce qui s'y passe :
+/// violet pour un événement, vert pour une tâche, rouge pour une
+/// indisponibilité déclarée — le même code couleur que la chronologie.
+///
+/// Des pastilles et non des chiffres : à cette taille, un « 3 » et un « 8 »
+/// ne se distinguent pas d'un coup d'œil, alors qu'une pastille présente ou
+/// absente, si. Le compte exact est à une touche.
 class WeekStrip extends StatelessWidget {
   const WeekStrip({
     super.key,
     required this.selectedDay,
     required this.today,
     required this.onDaySelected,
-    this.eventCountByDay = const <DateTime, int>{},
+    this.markersByDay = const <DateTime, Set<DayMarker>>{},
   });
 
   final DateTime selectedDay;
   final DateTime today;
   final ValueChanged<DateTime> onDaySelected;
 
-  /// Nombre d'événements par jour, clé normalisée à minuit.
-  final Map<DateTime, int> eventCountByDay;
+  /// Ce que porte chaque jour, clé normalisée à minuit.
+  final Map<DateTime, Set<DayMarker>> markersByDay;
 
   @override
   Widget build(BuildContext context) {
@@ -36,8 +43,9 @@ class WeekStrip extends StatelessWidget {
               day: monday.add(Duration(days: i)),
               selectedDay: selectedDay,
               today: today,
-              eventCount:
-                  eventCountByDay[_key(monday.add(Duration(days: i)))] ?? 0,
+              marqueurs:
+                  markersByDay[_key(monday.add(Duration(days: i)))] ??
+                  const <DayMarker>{},
               onTap: onDaySelected,
             ),
           ),
@@ -53,14 +61,14 @@ class _DayCell extends StatelessWidget {
     required this.day,
     required this.selectedDay,
     required this.today,
-    required this.eventCount,
+    required this.marqueurs,
     required this.onTap,
   });
 
   final DateTime day;
   final DateTime selectedDay;
   final DateTime today;
-  final int eventCount;
+  final Set<DayMarker> marqueurs;
   final ValueChanged<DateTime> onTap;
 
   @override
@@ -115,19 +123,29 @@ class _DayCell extends StatelessWidget {
             // verticalement selon la présence d'événements.
             SizedBox(
               height: 6,
-              child: eventCount == 0
+              child: marqueurs.isEmpty
                   ? null
-                  : Center(
-                      child: Container(
-                        width: 5,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? AppColors.primary
-                              : AppColors.textSecondary,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
+                        // L'ordre de l'énumération, pour que la même journée
+                        // présente toujours ses pastilles dans le même ordre.
+                        for (final DayMarker m in DayMarker.values)
+                          if (marqueurs.contains(m))
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 1.5,
+                              ),
+                              child: Container(
+                                width: 5,
+                                height: 5,
+                                decoration: BoxDecoration(
+                                  color: m.color,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            ),
+                      ],
                     ),
             ),
           ],

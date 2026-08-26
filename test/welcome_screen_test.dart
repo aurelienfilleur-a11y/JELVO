@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -127,11 +128,11 @@ void main() {
       expect(titre.runes.every((int r) => r < 0x1F000), isTrue);
     });
 
-    testWidgets('sans le fichier, l’emplacement tient sans rien inventer', (
+    testWidgets('la bande d’illustration garde sa hauteur', (
       WidgetTester tester,
     ) async {
-      // L'illustration n'est pas encore au dépôt : la bande garde sa hauteur
-      // et affiche un repli qui ne se fait pas passer pour elle.
+      // Avec le fichier ou sans lui, la carte des arguments doit commencer au
+      // même endroit — d'où une hauteur fixe et un `BoxFit.contain`.
       await _pumpApp(tester);
 
       final Finder bande = find.ancestor(
@@ -139,6 +140,26 @@ void main() {
         matching: find.byType(SizedBox),
       );
       expect(tester.getSize(bande.first).height, 240);
+    });
+
+    testWidgets('l’illustration est bien au dépôt, au format annoncé', (
+      WidgetTester tester,
+    ) async {
+      // `errorBuilder` masque une image absente sans rien casser : sans ce
+      // contrôle, un fichier supprimé ou renommé passerait la CI au vert et ne
+      // se verrait qu'à l'écran.
+      final ByteData octets = await rootBundle.load(
+        'assets/illustrations/bienvenue.png',
+      );
+
+      // L'en-tête PNG plutôt qu'un décodage : `decodeImageFromList` demande un
+      // vrai `await` que le temps simulé d'un test de widget ne lui donne pas,
+      // et le test resterait suspendu. La signature, puis IHDR — largeur et
+      // hauteur en gros-boutiste aux octets 16 et 20.
+      final ByteData entete = octets.buffer.asByteData();
+      expect(entete.getUint64(0), 0x89504E470D0A1A0A, reason: 'signature PNG');
+      expect(entete.getUint32(16), 1200);
+      expect(entete.getUint32(20), 800);
     });
 
     testWidgets('« Commencer » mène à la connexion', (

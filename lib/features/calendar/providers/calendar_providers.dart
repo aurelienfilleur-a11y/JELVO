@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' show Color;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/avatar_stack.dart';
 import '../../../core/widgets/status_dot.dart';
 import '../../../core/utils/date_formatting.dart';
 import '../../../data/data_providers.dart';
@@ -129,6 +131,82 @@ final Provider<Map<DateTime, int>> eventCountByDayProvider =
       return counts;
     });
 
+/// Les pastilles des sept jours de la semaine affichée.
+///
+/// Calculées pour la seule semaine visible : sept lectures de
+/// `slotsForDayProvider`, et non une par jour de l'année.
+final Provider<Map<DateTime, Set<DayMarker>>>
+weekMarkersProvider = Provider<Map<DateTime, Set<DayMarker>>>((Ref ref) {
+  final DateTime selection = ref.watch(selectedDayProvider);
+  final DateTime lundi = DateTime(
+    selection.year,
+    selection.month,
+    selection.day,
+  ).subtract(Duration(days: selection.weekday - 1));
+
+  final Map<DateTime, Set<DayMarker>> marqueurs = <DateTime, Set<DayMarker>>{};
+  for (int i = 0; i < 7; i++) {
+    final DateTime jour = lundi.add(Duration(days: i));
+    final Set<DayMarker> duJour = <DayMarker>{};
+
+    for (final CalendarEvent event in _all(ref)) {
+      if (AppDates.isSameDay(event.start, jour)) {
+        duJour.add(DayMarker.evenement);
+        break;
+      }
+    }
+    for (final Task task in ref.watch(tasksProvider).value ?? const <Task>[]) {
+      final DateTime? echeance = task.dueDate;
+      if (echeance != null && AppDates.isSameDay(echeance, jour)) {
+        duJour.add(DayMarker.tache);
+        break;
+      }
+    }
+    for (final AvailabilitySlot creneau in ref.watch(
+      slotsForDayProvider(jour),
+    )) {
+      if (creneau.status == AvailabilityStatus.unavailable) {
+        duJour.add(DayMarker.indisponible);
+        break;
+      }
+    }
+
+    if (duJour.isNotEmpty) marqueurs[jour] = duJour;
+  }
+  return marqueurs;
+});
+
+/// Ce qu'un jour porte, tel que la bande des sept jours le résume.
+///
+/// Trois pastilles au plus, et le même code couleur que la chronologie :
+/// violet pour un événement, vert pour une tâche, rouge pour une
+/// indisponibilité déclarée. Toutes trois se calculent sur des données déjà
+/// chargées — aucune n'est inventée.
+enum DayMarker {
+  evenement(AppColors.primary),
+  tache(AppColors.success),
+  indisponible(AppColors.danger);
+
+  const DayMarker(this.color);
+
+  final Color color;
+}
+
+/// Faut-il montrer les créneaux de disponibilité dans la chronologie ?
+///
+/// Le filtre par groupe ne les touche pas — ils ne dépendent d'aucun groupe —
+/// mais ils remplissent la journée, et pouvoir les mettre de côté est le seul
+/// réglage d'affichage que le calendrier propose.
+final NotifierProvider<ShowAvailability, bool> showAvailabilityProvider =
+    NotifierProvider<ShowAvailability, bool>(ShowAvailability.new);
+
+class ShowAvailability extends Notifier<bool> {
+  @override
+  bool build() => true;
+
+  void toggle() => state = !state;
+}
+
 /// Un événement par son identifiant, `null` s'il n'est plus visible.
 ///
 /// L'écran de détail s'y branche plutôt que de recevoir l'événement en
@@ -218,6 +296,10 @@ final dayAgendaProvider = Provider.family<List<AgendaEntry>, DateTime>((
             : event.myResponse.tone,
         statusLabel: event.myResponse.label,
         groupId: event.groupId,
+        // Les convives ne sont montrés que sur un événement de groupe : un
+        // rendez-vous personnel n'a personne à convier.
+        avatars: event.isPersonal ? const <AvatarData>[] : event.avatars,
+        participantCount: event.isPersonal ? 0 : event.participants.length,
       ),
     );
   }
@@ -249,7 +331,10 @@ final dayAgendaProvider = Provider.family<List<AgendaEntry>, DateTime>((
   // Les disponibilités ne dépendent d'aucun groupe : les masquer sous un
   // filtre de groupe reviendrait à faire disparaître le fond de la journée
   // dès qu'on regarde un groupe en particulier.
-  for (final AvailabilitySlot creneau in ref.watch(slotsForDayProvider(jour))) {
+  for (final AvailabilitySlot creneau
+      in ref.watch(showAvailabilityProvider)
+          ? ref.watch(slotsForDayProvider(jour))
+          : const <AvailabilitySlot>[]) {
     final DateTime debut = DateTime(
       jour.year,
       jour.month,

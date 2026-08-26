@@ -5,11 +5,12 @@ import 'package:go_router/go_router.dart';
 import '../../../core/core.dart';
 import '../../../data/data_providers.dart';
 import '../../../router/app_routes.dart';
-import '../../groups/models/group.dart';
-import '../../groups/providers/group_providers.dart';
+import '../../profile/models/profile.dart';
+import '../../profile/providers/profile_providers.dart';
 import '../models/agenda_entry.dart';
 import '../providers/calendar_providers.dart';
 import '../widgets/calendar_header.dart';
+import '../widgets/calendar_sheets.dart';
 import '../widgets/day_timeline.dart';
 import '../widgets/week_strip.dart';
 
@@ -35,18 +36,129 @@ class CalendarScreen extends ConsumerWidget {
       calendarCountersProvider(selectedDay),
     );
     final Set<String> selection = ref.watch(calendarFilterProvider);
+    final Profile? profil = ref.watch(currentProfileProvider).value;
+    final bool aujourdhui = AppDates.isSameDay(selectedDay, now);
+    // Un filtre est « posé » dès qu'on a restreint les groupes ou masqué les
+    // créneaux : la pastille sur l'icône dit que la journée affichée n'est pas
+    // la journée complète.
+    final bool filtreActif =
+        selection.isNotEmpty || !ref.watch(showAvailabilityProvider);
 
     return AppScreen(
       title: 'Calendrier',
-      subtitle: AppDates.monthYear(selectedDay),
-      headerAction: AppScreenAction(
-        icon: Icons.today_rounded,
-        tooltip: "Aujourd'hui",
-        onPressed: () => ref.read(selectedDayProvider.notifier).select(now),
+      leading: _Avatar(profil: profil),
+      headerAction: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          AppScreenAction(
+            icon: Icons.search_rounded,
+            tooltip: 'Rechercher',
+            onPressed: () => CalendarSearchSheet.ouvrir(context),
+          ),
+          AppSpacing.hGapSm,
+          AppScreenAction(
+            icon: Icons.tune_rounded,
+            tooltip: 'Filtres',
+            badged: filtreActif,
+            onPressed: () => CalendarFilterSheet.ouvrir(context),
+          ),
+          AppSpacing.hGapSm,
+          AppScreenAction(
+            icon: Icons.add_rounded,
+            tooltip: 'Créer',
+            accented: true,
+            onPressed: () => context.pushNamed(AppRoutes.create),
+          ),
+        ],
       ),
       slivers: <Widget>[
         SliverPadding(
           padding: AppSpacing.screenHorizontal,
+          sliver: SliverToBoxAdapter(
+            child: Row(
+              children: <Widget>[
+                _ArrowButton(
+                  icon: Icons.chevron_left_rounded,
+                  tooltip: 'Semaine précédente',
+                  onPressed: () =>
+                      ref.read(selectedDayProvider.notifier).shiftDays(-7),
+                ),
+                Expanded(
+                  child: WeekStrip(
+                    selectedDay: selectedDay,
+                    today: now,
+                    markersByDay: ref.watch(weekMarkersProvider),
+                    onDaySelected: (DateTime day) =>
+                        ref.read(selectedDayProvider.notifier).select(day),
+                  ),
+                ),
+                _ArrowButton(
+                  icon: Icons.chevron_right_rounded,
+                  tooltip: 'Semaine suivante',
+                  onPressed: () =>
+                      ref.read(selectedDayProvider.notifier).shiftDays(7),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // « Aujourd'hui • Jeudi 15 mai ». Le bouton de retour n'apparaît que
+        // s'il y a quelque part où revenir : sur la journée du jour, il
+        // n'aurait rien à faire.
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.screenMargin,
+            AppSpacing.xl,
+            AppSpacing.screenMargin,
+            AppSpacing.lg,
+          ),
+          sliver: SliverToBoxAdapter(
+            child: Row(
+              children: <Widget>[
+                Expanded(
+                  child: RichText(
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    text: TextSpan(
+                      children: <InlineSpan>[
+                        TextSpan(
+                          text: AppDates.relativeDay(selectedDay, now: now),
+                          style: AppTypography.h3.copyWith(
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        TextSpan(
+                          text: ' • ${AppDates.fullDate(selectedDay)}',
+                          style: AppTypography.h3.copyWith(
+                            color: AppColors.midnight,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                if (!aujourdhui) ...<Widget>[
+                  AppSpacing.hGapSm,
+                  SecondaryButton(
+                    label: "Aujourd'hui",
+                    expanded: false,
+                    onPressed: () =>
+                        ref.read(selectedDayProvider.notifier).select(now),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.screenMargin,
+            0,
+            AppSpacing.screenMargin,
+            AppSpacing.lg,
+          ),
           sliver: SliverToBoxAdapter(
             child: CalendarCountersRow(
               counters: counters,
@@ -59,144 +171,39 @@ class CalendarScreen extends ConsumerWidget {
           ),
         ),
 
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.screenMargin,
-            AppSpacing.md,
-            AppSpacing.screenMargin,
-            0,
-          ),
-          sliver: SliverToBoxAdapter(
-            child: AppCard(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.sm,
-                vertical: AppSpacing.lg,
-              ),
-              child: Column(
-                children: <Widget>[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.sm,
-                    ),
-                    child: Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: Text(
-                            AppDates.monthYear(selectedDay),
-                            style: AppTypography.h3,
-                          ),
-                        ),
-                        _ArrowButton(
-                          icon: Icons.chevron_left_rounded,
-                          tooltip: 'Semaine précédente',
-                          onPressed: () => ref
-                              .read(selectedDayProvider.notifier)
-                              .shiftDays(-7),
-                        ),
-                        AppSpacing.hGapSm,
-                        _ArrowButton(
-                          icon: Icons.chevron_right_rounded,
-                          tooltip: 'Semaine suivante',
-                          onPressed: () => ref
-                              .read(selectedDayProvider.notifier)
-                              .shiftDays(7),
-                        ),
-                      ],
-                    ),
-                  ),
-                  AppSpacing.gapLg,
-                  WeekStrip(
-                    selectedDay: selectedDay,
-                    today: now,
-                    eventCountByDay: ref.watch(eventCountByDayProvider),
-                    onDaySelected: (DateTime day) =>
-                        ref.read(selectedDayProvider.notifier).select(day),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-
-        SliverPadding(
-          padding: const EdgeInsets.only(top: AppSpacing.md),
-          sliver: SliverToBoxAdapter(
-            child: GroupFilterBar(
-              choices: _choix(ref),
-              selection: selection,
-              onToggle: (String cle) =>
-                  ref.read(calendarFilterProvider.notifier).toggle(cle),
-              onClear: () => ref.read(calendarFilterProvider.notifier).clear(),
-            ),
-          ),
-        ),
-
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.screenMargin,
-            AppSpacing.lg,
-            AppSpacing.screenMargin,
-            AppSpacing.md,
-          ),
-          sliver: SliverToBoxAdapter(
-            child: SectionHeader(
-              title: AppDates.relativeDay(selectedDay, now: now),
-              subtitle: AppDates.fullDate(selectedDay),
-              actionLabel: 'Ajouter',
-              onActionPressed: () => context.pushNamed(AppRoutes.create),
-            ),
-          ),
-        ),
-
         if (agenda.isEmpty)
           SliverToBoxAdapter(
             child: EmptyState(
               icon: Icons.event_note_rounded,
-              title: selection.isEmpty
-                  ? 'Journée libre'
-                  : 'Rien avec ce filtre',
-              message: selection.isEmpty
-                  ? 'Ni événement, ni tâche, ni créneau déclaré pour cette '
-                        'journée.'
-                  : 'Aucun élément des groupes sélectionnés ce jour-là.',
-              actionLabel: selection.isEmpty
-                  ? 'Créer un événement'
-                  : 'Tout voir',
-              onActionPressed: selection.isEmpty
-                  ? () => context.pushNamed(AppRoutes.create)
-                  : () => ref.read(calendarFilterProvider.notifier).clear(),
+              title: filtreActif ? 'Rien avec ces filtres' : 'Journée libre',
+              message: filtreActif
+                  ? 'Un filtre est posé : la journée entière porte peut-être '
+                        'autre chose.'
+                  : 'Ni événement, ni tâche, ni créneau déclaré pour cette '
+                        'journée.',
+              actionLabel: filtreActif ? 'Tout voir' : 'Créer un événement',
+              onActionPressed: filtreActif
+                  ? () {
+                      ref.read(calendarFilterProvider.notifier).clear();
+                      if (!ref.read(showAvailabilityProvider)) {
+                        ref.read(showAvailabilityProvider.notifier).toggle();
+                      }
+                    }
+                  : () => context.pushNamed(AppRoutes.create),
             ),
           )
         else
           SliverPadding(
             padding: AppSpacing.screenHorizontal,
-            sliver: SliverToBoxAdapter(
-              child: DayTimeline(
-                entries: agenda,
-                onTap: (AgendaEntry entry) => _ouvrir(context, entry),
-              ),
+            // En sliver : une journée très chargée bâtit ses lignes à mesure
+            // du défilement plutôt que toutes d'un coup.
+            sliver: DayTimeline.enSlivers(
+              entries: agenda,
+              onTap: (AgendaEntry entry) => _ouvrir(context, entry),
             ),
           ),
       ],
     );
-  }
-
-  /// « Personnel » d'abord : c'est le seul choix qui existe toujours, y
-  /// compris pour quelqu'un qui n'a encore aucun groupe.
-  static List<CalendarFilterChoice> _choix(WidgetRef ref) {
-    return <CalendarFilterChoice>[
-      const CalendarFilterChoice(
-        key: CalendarGroupFilter.personal,
-        label: 'Personnel',
-        color: AppColors.primary,
-      ),
-      for (final Group groupe in ref.watch(activeGroupsProvider))
-        CalendarFilterChoice(
-          key: groupe.id,
-          label: groupe.name,
-          color: groupe.accent.color,
-        ),
-    ];
   }
 
   static void _ouvrir(BuildContext context, AgendaEntry entry) {
@@ -215,6 +222,35 @@ class CalendarScreen extends ConsumerWidget {
       case AgendaEntryKind.availability:
         break;
     }
+  }
+}
+
+/// La photo de profil de l'en-tête.
+///
+/// Pas de pastille de présence : `profiles.last_seen_at` n'est écrit nulle
+/// part, et un point vert permanent serait un mensonge — même règle que sur
+/// l'accueil, le profil et le carnet.
+class _Avatar extends StatelessWidget {
+  const _Avatar({required this.profil});
+
+  final Profile? profil;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Profil',
+      child: InkWell(
+        onTap: () => context.pushNamed(AppRoutes.profile),
+        customBorder: const CircleBorder(),
+        child: AvatarImage(
+          data: AvatarData(
+            name: profil?.displayName ?? 'Vous',
+            imageUrl: profil?.avatarAAfficher,
+          ),
+          size: 44,
+        ),
+      ),
+    );
   }
 }
 

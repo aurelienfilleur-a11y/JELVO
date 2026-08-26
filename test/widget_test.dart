@@ -100,7 +100,11 @@ void main() {
 
     await tester.tap(find.text('Calendrier'));
     await tester.pumpAndSettle();
-    expect(find.text('Août 2026'), findsWidgets);
+    // La ligne du jour affiché tient lieu de repère : depuis la refonte,
+    // l'en-tête n'affiche plus le mois séparément. Elle est composée de deux
+    // fragments — « Aujourd'hui » en violet, la date en sombre —, d'où
+    // `findRichText`.
+    expect(find.textContaining('août', findRichText: true), findsWidgets);
 
     await tester.tap(find.text('Contacts'));
     await tester.pumpAndSettle();

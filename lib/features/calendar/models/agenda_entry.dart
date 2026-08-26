@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Color;
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/avatar_stack.dart';
 import '../../../core/widgets/status_dot.dart';
 
 /// Ce qu'une ligne de la journée représente.
@@ -38,6 +39,8 @@ class AgendaEntry {
     this.statusTone,
     this.statusLabel,
     this.groupId,
+    this.avatars = const <AvatarData>[],
+    this.participantCount = 0,
   });
 
   final String id;
@@ -61,6 +64,14 @@ class AgendaEntry {
   final String? statusLabel;
 
   final String? groupId;
+
+  /// Convives d'un événement de groupe, déjà convertis pour `AvatarStack`.
+  ///
+  /// Vides ailleurs : une tâche n'a pas de participants au sens de l'agenda,
+  /// et un créneau encore moins.
+  final List<AvatarData> avatars;
+
+  final int participantCount;
 
   /// Un créneau de disponibilité n'ouvre rien : il n'a pas d'écran de détail,
   /// et le toucher ne doit donc pas laisser croire le contraire.

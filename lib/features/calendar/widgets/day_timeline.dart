@@ -32,6 +32,28 @@ class DayTimeline extends StatelessWidget {
   /// que deux chronologies séparées finiraient par diverger.
   final bool dansUneCarte;
 
+  /// Les mêmes lignes, en sliver.
+  ///
+  /// La journée d'un calendrier n'a pas de borne : une journée très chargée
+  /// construirait d'un coup toutes ses lignes dans une `Column`. Le sliver les
+  /// bâtit à mesure du défilement. La carte de l'accueil, elle, tient en trois
+  /// lignes et garde la `Column`.
+  static Widget enSlivers({
+    required List<AgendaEntry> entries,
+    required ValueChanged<AgendaEntry> onTap,
+  }) {
+    return SliverList.builder(
+      itemCount: entries.length,
+      itemBuilder: (BuildContext context, int index) => _Ligne(
+        entry: entries[index],
+        premiere: index == 0,
+        derniere: index == entries.length - 1,
+        onTap: onTap,
+        dansUneCarte: false,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -188,17 +210,6 @@ class _Carte extends StatelessWidget {
         padding: const EdgeInsets.all(AppSpacing.md),
         child: Row(
           children: <Widget>[
-            if (!dansUneCarte) ...<Widget>[
-              Container(
-                width: 3,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: entry.accent,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              AppSpacing.hGapMd,
-            ],
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -249,6 +260,16 @@ class _Carte extends StatelessWidget {
                   color: AppColors.textSecondary,
                 ),
               ),
+            ] else if (!dansUneCarte && entry.avatars.isNotEmpty) ...<Widget>[
+              // Les convives passent avant le statut : sur un événement de
+              // groupe, savoir qui vient est ce qu'on cherche.
+              AppSpacing.hGapSm,
+              AvatarStack(avatars: entry.avatars, size: 26, maxVisible: 3),
+              const Icon(
+                Icons.chevron_right_rounded,
+                size: 20,
+                color: AppColors.textSecondary,
+              ),
             ] else if (entry.statusTone != null) ...<Widget>[
               AppSpacing.hGapSm,
               StatusDot(
@@ -262,13 +283,13 @@ class _Carte extends StatelessWidget {
       ),
     );
 
-    if (!dansUneCarte) {
-      return AppCard(padding: EdgeInsets.zero, child: contenu);
-    }
+    // **Le fond dit la nature de la ligne** : violet pour un événement, vert
+    // pour une tâche, et — côté créneaux — vert ou rouge selon qu'on s'est
+    // déclaré disponible ou non. Ce sont les jetons du design system
+    // (`primary`, `success`, `danger`), très dilués : aucune couleur nouvelle
+    // n'a été introduite pour la maquette.
     return DecoratedBox(
       decoration: BoxDecoration(
-        // Le fond reprend l'accent de l'élément, très dilué : c'est ce qui
-        // distingue une ligne d'agenda d'une autre sans ajouter de trait.
         color: entry.accent.withValues(alpha: 0.08),
         borderRadius: AppRadii.cardRadius,
       ),
@@ -292,29 +313,52 @@ class _Creneau extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool disponible = entry.accent == AppColors.success;
+
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
-        vertical: AppSpacing.sm,
+        vertical: AppSpacing.md,
       ),
       decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: AppRadii.fieldRadius,
-        border: Border.all(color: AppColors.border),
+        color: entry.accent.withValues(alpha: 0.08),
+        borderRadius: AppRadii.cardRadius,
       ),
       child: Row(
         children: <Widget>[
-          Icon(Icons.schedule_rounded, size: 15, color: entry.accent),
-          AppSpacing.hGapSm,
           Expanded(
-            child: Text(
-              '${entry.title} · ${entry.subtitle ?? ''}',
-              style: AppTypography.caption.copyWith(
-                color: AppColors.textSecondary,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  entry.title,
+                  style: AppTypography.body.copyWith(
+                    color: entry.accent,
+                    fontWeight: AppTypography.semiBold,
+                  ),
+                ),
+                if (entry.subtitle != null && entry.subtitle!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      entry.subtitle!,
+                      style: AppTypography.caption.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+              ],
             ),
+          ),
+          AppSpacing.hGapSm,
+          // La pastille pleine reprend le mot sans le répéter : disponible ou
+          // non, cela se voit avant de se lire.
+          Icon(
+            disponible
+                ? Icons.check_circle_rounded
+                : Icons.remove_circle_rounded,
+            size: 22,
+            color: entry.accent,
           ),
         ],
       ),

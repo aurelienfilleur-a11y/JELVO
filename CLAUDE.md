@@ -729,19 +729,46 @@ destination demandée.
 
 ### L'illustration vient du dehors
 
-**Elle ne se dessine pas ici** — même règle que le logo. L'emplacement est
-câblé, `assets/illustrations/README.md` porte le format attendu :
-`bienvenue.png`, PNG-24 avec alpha, 1200 × 800 (3:2), fond transparent.
+**Elle ne se dessine pas ici** — même règle que le logo.
+`assets/illustrations/bienvenue.png`, PNG-24 avec alpha, 1200 × 800 (3:2), fond
+transparent. `assets/illustrations/README.md` porte le détail, dont le poids et
+ce qu'on a renoncé à lui faire.
 
-Le dossier est déclaré dans `pubspec.yaml` **même vide** : un chemin d'asset
-absent fait échouer la compilation, là où un fichier absent ne fait que
-déclencher l'`errorBuilder`.
+Le dossier est déclaré dans `pubspec.yaml`, et l'a été **avant que le fichier
+existe** : un chemin d'asset absent fait échouer la compilation, là où un
+fichier absent ne fait que déclencher l'`errorBuilder`.
 
 Le repli ne dessine **pas** une illustration de remplacement : un aplat teinté
 et un pictogramme discret, visiblement un emplacement en attente. La bande
 garde sa hauteur de 240 dp dans les deux cas, pour que la carte des arguments
 commence au même endroit ; `BoxFit.contain` s'accommode ensuite de tout rapport
 de forme sans jamais rogner.
+
+**Un `errorBuilder` ne casse rien, donc ne se voit pas en CI** : un fichier
+supprimé ou renommé passerait au vert et ne se constaterait qu'à l'écran. Un
+test lit donc l'en-tête PNG dans le bundle et contrôle les dimensions. Il lit
+l'en-tête plutôt que de décoder : `decodeImageFromList` demande un vrai `await`
+que le temps simulé d'un test de widget ne lui donne pas, et le test resterait
+suspendu — ce qui est arrivé.
+
+#### La coupe du bas commande la mise en page
+
+Le sujet est **coupé net au bord inférieur du fichier**, à mi-cuisse : la boîte
+englobante du contenu touche `y = hauteur`, sans marge ni dégradé. La maquette
+masque cette coupe en faisant chevaucher la carte des arguments.
+
+D'où deux choix de `WelcomeScreen` qui n'ont rien de décoratif :
+
+- **aucun espace entre l'illustration et la carte**, dont le bord supérieur
+  recouvre la coupe. Les 32 dp qui les séparaient donnaient la coupe à voir,
+  en suspension ;
+- **l'illustration sort de la marge d'écran** et va d'un bord à l'autre. La
+  marge transparente du fichier — 10 % à gauche, 8 % à droite — lui donne déjà
+  l'air nécessaire, et le défilement porte donc sa marge par enfant plutôt que
+  d'un bloc.
+
+C'est un détail à revérifier en changeant de fichier : une illustration qui,
+elle, aurait une marge basse laisserait un vide sous les pieds.
 
 ### Pas d'emoji dans le titre
 
@@ -3265,8 +3292,9 @@ sécurité.
 - `test/welcome_screen_test.dart` couvre l'écran de bienvenue : l'installation
   neuve qui s'ouvre dessus, les trois arguments et leurs pictogrammes,
   l'absence de « Passer » et de `PageView`, le titre sans emoji, la bande
-  d'illustration qui garde sa hauteur sans le fichier, et « Commencer » qui
-  mène à la connexion. Côté mémoire : le drapeau posé au départ, l'ouverture
+  d'illustration qui garde sa hauteur, l'illustration bien présente au dépôt
+  et à ses dimensions — contrôle qu'un `errorBuilder` rendrait sinon muet —,
+  et « Commencer » qui mène à la connexion. Côté mémoire : le drapeau posé au départ, l'ouverture
   directe sur la connexion quand il l'est déjà, la session qui vaut
   présentation faite — **même sur une mémoire vierge** —, et le contrôle
   négatif qui compte le plus, `/rejoindre/<jeton>` que la présentation ne

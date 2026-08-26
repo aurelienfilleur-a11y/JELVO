@@ -28,11 +28,11 @@ class WelcomeScreen extends ConsumerWidget {
           children: <Widget>[
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.screenMargin,
-                  AppSpacing.xxl,
-                  AppSpacing.screenMargin,
-                  AppSpacing.lg,
+                // Marge posée par enfant, et non sur le défilement entier :
+                // l'illustration, elle, va d'un bord à l'autre.
+                padding: const EdgeInsets.only(
+                  top: AppSpacing.xxl,
+                  bottom: AppSpacing.lg,
                 ),
                 child: Column(
                   children: <Widget>[
@@ -40,24 +40,38 @@ class WelcomeScreen extends ConsumerWidget {
                     // police emoji, et le 👋 de la maquette s'afficherait en
                     // carré « tofu » sur les machines qui n'en ont pas. Même
                     // arbitrage que le titre de l'accueil.
-                    Text(
-                      'Bienvenue sur Jelvo',
-                      style: AppTypography.h1,
-                      textAlign: TextAlign.center,
+                    Padding(
+                      padding: AppSpacing.screenHorizontal,
+                      child: Column(
+                        children: <Widget>[
+                          Text(
+                            'Bienvenue sur Jelvo',
+                            style: AppTypography.h1,
+                            textAlign: TextAlign.center,
+                          ),
+                          AppSpacing.gapSm,
+                          Text(
+                            'L’app qui rassemble vos groupes, vos projets et '
+                            'vos proches.',
+                            style: AppTypography.bodyMuted,
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
                     ),
-                    AppSpacing.gapSm,
-                    Text(
-                      'L’app qui rassemble vos groupes, vos projets et vos '
-                      'proches.',
-                      style: AppTypography.bodyMuted,
-                      textAlign: TextAlign.center,
-                    ),
-                    AppSpacing.gapXl,
+                    AppSpacing.gapLg,
 
                     const _Illustration(),
-                    AppSpacing.gapXl,
 
-                    const _ArgumentsCard(),
+                    // Pas d'espace ici, et c'est délibéré : **l'illustration
+                    // est coupée net en bas de son cadre**, à mi-cuisse. La
+                    // maquette masque cette coupe en faisant chevaucher la
+                    // carte ; la laisser flotter au-dessus d'un vide de 32 dp
+                    // la donnerait à voir.
+                    Padding(
+                      padding: AppSpacing.screenHorizontal,
+                      child: const _ArgumentsCard(),
+                    ),
                   ],
                 ),
               ),

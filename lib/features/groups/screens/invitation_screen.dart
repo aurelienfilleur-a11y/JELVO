@@ -9,7 +9,6 @@ import '../../auth/models/auth_failure.dart';
 import '../models/group.dart';
 import '../models/group_invite.dart';
 import '../providers/group_providers.dart';
-import '../widgets/group_banner.dart';
 
 /// Liste des invitations nominatives en attente.
 class InvitationsScreen extends ConsumerWidget {
@@ -175,7 +174,7 @@ class _InvitationScreenState extends ConsumerState<InvitationScreen> {
           borderRadius: const BorderRadius.vertical(
             bottom: Radius.circular(AppSpacing.lg),
           ),
-          child: GroupBanner(
+          child: CoverBanner(
             name: invitation.displayGroupName,
             subtitle: invitation.memberLabel,
             accentColor: accent,

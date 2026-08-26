@@ -455,9 +455,9 @@ begin
            where user_id = '11111111-1111-1111-1111-111111111111'::uuid) = 1,
          'un réenregistrement a dupliqué la ligne';
 
-  -- Les six types sont proposés, tous activés par défaut : le modèle est un
+  -- Les huit types sont proposés, tous activés par défaut : le modèle est un
   -- opt-out, personne n'a de ligne au départ et tout arrive.
-  assert (select count(*) from public.mes_preferences_notification()) = 7,
+  assert (select count(*) from public.mes_preferences_notification()) = 8,
          'mes_preferences_notification';
   assert (select bool_and(enabled) from public.mes_preferences_notification()),
          'tout devrait être activé sans aucune ligne de préférence';
@@ -1157,6 +1157,24 @@ begin
                         and payload ->> 'task_id' = tache::text
                         and read_at is null),
          'la notification d''attribution est restée ouverte après réponse';
+
+  -- 7 bis. Et la réponse remonte à qui a confié la tâche ---------------------
+  -- L'aller existait, le retour non : accepter ne prévenait personne.
+  assert exists (select 1 from public.notifications
+                  where user_id = camille
+                    and type = 'task_response'
+                    and payload ->> 'task_id' = tache::text
+                    and payload ->> 'reponse' = 'accepted'),
+         'la réponse n''est pas remontée à qui a confié la tâche';
+  assert exists (select 1 from public.push_outbox
+                  where user_id = camille and type = 'task_response'),
+         'la réponse n''a pas été empilée pour le téléphone';
+
+  -- Le type doit figurer dans le catalogue, sinon il n'est pas désactivable
+  -- depuis les réglages — et un envoi qu'on ne peut pas couper est un défaut.
+  assert exists (select 1 from public.types_de_notification()
+                  where type = 'task_response'),
+         'task_response ne figure pas dans les réglages de notification';
 
   -- **Contrôle négatif de l'auto-attribution.** Se confier une tâche à
   -- soi-même ne doit rien déposer : on sait ce qu'on vient d'écrire.

@@ -145,6 +145,8 @@ class Task {
     this.checkedCount = 0,
     this.authorName,
     this.authorAvatarUrl,
+    this.groupName,
+    this.groupPhotoUrl,
   });
 
   factory Task.fromRow(Map<String, dynamic> row) {
@@ -177,6 +179,8 @@ class Task {
       checkedCount: (row['articles_coches'] as int?) ?? 0,
       authorName: row['auteur'] as String?,
       authorAvatarUrl: row['auteur_avatar'] as String?,
+      groupName: row['groupe_nom'] as String?,
+      groupPhotoUrl: row['groupe_photo'] as String?,
     );
   }
 
@@ -212,6 +216,14 @@ class Task {
   final String? authorName;
 
   final String? authorAvatarUrl;
+
+  /// Nom et photo de couverture du groupe, renvoyés par `mes_taches`.
+  ///
+  /// Un assigné peut ne pas être membre du groupe : les relire côté client
+  /// afficherait « Personnel » à tort.
+  final String? groupName;
+
+  final String? groupPhotoUrl;
 
   bool get isDone => completedAt != null;
 

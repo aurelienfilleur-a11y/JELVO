@@ -72,26 +72,35 @@ class _EventInvitationScreenState extends ConsumerState<EventInvitationScreen> {
     final Group? groupe = evenement.groupId == null
         ? null
         : ref.watch(groupByIdProvider(evenement.groupId!));
+    // `mon_agenda` renvoie le nom du groupe ; la liste locale ne sert que de
+    // repli, car un convive n'est pas forcément membre.
+    final String? nomDuGroupe = evenement.groupName ?? groupe?.name;
     final bool passe = evenement.end.isBefore(now);
 
     return ListView(
       padding: const EdgeInsets.only(bottom: AppSpacing.xxl),
       children: <Widget>[
-        // L'image est celle de l'événement, jamais une illustration choisie
-        // par l'application : sans `image_url`, la carte commence au titre.
-        if (evenement.imageUrl != null)
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(
-              bottom: Radius.circular(AppSpacing.lg),
-            ),
-            child: Image.network(
-              evenement.imageUrl!,
-              height: 168,
-              width: double.infinity,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => const SizedBox.shrink(),
-            ),
+        // **L'image propre à l'événement l'emporte**, puis la couverture du
+        // groupe, puis le repli d'accent — le même ordre de préférence qu'un
+        // avatar prédéfini, une photo, des initiales. Aucune illustration
+        // n'est choisie par l'application.
+        ClipRRect(
+          borderRadius: const BorderRadius.vertical(
+            bottom: Radius.circular(AppSpacing.lg),
           ),
+          child: CoverBanner(
+            name: nomDuGroupe ?? 'Personnel',
+            subtitle: AppDates.fullDate(evenement.start),
+            accentColor: GroupAccent.forId(
+              evenement.groupId ?? evenement.id,
+            ).color,
+            icon: Icons.event_rounded,
+            photoUrl:
+                evenement.imageUrl ??
+                evenement.groupPhotoUrl ??
+                groupe?.photoUrl,
+          ),
+        ),
 
         Padding(
           padding: const EdgeInsets.fromLTRB(
@@ -137,7 +146,8 @@ class _EventInvitationScreenState extends ConsumerState<EventInvitationScreen> {
                       icon: Icons.schedule_rounded,
                       label: 'Horaires',
                       value: AppDates.timeRange(evenement.start, evenement.end),
-                      dernier: evenement.location == null && groupe == null,
+                      dernier:
+                          evenement.location == null && nomDuGroupe == null,
                     ),
                     // Ligne omise, jamais remplie d'un tiret : `location` est
                     // facultatif, et « Non précisé » ferait passer un champ
@@ -148,13 +158,13 @@ class _EventInvitationScreenState extends ConsumerState<EventInvitationScreen> {
                         icon: Icons.place_outlined,
                         label: 'Lieu',
                         value: evenement.location!,
-                        dernier: groupe == null,
+                        dernier: nomDuGroupe == null,
                       ),
-                    if (groupe != null)
+                    if (nomDuGroupe != null)
                       InvitationDetailRow(
                         icon: Icons.groups_outlined,
                         label: 'Groupe',
-                        value: groupe.name,
+                        value: nomDuGroupe,
                         dernier: true,
                       ),
                   ],

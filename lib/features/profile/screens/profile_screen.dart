@@ -89,10 +89,11 @@ class ProfileScreen extends ConsumerWidget {
         ),
 
         AppSpacing.gapLg,
+        // La bio se modifie **sur place**, sur la ligne où elle se lit : la
+        // carte n'a donc plus de rappel d'ouverture d'écran à recevoir.
         ProfileAboutCard(
           bio: profil.bio,
           email: ref.watch(currentEmailProvider),
-          onEditBio: () => context.pushNamed(AppRoutes.profileEdit),
         ),
 
         AppSpacing.gapLg,

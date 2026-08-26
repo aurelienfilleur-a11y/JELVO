@@ -1942,16 +1942,47 @@ ligne des quantièmes danserait.
 Trois cartes, dans l'ordre de la maquette : **identité**, **À propos**,
 **Mes statistiques**.
 
-### Il ne s'écrit plus là où il se lit
+### Il ne s'écrit plus là où il se lit — sauf la bio
 
 L'écran était un formulaire ; il ne l'est plus. `ProfileEditScreen`
-(`/profil/modifier`) porte prénom, nom et bio ; l'écran de profil se lit d'un
+(`/profil/modifier`) porte **prénom et nom** ; l'écran de profil se lit d'un
 coup d'œil. Un profil se consulte bien plus souvent qu'il ne se change, et un
 bouton « Enregistrer » permanent laissait croire qu'il fallait valider pour
 partir.
 
 L'enregistrement **referme** la feuille sur le profil : rester sur le
 formulaire ferait douter de l'effet.
+
+### La bio se modifie sur place
+
+Un appui sur la ligne la transforme en champ, déjà rempli et déjà actif : le
+clavier s'ouvre sans second geste. C'est le champ qu'on retouche le plus
+souvent, et le seul dont la valeur tient sur la ligne où elle se lit.
+
+**Tout sort par la perte du focus.** Appui ailleurs (`onTapOutside`), touche
+de validation, retour du clavier sur Android, coche de la ligne : les quatre
+chemins finissent au même endroit, et un seul écrit. Le texte vit dans le
+contrôleur, donc **rien n'est perdu**, même quand l'écriture échoue.
+
+Trois règles que le code porte :
+
+- **un échec reste en édition**, avec le texte et le message. Refermer ferait
+  disparaître la saisie en même temps que le message, et laisserait croire que
+  la bio est enregistrée ;
+- **un texte intact n'écrit pas.** Perdre le focus sans avoir rien changé ne
+  doit pas envoyer de requête, d'où `_valeurInitiale` ;
+- **le profil se relit après chaque écriture** : `didUpdateWidget` n'accepte la
+  valeur du serveur que hors édition, sans quoi elle écraserait une saisie en
+  cours.
+
+**Plus de chevron sur cette ligne** : il annonçait un écran qui s'ouvre. Un
+crayon dit « on écrit ici », et cède la place à une coche en saisie — un moyen
+explicite de valider, sans dépendre du clavier.
+
+`saveBio` et `saveNames` relisent chacune ce qu'elles ne touchent pas. Depuis
+que les deux moitiés se modifient à des endroits différents, l'écriture
+partielle est la règle, et la faire dans les actions plutôt que dans l'écran
+rend l'oubli impossible.
 
 ### Le bouton d'appareil photo ouvre les deux voies
 
@@ -2339,7 +2370,10 @@ s'en passe.
   referme sur le profil, la pastille qui ouvre le choix photo ou avatar Jelvo,
   la bio vide qui invite à la remplir, l'absence de téléphone, de localisation
   et de badge de présence, les trois compteurs, et un compteur qui ouvre la
-  liste qu'il résume.
+  liste qu'il résume. Côté bio sur place : la ligne qui devient un champ déjà
+  actif, l'enregistrement à la sortie du champ comme par la coche, l'échec qui
+  reste en saisie avec son message, le texte intact qui n'écrit rien, le
+  crayon à la place du chevron, et le nom modifié qui ne perd pas la bio.
 - `test/avatar_gallery_test.dart` couvre la galerie : les deux voies
   cohabitant dans la feuille de choix du profil, la sélection qui n'enregistre pas seule, la
   confirmation qui enregistre, l'inertie sans choix, l'anneau sur l'avatar

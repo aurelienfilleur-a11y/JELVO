@@ -6,11 +6,13 @@ import '../../auth/models/auth_failure.dart';
 import '../models/profile.dart';
 import '../providers/profile_providers.dart';
 
-/// Modification du profil : prénom, nom, bio.
+/// Modification du profil : prénom et nom.
 ///
 /// Séparée de l'affichage depuis la refonte : l'écran de profil se lit d'un
 /// coup d'œil, et n'est un formulaire que lorsqu'on demande à le modifier.
-/// L'avatar ne s'y change pas — il se touche là où on le voit.
+/// L'avatar ne s'y change pas — il se touche là où on le voit —, et **la bio
+/// non plus** : elle se modifie sur place, sur la ligne où elle se lit. Ne
+/// restent ici que les deux champs qui changent rarement.
 class ProfileEditScreen extends ConsumerStatefulWidget {
   const ProfileEditScreen({super.key});
 
@@ -21,7 +23,6 @@ class ProfileEditScreen extends ConsumerStatefulWidget {
 class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   final TextEditingController _prenom = TextEditingController();
   final TextEditingController _nom = TextEditingController();
-  final TextEditingController _bio = TextEditingController();
 
   /// Profil dont les contrôleurs reflètent le contenu, pour ne pas écraser
   /// une saisie en cours à chaque reconstruction.
@@ -34,7 +35,6 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   void dispose() {
     _prenom.dispose();
     _nom.dispose();
-    _bio.dispose();
     super.dispose();
   }
 
@@ -98,18 +98,6 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                     textInputAction: TextInputAction.next,
                     onChanged: (_) => _effacerErreur(),
                   ),
-                  AppSpacing.gapLg,
-                  AppTextField(
-                    label: 'Bio',
-                    hint: 'Quelques mots sur vous',
-                    controller: _bio,
-                    maxLines: 4,
-                    minLines: 3,
-                    maxLength: 280,
-                    helperText: 'Visible par vos contacts',
-                    onChanged: (_) => _effacerErreur(),
-                  ),
-
                   AppSpacing.gapXl,
                   PrimaryButton(
                     label: 'Enregistrer',
@@ -127,7 +115,6 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     _profilCharge = profil.id;
     _prenom.text = profil.firstName;
     _nom.text = profil.lastName;
-    _bio.text = profil.bio ?? '';
   }
 
   void _effacerErreur() {
@@ -143,12 +130,13 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       _erreur = null;
     });
     try {
+      // `saveNames` relit la bio pour ne pas l'écraser : elle se modifie
+      // ailleurs, sur la ligne où elle se lit.
       await ref
           .read(profileActionsProvider)
-          .save(
+          .saveNames(
             firstName: _prenom.text.trim(),
             lastName: _nom.text.trim(),
-            bio: _bio.text.trim(),
           );
       // La feuille se referme sur le profil, qui montre aussitôt la nouvelle
       // valeur : rester sur le formulaire laisserait douter de l'effet.

@@ -131,7 +131,7 @@ class FakeAuthRepository implements AuthRepository {
 
 /// Dépôt de profil en mémoire.
 class FakeProfileRepository implements ProfileRepository {
-  FakeProfileRepository({Profile? profile})
+  FakeProfileRepository({Profile? profile, this.echecEcriture = false})
     : _profile =
           profile ??
           const Profile(
@@ -144,6 +144,10 @@ class FakeProfileRepository implements ProfileRepository {
 
   Profile _profile;
 
+  /// Fait échouer toute écriture du profil, pour éprouver qu'un échec reste
+  /// visible et que la saisie n'est pas perdue.
+  final bool echecEcriture;
+
   @override
   Future<Profile?> fetchProfile(String userId) async => _profile;
 
@@ -154,6 +158,9 @@ class FakeProfileRepository implements ProfileRepository {
     required String lastName,
     required String bio,
   }) async {
+    if (echecEcriture) {
+      throw const AuthFailure('Le réseau est indisponible.');
+    }
     _profile = _profile.copyWith(
       firstName: firstName,
       lastName: lastName,

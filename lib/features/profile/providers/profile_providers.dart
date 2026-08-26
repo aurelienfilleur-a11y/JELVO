@@ -106,6 +106,41 @@ class ProfileActions {
     _ref.invalidate(currentProfileProvider);
   }
 
+  /// Enregistre les seuls prénom et nom, en conservant la bio.
+  ///
+  /// Symétrique de [saveBio] : depuis que les deux se modifient à des endroits
+  /// différents, chaque écriture doit relire ce qu'elle ne touche pas. Le
+  /// faire ici plutôt que dans l'écran rend l'oubli impossible.
+  Future<void> saveNames({
+    required String firstName,
+    required String lastName,
+  }) async {
+    final Profile? profil = await _ref.read(currentProfileProvider.future);
+    await save(
+      firstName: firstName,
+      lastName: lastName,
+      bio: profil?.bio ?? '',
+    );
+  }
+
+  /// Enregistre la seule bio, en conservant le prénom et le nom.
+  ///
+  /// La bio se modifie **sur place**, sur la ligne où elle se lit ; l'écran de
+  /// modification ne porte plus qu'elle-mêmes prénom et nom. Le widget qui
+  /// appelle ceci ne connaît donc que la bio, et n'a pas à traîner les deux
+  /// autres champs pour ne pas les écraser.
+  Future<void> saveBio(String bio) async {
+    final Profile? profil = await _ref.read(currentProfileProvider.future);
+    if (profil == null) {
+      throw StateError('Aucun profil chargé : la bio ne peut pas être écrite.');
+    }
+    await save(
+      firstName: profil.firstName,
+      lastName: profil.lastName,
+      bio: bio,
+    );
+  }
+
   Future<void> changeAvatar(Uint8List bytes, String fileExtension) async {
     await _ref
         .read(profileRepositoryProvider)

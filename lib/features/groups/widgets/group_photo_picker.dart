@@ -39,49 +39,72 @@ class _GroupPhotoPickerState extends State<GroupPhotoPicker> {
 
   bool get _hasImage => widget.bytes != null || widget.imageUrl != null;
 
+  /// Diamètre du cercle. Assez large pour qu'une photo s'y reconnaisse, assez
+  /// petit pour que le nom du groupe reste au-dessus de la ligne de flottaison.
+  static const double _taille = 104;
+
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Semantics(
           button: true,
           label: 'Choisir une photo de groupe',
           child: GestureDetector(
             onTap: _picking ? null : _pick,
-            child: Container(
-              height: 148,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: widget.accentColor.withValues(alpha: 0.12),
-                borderRadius: AppRadii.cardRadius,
-                border: Border.all(color: AppColors.border),
-              ),
-              clipBehavior: Clip.antiAlias,
-              alignment: Alignment.center,
-              child: _preview(),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: <Widget>[
+                Container(
+                  height: _taille,
+                  width: _taille,
+                  decoration: BoxDecoration(
+                    color: widget.accentColor.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  alignment: Alignment.center,
+                  child: _preview(),
+                ),
+                // La pastille « + » dit que le cercle se touche. Sans elle,
+                // une zone violette vide passe pour une décoration.
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.surface, width: 2),
+                    ),
+                    child: const Icon(
+                      Icons.add_rounded,
+                      size: 18,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
         AppSpacing.gapSm,
-        Row(
-          children: <Widget>[
-            Expanded(
-              child: Text(
-                _picking
-                    ? 'Ouverture de la galerie…'
-                    : 'Photo de groupe (facultative)',
-                style: AppTypography.caption,
-              ),
-            ),
-            if (_hasImage)
-              TextButton(
-                onPressed: widget.onRemoved,
-                style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-                child: const Text('Retirer'),
-              ),
-          ],
+        TextButton(
+          onPressed: _picking ? null : _pick,
+          child: Text(
+            _picking
+                ? 'Ouverture de la galerie…'
+                : (_hasImage ? 'Changer la photo' : 'Ajouter une photo'),
+          ),
         ),
+        if (_hasImage)
+          TextButton(
+            onPressed: widget.onRemoved,
+            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+            child: const Text('Retirer'),
+          ),
         if (_error != null) ...<Widget>[
           AppSpacing.gapXs,
           Text(
@@ -97,16 +120,16 @@ class _GroupPhotoPickerState extends State<GroupPhotoPicker> {
     if (widget.bytes != null) {
       return Image.memory(
         widget.bytes!,
-        width: double.infinity,
-        height: 148,
+        width: _taille,
+        height: _taille,
         fit: BoxFit.cover,
       );
     }
     if (widget.imageUrl != null) {
       return Image.network(
         widget.imageUrl!,
-        width: double.infinity,
-        height: 148,
+        width: _taille,
+        height: _taille,
         fit: BoxFit.cover,
         errorBuilder: (_, _, _) => _placeholder,
       );
@@ -114,17 +137,8 @@ class _GroupPhotoPickerState extends State<GroupPhotoPicker> {
     return _placeholder;
   }
 
-  Widget get _placeholder => Column(
-    mainAxisSize: MainAxisSize.min,
-    children: <Widget>[
-      Icon(Icons.add_photo_alternate_outlined, color: widget.accentColor),
-      AppSpacing.gapXs,
-      Text(
-        'Ajouter une photo',
-        style: AppTypography.caption.copyWith(color: widget.accentColor),
-      ),
-    ],
-  );
+  Widget get _placeholder =>
+      Icon(Icons.photo_camera_outlined, size: 34, color: widget.accentColor);
 
   Future<void> _pick() async {
     setState(() {

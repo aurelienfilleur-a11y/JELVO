@@ -29,6 +29,7 @@ class AppTextField extends StatelessWidget {
     this.maxLines = 1,
     this.minLines,
     this.maxLength,
+    this.showCounter = false,
     this.onChanged,
     this.onSubmitted,
     this.onTap,
@@ -58,6 +59,14 @@ class AppTextField extends StatelessWidget {
   final int maxLines;
   final int? minLines;
   final int? maxLength;
+
+  /// Affiche « 42/120 » sous le champ.
+  ///
+  /// Éteint par défaut : un compteur n'a d'intérêt que là où la limite est
+  /// basse et se rencontre pour de bon — une description de groupe, celle d'un
+  /// événement. Sur un mot de passe, il ne ferait qu'ajouter du bruit.
+  final bool showCounter;
+
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
   final VoidCallback? onTap;
@@ -150,6 +159,10 @@ class AppTextField extends StatelessWidget {
           AppSpacing.gapXs,
           Text(helperText!, style: AppTypography.caption),
         ],
+        if (showCounter && maxLength != null && controller != null) ...<Widget>[
+          AppSpacing.gapXs,
+          _Counter(controller: controller!, maxLength: maxLength!),
+        ],
       ],
     );
   }
@@ -158,6 +171,40 @@ class AppTextField extends StatelessWidget {
     return OutlineInputBorder(
       borderRadius: AppRadii.fieldRadius,
       borderSide: BorderSide(color: AppColors.danger, width: width),
+    );
+  }
+}
+
+/// « 42/120 », aligné à droite sous le champ.
+///
+/// Il écoute le contrôleur plutôt que d'imposer un `StatefulWidget` au champ
+/// entier : seul ce texte se reconstruit à chaque frappe.
+class _Counter extends StatelessWidget {
+  const _Counter({required this.controller, required this.maxLength});
+
+  final TextEditingController controller;
+  final int maxLength;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: controller,
+      builder: (BuildContext context, TextEditingValue value, _) {
+        final int longueur = value.text.characters.length;
+        return Align(
+          alignment: Alignment.centerRight,
+          child: Text(
+            '$longueur/$maxLength',
+            style: AppTypography.caption.copyWith(
+              // La limite atteinte se signale : la frappe suivante ne
+              // s'inscrira pas, et rien d'autre ne le dirait.
+              color: longueur >= maxLength
+                  ? AppColors.warning
+                  : AppColors.textSecondary,
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -556,6 +556,9 @@ halo violet du bouton central. Ne pas utiliser l'`elevation` Material.
 | `InvitationHeader`            | auteur, ce qu'il demande, depuis quand            |
 | `InvitationDetailRow`         | ligne icône / libellé / valeur d'une carte d'invitation |
 | `InvitationActions`           | refus en contour à gauche, accord en plein à droite |
+| `OptionRow` / `OptionIcon`    | ligne de réglage : icône, libellé, aide, valeur violette |
+| `ExpandableOptions`           | carte « Plus d'options » qui se replie sur son contenu |
+| `PersonAvatarRow` / `PersonPickerSheet` | rangée d'avatars sélectionnables, et la liste complète avec recherche |
 
 **Les composants de `core/widgets` ne connaissent pas le domaine** : ils
 prennent des `String`, `IconData`, `Color` et `AvatarData`, jamais un `Group` ou
@@ -986,6 +989,65 @@ Deux règles que le code porte, et qu'il faut garder :
 Le sélecteur n'apparaît **qu'à la création**. En modification, la liste des
 membres se gère depuis l'écran du groupe, qui sait aussi les retirer.
 
+#### Le critère des suggestions se constate, il ne se devine pas
+
+La rangée classe **favoris d'abord, puis les groupes en commun décroissants,
+puis l'ordre alphabétique**. Les deux premiers disent la même chose de deux
+façons — qui l'on fréquente : le favori est *déclaré*, les groupes en commun se
+*constatent*. Quelqu'un avec qui on organise déjà trois choses est un candidat
+plus probable qu'un contact rencontré une fois, et l'ordre alphabétique n'en
+sait rien.
+
+**Rien n'est lu de plus pour cela** : `mes_contacts` renvoie déjà
+`groupes_communs` depuis la tranche 10. C'est le seul critère envisagé qui ne
+demandait aucune colonne — « les plus fréquents » supposerait un compteur
+d'interactions que rien n'écrit, et « les plus récents » une date de dernier
+échange que `contacts` ne porte pas.
+
+#### « Groupe privé » est un constat, et l'interrupteur a disparu
+
+**La colonne `groups.is_private` existe bel et bien** — `not null`, défaut
+`true` —, `creer_groupe` la renseigne, `Group` la lit. Ce n'est donc pas une
+donnée inventée.
+
+Mais **rien ne s'en sert**. Aucune politique RLS ne la cite, aucune fonction
+n'en dépend, et `groups_select` exige `is_group_member(id)` quelle qu'en soit
+la valeur. Jelvo n'a ni annuaire de groupes, ni page publique, ni recherche par
+nom : **tout groupe Jelvo est privé**, et un interrupteur qui se décoche
+promettait un groupe public qui n'existe pas.
+
+La ligne reste — elle dit quelque chose de vrai, et de rassurant — mais c'est
+le **contrôle** qui s'en va. `creer_groupe` reçoit `true`, qui est déjà son
+défaut. Le jour où un groupe public existerait, l'interrupteur reviendrait ici
+sans une ligne de SQL à changer.
+
+C'est la même règle que les lignes Téléphone et Localisation écartées du
+profil, appliquée à un cas plus retors : ici la donnée existe, c'est son
+*effet* qui manque.
+
+#### « Inviter par lien » se décide avant, et s'exécute après
+
+Un jeton se tire sur un groupe qui **existe** : la carte ne peut donc rien
+faire au moment où on la touche. Elle retient l'intention, et
+`?lien=1`(`AppRoutes.groupLinkParam`) la porte jusqu'à l'écran du groupe, qui
+ouvre `InviteLinkSheet` à l'arrivée — une seule fois, un retour sur l'écran ne
+la rouvre pas.
+
+Le paramètre passe par l'**URL** et non par un `extra`, pour la même raison que
+`/creer?type=…` : un `extra` se perd au rafraîchissement du web.
+
+L'alternative — afficher la carte et répondre « le lien s'obtient une fois le
+groupe créé » — aurait été exactement la ligne qui ne mène nulle part qu'on
+écarte partout ailleurs.
+
+#### Le scan de QR code n'entre pas dans la création de groupe
+
+La maquette pose une icône de QR dans le champ de recherche. Elle est écartée :
+le QR de Jelvo encode un **pseudo** et sert à **ajouter un contact**, pas à
+inscrire quelqu'un dans un groupe. L'y mettre ferait espérer un geste — scanner
+le téléphone d'en face pour l'ajouter au groupe — que rien n'exécute, et le
+scanner est de toute façon désactivé sur le web, où il n'y a pas de caméra.
+
 ### Invitations : deux mécanismes distincts
 
 **Nominative** (`invitations`) — pour quelqu'un **déjà inscrit**. L'écran
@@ -1371,6 +1433,99 @@ notifications.
 Un événement sans `group_id` est un rendez-vous personnel : seul son
 propriétaire le voit. Un événement de groupe convie par défaut tous les
 membres actifs.
+
+### Les deux formulaires de création
+
+Feuilles montantes toutes les deux, et non des pages : créer une tâche est un
+geste bref, et garder l'écran d'origine visible derrière dit d'où l'on vient.
+Les deux partagent trois primitives, montées dans `core/widgets` :
+
+| Composant | Rôle |
+| --- | --- |
+| `OptionRow` | icône, libellé, aide, valeur en violet, chevron |
+| `ExpandableOptions` | la carte « Plus d'options » qui se replie |
+| `PersonAvatarRow` / `PersonPickerSheet` | rangée d'avatars et liste complète |
+
+**Ils ont changé de place pour une raison de règle, pas d'esthétique** :
+`event_form_sheet.dart` importait `tasks/widgets/option_row.dart` et
+`tasks/widgets/assignee_picker.dart` — or *une feature ne lit jamais les
+widgets d'une autre*. Ces trois-là ne connaissent que des `String`, des
+`IconData` et un `PickablePerson` (identifiant, nom, prénom, avatar) : ils
+avaient leur place dans `core` depuis le début.
+
+#### Aucun assigné n'est un choix, et l'écran doit le dire
+
+**Personne n'est présélectionné dans « Assigner à ».** Ce n'était déjà pas le
+cas, mais rien ne disait ce que cela **voulait dire** — et une rangée
+d'avatars sans coche se lit spontanément comme un formulaire incomplet.
+
+Or `null` et `[]` ne veulent pas dire la même chose pour `creer_tache` (voir
+« `null` et `[]` ne veulent pas dire la même chose ») : le formulaire envoie
+`<String>[]`, la tâche est **proposée au groupe**, et c'est ce qui produit la
+carte à boutons Oui / Non dans la conversation.
+
+D'où une mention sous la rangée, qui **change avec la sélection** au lieu de
+n'apparaître qu'à vide :
+
+| Sélection | Ce que dit la mention |
+| --- | --- |
+| aucune | « Proposée à tout le groupe : une carte s'affichera dans la conversation, et le premier qui accepte la prend. » |
+| une | « Confiée à Léa, qui recevra une notification. » |
+| plusieurs | « Confiée à Léa, Thomas et 2 autres, qui recevront une notification. » |
+
+Elle change aussi d'icône et de teinte — mégaphone gris, silhouette violette —
+mais **le texte porte seul le sens** : la couleur ne fait que le doubler.
+
+#### « Autre » n'apparaît qu'au-delà de six membres
+
+Le bouton ouvre la liste complète avec recherche. En deçà de sept membres, la
+rangée les montre déjà tous : un bouton qui n'ouvrirait que les mêmes visages
+n'irait nulle part. La feuille rend les **noms entiers**, là où la rangée n'a
+la place que du prénom — c'est ce qui la rend utile, et non le seul fait de
+tout montrer.
+
+#### Le groupe d'un événement se choisit enfin
+
+`GroupSelector` porte la photo du groupe, son nom et son nombre de membres.
+**Il n'existait pas**, et l'absence était une vraie limite : le groupe était
+*imposé par l'écran d'où l'on venait*. Ouvert depuis le calendrier ou depuis le
+« + », le formulaire ne savait créer qu'un rendez-vous personnel — sans aucun
+moyen de le rattacher à un groupe.
+
+« Personnel » est **une valeur du choix, et non son absence** : un rendez-vous
+qu'on est seul à voir est un cas courant, pas un défaut de saisie. Changer de
+groupe vide les convives — ceux d'un groupe n'ont aucun sens dans un autre.
+
+Le sélecteur ne paraît **qu'à la création**. Déplacer un événement d'un groupe
+à l'autre changerait qui le voit, sans que personne en soit prévenu.
+
+#### Participants : une ligne, pas une carte
+
+La rangée d'avatars de l'événement devient une `OptionRow` qui ouvre la liste.
+Sa valeur dit **« Tous les membres »** quand rien n'est coché — ce que fait
+réellement `creer_evenement` avec une liste `null` — et non « aucun ». C'est
+l'inverse exact de la tâche, et c'est voulu : convier tout le monde est le
+défaut d'un événement, prendre une tâche ne l'est pas.
+
+#### La date et l'heure se rangent, la fin ne disparaît pas
+
+La maquette montre `Date | Heure` côte à côte, et rien d'autre. La suivre à la
+lettre **refigerait la durée à une heure**, ce qu'elle a déjà été — un déjeuner
+de famille et un week-end entier ne se ressemblent pourtant pas. La fin
+descend donc d'une ligne, sous la colonne de l'heure à laquelle elle se
+rapporte, plutôt que d'être supprimée.
+
+#### La description sort de « Plus d'options », qui disparaît
+
+Elle est visible d'emblée, avec son compteur de caractères
+(`AppTextField.showCounter`). Ce que la maquette rangeait derrière « Plus
+d'options » était « Ajouter une image, plus de détails… » — or **l'image d'un
+événement n'a pas de dépôt** : `events.image_url` existe et se lit, mais aucun
+bucket ne l'accueille et aucun écran ne la téléverse. Il ne restait donc rien
+à replier, et un en-tête qui s'ouvre sur du vide est pire qu'un en-tête absent.
+
+La tâche, elle, **garde** son « Plus d'options » : échéance, priorité et
+description y sont vraiment, et sont vraiment rares.
 
 ### Toute valeur d'énumération écrite porte une conversion explicite
 
@@ -3014,6 +3169,22 @@ sécurité.
 - `test/app_version_test.dart` confronte `AppConfig.version` au `pubspec.yaml`,
   sans widget : la version est recopiée à la main, et une version fausse est
   pire qu'une version absente.
+- `test/creation_screens_test.dart` couvre les trois écrans de création. Côté
+  tâche : personne de présélectionné et la mention qui l'annonce, la mention
+  qui change dès qu'on coche un avatar, **la liste vide et non nulle** envoyée
+  au dépôt — c'est elle qui produit la carte à boutons dans la conversation —,
+  l'absence du bouton « Autre » quand la rangée montre déjà tout le monde, et
+  « Plus d'options » qui replie échéance, priorité et description avec son
+  compteur. Côté événement : le choix du groupe, qui n'existait pas, jusqu'à
+  l'identifiant transmis à la création ; « Tous les membres » sans sélection et
+  le décompte après ; la date, l'heure et la fin qui tiennent ensemble ; la
+  description visible d'emblée et l'absence de « Plus d'options », qui
+  s'ouvrirait sur du vide. Côté groupe : le compteur de caractères qui suit la
+  frappe, « Groupe privé » devenu un constat — **aucun `Switch` ne subsiste** —,
+  l'ordre des suggestions qui met la favorite aux trois groupes communs avant
+  le contact à un seul, « Inviter par lien » qui ouvre bel et bien la feuille
+  du lien après la création, son contrôle négatif, et « Choisir dans mes
+  contacts » qui ouvre le carnet entier en noms complets.
 
 Onze faux dépôts vivent dans `test/fakes/` : authentification, profil, groupes,
 contacts, notifications, tâches, agenda, disponibilités, chat, navigateur
@@ -3175,6 +3346,20 @@ sûr d'éprouver son caractère contextuel.
   choix du groupe — ou « Personnel » — et de la date. Le choix « Groupe »
   redirige vers l'écran de création dédié. Ouvert depuis un groupe, il arrive
   pré-rempli par l'URL (`?type=…&groupe=…`).
+- **L'image d'un événement se lit mais ne se téléverse pas.**
+  `events.image_url` est dans le schéma initial, les trois écrans d'invitation
+  la préfèrent à la couverture du groupe, et `updateEvent` la conserve — mais
+  **aucun écran ne permet d'en choisir une**, et aucun bucket ne l'accueille :
+  `avatars`, `group-photos` et `chat-media` portent chacun une convention de
+  chemin qui ne convient pas. La combler demande un quatrième bucket, ses
+  quatre politiques et son sélecteur — un chantier, pas un oubli. C'est la
+  seule ligne de la maquette de création qui n'a pas pu être branchée, et c'est
+  pourquoi l'événement n'a pas de « Plus d'options ».
+- **`groups.is_private` est écrite et lue par personne.** La colonne existe,
+  `creer_groupe` la renseigne, mais aucune politique RLS ne la cite : tout
+  groupe Jelvo est privé. L'écran de création l'annonce désormais comme un fait
+  au lieu d'offrir un interrupteur sans effet — voir « « Groupe privé » est un
+  constat ».
 - La récurrence se choisit dans une liste fermée (jamais, quotidienne,
   hebdomadaire, quinzaine, mensuelle, annuelle). Une `rrule` écrite ailleurs et
   non reconnue s'affiche « Jamais » mais **n'est pas effacée** tant que le

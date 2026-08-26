@@ -119,6 +119,10 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
                     builder: (BuildContext context, GoRouterState state) =>
                         GroupDetailScreen(
                           groupId: state.pathParameters['id'] ?? '',
+                          ouvrirLeLien:
+                              state.uri.queryParameters[AppRoutes
+                                  .groupLinkParam] ==
+                              '1',
                         ),
                     routes: <RouteBase>[
                       GoRoute(

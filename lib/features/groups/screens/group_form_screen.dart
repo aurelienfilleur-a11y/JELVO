@@ -36,8 +36,10 @@ class _GroupFormScreenState extends ConsumerState<GroupFormScreen> {
 
   Uint8List? _photoBytes;
   String? _photoExtension;
-  bool _isPrivate = true;
   bool _submitting = false;
+
+  /// « Inviter par lien » choisi : la feuille s'ouvrira sur le groupe créé.
+  bool _lienDemande = false;
 
   /// Personnes à inviter dès la création. Vide en modification : la liste des
   /// membres se gère depuis l'écran du groupe, qui sait aussi les retirer.
@@ -93,6 +95,23 @@ class _GroupFormScreenState extends ConsumerState<GroupFormScreen> {
               AppSpacing.gapLg,
             ],
 
+            if (!_isEditing) ...<Widget>[
+              Text(
+                'Créez votre groupe et invitez les premiers membres.',
+                style: AppTypography.bodyMuted,
+                textAlign: TextAlign.center,
+              ),
+              AppSpacing.gapLg,
+            ],
+
+            Text(
+              'Photo du groupe',
+              style: AppTypography.caption.copyWith(
+                fontWeight: AppTypography.medium,
+                color: AppColors.midnight,
+              ),
+            ),
+            AppSpacing.gapMd,
             GroupPhotoPicker(
               bytes: _photoBytes,
               imageUrl: existing?.photoUrl,
@@ -109,55 +128,44 @@ class _GroupFormScreenState extends ConsumerState<GroupFormScreen> {
             AppSpacing.gapXl,
 
             AppTextField(
-              label: 'Nom du groupe',
-              hint: 'Famille Rousseau',
+              label: 'Nom du groupe *',
+              hint: 'Ex. : Famille Rousseau',
               controller: _nameController,
               errorText: _nameError,
               maxLength: _nameMaxLength,
               textCapitalization: TextCapitalization.sentences,
-              prefixIcon: Icons.groups_rounded,
+              suffixIcon: const Icon(
+                Icons.groups_rounded,
+                color: AppColors.primary,
+              ),
               textInputAction: TextInputAction.next,
               onChanged: (_) => _clearErrors(),
             ),
             AppSpacing.gapLg,
 
             AppTextField(
-              label: 'Description',
-              hint: 'À quoi sert ce groupe ?',
+              label: 'Description (optionnelle)',
+              hint: 'Décrivez brièvement le but de ce groupe',
               controller: _descriptionController,
               maxLength: _descriptionMaxLength,
+              showCounter: true,
               maxLines: 3,
               minLines: 2,
-              helperText: 'Facultative',
               textCapitalization: TextCapitalization.sentences,
               onChanged: (_) => _clearErrors(),
             ),
             AppSpacing.gapLg,
 
-            AppCard(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.sm,
-              ),
-              child: SwitchListTile.adaptive(
-                value: _isPrivate,
-                onChanged: _isEditing || _submitting
-                    ? null
-                    : (bool value) => setState(() => _isPrivate = value),
-                contentPadding: EdgeInsets.zero,
-                title: Text('Groupe privé', style: AppTypography.body),
-                subtitle: Text(
-                  'On n’y entre que par invitation ou par lien de partage.',
-                  style: AppTypography.caption,
-                ),
-              ),
-            ),
+            const _ConfidentialiteCard(),
 
             if (!_isEditing) ...<Widget>[
               AppSpacing.gapXl,
               GroupMemberPicker(
                 selected: _invites,
                 enabled: !_submitting,
+                lienDemande: _lienDemande,
+                onLienChanged: (bool valeur) =>
+                    setState(() => _lienDemande = valeur),
                 onChanged: (Set<String> choisis) =>
                     setState(() => _invites = choisis),
               ),
@@ -166,6 +174,7 @@ class _GroupFormScreenState extends ConsumerState<GroupFormScreen> {
             AppSpacing.gapXl,
             PrimaryButton(
               label: _isEditing ? 'Enregistrer' : 'Créer le groupe',
+              icon: _isEditing ? null : Icons.group_add_rounded,
               isLoading: _submitting,
               onPressed: _submit,
             ),
@@ -180,7 +189,6 @@ class _GroupFormScreenState extends ConsumerState<GroupFormScreen> {
     _loadedId = group.id;
     _nameController.text = group.name;
     _descriptionController.text = group.description ?? '';
-    _isPrivate = group.isPrivate;
   }
 
   void _clearErrors() {
@@ -228,7 +236,6 @@ class _GroupFormScreenState extends ConsumerState<GroupFormScreen> {
               description: description,
               photoBytes: _photoBytes,
               photoExtension: _photoExtension,
-              isPrivate: _isPrivate,
             );
         // Les invitations partent **après** la création, et leur échec ne
         // remet rien en cause : le groupe existe, on entre dedans, et on dit
@@ -247,9 +254,15 @@ class _GroupFormScreenState extends ConsumerState<GroupFormScreen> {
 
         // Remplace l'écran de création par le groupe fraîchement créé : revenir
         // en arrière ne doit pas rouvrir un formulaire déjà validé.
+        //
+        // `?lien=1` porte le choix « Inviter par lien » jusqu'à l'écran qui
+        // sait le satisfaire : un jeton se tire sur un groupe qui existe.
         context.pushReplacementNamed(
           AppRoutes.groupDetail,
           pathParameters: <String, String>{'id': group.id},
+          queryParameters: <String, String>{
+            if (_lienDemande) AppRoutes.groupLinkParam: '1',
+          },
         );
 
         final int envoyees = _invites.length - echecs;
@@ -285,6 +298,59 @@ String _bilanInvitations(int envoyees, int echecs) {
   }
   return 'Groupe créé, $envoyees invitation(s) envoyée(s), '
       '$echecs non parties.';
+}
+
+/// « Groupe privé » — un constat, et non un interrupteur.
+///
+/// **La colonne `groups.is_private` existe bel et bien**, `creer_groupe` la
+/// renseigne, et l'application la lit. Mais **rien ne s'en sert** : aucune
+/// politique RLS ne la cite, aucune fonction n'en dépend. `groups_select`
+/// exige `is_group_member(id)` quelle qu'en soit la valeur, et Jelvo n'a ni
+/// annuaire de groupes, ni page publique, ni recherche par nom.
+///
+/// Autrement dit **tout groupe Jelvo est privé**, et un interrupteur qui se
+/// décoche promettrait un groupe public qui n'existe pas — exactement le genre
+/// de ligne décorative qu'on écarte ailleurs. La ligne reste donc, parce
+/// qu'elle dit quelque chose de vrai et de rassurant ; c'est le contrôle qui
+/// s'en va. `creer_groupe` reçoit `true`, qui est déjà son défaut.
+///
+/// Le jour où un groupe public existerait — un annuaire, un lien
+/// d'exploration —, l'interrupteur reviendrait ici sans rien changer en base.
+class _ConfidentialiteCard extends StatelessWidget {
+  const _ConfidentialiteCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const OptionIcon(icon: Icons.lock_outline_rounded),
+          AppSpacing.hGapMd,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  'Groupe privé',
+                  style: AppTypography.body.copyWith(
+                    fontWeight: AppTypography.medium,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Seuls les membres invités pourront le rejoindre et voir '
+                  'son contenu. Tous les groupes Jelvo le sont.',
+                  style: AppTypography.caption,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _ErrorBanner extends StatelessWidget {

@@ -15,6 +15,7 @@ import 'package:jelvo/features/notifications/providers/notification_providers.da
 import 'package:jelvo/features/notifications/providers/push_providers.dart';
 import 'package:jelvo/features/profile/models/profile.dart';
 import 'package:jelvo/features/profile/providers/profile_providers.dart';
+import 'package:jelvo/features/profile/widgets/profile_about_card.dart';
 import 'package:jelvo/features/tasks/models/task.dart';
 import 'package:jelvo/features/tasks/providers/task_providers.dart';
 import 'package:jelvo/main.dart';
@@ -35,6 +36,7 @@ Future<FakeProfileRepository> _ouvrirProfil(
   WidgetTester tester, {
   Profile? profile,
   FakeTaskRepository? taskRepository,
+  bool echecEcriture = false,
 }) async {
   tester.view.physicalSize = const Size(420, 1800);
   tester.view.devicePixelRatio = 1;
@@ -43,7 +45,10 @@ Future<FakeProfileRepository> _ouvrirProfil(
 
   final FakeAuthRepository auth = FakeAuthRepository(signedIn: true);
   addTearDown(auth.dispose);
-  final FakeProfileRepository profils = FakeProfileRepository(profile: profile);
+  final FakeProfileRepository profils = FakeProfileRepository(
+    profile: profile,
+    echecEcriture: echecEcriture,
+  );
 
   await tester.pumpWidget(
     ProviderScope(
@@ -214,15 +219,147 @@ void main() {
       expect(find.text('Ajoutez quelques mots sur vous'), findsOneWidget);
     });
 
-    testWidgets('la ligne Bio ouvre la modification', (
+    testWidgets('la ligne Bio se modifie sur place', (
       WidgetTester tester,
     ) async {
       await _ouvrirProfil(tester);
 
+      // Aucun champ tant qu'on n'a pas touché la ligne : elle se lit d'abord.
+      expect(find.byType(TextField), findsNothing);
+
       await tester.tap(find.text('Bio'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Modifier le profil'), findsOneWidget);
+      // La ligne devient un champ, déjà rempli et déjà actif — le clavier
+      // s'ouvre sans second geste.
+      final Finder champ = find.byType(TextField);
+      expect(champ, findsOneWidget);
+      expect(
+        tester.widget<TextField>(champ).controller!.text,
+        'Toujours partante pour une rando.',
+      );
+      expect(tester.widget<TextField>(champ).focusNode!.hasFocus, isTrue);
+      // On ne quitte pas l'écran : la modification se fait ici.
+      expect(find.text('Modifier le profil'), findsNothing);
+    });
+
+    testWidgets('quitter le champ enregistre', (WidgetTester tester) async {
+      final FakeProfileRepository profils = await _ouvrirProfil(tester);
+
+      await tester.tap(find.text('Bio'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'Toujours en montagne.');
+      // Sortir du champ, quel que soit le chemin, passe par la perte du focus.
+      tester.widget<TextField>(find.byType(TextField)).focusNode!.unfocus();
+      await tester.pumpAndSettle();
+
+      final Profile? apres = await profils.fetchProfile('utilisateur-test');
+      expect(apres!.bio, 'Toujours en montagne.');
+      // La ligne redevient lisible, et montre la nouvelle valeur.
+      expect(find.byType(TextField), findsNothing);
+      expect(find.text('Toujours en montagne.'), findsOneWidget);
+    });
+
+    testWidgets('la coche valide sans passer par le clavier', (
+      WidgetTester tester,
+    ) async {
+      final FakeProfileRepository profils = await _ouvrirProfil(tester);
+
+      await tester.tap(find.text('Bio'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'Deux mots.');
+      await tester.tap(find.byTooltip('Enregistrer la bio'));
+      await tester.pumpAndSettle();
+
+      final Profile? apres = await profils.fetchProfile('utilisateur-test');
+      expect(apres!.bio, 'Deux mots.');
+    });
+
+    testWidgets('un échec reste visible et garde la saisie', (
+      WidgetTester tester,
+    ) async {
+      await _ouvrirProfil(tester, echecEcriture: true);
+
+      await tester.tap(find.text('Bio'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'Une bio qui résiste.');
+      tester.widget<TextField>(find.byType(TextField)).focusNode!.unfocus();
+      await tester.pumpAndSettle();
+
+      // Le message est là, et la ligne est **restée** en saisie avec le texte :
+      // refermer ferait disparaître la saisie en même temps que le message, et
+      // laisserait croire que la bio est enregistrée.
+      expect(find.text('Le réseau est indisponible.'), findsOneWidget);
+      final Finder champ = find.byType(TextField);
+      expect(champ, findsOneWidget);
+      expect(
+        tester.widget<TextField>(champ).controller!.text,
+        'Une bio qui résiste.',
+      );
+    });
+
+    testWidgets('sans changement, quitter le champ n’écrit rien', (
+      WidgetTester tester,
+    ) async {
+      // Le dépôt est en échec : si une écriture partait malgré un texte
+      // intact, le message d'erreur la trahirait.
+      await _ouvrirProfil(tester, echecEcriture: true);
+
+      await tester.tap(find.text('Bio'));
+      await tester.pumpAndSettle();
+      tester.widget<TextField>(find.byType(TextField)).focusNode!.unfocus();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Le réseau est indisponible.'), findsNothing);
+      expect(find.byType(TextField), findsNothing);
+    });
+
+    testWidgets('un crayon remplace le chevron sur la ligne Bio', (
+      WidgetTester tester,
+    ) async {
+      await _ouvrirProfil(tester);
+
+      // Le chevron annonçait un écran qui s'ouvre ; la bio se modifie sur
+      // place, et c'est un crayon qui dit « on écrit ici ».
+      expect(find.byTooltip('Modifier la bio'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(ProfileAboutCard),
+          matching: find.byIcon(Icons.chevron_right_rounded),
+        ),
+        findsNothing,
+      );
+    });
+
+    testWidgets('l’écran « Modifier » ne porte plus la bio', (
+      WidgetTester tester,
+    ) async {
+      await _ouvrirProfil(tester);
+
+      await tester.tap(find.text('Modifier'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Prénom'), findsOneWidget);
+      expect(find.text('Nom'), findsOneWidget);
+      // Elle se modifie sur place : deux endroits pour la même valeur
+      // finiraient par diverger.
+      expect(find.text('Bio'), findsNothing);
+    });
+
+    testWidgets('modifier le nom ne perd pas la bio', (
+      WidgetTester tester,
+    ) async {
+      final FakeProfileRepository profils = await _ouvrirProfil(tester);
+
+      await tester.tap(find.text('Modifier'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).first, 'Camille-Anne');
+      await tester.tap(find.text('Enregistrer'));
+      await tester.pumpAndSettle();
+
+      final Profile? apres = await profils.fetchProfile('utilisateur-test');
+      expect(apres!.firstName, 'Camille-Anne');
+      expect(apres.bio, 'Toujours partante pour une rando.');
     });
   });
 

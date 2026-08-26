@@ -450,7 +450,7 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 -- marquer_lu(p_group_id uuid, p_jusqua timestamp with time zone DEFAULT NULL::timestamp with time zone) → timestamp with time zone   [security definer, postgres]
 -- marquer_push_traite(p_id uuid, p_erreur text DEFAULT NULL::text) → void   [security definer, postgres]
 -- membres_du_groupe(p_group_id uuid) → TABLE(user_id uuid, role text, joined_at timestamp with time zone, expires_at timestamp with time zone, pseudo text, first_name text, last_name text, avatar_url text)   [security definer, postgres]
--- mes_contacts() → TABLE(autre_id uuid, pseudo text, first_name text, last_name text, avatar_url text, statut text, sens text, favori boolean, created_at timestamp with time zone)   [security definer, postgres]
+-- mes_contacts() → TABLE(autre_id uuid, pseudo text, first_name text, last_name text, avatar_url text, statut text, sens text, favori boolean, created_at timestamp with time zone, groupes_communs integer)   [security definer, postgres]
 -- mes_disponibilites() → TABLE(id uuid, kind text, weekday integer, on_date date, start_time time without time zone, end_time time without time zone, status text, created_at timestamp with time zone)   [security definer, postgres]
 -- mes_invitations() → TABLE(id uuid, group_id uuid, nom text, description text, photo_url text, nombre_membres integer, membres_apercu text[], emetteur text, emetteur_avatar text, statut text, created_at timestamp with time zone, expires_at timestamp with time zone, membership_expires_at timestamp with time zone)   [security definer, postgres]
 -- mes_preferences_notification() → TABLE(type text, libelle text, description text, enabled boolean)   [security definer, postgres]

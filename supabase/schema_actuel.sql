@@ -133,6 +133,9 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 --   media_kind           media_type                   
 --   created_at           timestamp with time zone     NOT NULL, défaut now()
 --   deleted_at           timestamp with time zone     
+--   task_id              uuid                         
+--   event_id             uuid                         
+--   tache_prise          boolean                      NOT NULL, défaut false
 
 -- notification_preferences [RLS activée]
 --   user_id              uuid                         NOT NULL, sans défaut
@@ -266,8 +269,10 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 -- message_reads            message_reads_pkey : PRIMARY KEY (group_id, user_id)
 -- messages                 messages_check : CHECK (((content IS NOT NULL) OR (media_url IS NOT NULL)))
 -- messages                 messages_content_check : CHECK ((char_length(content) <= 2000))
+-- messages                 messages_event_id_fkey : FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
 -- messages                 messages_group_id_fkey : FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE
 -- messages                 messages_sender_id_fkey : FOREIGN KEY (sender_id) REFERENCES profiles(id)
+-- messages                 messages_task_id_fkey : FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
 -- messages                 messages_pkey : PRIMARY KEY (id)
 -- notification_preferences notification_preferences_user_id_fkey : FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE
 -- notification_preferences notification_preferences_pkey : PRIMARY KEY (user_id, type)
@@ -362,9 +367,6 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 -- messages                 msg_select                   SELECT {public}
 --   using       : is_group_member(group_id)
 --   with check  : —
--- notification_preferences np_all                       ALL    {authenticated}
---   using       : (user_id = auth.uid())
---   with check  : (user_id = auth.uid())
 -- notification_preferences np_select                    SELECT {authenticated}
 --   using       : (user_id = auth.uid())
 --   with check  : —
@@ -429,6 +431,8 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 -- definir_disponibilite(p_kind text, p_start time without time zone, p_end time without time zone, p_status text DEFAULT 'available'::text, p_weekday integer DEFAULT NULL::integer, p_on_date date DEFAULT NULL::date, p_id uuid DEFAULT NULL::uuid) → availabilities   [security definer, postgres]
 -- definir_preference_notification(p_type text, p_enabled boolean) → boolean   [security definer, postgres]
 -- definir_terme_adhesion(p_group_id uuid, p_user_id uuid, p_expires_at timestamp with time zone) → text   [security definer, postgres]
+-- deposer_carte_evenement() → trigger   [security definer, postgres]
+-- deposer_carte_tache() → trigger   [security definer, postgres]
 -- email_pour_pseudo(pseudo_recherche text) → text   [security definer, postgres]
 -- empiler_push(p_user_id uuid, p_type text, p_title text, p_body text, p_url text DEFAULT NULL::text) → boolean   [security definer, postgres]
 -- empiler_rappels(p_fenetre interval DEFAULT '00:10:00'::interval) → integer   [security definer, postgres]
@@ -451,7 +455,7 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 -- mes_invitations() → TABLE(id uuid, group_id uuid, nom text, description text, photo_url text, nombre_membres integer, membres_apercu text[], emetteur text, emetteur_avatar text, statut text, created_at timestamp with time zone, expires_at timestamp with time zone, membership_expires_at timestamp with time zone)   [security definer, postgres]
 -- mes_preferences_notification() → TABLE(type text, libelle text, description text, enabled boolean)   [security definer, postgres]
 -- mes_taches(p_group_id uuid DEFAULT NULL::uuid) → TABLE(id uuid, group_id uuid, created_by uuid, title text, description text, due_at timestamp with time zone, priority text, reminder_at timestamp with time zone, rrule text, completed_at timestamp with time zone, created_at timestamp with time zone, mon_statut text, assignes jsonb, articles integer, articles_coches integer, auteur text, auteur_avatar text, groupe_nom text, groupe_photo text)   [security definer, postgres]
--- messages_du_groupe(p_group_id uuid, p_avant timestamp with time zone DEFAULT NULL::timestamp with time zone, p_limite integer DEFAULT 50) → TABLE(id uuid, group_id uuid, sender_id uuid, content text, media_url text, media_kind text, created_at timestamp with time zone, deleted_at timestamp with time zone, pseudo text, first_name text, last_name text, avatar_url text, reactions jsonb, lu_par integer)   [security definer, postgres]
+-- messages_du_groupe(p_group_id uuid, p_avant timestamp with time zone DEFAULT NULL::timestamp with time zone, p_limite integer DEFAULT 50) → TABLE(id uuid, group_id uuid, sender_id uuid, content text, media_url text, media_kind text, created_at timestamp with time zone, deleted_at timestamp with time zone, pseudo text, first_name text, last_name text, avatar_url text, reactions jsonb, lu_par integer, task_id uuid, event_id uuid, carte jsonb)   [security definer, postgres]
 -- messages_non_lus() → TABLE(group_id uuid, non_lus integer, dernier timestamp with time zone)   [security definer, postgres]
 -- modifier_evenement(p_event_id uuid, p_title text, p_starts_at timestamp with time zone, p_ends_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_description text DEFAULT NULL::text, p_location text DEFAULT NULL::text, p_rrule text DEFAULT NULL::text, p_image_url text DEFAULT NULL::text, p_reminder_minutes integer DEFAULT NULL::integer) → events   [security definer, postgres]
 -- modifier_tache(p_task_id uuid, p_title text, p_description text DEFAULT NULL::text, p_due_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_priority text DEFAULT 'medium'::text, p_reminder_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_rrule text DEFAULT NULL::text) → tasks   [security definer, postgres]
@@ -465,6 +469,7 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 -- oublier_push(p_token text) → boolean   [security definer, postgres]
 -- peut_voir_evenement(p_event_id uuid) → boolean   [security definer, postgres]
 -- peut_voir_tache(p_task_id uuid) → boolean   [security definer, postgres]
+-- prendre_tache(p_task_id uuid) → text   [security definer, postgres]
 -- prochaine_occurrence(p_base timestamp with time zone, p_rrule text, p_apres timestamp with time zone) → timestamp with time zone   [security invoker, postgres]
 -- promouvoir_membre(p_group_id uuid, p_user_id uuid) → text   [security definer, postgres]
 -- pseudo_disponible(p_pseudo text) → boolean   [security definer, postgres]
@@ -485,6 +490,7 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 -- retirer_membre(p_group_id uuid, p_user_id uuid) → text   [security definer, postgres]
 -- retrograder_membre(p_group_id uuid, p_user_id uuid) → text   [security definer, postgres]
 -- s_attribuer_tache(p_task_id uuid, p_prendre boolean DEFAULT true) → text   [security definer, postgres]
+-- se_desister(p_task_id uuid) → text   [security definer, postgres]
 -- statuts_de_disponibilite(p_users uuid[], p_at timestamp with time zone) → TABLE(user_id uuid, statut text)   [security definer, postgres]
 -- supprimer_article(p_item_id uuid) → boolean   [security definer, postgres]
 -- supprimer_disponibilite(p_id uuid) → boolean   [security definer, postgres]
@@ -505,6 +511,7 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 -- event_participants       CREATE TRIGGER trg_notifier_invitation_evenement AFTER INSERT ON public.event_participants FOR EACH ROW EXECUTE FUNCTION notifier_invitation_evenement()
 -- event_participants       CREATE TRIGGER trg_push_invitation_evenement AFTER INSERT ON public.event_participants FOR EACH ROW EXECUTE FUNCTION push_invitation_evenement()
 -- event_participants       CREATE TRIGGER trg_push_reponse_evenement AFTER UPDATE ON public.event_participants FOR EACH ROW EXECUTE FUNCTION push_reponse_evenement()
+-- events                   CREATE TRIGGER trg_deposer_carte_evenement AFTER INSERT ON public.events FOR EACH ROW EXECUTE FUNCTION deposer_carte_evenement()
 -- events                   CREATE TRIGGER trg_push_date_changee AFTER UPDATE ON public.events FOR EACH ROW EXECUTE FUNCTION push_date_changee()
 -- groups                   CREATE TRIGGER trg_group_creator_admin AFTER INSERT ON public.groups FOR EACH ROW EXECUTE FUNCTION add_creator_as_admin()
 -- invitations              CREATE TRIGGER trg_clore_notification_invitation AFTER UPDATE ON public.invitations FOR EACH ROW EXECUTE FUNCTION clore_notification_invitation()
@@ -516,6 +523,7 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 -- task_assignees           CREATE TRIGGER trg_notifier_attribution_tache AFTER INSERT ON public.task_assignees FOR EACH ROW EXECUTE FUNCTION notifier_attribution_tache()
 -- task_assignees           CREATE TRIGGER trg_notifier_reponse_tache AFTER UPDATE ON public.task_assignees FOR EACH ROW EXECUTE FUNCTION notifier_reponse_tache()
 -- task_assignees           CREATE TRIGGER trg_push_tache_assignee AFTER INSERT ON public.task_assignees FOR EACH ROW EXECUTE FUNCTION push_tache_assignee()
+-- tasks                    CREATE TRIGGER trg_deposer_carte_tache AFTER INSERT ON public.tasks FOR EACH ROW EXECUTE FUNCTION deposer_carte_tache()
 
 
 -- =========================================================
@@ -543,7 +551,7 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 -- messages                 anon             SELECT
 -- messages                 authenticated    SELECT
 -- notification_preferences anon             SELECT
--- notification_preferences authenticated    DELETE, INSERT, SELECT, UPDATE
+-- notification_preferences authenticated    SELECT
 -- notifications            anon             DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE
 -- notifications            authenticated    DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE
 -- profiles                 anon             DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE

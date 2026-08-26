@@ -362,6 +362,9 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 -- messages                 msg_select                   SELECT {public}
 --   using       : is_group_member(group_id)
 --   with check  : —
+-- notification_preferences np_all                       ALL    {authenticated}
+--   using       : (user_id = auth.uid())
+--   with check  : (user_id = auth.uid())
 -- notification_preferences np_select                    SELECT {authenticated}
 --   using       : (user_id = auth.uid())
 --   with check  : —
@@ -447,17 +450,18 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 -- mes_disponibilites() → TABLE(id uuid, kind text, weekday integer, on_date date, start_time time without time zone, end_time time without time zone, status text, created_at timestamp with time zone)   [security definer, postgres]
 -- mes_invitations() → TABLE(id uuid, group_id uuid, nom text, description text, photo_url text, nombre_membres integer, membres_apercu text[], emetteur text, emetteur_avatar text, statut text, created_at timestamp with time zone, expires_at timestamp with time zone, membership_expires_at timestamp with time zone)   [security definer, postgres]
 -- mes_preferences_notification() → TABLE(type text, libelle text, description text, enabled boolean)   [security definer, postgres]
--- mes_taches(p_group_id uuid DEFAULT NULL::uuid) → TABLE(id uuid, group_id uuid, created_by uuid, title text, description text, due_at timestamp with time zone, priority text, reminder_at timestamp with time zone, rrule text, completed_at timestamp with time zone, created_at timestamp with time zone, mon_statut text, assignes jsonb, articles integer, articles_coches integer, auteur text, auteur_avatar text)   [security definer, postgres]
+-- mes_taches(p_group_id uuid DEFAULT NULL::uuid) → TABLE(id uuid, group_id uuid, created_by uuid, title text, description text, due_at timestamp with time zone, priority text, reminder_at timestamp with time zone, rrule text, completed_at timestamp with time zone, created_at timestamp with time zone, mon_statut text, assignes jsonb, articles integer, articles_coches integer, auteur text, auteur_avatar text, groupe_nom text, groupe_photo text)   [security definer, postgres]
 -- messages_du_groupe(p_group_id uuid, p_avant timestamp with time zone DEFAULT NULL::timestamp with time zone, p_limite integer DEFAULT 50) → TABLE(id uuid, group_id uuid, sender_id uuid, content text, media_url text, media_kind text, created_at timestamp with time zone, deleted_at timestamp with time zone, pseudo text, first_name text, last_name text, avatar_url text, reactions jsonb, lu_par integer)   [security definer, postgres]
 -- messages_non_lus() → TABLE(group_id uuid, non_lus integer, dernier timestamp with time zone)   [security definer, postgres]
 -- modifier_evenement(p_event_id uuid, p_title text, p_starts_at timestamp with time zone, p_ends_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_description text DEFAULT NULL::text, p_location text DEFAULT NULL::text, p_rrule text DEFAULT NULL::text, p_image_url text DEFAULT NULL::text, p_reminder_minutes integer DEFAULT NULL::integer) → events   [security definer, postgres]
 -- modifier_tache(p_task_id uuid, p_title text, p_description text DEFAULT NULL::text, p_due_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_priority text DEFAULT 'medium'::text, p_reminder_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_rrule text DEFAULT NULL::text) → tasks   [security definer, postgres]
--- mon_agenda(p_debut timestamp with time zone DEFAULT NULL::timestamp with time zone, p_fin timestamp with time zone DEFAULT NULL::timestamp with time zone, p_group_id uuid DEFAULT NULL::uuid) → TABLE(id uuid, group_id uuid, owner_id uuid, title text, description text, starts_at timestamp with time zone, ends_at timestamp with time zone, location text, rrule text, image_url text, reminder_minutes integer, ma_reponse text, participants jsonb, nombre_oui integer, auteur text, auteur_avatar text)   [security definer, postgres]
+-- mon_agenda(p_debut timestamp with time zone DEFAULT NULL::timestamp with time zone, p_fin timestamp with time zone DEFAULT NULL::timestamp with time zone, p_group_id uuid DEFAULT NULL::uuid) → TABLE(id uuid, group_id uuid, owner_id uuid, title text, description text, starts_at timestamp with time zone, ends_at timestamp with time zone, location text, rrule text, image_url text, reminder_minutes integer, ma_reponse text, participants jsonb, nombre_oui integer, auteur text, auteur_avatar text, groupe_nom text, groupe_photo text)   [security definer, postgres]
 -- nom_affiche(p_user_id uuid) → text   [security definer, postgres]
 -- notifier_attribution_tache() → trigger   [security definer, postgres]
 -- notifier_demande_contact() → trigger   [security definer, postgres]
 -- notifier_invitation_evenement() → trigger   [security definer, postgres]
 -- notifier_invitation_groupe() → trigger   [security definer, postgres]
+-- notifier_reponse_tache() → trigger   [security definer, postgres]
 -- oublier_push(p_token text) → boolean   [security definer, postgres]
 -- peut_voir_evenement(p_event_id uuid) → boolean   [security definer, postgres]
 -- peut_voir_tache(p_task_id uuid) → boolean   [security definer, postgres]
@@ -510,6 +514,7 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 -- task_assignees           CREATE TRIGGER trg_clore_notification_tache AFTER UPDATE ON public.task_assignees FOR EACH ROW EXECUTE FUNCTION clore_notification_tache()
 -- task_assignees           CREATE TRIGGER trg_clore_notification_tache_retiree AFTER DELETE ON public.task_assignees FOR EACH ROW EXECUTE FUNCTION clore_notification_tache_retiree()
 -- task_assignees           CREATE TRIGGER trg_notifier_attribution_tache AFTER INSERT ON public.task_assignees FOR EACH ROW EXECUTE FUNCTION notifier_attribution_tache()
+-- task_assignees           CREATE TRIGGER trg_notifier_reponse_tache AFTER UPDATE ON public.task_assignees FOR EACH ROW EXECUTE FUNCTION notifier_reponse_tache()
 -- task_assignees           CREATE TRIGGER trg_push_tache_assignee AFTER INSERT ON public.task_assignees FOR EACH ROW EXECUTE FUNCTION push_tache_assignee()
 
 
@@ -538,7 +543,7 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 -- messages                 anon             SELECT
 -- messages                 authenticated    SELECT
 -- notification_preferences anon             SELECT
--- notification_preferences authenticated    SELECT
+-- notification_preferences authenticated    DELETE, INSERT, SELECT, UPDATE
 -- notifications            anon             DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE
 -- notifications            authenticated    DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE
 -- profiles                 anon             DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE

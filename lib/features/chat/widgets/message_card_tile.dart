@@ -40,10 +40,13 @@ class _MessageCardTileState extends ConsumerState<MessageCardTile> {
     if (carte == null) return const SizedBox.shrink();
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
       child: AppCard(
         onTap: carte.supprimee ? null : _ouvrirLeDetail,
-        padding: const EdgeInsets.all(AppSpacing.md),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
         child: switch (carte) {
           TaskCard() => _tache(carte),
           EventCardData() => _evenement(carte),
@@ -63,23 +66,22 @@ class _MessageCardTileState extends ConsumerState<MessageCardTile> {
         _Entete(
           icone: Icons.task_alt_rounded,
           couleur: AppColors.primary,
-          libelle: 'Tâche',
           titre: carte.titre,
           barre: carte.supprimee || carte.terminee,
         ),
 
-        if (carte.dueAt != null && !carte.supprimee) ...<Widget>[
-          AppSpacing.gapSm,
-          _Ligne(
-            icone: Icons.event_outlined,
-            texte:
-                'Échéance ${AppDates.shortDate(carte.dueAt!)} à '
-                '${AppDates.time(carte.dueAt!)}',
+        if (!carte.supprimee) ...<Widget>[
+          AppSpacing.gapXs,
+          _Meta(
+            texte: carte.dueAt == null
+                ? 'Tâche'
+                : 'Tâche · échéance ${AppDates.shortDate(carte.dueAt!)} à '
+                      '${AppDates.time(carte.dueAt!)}',
           ),
         ],
 
         if (carte.supprimee) ...<Widget>[
-          AppSpacing.gapSm,
+          AppSpacing.gapXs,
           const _Etat(texte: 'Cette tâche a été supprimée.'),
         ] else if (titulaire != null) ...<Widget>[
           AppSpacing.gapSm,
@@ -88,11 +90,14 @@ class _MessageCardTileState extends ConsumerState<MessageCardTile> {
           // refuse depuis son écran d'attribution : le refus reste visible
           // pour qui l'a confiée, la disparition non.
           if (carte.priseParMoi) ...<Widget>[
-            AppSpacing.gapMd,
-            SecondaryButton(
-              label: 'Me désister',
-              isDestructive: true,
-              onPressed: _enCours ? null : _seDesister,
+            AppSpacing.gapSm,
+            SizedBox(
+              height: 40,
+              child: SecondaryButton(
+                label: 'Me désister',
+                isDestructive: true,
+                onPressed: _enCours ? null : _seDesister,
+              ),
             ),
           ],
         ] else ...<Widget>[
@@ -104,6 +109,7 @@ class _MessageCardTileState extends ConsumerState<MessageCardTile> {
           InvitationActions(
             refuser: 'Non',
             accepter: 'Oui',
+            dense: true,
             enCours: _enCours,
             onRefuser: _passerSonTour,
             onAccepter: _prendre,
@@ -136,29 +142,25 @@ class _MessageCardTileState extends ConsumerState<MessageCardTile> {
         _Entete(
           icone: Icons.event_rounded,
           couleur: AppColors.warning,
-          libelle: 'Événement',
           titre: carte.titre,
           barre: carte.supprimee,
         ),
 
         if (carte.supprimee) ...<Widget>[
-          AppSpacing.gapSm,
+          AppSpacing.gapXs,
           const _Etat(texte: 'Cet événement a été supprimé.'),
         ] else ...<Widget>[
-          AppSpacing.gapSm,
-          _Ligne(
-            icone: Icons.schedule_rounded,
-            texte:
-                '${AppDates.shortDate(carte.debut)} · '
-                '${AppDates.timeRange(carte.debut, carte.fin)}',
+          AppSpacing.gapXs,
+          _Meta(
+            texte: <String>[
+              'Événement · ${AppDates.shortDate(carte.debut)}',
+              AppDates.timeRange(carte.debut, carte.fin),
+              if (carte.lieu != null && carte.lieu!.isNotEmpty) carte.lieu!,
+            ].join(' · '),
           ),
-          if (carte.lieu != null && carte.lieu!.isNotEmpty) ...<Widget>[
-            const SizedBox(height: 2),
-            _Ligne(icone: Icons.place_outlined, texte: carte.lieu!),
-          ],
+          const SizedBox(height: 2),
+          _Meta(texte: carte.decompte),
           AppSpacing.gapSm,
-          _Ligne(icone: Icons.how_to_reg_rounded, texte: carte.decompte),
-          AppSpacing.gapMd,
           ResponseButtons(
             compact: true,
             courante: carte.maReponse,
@@ -254,14 +256,12 @@ class _Entete extends StatelessWidget {
   const _Entete({
     required this.icone,
     required this.couleur,
-    required this.libelle,
     required this.titre,
     required this.barre,
   });
 
   final IconData icone;
   final Color couleur;
-  final String libelle;
   final String titre;
 
   /// Titre barré : supprimé ou terminé. Le garder lisible vaut mieux que de
@@ -271,37 +271,27 @@ class _Entete extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Container(
-          width: 36,
-          height: 36,
+          width: 28,
+          height: 28,
           decoration: BoxDecoration(
             color: couleur.withValues(alpha: 0.12),
             borderRadius: AppRadii.fieldRadius,
           ),
-          child: Icon(icone, size: 18, color: couleur),
+          child: Icon(icone, size: 15, color: couleur),
         ),
-        AppSpacing.hGapMd,
+        AppSpacing.hGapSm,
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(
-                libelle,
-                style: AppTypography.caption.copyWith(color: couleur),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                titre,
-                style: AppTypography.h3.copyWith(
-                  decoration: barre ? TextDecoration.lineThrough : null,
-                  color: barre ? AppColors.textSecondary : AppColors.midnight,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+          child: Text(
+            titre,
+            style: AppTypography.body.copyWith(
+              fontWeight: AppTypography.semiBold,
+              decoration: barre ? TextDecoration.lineThrough : null,
+              color: barre ? AppColors.textSecondary : AppColors.midnight,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
@@ -309,29 +299,26 @@ class _Entete extends StatelessWidget {
   }
 }
 
-class _Ligne extends StatelessWidget {
-  const _Ligne({required this.icone, required this.texte});
+/// Le contexte de la carte, en une ligne : sa nature, sa date, son lieu.
+///
+/// Sans icône, et alignée sous le titre plutôt que sous le badge : une colonne
+/// d'icônes coûtait une gouttière entière pour trois mots, et la carte tient
+/// dans un fil de conversation, pas sur un écran.
+class _Meta extends StatelessWidget {
+  const _Meta({required this.texte});
 
-  final IconData icone;
   final String texte;
 
   @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: <Widget>[
-        Icon(icone, size: 15, color: AppColors.textSecondary),
-        AppSpacing.hGapSm,
-        Expanded(
-          child: Text(
-            texte,
-            style: AppTypography.caption,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(left: 36),
+    child: Text(
+      texte,
+      style: AppTypography.caption,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    ),
+  );
 }
 
 /// Un mot sur l'état de la carte, en gris : ce n'est pas une donnée de
@@ -342,9 +329,12 @@ class _Etat extends StatelessWidget {
   final String texte;
 
   @override
-  Widget build(BuildContext context) => Text(
-    texte,
-    style: AppTypography.caption.copyWith(color: AppColors.textSecondary),
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(left: 36),
+    child: Text(
+      texte,
+      style: AppTypography.caption.copyWith(color: AppColors.textSecondary),
+    ),
   );
 }
 
@@ -361,13 +351,14 @@ class _Titulaire extends StatelessWidget {
       children: <Widget>[
         AvatarImage(
           data: AvatarData(name: personne.name, imageUrl: personne.avatarUrl),
-          size: 28,
+          size: 24,
         ),
         AppSpacing.hGapSm,
         Expanded(
           child: Text(
             phrase,
-            style: AppTypography.body.copyWith(
+            style: AppTypography.caption.copyWith(
+              color: AppColors.midnight,
               fontWeight: AppTypography.semiBold,
             ),
             maxLines: 2,

@@ -1590,6 +1590,14 @@ Ce n'est pas quelqu'un qui parle, c'est quelque chose qui arrive au groupe :
 la distinction doit se voir avant d'être lue. La carte ne porte ni avatar ni
 réaction, et **coupe la série** — la bulle qui la suit recommence par son nom.
 
+**Elle reste une ligne du fil, pas un écran.** D'où trois resserrements qui
+ne sont pas cosmétiques : la nature de l'élément rejoint la ligne de contexte
+au lieu d'occuper sa propre ligne (« Tâche · échéance 04/08 à 18:00 »), les
+lignes de contexte n'ont pas d'icône — une colonne d'icônes coûtait une
+gouttière entière pour trois mots —, et les boutons passent à 40 dp via
+`InvitationActions(dense: true)`. La carte tombe de 234 à 188 dp, un cinquième
+de moins, sans qu'aucune information disparaisse.
+
 Un appui ouvre le détail ; les boutons répondent sur place. Une carte
 supprimée n'ouvre plus rien et **garde son titre** : sans lui, elle ne dirait
 plus de quoi il s'agissait.

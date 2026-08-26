@@ -169,6 +169,7 @@ class InvitationActions extends StatelessWidget {
     required this.onRefuser,
     required this.onAccepter,
     this.enCours = false,
+    this.dense = false,
   });
 
   final String refuser;
@@ -177,26 +178,33 @@ class InvitationActions extends StatelessWidget {
   final VoidCallback? onAccepter;
   final bool enCours;
 
+  /// Version resserrée, pour une carte posée dans un fil de conversation :
+  /// la hauteur de plein écran y pèserait plus que l'action ne vaut.
+  final bool dense;
+
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: <Widget>[
-        Expanded(
-          child: SecondaryButton(
-            label: refuser,
-            isDestructive: true,
-            onPressed: enCours ? null : onRefuser,
+    return SizedBox(
+      height: dense ? 40 : null,
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: SecondaryButton(
+              label: refuser,
+              isDestructive: true,
+              onPressed: enCours ? null : onRefuser,
+            ),
           ),
-        ),
-        AppSpacing.hGapMd,
-        Expanded(
-          child: PrimaryButton(
-            label: accepter,
-            isLoading: enCours,
-            onPressed: onAccepter,
+          dense ? AppSpacing.hGapSm : AppSpacing.hGapMd,
+          Expanded(
+            child: PrimaryButton(
+              label: accepter,
+              isLoading: enCours,
+              onPressed: onAccepter,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

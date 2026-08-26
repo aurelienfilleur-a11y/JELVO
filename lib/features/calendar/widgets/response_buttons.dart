@@ -25,10 +25,16 @@ class ResponseButtons extends StatelessWidget {
   /// Version resserrée, pour une ligne de notification.
   final bool compact;
 
+  /// **Refus à gauche, acceptation à droite** — le même ordre que les deux
+  /// boutons des autres invitations.
+  ///
+  /// L'ordre inverse a été utilisé jusqu'ici. Le garder à un endroit et pas à
+  /// l'autre aurait été le pire des deux : trois boutons identiques dont le
+  /// premier veut dire « oui » ici et « non » là, à un doigt d'écart.
   static const List<EventResponse> _choix = <EventResponse>[
-    EventResponse.yes,
-    EventResponse.maybe,
     EventResponse.no,
+    EventResponse.maybe,
+    EventResponse.yes,
   ];
 
   @override

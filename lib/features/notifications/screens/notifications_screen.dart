@@ -194,9 +194,19 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       case NotificationType.eventInvitation:
         final String? eventId = notification.eventId;
         if (eventId != null) {
+          // L'écran d'invitation, pas le détail : la question du moment est
+          // « est-ce que je viens ? », pas « qu'ai-je accepté ? ».
           router.pushNamed(
-            AppRoutes.eventDetail,
+            AppRoutes.eventInvitation,
             pathParameters: <String, String>{'id': eventId},
+          );
+        }
+      case NotificationType.taskAssigned:
+        final String? taskId = notification.taskId;
+        if (taskId != null) {
+          router.pushNamed(
+            AppRoutes.taskAssignment,
+            pathParameters: <String, String>{'id': taskId},
           );
         }
       case NotificationType.autre:

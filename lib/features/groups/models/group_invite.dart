@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 /// État d'un lien d'invitation, tel que le renvoie `apercu_groupe_par_jeton`.
 enum InviteLinkStatus {
@@ -283,6 +283,181 @@ class GroupInviteLink {
 
   @override
   int get hashCode => id.hashCode;
+}
+
+/// Ce que l'écran d'une invitation nominative a le droit de proposer.
+///
+/// C'est un **mot d'état**, renvoyé par `invitation_par_id`, et non l'absence
+/// de ligne. Une invitation refusée n'est pas une invitation qui n'existe
+/// pas : dire « introuvable » dans les cinq cas envoyait chercher le défaut du
+/// mauvais côté, et laissait surtout deux boutons sans effet.
+enum InvitationScreenStatus {
+  valide,
+  acceptee,
+  refusee,
+  expiree,
+  dejaMembre,
+  groupeSupprime,
+  introuvable;
+
+  static InvitationScreenStatus fromDb(String? value) => switch (value) {
+    'valide' => InvitationScreenStatus.valide,
+    'acceptee' => InvitationScreenStatus.acceptee,
+    'refusee' => InvitationScreenStatus.refusee,
+    'expiree' => InvitationScreenStatus.expiree,
+    'deja_membre' => InvitationScreenStatus.dejaMembre,
+    'groupe_supprime' => InvitationScreenStatus.groupeSupprime,
+    _ => InvitationScreenStatus.introuvable,
+  };
+
+  /// Seul cet état laisse répondre. Partout ailleurs l'écran explique.
+  bool get peutRepondre => this == InvitationScreenStatus.valide;
+
+  /// L'invitation a bien existé, et son groupe est toujours là : l'écran peut
+  /// donc montrer la carte du groupe sous le message.
+  bool get gardeLeContexte =>
+      this != InvitationScreenStatus.introuvable &&
+      this != InvitationScreenStatus.groupeSupprime;
+
+  String get titre => switch (this) {
+    InvitationScreenStatus.valide => '',
+    InvitationScreenStatus.acceptee => 'Invitation déjà acceptée',
+    InvitationScreenStatus.refusee => 'Invitation déjà refusée',
+    InvitationScreenStatus.expiree => 'Invitation expirée',
+    InvitationScreenStatus.dejaMembre => 'Vous êtes déjà membre',
+    InvitationScreenStatus.groupeSupprime => 'Groupe supprimé',
+    InvitationScreenStatus.introuvable => 'Invitation introuvable',
+  };
+
+  String get message => switch (this) {
+    InvitationScreenStatus.valide => '',
+    InvitationScreenStatus.acceptee =>
+      'Vous avez déjà rejoint ce groupe. Ouvrez-le pour y retrouver ses '
+          'événements, ses tâches et sa conversation.',
+    InvitationScreenStatus.refusee =>
+      'Vous avez décliné cette invitation. Demandez-en une nouvelle si vous '
+          'changez d’avis.',
+    InvitationScreenStatus.expiree =>
+      'Cette invitation a passé sa date limite. Demandez-en une nouvelle au '
+          'groupe.',
+    InvitationScreenStatus.dejaMembre =>
+      'Vous faites déjà partie de ce groupe, sans doute par un lien de '
+          'partage.',
+    InvitationScreenStatus.groupeSupprime =>
+      'Le groupe qui vous invitait a été supprimé. Il n’y a plus rien à '
+          'rejoindre.',
+    InvitationScreenStatus.introuvable =>
+      'Cette invitation n’existe pas, ou elle ne vous était pas destinée.',
+  };
+
+  IconData get icone => switch (this) {
+    InvitationScreenStatus.valide => Icons.mail_outline_rounded,
+    InvitationScreenStatus.acceptee => Icons.check_circle_outline_rounded,
+    InvitationScreenStatus.refusee => Icons.do_not_disturb_on_outlined,
+    InvitationScreenStatus.expiree => Icons.hourglass_disabled_rounded,
+    InvitationScreenStatus.dejaMembre => Icons.groups_rounded,
+    InvitationScreenStatus.groupeSupprime => Icons.folder_off_outlined,
+    InvitationScreenStatus.introuvable => Icons.help_outline_rounded,
+  };
+}
+
+/// Un membre du groupe tel que l'écran d'invitation le montre : un prénom et
+/// un visage, rien de plus.
+@immutable
+class InvitationMember {
+  const InvitationMember({required this.name, this.avatarUrl});
+
+  factory InvitationMember.fromJson(Map<String, dynamic> json) =>
+      InvitationMember(
+        name: (json['nom'] as String?) ?? 'Membre',
+        avatarUrl: json['avatar_url'] as String?,
+      );
+
+  final String name;
+  final String? avatarUrl;
+}
+
+/// Une invitation nominative, **dans l'état où elle se trouve**.
+///
+/// À distinguer de [GroupInvitation], que `mes_invitations` ne renvoie que
+/// tant qu'elle est en attente : celle-ci se lit encore une fois acceptée,
+/// refusée, expirée ou son groupe supprimé — c'est tout son objet.
+@immutable
+class GroupInvitationDetail {
+  const GroupInvitationDetail({
+    required this.status,
+    this.id,
+    this.groupId,
+    this.groupName,
+    this.description,
+    this.photoUrl,
+    this.senderName,
+    this.senderAvatarUrl,
+    this.memberCount = 0,
+    this.members = const <InvitationMember>[],
+    this.groupCreatedAt,
+    this.createdAt,
+    this.expiresAt,
+    this.membershipExpiresAt,
+  });
+
+  factory GroupInvitationDetail.fromRow(Map<String, dynamic> row) {
+    final Object? membres = row['membres'];
+    return GroupInvitationDetail(
+      status: InvitationScreenStatus.fromDb(row['statut_ecran'] as String?),
+      id: row['id'] as String?,
+      groupId: row['group_id'] as String?,
+      groupName: row['nom'] as String?,
+      description: row['description'] as String?,
+      photoUrl: row['photo_url'] as String?,
+      senderName: row['emetteur'] as String?,
+      senderAvatarUrl: row['emetteur_avatar'] as String?,
+      memberCount: (row['nombre_membres'] as int?) ?? 0,
+      members: membres is List
+          ? membres
+                .whereType<Map<String, dynamic>>()
+                .map(InvitationMember.fromJson)
+                .toList()
+          : const <InvitationMember>[],
+      groupCreatedAt: DateTime.tryParse(
+        (row['groupe_cree_le'] as String?) ?? '',
+      )?.toLocal(),
+      createdAt: DateTime.tryParse(
+        (row['created_at'] as String?) ?? '',
+      )?.toLocal(),
+      expiresAt: DateTime.tryParse(
+        (row['expires_at'] as String?) ?? '',
+      )?.toLocal(),
+      membershipExpiresAt: DateTime.tryParse(
+        (row['membership_expires_at'] as String?) ?? '',
+      )?.toLocal(),
+    );
+  }
+
+  final InvitationScreenStatus status;
+  final String? id;
+  final String? groupId;
+  final String? groupName;
+  final String? description;
+  final String? photoUrl;
+  final String? senderName;
+  final String? senderAvatarUrl;
+  final int memberCount;
+  final List<InvitationMember> members;
+
+  /// Date de création **du groupe**, à ne pas confondre avec [createdAt], qui
+  /// est celle de l'invitation.
+  final DateTime? groupCreatedAt;
+
+  final DateTime? createdAt;
+  final DateTime? expiresAt;
+  final DateTime? membershipExpiresAt;
+
+  String get displaySender => senderName ?? 'Un membre';
+
+  String get displayGroupName => groupName ?? 'ce groupe';
+
+  String get memberLabel => '$memberCount membre${memberCount > 1 ? 's' : ''}';
 }
 
 /// Invitation nominative reçue, prête à être affichée.

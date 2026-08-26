@@ -375,7 +375,8 @@ declare
     -- Groupes, membres, invitations
     'creer_groupe', 'quitter_groupe', 'membres_du_groupe',
     'inviter_dans_groupe', 'accepter_invitation', 'refuser_invitation',
-    'mes_invitations', 'apercu_groupe_par_jeton', 'rejoindre_groupe_par_jeton',
+    'mes_invitations', 'invitation_par_id',
+    'apercu_groupe_par_jeton', 'rejoindre_groupe_par_jeton',
     'promouvoir_membre', 'retrograder_membre', 'retirer_membre',
     'definir_terme_adhesion',
     -- Contacts et recherche

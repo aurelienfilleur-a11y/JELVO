@@ -6,6 +6,7 @@ import '../../../core/core.dart';
 import '../../../data/data_providers.dart';
 import '../../../router/app_routes.dart';
 import '../../auth/models/auth_failure.dart';
+import '../models/group.dart';
 import '../models/group_invite.dart';
 import '../providers/group_providers.dart';
 import '../widgets/group_banner.dart';
@@ -85,8 +86,16 @@ class InvitationsScreen extends ConsumerWidget {
   }
 }
 
-/// Écran d'une invitation : émetteur, groupe, description, membres, et les
-/// deux seules réponses possibles.
+/// Écran d'une invitation à un groupe.
+///
+/// Trois blocs, comme les deux autres écrans d'invitation : **qui invite** en
+/// haut, **le groupe** au milieu, **les deux réponses** en bas.
+///
+/// Il se branche sur `invitationDetailProvider` et non sur la liste des
+/// invitations en attente : celle-ci ne renvoie que les `pending`, si bien
+/// qu'une invitation acceptée, refusée, expirée ou dont le groupe a été
+/// supprimé n'y figurait plus, et que les quatre cas se disaient
+/// « Invitation introuvable » — le mot le plus vague pour les quatre.
 class InvitationScreen extends ConsumerStatefulWidget {
   const InvitationScreen({super.key, required this.invitationId});
 
@@ -97,18 +106,13 @@ class InvitationScreen extends ConsumerStatefulWidget {
 }
 
 class _InvitationScreenState extends ConsumerState<InvitationScreen> {
-  bool _working = false;
+  bool _enCours = false;
 
   @override
   Widget build(BuildContext context) {
-    final List<GroupInvitation> invitations =
-        ref.watch(invitationsProvider).value ?? const <GroupInvitation>[];
-    final DateTime now = ref.watch(nowProvider);
-
-    GroupInvitation? invitation;
-    for (final GroupInvitation candidate in invitations) {
-      if (candidate.id == widget.invitationId) invitation = candidate;
-    }
+    final AsyncValue<GroupInvitationDetail> detailAsync = ref.watch(
+      invitationDetailProvider(widget.invitationId),
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -117,27 +121,52 @@ class _InvitationScreenState extends ConsumerState<InvitationScreen> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           tooltip: 'Retour',
-          onPressed: _working ? null : () => Navigator.of(context).maybePop(),
+          onPressed: _enCours ? null : () => Navigator.of(context).maybePop(),
         ),
       ),
       body: SafeArea(
-        child: invitation == null
-            ? EmptyState(
-                icon: Icons.mail_outline_rounded,
-                title: 'Invitation introuvable',
-                message:
-                    'Cette invitation a été annulée, ou vous y avez déjà '
-                    'répondu.',
-                actionLabel: 'Revenir aux groupes',
-                onActionPressed: () => context.goNamed(AppRoutes.groups),
-              )
-            : _content(invitation, now),
+        child: switch (detailAsync) {
+          AsyncValue<GroupInvitationDetail>(isLoading: true) => const Center(
+            child: CircularProgressIndicator(),
+          ),
+          AsyncValue<GroupInvitationDetail>(
+            hasError: true,
+            :final Object? error,
+          ) =>
+            EmptyState(
+              icon: Icons.cloud_off_rounded,
+              title: 'Invitation indisponible',
+              message: AuthFailure.from(error!).message,
+              actionLabel: 'Réessayer',
+              onActionPressed: () =>
+                  ref.invalidate(invitationDetailProvider(widget.invitationId)),
+            ),
+          AsyncValue<GroupInvitationDetail>(:final GroupInvitationDetail? value)
+              when value != null =>
+            _corps(value),
+          _ => const SizedBox.shrink(),
+        },
       ),
     );
   }
 
-  Widget _content(GroupInvitation invitation, DateTime now) {
-    final bool expired = invitation.isExpired(now);
+  Widget _corps(GroupInvitationDetail invitation) {
+    final DateTime now = ref.watch(nowProvider);
+
+    // Ni contexte ni groupe : il n'y a rien à montrer sous le message.
+    if (!invitation.status.gardeLeContexte) {
+      return EmptyState(
+        icon: invitation.status.icone,
+        title: invitation.status.titre,
+        message: invitation.status.message,
+        actionLabel: 'Revenir aux groupes',
+        onActionPressed: () => context.goNamed(AppRoutes.groups),
+      );
+    }
+
+    final Color accent = invitation.groupId == null
+        ? AppColors.primary
+        : GroupAccent.forId(invitation.groupId!).color;
 
     return ListView(
       padding: const EdgeInsets.only(bottom: AppSpacing.xxl),
@@ -147,9 +176,9 @@ class _InvitationScreenState extends ConsumerState<InvitationScreen> {
             bottom: Radius.circular(AppSpacing.lg),
           ),
           child: GroupBanner(
-            name: invitation.groupName,
+            name: invitation.displayGroupName,
             subtitle: invitation.memberLabel,
-            accentColor: AppColors.primary,
+            accentColor: accent,
             icon: Icons.groups_rounded,
             photoUrl: invitation.photoUrl,
           ),
@@ -165,105 +194,73 @@ class _InvitationScreenState extends ConsumerState<InvitationScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
+              InvitationHeader(
+                author: AvatarData(
+                  name: invitation.displaySender,
+                  imageUrl: invitation.senderAvatarUrl,
+                ),
+                action: 'vous invite à rejoindre un groupe',
+                since: invitation.createdAt,
+                now: now,
+              ),
+
+              AppSpacing.gapXl,
               AppCard(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                child: Row(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.xs,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    AvatarStack(
-                      avatars: <AvatarData>[
-                        AvatarData(
-                          name: invitation.senderName,
-                          imageUrl: invitation.senderAvatarUrl,
-                        ),
-                      ],
-                      size: 40,
-                    ),
-                    AppSpacing.hGapMd,
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text(
-                            invitation.senderName,
-                            style: AppTypography.body.copyWith(
-                              fontWeight: AppTypography.semiBold,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'vous invite à rejoindre ce groupe',
-                            style: AppTypography.caption,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
+                    if (invitation.description != null &&
+                        invitation.description!.isNotEmpty)
+                      InvitationDetailRow(
+                        icon: Icons.notes_rounded,
+                        label: 'Description',
+                        value: invitation.description!,
                       ),
+                    InvitationDetailRow(
+                      icon: Icons.group_outlined,
+                      label: 'Membres',
+                      value: invitation.memberLabel,
+                      dernier: invitation.groupCreatedAt == null,
                     ),
+                    if (invitation.groupCreatedAt != null)
+                      InvitationDetailRow(
+                        icon: Icons.cake_outlined,
+                        label: 'Créé le',
+                        value: AppDates.fullDate(invitation.groupCreatedAt!),
+                        dernier: true,
+                      ),
                   ],
                 ),
               ),
 
-              // Annoncé avant les deux boutons, et non après : ce qui change
-              // la nature de l'offre se lit avant d'y répondre.
-              if (invitation.membershipExpiresAt != null) ...<Widget>[
-                AppSpacing.gapXl,
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  decoration: BoxDecoration(
-                    color: AppColors.warningSoft,
-                    borderRadius: AppRadii.fieldRadius,
-                  ),
-                  child: Row(
-                    children: <Widget>[
-                      const Icon(
-                        Icons.schedule_rounded,
-                        size: 18,
-                        color: AppColors.warning,
-                      ),
-                      AppSpacing.hGapSm,
-                      Expanded(
-                        child: Text(
-                          'Adhésion temporaire : jusqu’au '
-                          '${AppDates.fullDate(invitation.membershipExpiresAt!)}.',
-                          style: AppTypography.caption.copyWith(
-                            color: AppColors.midnight,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-
-              if (invitation.description != null &&
-                  invitation.description!.isNotEmpty) ...<Widget>[
-                AppSpacing.gapXl,
-                const SectionHeader(title: 'À propos du groupe'),
-                AppSpacing.gapSm,
-                Text(invitation.description!, style: AppTypography.bodyMuted),
-              ],
-
-              if (invitation.memberNames.isNotEmpty) ...<Widget>[
+              if (invitation.members.isNotEmpty) ...<Widget>[
                 AppSpacing.gapXl,
                 SectionHeader(
-                  title: 'Membres',
+                  title: 'Déjà dans le groupe',
                   subtitle: invitation.memberLabel,
                 ),
                 AppSpacing.gapMd,
                 Row(
                   children: <Widget>[
                     AvatarStack(
-                      avatars: invitation.memberNames
-                          .map((String n) => AvatarData(name: n))
+                      avatars: invitation.members
+                          .map(
+                            (InvitationMember m) =>
+                                AvatarData(name: m.name, imageUrl: m.avatarUrl),
+                          )
                           .toList(),
                       size: 36,
                     ),
                     AppSpacing.hGapMd,
                     Expanded(
                       child: Text(
-                        invitation.memberNames.join(', '),
+                        invitation.members
+                            .map((InvitationMember m) => m.name)
+                            .join(', '),
                         style: AppTypography.caption,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -273,44 +270,41 @@ class _InvitationScreenState extends ConsumerState<InvitationScreen> {
                 ),
               ],
 
-              if (expired) ...<Widget>[
+              // Annoncé avant les boutons, et non après : ce qui change la
+              // nature de l'offre se lit avant d'y répondre.
+              if (invitation.membershipExpiresAt != null) ...<Widget>[
                 AppSpacing.gapXl,
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  decoration: BoxDecoration(
-                    color: AppColors.warningSoft,
-                    borderRadius: AppRadii.fieldRadius,
-                  ),
-                  child: Text(
-                    'Cette invitation a expiré. Demandez-en une nouvelle au '
-                    'groupe.',
-                    style: AppTypography.caption.copyWith(
-                      color: AppColors.warning,
-                    ),
-                  ),
+                _Bandeau(
+                  icone: Icons.schedule_rounded,
+                  couleur: AppColors.warning,
+                  fond: AppColors.warningSoft,
+                  texte:
+                      'Adhésion temporaire : jusqu’au '
+                      '${AppDates.fullDate(invitation.membershipExpiresAt!)}.',
                 ),
               ],
 
               AppSpacing.gapXxl,
-              Row(
-                children: <Widget>[
-                  Expanded(
-                    child: SecondaryButton(
-                      label: 'Refuser',
-                      isDestructive: true,
-                      onPressed: _working ? null : () => _decline(invitation),
-                    ),
-                  ),
-                  AppSpacing.hGapMd,
-                  Expanded(
-                    child: PrimaryButton(
-                      label: 'Rejoindre',
-                      isLoading: _working,
-                      onPressed: expired ? null : () => _accept(invitation),
-                    ),
-                  ),
-                ],
-              ),
+              if (invitation.status.peutRepondre)
+                InvitationActions(
+                  refuser: 'Refuser',
+                  accepter: 'Rejoindre',
+                  enCours: _enCours,
+                  onRefuser: () => _refuser(invitation),
+                  onAccepter: () => _accepter(invitation),
+                )
+              else
+                _Denouement(
+                  statut: invitation.status,
+                  onOuvrirLeGroupe: invitation.groupId == null
+                      ? null
+                      : () => context.goNamed(
+                          AppRoutes.groupDetail,
+                          pathParameters: <String, String>{
+                            'id': invitation.groupId!,
+                          },
+                        ),
+                ),
             ],
           ),
         ),
@@ -318,49 +312,150 @@ class _InvitationScreenState extends ConsumerState<InvitationScreen> {
     );
   }
 
-  Future<void> _accept(GroupInvitation invitation) async {
-    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
-    final GoRouter router = GoRouter.of(context);
+  Future<void> _accepter(GroupInvitationDetail invitation) async {
+    final ScaffoldMessengerState messager = ScaffoldMessenger.of(context);
+    final GoRouter routeur = GoRouter.of(context);
+    final String? id = invitation.id;
+    if (id == null) return;
 
-    setState(() => _working = true);
+    setState(() => _enCours = true);
     try {
-      final JoinOutcome outcome = await ref
+      final JoinOutcome resultat = await ref
           .read(groupActionsProvider)
-          .acceptInvitation(invitation.id);
-      messenger.showSnackBar(SnackBar(content: Text(outcome.message)));
+          .acceptInvitation(id);
+      messager.showSnackBar(SnackBar(content: Text(resultat.message)));
 
-      if (outcome.isSuccess) {
-        router.goNamed(
+      if (resultat.isSuccess && invitation.groupId != null) {
+        routeur.goNamed(
           AppRoutes.groupDetail,
-          pathParameters: <String, String>{'id': invitation.groupId},
+          pathParameters: <String, String>{'id': invitation.groupId!},
         );
+      } else {
+        // Refus de la base : l'écran doit repartir de l'état réel plutôt que
+        // de garder deux boutons qui viennent de ne rien faire.
+        ref.invalidate(invitationDetailProvider(widget.invitationId));
       }
     } catch (error) {
-      messenger.showSnackBar(
+      messager.showSnackBar(
         SnackBar(content: Text(AuthFailure.from(error).message)),
       );
     } finally {
-      if (mounted) setState(() => _working = false);
+      if (mounted) setState(() => _enCours = false);
     }
   }
 
-  Future<void> _decline(GroupInvitation invitation) async {
-    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
-    final NavigatorState navigator = Navigator.of(context);
+  Future<void> _refuser(GroupInvitationDetail invitation) async {
+    final ScaffoldMessengerState messager = ScaffoldMessenger.of(context);
+    final NavigatorState navigateur = Navigator.of(context);
+    final String? id = invitation.id;
+    if (id == null) return;
 
-    setState(() => _working = true);
+    setState(() => _enCours = true);
     try {
-      await ref.read(groupActionsProvider).declineInvitation(invitation.id);
-      messenger.showSnackBar(
+      await ref.read(groupActionsProvider).declineInvitation(id);
+      messager.showSnackBar(
         const SnackBar(content: Text('Invitation refusée.')),
       );
-      navigator.maybePop();
+      navigateur.maybePop();
     } catch (error) {
-      messenger.showSnackBar(
+      messager.showSnackBar(
         SnackBar(content: Text(AuthFailure.from(error).message)),
       );
     } finally {
-      if (mounted) setState(() => _working = false);
+      if (mounted) setState(() => _enCours = false);
     }
+  }
+}
+
+/// Ce qui remplace les deux boutons quand l'invitation ne se répond plus.
+///
+/// **Jamais de bouton sans effet.** Une invitation déjà acceptée n'ouvre pas
+/// « Rejoindre » grisé : elle dit ce qui s'est passé, et propose la seule
+/// suite qui a du sens — ouvrir le groupe.
+class _Denouement extends StatelessWidget {
+  const _Denouement({required this.statut, this.onOuvrirLeGroupe});
+
+  final InvitationScreenStatus statut;
+  final VoidCallback? onOuvrirLeGroupe;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool membre =
+        statut == InvitationScreenStatus.acceptee ||
+        statut == InvitationScreenStatus.dejaMembre;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        _Bandeau(
+          icone: statut.icone,
+          couleur: membre ? AppColors.success : AppColors.textSecondary,
+          fond: membre ? AppColors.successSoft : AppColors.border,
+          titre: statut.titre,
+          texte: statut.message,
+        ),
+        if (membre && onOuvrirLeGroupe != null) ...<Widget>[
+          AppSpacing.gapLg,
+          PrimaryButton(label: 'Ouvrir le groupe', onPressed: onOuvrirLeGroupe),
+        ],
+      ],
+    );
+  }
+}
+
+/// Un pavé teinté : icône, titre facultatif, texte.
+class _Bandeau extends StatelessWidget {
+  const _Bandeau({
+    required this.icone,
+    required this.couleur,
+    required this.fond,
+    required this.texte,
+    this.titre,
+  });
+
+  final IconData icone;
+  final Color couleur;
+  final Color fond;
+  final String texte;
+  final String? titre;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: fond,
+        borderRadius: AppRadii.fieldRadius,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Icon(icone, size: 18, color: couleur),
+          AppSpacing.hGapSm,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                if (titre != null) ...<Widget>[
+                  Text(
+                    titre!,
+                    style: AppTypography.body.copyWith(
+                      fontWeight: AppTypography.semiBold,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                ],
+                Text(
+                  texte,
+                  style: AppTypography.caption.copyWith(
+                    color: AppColors.midnight,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

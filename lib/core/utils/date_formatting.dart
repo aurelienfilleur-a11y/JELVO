@@ -51,6 +51,29 @@ abstract final class AppDates {
     };
   }
 
+  /// Ancienneté d'un événement passé : « à l'instant », « il y a 2 h »,
+  /// « il y a 3 jours », puis la date au-delà d'une semaine.
+  ///
+  /// [relativeDay] répond à « quel jour ? », celle-ci à « depuis combien de
+  /// temps ? ». Les deux questions ne se posent pas au même endroit : une
+  /// échéance se situe dans le calendrier, une invitation se situe par rapport
+  /// à maintenant.
+  static String timeAgo(DateTime value, {DateTime? now}) {
+    final DateTime reference = now ?? DateTime.now();
+    final Duration ecart = reference.difference(value);
+
+    // Une date à venir n'a pas d'ancienneté : mieux vaut le dire que d'écrire
+    // « il y a -3 minutes ».
+    if (ecart.isNegative) return 'à l’instant';
+    if (ecart.inMinutes < 1) return 'à l’instant';
+    if (ecart.inMinutes < 60) return 'il y a ${ecart.inMinutes} min';
+    if (ecart.inHours < 24) return 'il y a ${ecart.inHours} h';
+    if (ecart.inDays < 7) {
+      return 'il y a ${ecart.inDays} jour${ecart.inDays > 1 ? 's' : ''}';
+    }
+    return 'le ${shortDate(value)}';
+  }
+
   /// Nombre de jours calendaires entre [value] et [reference], en ignorant
   /// l'heure (une soirée à 23 h et le lendemain 1 h sont bien à 1 jour d'écart).
   static int dayDifference(DateTime value, DateTime reference) {

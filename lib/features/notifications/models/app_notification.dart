@@ -11,6 +11,7 @@ enum NotificationType {
   groupInvitation('group_invitation'),
   contactRequest('contact_request'),
   eventInvitation('event_invitation'),
+  taskAssigned('task_assigned'),
   autre('autre');
 
   const NotificationType(this.dbValue);
@@ -21,6 +22,7 @@ enum NotificationType {
     'group_invitation' => NotificationType.groupInvitation,
     'contact_request' => NotificationType.contactRequest,
     'event_invitation' => NotificationType.eventInvitation,
+    'task_assigned' => NotificationType.taskAssigned,
     _ => NotificationType.autre,
   };
 
@@ -31,6 +33,9 @@ enum NotificationType {
     NotificationType.groupInvitation => 1,
     NotificationType.contactRequest => 3,
     NotificationType.eventInvitation => 2,
+    // Les tâches n'ont pas d'onglet : elles vivent dans l'accueil, d'où la
+    // liste complète s'ouvre.
+    NotificationType.taskAssigned => 0,
     NotificationType.autre => 0,
   };
 
@@ -38,6 +43,7 @@ enum NotificationType {
     NotificationType.groupInvitation => Icons.groups_rounded,
     NotificationType.contactRequest => Icons.person_add_alt_rounded,
     NotificationType.eventInvitation => Icons.event_rounded,
+    NotificationType.taskAssigned => Icons.task_alt_rounded,
     NotificationType.autre => Icons.notifications_none_rounded,
   };
 
@@ -45,6 +51,7 @@ enum NotificationType {
     NotificationType.groupInvitation => AppColors.primary,
     NotificationType.contactRequest => AppColors.success,
     NotificationType.eventInvitation => AppColors.warning,
+    NotificationType.taskAssigned => AppColors.primaryDark,
     NotificationType.autre => AppColors.textSecondary,
   };
 }
@@ -91,6 +98,7 @@ class AppNotification {
     NotificationType.groupInvitation => _text('inviter_name') ?? 'Un membre',
     NotificationType.contactRequest => _text('name') ?? 'Quelqu’un',
     NotificationType.eventInvitation => _text('auteur') ?? 'Un membre',
+    NotificationType.taskAssigned => _text('auteur') ?? 'Un membre',
     NotificationType.autre => 'Jelvo',
   };
 
@@ -98,6 +106,7 @@ class AppNotification {
     NotificationType.groupInvitation => _text('inviter_avatar'),
     NotificationType.contactRequest => _text('avatar_url'),
     NotificationType.eventInvitation => null,
+    NotificationType.taskAssigned => null,
     NotificationType.autre => null,
   };
 
@@ -121,10 +130,20 @@ class AppNotification {
 
   String? get eventLocation => _text('lieu');
 
+  /// Tâche concernée, pour une attribution.
+  String? get taskId => _text('task_id');
+
+  String get taskTitle => _text('titre') ?? 'une tâche';
+
+  /// Échéance de la tâche, déjà remise à l'heure locale.
+  DateTime? get taskDueAt =>
+      DateTime.tryParse(_text('due_at') ?? '')?.toLocal();
+
   String get title => switch (type) {
     NotificationType.groupInvitation => 'Invitation à rejoindre $groupName',
     NotificationType.contactRequest => 'Demande de contact',
     NotificationType.eventInvitation => eventTitle,
+    NotificationType.taskAssigned => taskTitle,
     NotificationType.autre => 'Notification',
   };
 
@@ -135,6 +154,7 @@ class AppNotification {
       '$senderName souhaite vous ajouter à ses contacts.',
     NotificationType.eventInvitation =>
       '$senderName vous convie${_text('group_name') == null ? '' : ' avec « $groupName »'}.',
+    NotificationType.taskAssigned => '$senderName vous a confié cette tâche.',
     NotificationType.autre => 'Vous avez une nouvelle notification.',
   };
 
@@ -143,6 +163,7 @@ class AppNotification {
     NotificationType.groupInvitation => 'Voir l’invitation',
     NotificationType.contactRequest => 'Voir la demande',
     NotificationType.eventInvitation => 'Voir l’événement',
+    NotificationType.taskAssigned => 'Voir la tâche',
     NotificationType.autre => null,
   };
 

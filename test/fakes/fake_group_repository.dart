@@ -15,10 +15,14 @@ class FakeGroupRepository implements GroupRepository {
     List<Group>? groups,
     List<GroupMember>? members,
     List<GroupInvitation>? invitations,
+    List<GroupInvitationDetail>? invitationDetails,
     this.previewStatus = InviteLinkStatus.valide,
     this.joinOutcome = JoinOutcome.rejoint,
     this.previewMembershipExpiresAt,
-  }) : _groups = List<Group>.of(groups ?? demoGroups),
+  }) : _invitationDetails = List<GroupInvitationDetail>.of(
+         invitationDetails ?? <GroupInvitationDetail>[],
+       ),
+       _groups = List<Group>.of(groups ?? demoGroups),
        _members = List<GroupMember>.of(members ?? demoMembers),
        _invitations = List<GroupInvitation>.of(
          invitations ?? <GroupInvitation>[],
@@ -28,6 +32,11 @@ class FakeGroupRepository implements GroupRepository {
   final List<GroupMember> _members;
   final List<GroupInvitation> _invitations;
   final List<GroupInviteLink> _links = <GroupInviteLink>[];
+
+  /// Détails imposés, pour éprouver les états dégradés — acceptée, refusée,
+  /// expirée, groupe supprimé. Sans entrée, le détail est dérivé de
+  /// l'invitation en attente du même identifiant.
+  final List<GroupInvitationDetail> _invitationDetails;
 
   /// État renvoyé par l'aperçu d'un lien, pour éprouver la page publique.
   final InviteLinkStatus previewStatus;
@@ -281,6 +290,36 @@ class FakeGroupRepository implements GroupRepository {
   @override
   Future<List<GroupInvitation>> fetchInvitations() async =>
       List<GroupInvitation>.of(_invitations);
+
+  @override
+  Future<GroupInvitationDetail> fetchInvitation(String invitationId) async {
+    for (final GroupInvitationDetail detail in _invitationDetails) {
+      if (detail.id == invitationId) return detail;
+    }
+    for (final GroupInvitation invitation in _invitations) {
+      if (invitation.id != invitationId) continue;
+      return GroupInvitationDetail(
+        status: InvitationScreenStatus.valide,
+        id: invitation.id,
+        groupId: invitation.groupId,
+        groupName: invitation.groupName,
+        description: invitation.description,
+        photoUrl: invitation.photoUrl,
+        senderName: invitation.senderName,
+        senderAvatarUrl: invitation.senderAvatarUrl,
+        memberCount: invitation.memberCount,
+        members: invitation.memberNames
+            .map((String n) => InvitationMember(name: n))
+            .toList(),
+        createdAt: invitation.createdAt,
+        expiresAt: invitation.expiresAt,
+        membershipExpiresAt: invitation.membershipExpiresAt,
+      );
+    }
+    return const GroupInvitationDetail(
+      status: InvitationScreenStatus.introuvable,
+    );
+  }
 
   @override
   Future<String> invite({

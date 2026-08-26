@@ -980,4 +980,204 @@ begin
 end;
 $temporaire$;
 
+
+-- ---------------------------------------------------------------------------
+-- Les trois écrans d'invitation (tranche 8).
+--
+-- Ce qui est éprouvé ici, ce sont les **états** : un écran qui propose
+-- « Rejoindre » sur une invitation déjà refusée est exactement le défaut que
+-- la tranche corrige. Chaque état est donc atteint pour de bon, jamais
+-- simulé.
+-- ---------------------------------------------------------------------------
+
+do $invitations$
+declare
+  camille  uuid := '11111111-1111-1111-1111-111111111111'::uuid;
+  lea      uuid := '33333333-3333-3333-3333-333333333333'::uuid;
+  groupe   uuid := '22222222-2222-2222-2222-222222222222'::uuid;
+  invitee  uuid := '66666666-6666-6666-6666-666666666666'::uuid;
+  groupe2  uuid;
+  invit    uuid;
+  tache    uuid;
+  evenement uuid;
+  etat     text;
+begin
+  insert into auth.users (id, email) values (invitee, 'invitee@exemple.test');
+  insert into public.profiles (id, pseudo, first_name, last_name)
+  values (invitee, 'invitee', 'Yanis', 'Colin');
+
+  -- 1. Une invitation en attente se lit, avec tout ce que l'écran affiche ---
+  perform set_config('request.jwt.claims',
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}',
+    true);
+  set local role authenticated;
+  assert public.inviter_dans_groupe(groupe, invitee) = 'invite',
+         'l''invitation n''est pas partie';
+  reset role;
+
+  select id into invit from public.invitations
+   where invitee_id = invitee and group_id = groupe;
+
+  perform set_config('request.jwt.claims',
+    '{"sub":"66666666-6666-6666-6666-666666666666","role":"authenticated"}',
+    true);
+  set local role authenticated;
+
+  select statut_ecran into etat from public.invitation_par_id(invit);
+  assert etat = 'valide',
+         format('une invitation en attente devrait être valide, reçu %s', etat);
+
+  -- La date de création du groupe et les membres avec leur avatar sont ce
+  -- que `mes_invitations` ne savait pas dire.
+  assert (select groupe_cree_le is not null
+            from public.invitation_par_id(invit)),
+         'la date de création du groupe manque';
+  assert (select jsonb_array_length(membres) >= 1
+            from public.invitation_par_id(invit)),
+         'les membres du groupe ne sont pas renvoyés';
+  assert (select emetteur is not null from public.invitation_par_id(invit)),
+         'le nom de l''émetteur manque';
+
+  -- **Contrôle négatif de la portée.** Un identifiant d'invitation qui n'est
+  -- pas la sienne ne doit pas livrer le nom du groupe.
+  perform set_config('request.jwt.claims',
+    '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}',
+    true);
+  select statut_ecran into etat from public.invitation_par_id(invit);
+  assert etat = 'introuvable',
+         'l''invitation d''un autre a été lisible';
+
+  -- 2. Refusée : l'écran doit le dire, pas proposer de rejoindre ------------
+  perform set_config('request.jwt.claims',
+    '{"sub":"66666666-6666-6666-6666-666666666666","role":"authenticated"}',
+    true);
+  perform public.refuser_invitation(invit);
+  select statut_ecran into etat from public.invitation_par_id(invit);
+  assert etat = 'refusee',
+         format('une invitation refusée devrait se dire refusée, reçu %s',
+                etat);
+
+  -- 3. Acceptée --------------------------------------------------------------
+  perform set_config('request.jwt.claims',
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}',
+    true);
+  assert public.inviter_dans_groupe(groupe, invitee) = 'invite',
+         'la seconde invitation n''est pas partie';
+  select id into invit from public.invitations
+   where invitee_id = invitee and group_id = groupe and status = 'pending';
+
+  perform set_config('request.jwt.claims',
+    '{"sub":"66666666-6666-6666-6666-666666666666","role":"authenticated"}',
+    true);
+  assert public.accepter_invitation(invit) = 'rejoint',
+         'l''invitation n''a pas pu être acceptée';
+  select statut_ecran into etat from public.invitation_par_id(invit);
+  assert etat = 'acceptee',
+         format('une invitation acceptée devrait se dire acceptée, reçu %s',
+                etat);
+
+  -- 4. Groupe supprimé -------------------------------------------------------
+  reset role;
+  perform set_config('request.jwt.claims',
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}',
+    true);
+  set local role authenticated;
+  groupe2 := (public.creer_groupe(
+    'Fumée — groupe éphémère', null, null, false)).id;
+  assert public.inviter_dans_groupe(groupe2, invitee) = 'invite',
+         'l''invitation au groupe éphémère n''est pas partie';
+  select id into invit from public.invitations
+   where invitee_id = invitee and group_id = groupe2;
+  reset role;
+
+  update public.groups set deleted_at = now() where id = groupe2;
+
+  perform set_config('request.jwt.claims',
+    '{"sub":"66666666-6666-6666-6666-666666666666","role":"authenticated"}',
+    true);
+  set local role authenticated;
+  select statut_ecran into etat from public.invitation_par_id(invit);
+  assert etat = 'groupe_supprime',
+         format('un groupe supprimé devrait être annoncé, reçu %s', etat);
+
+  -- 5. Introuvable renvoie **une** ligne, pas zéro ---------------------------
+  -- Un appelant qui reçoit zéro ligne ne distinguerait pas « rien à cet
+  -- identifiant » d'une panne de lecture.
+  assert (select count(*) from public.invitation_par_id(
+            '00000000-0000-0000-0000-0000000000ff'::uuid)) = 1,
+         'un identifiant inconnu devrait tout de même rendre une ligne';
+
+  -- 6. Qui invite : le nom, sur l'agenda et sur les tâches -------------------
+  reset role;
+  perform set_config('request.jwt.claims',
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}',
+    true);
+  set local role authenticated;
+
+  tache := (public.creer_tache(
+    p_title     => 'Fumée — tâche confiée',
+    p_group_id  => groupe,
+    p_assignees => array[lea])).id;
+  evenement := (public.creer_evenement(
+    p_title     => 'Fumée — événement convié',
+    p_starts_at => now() + interval '3 days',
+    p_ends_at   => now() + interval '3 days 2 hours',
+    p_group_id  => groupe)).id;
+
+  assert (select auteur = 'Camille Rousseau'
+            from public.mes_taches() where id = tache),
+         'le nom de l''auteur de la tâche manque';
+  assert (select auteur = 'Camille Rousseau'
+            from public.mon_agenda() where id = evenement),
+         'le nom de l''organisateur de l''événement manque';
+
+  -- 7. Une tâche confiée entre dans la boîte --------------------------------
+  -- La tranche 5c poussait déjà vers le téléphone ; rien ne se déposait dans
+  -- `notifications`, et l'écran d'attribution n'avait pas d'entrée.
+  reset role;
+  assert exists (select 1 from public.notifications
+                  where user_id = lea
+                    and type = 'task_assigned'
+                    and payload ->> 'task_id' = tache::text
+                    and read_at is null),
+         'aucune notification d''attribution n''a été déposée';
+
+  -- Y répondre la referme : un compteur doit refléter ce qui reste à faire.
+  perform set_config('request.jwt.claims',
+    '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}',
+    true);
+  set local role authenticated;
+  assert public.repondre_tache(tache, 'accepted') = 'accepted',
+         'la réponse à l''attribution a échoué';
+  reset role;
+
+  assert not exists (select 1 from public.notifications
+                      where user_id = lea
+                        and type = 'task_assigned'
+                        and payload ->> 'task_id' = tache::text
+                        and read_at is null),
+         'la notification d''attribution est restée ouverte après réponse';
+
+  -- **Contrôle négatif de l'auto-attribution.** Se confier une tâche à
+  -- soi-même ne doit rien déposer : on sait ce qu'on vient d'écrire.
+  perform set_config('request.jwt.claims',
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}',
+    true);
+  set local role authenticated;
+  tache := (public.creer_tache(
+    p_title     => 'Fumée — tâche pour soi',
+    p_group_id  => groupe,
+    p_assignees => array[camille])).id;
+  reset role;
+
+  assert not exists (select 1 from public.notifications
+                      where user_id = camille
+                        and type = 'task_assigned'
+                        and payload ->> 'task_id' = tache::text),
+         's''attribuer une tâche a déposé une notification';
+
+  raise notice 'Fumée : les écrans d''invitation de la tranche 8 répondent.';
+end;
+$invitations$;
+
 rollback;

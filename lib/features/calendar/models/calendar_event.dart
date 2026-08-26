@@ -81,6 +81,8 @@ class CalendarEvent {
     this.myResponse = EventResponse.pending,
     this.participants = const <EventParticipant>[],
     this.yesCount = 0,
+    this.authorName,
+    this.authorAvatarUrl,
   });
 
   factory CalendarEvent.fromRow(Map<String, dynamic> row) {
@@ -110,6 +112,8 @@ class CalendarEvent {
                 .toList()
           : const <EventParticipant>[],
       yesCount: (row['nombre_oui'] as int?) ?? 0,
+      authorName: row['auteur'] as String?,
+      authorAvatarUrl: row['auteur_avatar'] as String?,
     );
   }
 
@@ -133,6 +137,14 @@ class CalendarEvent {
   final EventResponse myResponse;
   final List<EventParticipant> participants;
   final int yesCount;
+
+  /// Nom de l'organisateur, tel que la base l'affiche.
+  ///
+  /// `null` si son profil a disparu : l'écran d'invitation reformule alors
+  /// sans sujet plutôt que d'inventer un nom.
+  final String? authorName;
+
+  final String? authorAvatarUrl;
 
   Duration get duration => end.difference(start);
 

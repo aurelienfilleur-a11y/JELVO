@@ -143,6 +143,8 @@ class Task {
     this.assignees = const <TaskAssignee>[],
     this.itemCount = 0,
     this.checkedCount = 0,
+    this.authorName,
+    this.authorAvatarUrl,
   });
 
   factory Task.fromRow(Map<String, dynamic> row) {
@@ -173,6 +175,8 @@ class Task {
           : const <TaskAssignee>[],
       itemCount: (row['articles'] as int?) ?? 0,
       checkedCount: (row['articles_coches'] as int?) ?? 0,
+      authorName: row['auteur'] as String?,
+      authorAvatarUrl: row['auteur_avatar'] as String?,
     );
   }
 
@@ -200,6 +204,14 @@ class Task {
   final List<TaskAssignee> assignees;
   final int itemCount;
   final int checkedCount;
+
+  /// Nom de qui a créé la tâche — donc de qui l'a confiée.
+  ///
+  /// `null` si son profil a disparu : l'écran d'attribution reformule alors
+  /// sans sujet, comme le fait déjà la notification système.
+  final String? authorName;
+
+  final String? authorAvatarUrl;
 
   bool get isDone => completedAt != null;
 

@@ -101,6 +101,16 @@ class InvitationsNotifier extends AsyncNotifier<List<GroupInvitation>> {
   }
 }
 
+/// Une invitation nominative précise, dans l'état où elle se trouve.
+///
+/// `autoDispose` : l'écran d'une invitation ne se garde pas d'une visite à
+/// l'autre — l'état qui compte est celui de l'instant où on l'ouvre.
+final invitationDetailProvider = FutureProvider.autoDispose
+    .family<GroupInvitationDetail, String>(
+      (Ref ref, String id) =>
+          ref.watch(groupRepositoryProvider).fetchInvitation(id),
+    );
+
 /// Aperçu public d'un lien d'invitation, lisible sans session.
 final groupInvitePreviewProvider = FutureProvider.autoDispose
     .family<GroupInvitePreview, String>(

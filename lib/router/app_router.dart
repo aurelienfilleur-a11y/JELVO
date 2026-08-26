@@ -14,6 +14,7 @@ import '../features/availability/screens/availability_screen.dart';
 import '../features/calendar/screens/calendar_screen.dart';
 import '../features/chat/screens/chat_screen.dart';
 import '../features/calendar/screens/event_detail_screen.dart';
+import '../features/calendar/screens/event_invitation_screen.dart';
 import '../features/contacts/screens/add_contact_screen.dart';
 import '../features/contacts/screens/contacts_screen.dart';
 import '../features/contacts/screens/my_qr_code_screen.dart';
@@ -31,6 +32,7 @@ import '../features/profile/screens/avatar_gallery_screen.dart';
 import '../features/profile/screens/profile_edit_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
 import '../features/profile/screens/settings_screen.dart';
+import '../features/tasks/screens/task_assignment_screen.dart';
 import '../features/tasks/screens/task_detail_screen.dart';
 import '../features/tasks/screens/tasks_screen.dart';
 import 'app_routes.dart';
@@ -210,6 +212,17 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
             parentNavigatorKey: _rootNavigatorKey,
             builder: (BuildContext context, GoRouterState state) =>
                 TaskDetailScreen(taskId: state.pathParameters['id'] ?? ''),
+            routes: <RouteBase>[
+              GoRoute(
+                path: 'attribution',
+                name: AppRoutes.taskAssignment,
+                parentNavigatorKey: _rootNavigatorKey,
+                builder: (BuildContext context, GoRouterState state) =>
+                    TaskAssignmentScreen(
+                      taskId: state.pathParameters['id'] ?? '',
+                    ),
+              ),
+            ],
           ),
         ],
       ),
@@ -219,6 +232,17 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
         parentNavigatorKey: _rootNavigatorKey,
         builder: (BuildContext context, GoRouterState state) =>
             EventDetailScreen(eventId: state.pathParameters['id'] ?? ''),
+        routes: <RouteBase>[
+          GoRoute(
+            path: 'invitation',
+            name: AppRoutes.eventInvitation,
+            parentNavigatorKey: _rootNavigatorKey,
+            builder: (BuildContext context, GoRouterState state) =>
+                EventInvitationScreen(
+                  eventId: state.pathParameters['id'] ?? '',
+                ),
+          ),
+        ],
       ),
 
       GoRoute(

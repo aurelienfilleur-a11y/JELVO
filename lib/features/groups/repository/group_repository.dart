@@ -100,6 +100,13 @@ abstract interface class GroupRepository {
 
   Future<List<GroupInvitation>> fetchInvitations();
 
+  /// Une invitation précise, **quel que soit son état**.
+  ///
+  /// [fetchInvitations] ne renvoie que celles qui sont en attente : l'écran
+  /// d'une invitation acceptée, refusée ou expirée n'y trouverait rien, et ne
+  /// pourrait dire que « introuvable » pour quatre situations différentes.
+  Future<GroupInvitationDetail> fetchInvitation(String invitationId);
+
   Future<String> invite({
     required String groupId,
     required String userId,
@@ -543,6 +550,33 @@ class SupabaseGroupRepository implements GroupRepository {
           .rpc<dynamic>('mes_invitations')
           .then(_asRows);
       return rows.map(GroupInvitation.fromRow).toList();
+    } catch (error) {
+      throw AuthFailure.from(error);
+    }
+  }
+
+  @override
+  Future<GroupInvitationDetail> fetchInvitation(String invitationId) async {
+    if (_userId == null) {
+      return const GroupInvitationDetail(
+        status: InvitationScreenStatus.introuvable,
+      );
+    }
+    try {
+      final List<Map<String, dynamic>> rows = await _client
+          .rpc<dynamic>(
+            'invitation_par_id',
+            params: <String, dynamic>{'p_invitation': invitationId},
+          )
+          .then(_asRows);
+      // La fonction rend toujours une ligne, `introuvable` comprise : une
+      // liste vide ne peut donc venir que d'une lecture qui a mal tourné.
+      if (rows.isEmpty) {
+        return const GroupInvitationDetail(
+          status: InvitationScreenStatus.introuvable,
+        );
+      }
+      return GroupInvitationDetail.fromRow(rows.first);
     } catch (error) {
       throw AuthFailure.from(error);
     }

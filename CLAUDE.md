@@ -552,6 +552,9 @@ halo violet du bouton central. Ne pas utiliser l'`elevation` Material.
 | `NavBadge`                    | compteur rouge posé sur une icône, masqué à zéro  |
 | `AppCard`                     | conteneur de base des cartes (surface + ombre)    |
 | `AppScreen` / `AppScreenAction` | gabarit d'écran d'onglet (en-tête H1 + slivers) |
+| `InvitationHeader`            | auteur, ce qu'il demande, depuis quand            |
+| `InvitationDetailRow`         | ligne icône / libellé / valeur d'une carte d'invitation |
+| `InvitationActions`           | refus en contour à gauche, accord en plein à droite |
 
 **Les composants de `core/widgets` ne connaissent pas le domaine** : ils
 prennent des `String`, `IconData`, `Color` et `AvatarData`, jamais un `Group` ou
@@ -905,6 +908,11 @@ ajoutée à ce fichier — un `.sql` déposé dans `supabase/` sans y figurer ne
 sera jamais appliqué. C'est voulu : c'est ce qui tient les scripts de
 diagnostic à l'écart.
 
+**L'ordre du fichier n'est pas celui des numéros**, et ne peut pas l'être :
+`tranche7_durcissement.sql` referme l'exécution de toute fonction absente de sa
+liste et **lève si un nom de sa liste n'existe pas en base**. Il reste donc le
+dernier passage, et la tranche 8 s'insère avant lui.
+
 Trois entrées de `supabase/` ne sont **pas** des migrations : elles n'écrivent
 rien et ne changent rien.
 
@@ -931,6 +939,7 @@ La tranche 2 apporte les favoris personnels, `expires_at`, la table
 | `rejoindre_groupe_par_jeton` | valide le jeton et insère le membre |
 | `quitter_groupe` | départ, promotion, suppression — en une transaction |
 | `mes_invitations`, `inviter_dans_groupe`, `accepter_invitation`, `refuser_invitation` | invitations nominatives |
+| `invitation_par_id` | *(tranche 8)* une invitation **dans l'état où elle se trouve**, pour son écran |
 | `creer_groupe` | groupe + adhésion admin en une transaction (voir ci-dessus) |
 
 `supabase/correctif_invitations_type.sql` renseigne `invitations.type` dans
@@ -1112,6 +1121,146 @@ personne n'attend d'une date prise dans un calendrier.
 
 « Sans terme » est **l'état d'ouverture** du sélecteur, et doit le rester : une
 adhésion permanente est le cas courant, une durée est le cas qu'on choisit.
+
+---
+
+## Les trois écrans d'invitation
+
+Rejoindre un groupe, venir à un événement, prendre une tâche : trois
+demandes, un seul motif. **Qui demande** en haut, **ce à quoi on est convié**
+au milieu, **la réponse** en bas — refus à gauche en contour, accord à droite
+en plein.
+
+| Écran | Route | Réponse |
+| --- | --- | --- |
+| groupe | `/invitations/:id` | Refuser · Rejoindre |
+| événement | `/evenements/:id/invitation` | Non · Peut-être · Oui |
+| tâche | `/taches/:id/attribution` | Refuser · Accepter |
+
+Les deux derniers **n'existaient pas** : une invitation à un événement ouvrait
+son écran de détail, et une tâche confiée n'ouvrait rien du tout. Le motif
+commun vit dans `core/widgets/invitation_header.dart` — `InvitationHeader`,
+`InvitationDetailRow`, `InvitationActions` —, qui ne connaissent pas plus le
+domaine que les autres composants de `core`.
+
+### Décider si l'on vient n'est pas retrouver ce qu'on a accepté
+
+C'est ce qui justifie deux écrans par élément plutôt qu'un. `EventDetailScreen`
+sert à **retrouver** : modifier, supprimer, voir qui vient. L'écran
+d'invitation sert à **décider** : il met l'organisateur en tête, l'essentiel
+au milieu, et la réponse sous le pouce. Les fusionner reviendrait à ouvrir un
+écran d'administration à quelqu'un qui se demande seulement s'il est libre
+samedi.
+
+### Une invitation ne se lit plus seulement quand elle est en attente
+
+`mes_invitations` ne renvoie que les `pending`, sur un groupe vivant. Quatre
+situations très différentes — déjà acceptée, déjà refusée, expirée, groupe
+supprimé — n'y trouvaient donc rien, et l'écran disait « Invitation
+introuvable » pour toutes les quatre.
+
+`invitation_par_id` renvoie **toujours une ligne**, avec un mot d'état
+(`InvitationScreenStatus`) : `valide`, `acceptee`, `refusee`, `expiree`,
+`deja_membre`, `groupe_supprime`, `introuvable`. Deux conséquences tenues par
+le code :
+
+- **aucun bouton sans effet.** Hors de `valide`, « Rejoindre » et « Refuser »
+  disparaissent au lieu d'être grisés, et un pavé dit ce qui s'est passé. Une
+  invitation déjà acceptée propose la seule suite qui ait du sens : ouvrir le
+  groupe ;
+- **`introuvable` rend une ligne, pas zéro.** Un appelant qui reçoit une liste
+  vide ne saurait pas distinguer « rien à cet identifiant » d'une lecture qui a
+  mal tourné.
+
+La fonction est réservée à l'invité : l'identifiant d'une invitation qui n'est
+pas la sienne donne `introuvable`, et non le nom du groupe. Le test de fumée en
+fait un contrôle négatif.
+
+### Ce que la maquette montrait et que la base ne sait pas
+
+**Une seule chose manque, et c'est la même des deux côtés : l'ancienneté.**
+
+| Écran | « depuis combien de temps » |
+| --- | --- |
+| groupe | `invitations.created_at` — réel |
+| événement | **rien** : `event_participants` ne porte que `responded_at` |
+| tâche | **rien** : `task_assignees` ne porte aucune date de création |
+
+`events.created_at` et `tasks.created_at` s'en approchent, mais seraient faux
+pour quiconque est convié ou assigné après coup. La ligne est donc omise —
+`InvitationHeader.since` est facultatif — plutôt que remplie d'une valeur
+vraisemblable.
+
+Le reste de la maquette existait bel et bien, contrairement à ce qu'on pouvait
+craindre : `events.image_url`, `tasks.priority` (`low`/`medium`/`high`) et la
+valeur `maybe` de `event_response` sont dans le schéma initial. Le « peut-être »
+n'a donc pas eu à être inventé.
+
+Deux lignes de la maquette sont **omises quand la donnée est nulle** plutôt
+qu'affichées vides : le lieu d'un événement et la description d'une tâche.
+« Non précisé » ferait passer un champ vide pour une donnée — même règle que
+les lignes Téléphone et Localisation écartées du profil.
+
+### Le nom de qui invite a coûté deux `drop function`
+
+`mon_agenda` et `mes_taches` renvoyaient `owner_id` et `created_by`, donc un
+identifiant. L'en-tête, lui, ouvre sur une phrase. Reconstituer le nom côté
+client demanderait de lire `profiles`, ce que RLS n'autorise pas toujours —
+c'est la raison même pour laquelle ces lectures sont `security definer`.
+
+Une colonne de sortie de plus impose un `drop function` : même arbitrage qu'en
+tranche 6, et même conclusion, le gain étant pour celui qui lit.
+
+`auteur` vaut `null` quand le profil a disparu, et l'écran **reformule sans
+sujet** — « Cette tâche vous a été confiée » — au lieu d'inventer un nom. Même
+règle que `public.nom_affiche` côté notifications système.
+
+### Une tâche confiée entre enfin dans la boîte
+
+La tranche 5c poussait `task_assigned` vers le téléphone, mais **aucune ligne
+n'était déposée dans `notifications`**. La seule trace d'une tâche confiée
+était donc une notification système, qui disparaît une fois balayée : l'écran
+d'attribution n'aurait eu aucune entrée dans l'application.
+
+`notifier_attribution_tache` comble l'écart, sur le modèle exact de
+`notifier_invitation_evenement` : `security definer` — la table n'a aucune
+politique d'insertion —, et toute erreur consignée en `warning`. **Une
+notification est un effet de bord : elle ne doit jamais faire échouer
+l'écriture qui l'a provoquée.**
+
+Deux clôtures l'accompagnent, et la seconde n'est pas du confort :
+`clore_notification_tache` sur `update` — répondre referme —, et
+`clore_notification_tache_retiree` sur `delete`, parce que
+`definir_assignes_tache` **supprime** la ligne au lieu de la modifier. Sans
+elle, une notification resterait seule à réclamer une réponse sur une tâche
+qui n'est plus la vôtre.
+
+`NotificationType.taskAssigned` compte pour l'onglet **Accueil** : les tâches
+n'ont pas d'onglet, et c'est de là que leur liste s'ouvre.
+
+### Les trois réponses à un événement ont changé d'ordre
+
+`ResponseButtons` affichait Oui · Peut-être · Non ; il affiche désormais
+**Non · Peut-être · Oui**, partout — écran de détail et ligne de notification
+compris.
+
+Le garder à un endroit et pas à l'autre aurait été le pire des deux : trois
+boutons identiques dont le premier veut dire « oui » ici et « non » là, à un
+doigt d'écart.
+
+**Un événement passé se dit, mais ne se verrouille pas.** La base accepte
+encore la réponse ; griser les boutons poserait une règle qu'elle n'a pas. De
+même, une réponse déjà donnée est rappelée par un pavé, sans empêcher d'en
+changer — contrairement à une invitation de groupe, qui ne se répond qu'une
+fois.
+
+### La tranche 8 s'applique avant la tranche 7
+
+`tranche7_durcissement.sql` retire l'exécution de toute fonction absente de sa
+liste, et **lève si un nom de cette liste n'existe pas en base**. Il doit donc
+rester le dernier passage de `migrations.txt`, quel que soit le numéro des
+tranches qui s'ajoutent. `invitation_par_id` est ajoutée à sa liste ; le
+fichier de la tranche 8 est inséré **avant** lui.
 
 ---
 
@@ -2074,12 +2223,18 @@ donc par des déclencheurs `security definer`, livrés dans
 | `after update on contacts` (accepté) | referme la notification de demande |
 | `after delete on contacts` | referme la notification d'une demande refusée |
 
-Les trois derniers ne sont pas du confort : sans eux, une invitation acceptée
+Trois autres vivent ailleurs, sur le même modèle : `after insert` et `after
+update on event_participants` (tranche 3b, `event_invitation`), et les trois de
+la tranche 8 sur `task_assignees` — dépôt d'un `task_assigned`, clôture à la
+réponse, et clôture au **retrait** de l'assigné, `definir_assignes_tache`
+supprimant la ligne au lieu de la modifier.
+
+Les clôtures ne sont pas du confort : sans elles, une invitation acceptée
 laisserait sa pastille allumée indéfiniment. **Un compteur doit refléter ce qui
 reste à faire, pas ce qui est arrivé un jour.**
 
 **Une notification est un effet de bord, elle ne doit jamais faire échouer
-l'écriture principale.** Les cinq déclencheurs attrapent donc toute erreur, la
+l'écriture principale.** Tous ces déclencheurs attrapent donc toute erreur, la
 consignent en `warning` et laissent passer. Une invitation impossible à envoyer
 parce que la notification a été refusée est un défaut bien plus grave qu'un
 compteur qui ne s'allume pas. Tout nouveau déclencheur sur ces tables doit
@@ -2113,7 +2268,9 @@ indéfiniment.
 ### Répartition des pastilles
 
 `NotificationType.navIndex` associe chaque type à **un seul** onglet :
-`group_invitation` → Groupes, `contact_request` → Contacts, le reste → Accueil.
+`group_invitation` → Groupes, `contact_request` → Contacts,
+`event_invitation` → Calendrier, `task_assigned` → Accueil, comme le reste :
+les tâches n'ont pas d'onglet, et c'est de l'accueil que leur liste s'ouvre.
 Un élément n'est donc jamais compté deux fois, et le total de la cloche reste
 exactement la somme des pastilles. Ajouter un type impose de lui choisir un
 onglet — c'est voulu.
@@ -2357,6 +2514,17 @@ s'en passe.
   par onglet, leur extinction, la liste et le marquage comme lu.
 - `test/tasks_events_test.dart` couvre les écrans de détail, l'assignation et
   l'administration des groupes.
+- `test/invitations_test.dart` couvre les trois écrans d'invitation : l'en-tête
+  commun — qui invite, ce qu'il fait, depuis quand —, l'ordre des boutons
+  (refus toujours à gauche, sur les deux boutons comme sur les trois), la carte
+  centrale de chacun, et **les six états dégradés** du groupe : acceptée,
+  refusée, expirée, groupe supprimé, identifiant inconnu, et le fait qu'aucun
+  bouton sans effet ne subsiste. Côté événement : l'absence d'illustration
+  quand `image_url` est nul, la ligne « Lieu » omise plutôt que vide, la
+  réponse à trois choix et son enregistrement, la réponse déjà donnée qui ne
+  verrouille rien, l'événement supprimé. Côté tâche : les quatre lignes dont
+  la priorité, l'assigné, l'acceptation, la tâche non assignée et la tâche
+  supprimée. Enfin, les deux ouvertures depuis la boîte de notifications.
 - `test/auth_failure_test.dart` couvre la traduction des erreurs PostgREST
   sans widget : une colonne absente ne doit pas inviter à réessayer, et les
   cas déjà couverts — pseudo pris, refus RLS, repli générique — ne bougent
@@ -2522,13 +2690,20 @@ sûr d'éprouver son caractère contextuel.
   appelle les fonctions, mais son décor est recopié de cette documentation, et
   ne dit donc rien des colonnes réelles. C'est `supabase/schema_actuel.sql`,
   relevé après coup, qui fait foi.
-- Le test de fumée couvre les tranches 3, 3b, 4, 5a, 5b, 5c, 5d et 6 — plus de
-  trente fonctions réellement appelées, contrôles négatifs de l'accès au
-  bucket, de la mémoire des rappels et de celle du rangement des adhésions
-  compris. La tranche 6 y fait entrer `inviter_dans_groupe`,
+- Le test de fumée couvre les tranches 3, 3b, 4, 5a, 5b, 5c, 5d, 6 et 8 — plus
+  de trente fonctions réellement appelées, contrôles négatifs de l'accès au
+  bucket, de la mémoire des rappels, du rangement des adhésions, de la portée
+  d'`invitation_par_id` et de l'auto-attribution qui ne notifie pas.
+  La tranche 6 y fait entrer `inviter_dans_groupe`,
   `accepter_invitation`, `rejoindre_groupe_par_jeton` et
   `apercu_groupe_par_jeton`, qui datent de la tranche 2 : le reste de cette
   tranche n'est toujours éprouvé que par l'usage en production.
+- **Une invitation à un événement et une tâche confiée n'ont pas d'âge.** Les
+  deux écrans le taisent plutôt que de l'approcher : `event_participants` ne
+  porte que `responded_at`, `task_assignees` aucune date. Le combler
+  demanderait une colonne de plus sur ces deux tables — un `alter table add
+  column if not exists`, donc rien d'insurmontable, mais une écriture du
+  schéma initial que rien d'autre ne réclame aujourd'hui.
 - **Les disponibilités n'ont pas encore de lecture en dehors de la création
   d'événement.** Le statut d'un contact n'apparaît ni sur sa fiche, ni dans la
   liste des contacts ; c'est la suite naturelle, et elle ne demande aucun SQL

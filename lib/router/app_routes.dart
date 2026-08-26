@@ -49,6 +49,13 @@ abstract final class AppRoutes {
   static const String eventDetail = 'eventDetail';
   static const String eventDetailPath = '/evenements/:id';
 
+  /// Invitation à un événement, ouverte depuis une notification.
+  ///
+  /// Distincte du détail : celui-ci sert à retrouver ce à quoi on a dit oui,
+  /// celle-là à décider si l'on vient.
+  static const String eventInvitation = 'eventInvitation';
+  static const String eventInvitationPath = '/evenements/:id/invitation';
+
   /// Liste des tâches et détail d'une tâche. Les tâches n'ont pas d'onglet :
   /// elles vivent dans l'accueil et dans les groupes, et la liste complète
   /// s'ouvre depuis le récapitulatif de l'accueil.
@@ -57,6 +64,11 @@ abstract final class AppRoutes {
 
   static const String taskDetail = 'taskDetail';
   static const String taskDetailPath = '/taches/:id';
+
+  /// Tâche qui vous est confiée, ouverte depuis une notification. Même
+  /// distinction qu'entre l'invitation à un événement et son détail.
+  static const String taskAssignment = 'taskAssignment';
+  static const String taskAssignmentPath = '/taches/:id/attribution';
 
   static const String contacts = 'contacts';
   static const String contactsPath = '/contacts';

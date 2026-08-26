@@ -16,6 +16,7 @@ class FakeContactRepository implements ContactRepository {
   String? lastRequestedUserId;
   String? lastAcceptedUserId;
   String? lastDeclinedUserId;
+  String? lastRemovedUserId;
   bool? lastFavoriteValue;
 
   static const List<Contact> demoContacts = <Contact>[
@@ -25,12 +26,14 @@ class FakeContactRepository implements ContactRepository {
       firstName: 'Léa',
       lastName: 'Marchand',
       isFavorite: true,
+      sharedGroups: 3,
     ),
     Contact(
       id: 'u3',
       pseudo: 'yanis.bertrand',
       firstName: 'Yanis',
       lastName: 'Bertrand',
+      sharedGroups: 1,
     ),
     Contact(
       id: 'u4',
@@ -94,8 +97,10 @@ class FakeContactRepository implements ContactRepository {
   }
 
   @override
-  Future<void> removeContact(String userId) async =>
-      _contacts.removeWhere((Contact c) => c.id == userId);
+  Future<void> removeContact(String userId) async {
+    lastRemovedUserId = userId;
+    _contacts.removeWhere((Contact c) => c.id == userId);
+  }
 
   @override
   Future<void> setFavorite({

@@ -9,6 +9,8 @@ import 'package:jelvo/data/clock.dart';
 import 'package:jelvo/data/data_providers.dart';
 import 'package:jelvo/features/contacts/providers/contact_providers.dart';
 import 'package:jelvo/features/contacts/widgets/qr_support.dart';
+import 'package:jelvo/features/contacts/models/contact.dart';
+import 'package:jelvo/features/contacts/widgets/favorites_strip.dart';
 import 'package:jelvo/features/groups/models/group_invite.dart';
 import 'package:jelvo/features/groups/models/group_member.dart';
 import 'package:jelvo/features/calendar/providers/calendar_providers.dart';
@@ -644,7 +646,16 @@ void main() {
 
       await tester.tap(find.text('Contacts'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byIcon(Icons.person_add_alt_rounded).first);
+      // Le « + » de l'en-tête ouvre désormais la feuille des trois moyens
+      // d'ajouter quelqu'un ; la recherche par pseudo en est un.
+      await tester.tap(
+        find.descendant(
+          of: find.byType(AppScreen),
+          matching: find.byTooltip('Ajouter un contact'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Rechercher un pseudo'));
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byType(TextField).first, 'sarah');
@@ -774,6 +785,246 @@ void main() {
       expect(QrContact.decode('https://example.test/produit/42'), isNull);
       expect(QrContact.decode('ab'), isNull);
       expect(QrContact.decode(null), isNull);
+    });
+  });
+
+  group('Le carnet refondu', () {
+    Future<void> ouvrirContacts(WidgetTester tester) async {
+      await tester.tap(find.text('Contacts'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('le titre et le « + » de l’en-tête', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester);
+      await ouvrirContacts(tester);
+
+      expect(find.text('Mes contacts'), findsOneWidget);
+      expect(find.text('Rechercher un contact'), findsOneWidget);
+    });
+
+    testWidgets('la bande des favoris met en avant les contacts étoilés', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester);
+      await ouvrirContacts(tester);
+
+      expect(find.byType(FavoritesStrip), findsOneWidget);
+      expect(find.text('Favoris'), findsOneWidget);
+      // Léa est le seul favori du jeu d'essai ; Yanis n'y est pas.
+      expect(
+        find.descendant(
+          of: find.byType(FavoritesStrip),
+          matching: find.text('Léa'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(FavoritesStrip),
+          matching: find.text('Yanis'),
+        ),
+        findsNothing,
+      );
+    });
+
+    testWidgets('la bande suit l’étoile immédiatement', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester);
+      await ouvrirContacts(tester);
+
+      // L'étoile est restée là où elle était : sur la ligne du contact.
+      await tester.tap(find.byTooltip('Ajouter aux favoris').first);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.descendant(
+          of: find.byType(FavoritesStrip),
+          matching: find.text('Yanis'),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byTooltip('Retirer des favoris').first);
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(
+          of: find.byType(FavoritesStrip),
+          matching: find.text('Léa'),
+        ),
+        findsNothing,
+      );
+    });
+
+    testWidgets('le carnet est rangé par lettre, avec ses en-têtes', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester);
+      await ouvrirContacts(tester);
+
+      // Bertrand puis Marchand : la clé de tri est le nom complet, qui
+      // commence par le prénom — donc L pour Léa, Y pour Yanis.
+      expect(find.byKey(const ValueKey<String>('lettre-L')), findsOneWidget);
+      expect(find.byKey(const ValueKey<String>('lettre-Y')), findsOneWidget);
+      expect(
+        tester.getCenter(find.byKey(const ValueKey<String>('lettre-L'))).dy,
+        lessThan(
+          tester.getCenter(find.byKey(const ValueKey<String>('lettre-Y'))).dy,
+        ),
+      );
+    });
+
+    testWidgets('le bouton de tri inverse l’ordre', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester);
+      await ouvrirContacts(tester);
+
+      expect(find.text('A–Z'), findsOneWidget);
+      await tester.tap(find.text('A–Z'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Z–A'), findsOneWidget);
+      expect(
+        tester.getCenter(find.byKey(const ValueKey<String>('lettre-Y'))).dy,
+        lessThan(
+          tester.getCenter(find.byKey(const ValueKey<String>('lettre-L'))).dy,
+        ),
+      );
+    });
+
+    testWidgets('le nombre de groupes en commun est affiché', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester);
+      await ouvrirContacts(tester);
+
+      expect(find.text('3'), findsWidgets);
+      expect(find.text('groupes'), findsOneWidget);
+      // Une seule adhésion partagée se dit au singulier.
+      expect(find.text('groupe'), findsOneWidget);
+    });
+
+    testWidgets('toucher une ligne ouvre ce qu’on peut en faire', (
+      WidgetTester tester,
+    ) async {
+      final ({FakeContactRepository contacts, FakeGroupRepository groups})
+      fakes = await _pumpApp(tester);
+      await ouvrirContacts(tester);
+
+      await tester.tap(find.text('Léa Marchand'));
+      await tester.pumpAndSettle();
+
+      // Retirer un contact existait en base sans être atteignable.
+      expect(find.text('Retirer de mes contacts'), findsOneWidget);
+      await tester.tap(find.text('Retirer de mes contacts'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Retirer'));
+      await tester.pumpAndSettle();
+
+      expect(fakes.contacts.lastRemovedUserId, 'u2');
+    });
+
+    testWidgets('le « + » propose les trois moyens d’ajouter quelqu’un', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester);
+      await ouvrirContacts(tester);
+
+      await tester.tap(
+        find.descendant(
+          of: find.byType(AppScreen),
+          matching: find.byTooltip('Ajouter un contact'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Scanner un QR Code'), findsOneWidget);
+      expect(find.text('Rechercher un pseudo'), findsOneWidget);
+      expect(find.text('Inviter un ami'), findsOneWidget);
+    });
+
+    testWidgets('« Gérer » ouvre de quoi épingler à la chaîne', (
+      WidgetTester tester,
+    ) async {
+      final ({FakeContactRepository contacts, FakeGroupRepository groups})
+      fakes = await _pumpApp(tester);
+      await ouvrirContacts(tester);
+
+      await tester.tap(find.text('Gérer'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Gérer les favoris'), findsOneWidget);
+      await tester.tap(find.byType(Switch).first);
+      await tester.pumpAndSettle();
+      expect(fakes.contacts.lastFavoriteValue, isNotNull);
+    });
+
+    testWidgets('sans favori, la bande invite à en poser un', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(
+        tester,
+        contactRepository: FakeContactRepository(
+          contacts: <Contact>[
+            const Contact(
+              id: 'u2',
+              pseudo: 'lea.marchand',
+              firstName: 'Léa',
+              lastName: 'Marchand',
+            ),
+          ],
+        ),
+      );
+      await ouvrirContacts(tester);
+
+      expect(find.byType(FavoritesStrip), findsOneWidget);
+      expect(find.textContaining('Épinglez vos proches'), findsOneWidget);
+    });
+
+    testWidgets('sur un carnet vide, la bande ne s’affiche pas', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(
+        tester,
+        contactRepository: FakeContactRepository(contacts: <Contact>[]),
+      );
+      await ouvrirContacts(tester);
+
+      expect(find.byType(FavoritesStrip), findsNothing);
+      expect(find.text('Carnet vide'), findsOneWidget);
+    });
+
+    testWidgets('une recherche sans résultat le dit, sans bande', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester);
+      await ouvrirContacts(tester);
+
+      await tester.enterText(find.byType(TextField).first, 'zzz');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Aucun résultat'), findsOneWidget);
+      expect(find.byType(FavoritesStrip), findsNothing);
+    });
+
+    testWidgets('la ligne tient à 360 dp de large', (
+      WidgetTester tester,
+    ) async {
+      // Avatar, nom, pseudo, pastille, étoile et chevron sur la même ligne :
+      // c'est la largeur minimale que le projet s'impose.
+      tester.view.physicalSize = const Size(360, 1600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await _pumpApp(tester);
+      await ouvrirContacts(tester);
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('Léa Marchand'), findsOneWidget);
     });
   });
 }

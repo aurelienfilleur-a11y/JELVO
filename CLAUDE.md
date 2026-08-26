@@ -912,7 +912,7 @@ diagnostic à l'écart.
 **L'ordre du fichier n'est pas celui des numéros**, et ne peut pas l'être :
 `tranche7_durcissement.sql` referme l'exécution de toute fonction absente de sa
 liste et **lève si un nom de sa liste n'existe pas en base**. Il reste donc le
-dernier passage, et les tranches 8 et 9 s'insèrent avant lui.
+dernier passage, et les tranches 8, 9 et 10 s'insèrent avant lui.
 
 Trois entrées de `supabase/` ne sont **pas** des migrations : elles n'écrivent
 rien et ne changent rien.
@@ -934,7 +934,7 @@ La tranche 2 apporte les favoris personnels, `expires_at`, la table
 | --- | --- |
 | `est_membre_du_groupe`, `est_admin_du_groupe` | prédicats `security definer`, pour écrire les politiques sans récursion `group_members` → `group_members` |
 | `membres_du_groupe` | membres + profil, réservé aux membres |
-| `mes_contacts` | carnet + profil d'en face + favori du bon côté |
+| `mes_contacts` | carnet + profil d'en face + favori du bon côté + *(tranche 10)* groupes en commun |
 | `chercher_profils_par_pseudo` | recherche par début de pseudo |
 | `apercu_groupe_par_jeton` | aperçu public d'un lien |
 | `rejoindre_groupe_par_jeton` | valide le jeton et insère le membre |
@@ -2387,6 +2387,86 @@ recherche.
 
 ---
 
+## Écran « Mes contacts »
+
+Quatre blocs : **en-tête**, **bande des favoris**, **carnet rangé par
+lettre**, et le rail alphabétique posé le long du bord droit. Le « + » de
+l'en-tête ouvre la feuille des trois moyens d'ajouter quelqu'un.
+
+### Les groupes en commun se comptent, ils ne se devinent pas
+
+C'est la seule donnée de la maquette qui n'était pas déjà lisible, et elle
+**l'est proprement** : `mes_contacts` croise `group_members` avec lui-même.
+Trois filtres, aucun décoratif — le groupe doit être vivant, et **les deux**
+adhésions actives. Une adhésion temporaire échue ne compte plus, d'un côté
+comme de l'autre : c'est la règle de la tranche 6, et le carnet ne fait pas
+exception. Les deux contrôles négatifs sont dans le test de fumée.
+
+Le compte reste côté SQL parce que lire l'adhésion d'autrui ligne à ligne
+n'est pas donné par RLS — c'est exactement pourquoi ces lectures passent par
+une fonction `security definer`.
+
+**Zéro se dit aussi.** « 0 groupe » est une information — on se connaît sans
+rien organiser ensemble —, là où une pastille absente se lirait comme une
+donnée manquante.
+
+### La bande des favoris n'invente aucun mécanisme
+
+Le favori existait déjà : personnel, posé d'une étoile sur la ligne du
+contact, et **l'étoile n'a pas bougé**. La bande ne fait que remonter en tête
+ceux qu'on a marqués.
+
+Elle se met à jour **immédiatement** parce qu'elle dérive du même provider que
+la liste : `favoriteContactsProvider` filtre `acceptedContactsProvider`, que
+`toggleFavorite` rafraîchit. Aucun état parallèle à tenir d'accord.
+
+**Sans favori, la bande reste et invite** — mais seulement s'il y a des
+contacts à épingler. Sur un carnet vide, elle disparaît : ce serait la
+deuxième invitation d'affilée sur un écran qui n'a encore rien. Elle
+disparaît aussi pendant une recherche, où elle répondrait à une autre
+question que celle qu'on pose.
+
+**« Gérer » ouvre une feuille où tout le carnet porte son interrupteur.**
+C'est ce qui manquait : sur la liste, l'étoile est à côté de chaque nom, mais
+il faut la chercher ligne à ligne. Ici on épingle et on désépingle à la
+chaîne, et la bande suit à chaque touche.
+
+### Le rail saute par ancre, pas par calcul d'offset
+
+`Scrollable.ensureVisible` sur la clé de l'en-tête visé. Cela suppose que les
+en-têtes soient **construits**, donc une liste non paresseuse — c'est le prix,
+assumé, d'un saut exact. Un carnet personnel tient dans quelques dizaines de
+lignes ; le jour où il en compterait des milliers, il faudrait revenir à un
+calcul d'offset, plus rapide et plus fragile.
+
+Le rail ne montre **que les lettres présentes** : une cible qui ne mène nulle
+part est pire qu'une lettre absente. Il se glisse autant qu'il se touche, et
+disparaît sous deux sections — il n'y aurait rien à sauter.
+
+La découpe par lettre vit dans `contactSectionsProvider` et non dans l'écran :
+le rail et la liste doivent lire **la même**, faute de quoi une lettre du rail
+pourrait ne correspondre à aucune section. `#` recueille tout ce qui ne
+commence pas par une lettre.
+
+### Le chevron mène quelque part
+
+`ContactActionsSheet` : épingler, et **retirer de ses contacts** — une
+capacité qui existait en base sans être atteignable nulle part dans
+l'application. Un chevron qui n'ouvre rien est pire qu'une ligne inerte, et
+c'est ce qu'il aurait été sans cette feuille.
+
+Le « + » central de la barre ouvre **la même** feuille d'ajout que celui de
+l'en-tête : « comment j'ajoute quelqu'un ? » n'a qu'une réponse.
+
+### Ce que la maquette montrait et qui n'existe pas
+
+| Écarté | Pourquoi |
+| --- | --- |
+| pastilles En ligne / Absent / Hors ligne | `profiles.last_seen_at` n'est écrit nulle part — même règle que l'accueil et le profil |
+| libellés sous les prénoms des favoris | ils ne disaient que la présence |
+
+---
+
 ## Internationalisation
 
 Les textes vivent dans `lib/l10n/app_fr.arb` et sont exposés par la classe
@@ -2707,7 +2787,14 @@ s'en passe.
   un refus de la base qui reste dans la feuille au lieu de la refermer, la
   durée emportée par l'invitation nominative comme par le lien, l'absence de
   terme quand on n'en choisit pas, et la page publique qui annonce la durée
-  avant d'accepter.
+  avant d'accepter. Côté carnet refondu : le titre et la barre de recherche,
+  la bande des favoris qui ne montre que les étoilés **et suit l'étoile
+  immédiatement**, le rangement par lettre et son inversion par le bouton de
+  tri, la pastille des groupes en commun au singulier comme au pluriel, la
+  ligne qui ouvre de quoi retirer un contact, les trois moyens d'ajouter
+  quelqu'un, « Gérer » qui épingle à la chaîne, les trois cas vides — carnet
+  vide sans bande, aucun favori avec invitation, recherche sans résultat — et
+  la ligne qui tient à 360 dp.
 - `test/notifications_test.dart` couvre la cloche, la répartition des pastilles
   par onglet, leur extinction, la liste et le marquage comme lu.
 - `test/tasks_events_test.dart` couvre les écrans de détail, l'assignation et
@@ -2906,7 +2993,9 @@ sûr d'éprouver son caractère contextuel.
   celle empilée pour le téléphone. La tranche 9 y ajoute **la course** — la
   seconde prise ressort `deja_prise` —, le désistement qui rouvre la tâche,
   celui qu'une tâche confiée refuse, et la carte d'un élément supprimé qui
-  garde son titre.
+  garde son titre. La tranche 10 y ajoute le compte des groupes en commun,
+  avec ses deux contrôles négatifs : une adhésion échue et un groupe supprimé
+  ne comptent plus.
   La tranche 6 y fait entrer `inviter_dans_groupe`,
   `accepter_invitation`, `rejoindre_groupe_par_jeton` et
   `apercu_groupe_par_jeton`, qui datent de la tranche 2 : le reste de cette

@@ -552,6 +552,7 @@ halo violet du bouton central. Ne pas utiliser l'`elevation` Material.
 | `NavBadge`                    | compteur rouge posé sur une icône, masqué à zéro  |
 | `AppCard`                     | conteneur de base des cartes (surface + ombre)    |
 | `AppScreen` / `AppScreenAction` | gabarit d'écran d'onglet (en-tête H1 + slivers) |
+| `CoverBanner`                 | photo de couverture, repli d'accent, nom en surimpression |
 | `InvitationHeader`            | auteur, ce qu'il demande, depuis quand            |
 | `InvitationDetailRow`         | ligne icône / libellé / valeur d'une carte d'invitation |
 | `InvitationActions`           | refus en contour à gauche, accord en plein à droite |
@@ -1143,6 +1144,37 @@ commun vit dans `core/widgets/invitation_header.dart` — `InvitationHeader`,
 `InvitationDetailRow`, `InvitationActions` —, qui ne connaissent pas plus le
 domaine que les autres composants de `core`.
 
+### Le bandeau de couverture est le même sur les trois
+
+`CoverBanner` vivait dans la feature `groups`, ce qui l'y enfermait : une
+feature ne lit pas les widgets d'une autre. Il est monté dans `core/widgets` —
+il ne prend que des `String`, une `Color` et une `IconData`, jamais un
+`Group` — et les trois écrans le posent en tête.
+
+**L'ordre de préférence de l'image est le même partout** : ce que l'élément
+porte en propre, puis la couverture du groupe, puis le repli d'accent. Sur
+l'écran d'un événement :
+
+```
+events.image_url  →  groups.photo_url  →  dégradé + icône
+```
+
+C'est le même ordre qu'un avatar : prédéfini, photo, initiales. Le repli n'est
+jamais une illustration choisie par l'application — c'est un dégradé, dérivé
+de l'identifiant du groupe, ou de celui de l'élément quand il est personnel.
+
+**Une tâche ou un événement personnel garde son bandeau**, titré
+« Personnel ». Le supprimer ferait démarrer un des trois écrans à une hauteur
+différente des deux autres, pour un cas qui n'a rien d'exceptionnel.
+
+#### `groupe_nom` et `groupe_photo` viennent de la lecture, pas du client
+
+`mon_agenda` et `mes_taches` les renvoient. Les relire par `groupByIdProvider`
+paraissait plus simple et était faux : **un convive ou un assigné n'est pas
+forcément membre du groupe**, et sa liste de groupes ne contiendrait alors ni
+le nom ni la photo. L'écran affichait « Personnel » pour une tâche de groupe.
+La liste locale ne sert plus que de repli.
+
 ### Décider si l'on vient n'est pas retrouver ce qu'on a accepté
 
 C'est ce qui justifie deux écrans par élément plutôt qu'un. `EventDetailScreen`
@@ -1237,6 +1269,42 @@ qui n'est plus la vôtre.
 
 `NotificationType.taskAssigned` compte pour l'onglet **Accueil** : les tâches
 n'ont pas d'onglet, et c'est de là que leur liste s'ouvre.
+
+### La réponse remonte à qui a confié la tâche
+
+Confier une tâche prévenait l'assigné ; accepter ou refuser ne prévenait
+personne. C'était un **aller sans retour** : celui qui compte sur la tâche
+devait rouvrir l'écran pour savoir si elle était prise.
+
+`notifier_reponse_tache` est le symétrique exact de `push_reponse_evenement`,
+qui remonte déjà la réponse à l'organisateur d'un événement, et pour la même
+raison : c'est **lui** que la réponse intéresse, et lui seul.
+
+Deux dépôts dans le même déclencheur, comme partout ailleurs : une ligne dans
+`notifications` pour la boîte, qui se dépile, et un `empiler_push` pour le
+téléphone.
+
+| | |
+| --- | --- |
+| titre push | le nom du groupe — « Personnel » à défaut |
+| corps push | `Léa Marchand accepte : Réserver le restaurant` |
+| ouverture | `/taches/:id`, le **détail** et non l'écran d'attribution |
+
+L'ouverture n'est pas un détail : qui a confié la tâche n'y est pas assigné, et
+l'écran d'attribution lui dirait « Cette tâche ne vous est pas assignée ».
+
+Trois refus tenus par le déclencheur :
+
+- **seul le passage de « en attente » à une réponse compte.** Un `done` posé
+  plus tard est un avancement, pas une réponse à l'attribution ;
+- **répondre à sa propre tâche ne notifie pas.** On sait ce qu'on vient
+  d'écrire ;
+- toute erreur est consignée en `warning` : une notification ne fait jamais
+  échouer l'écriture qui l'a provoquée.
+
+**Le type entre dans `types_de_notification()`**, sans quoi il ne serait pas
+désactivable depuis les réglages — et un envoi qu'on ne peut pas couper est un
+défaut. Ils sont donc **huit**, et le test de fumée le vérifie.
 
 ### Les trois réponses à un événement ont changé d'ordre
 
@@ -1717,6 +1785,7 @@ notification ; le corps, à savoir quoi.
 | `event_response` | Famille | `Randonnée du lac Blanc — Julie Martin vient` |
 | `event_changed` | Famille | `Randonnée du lac Blanc déplacé au 24/08 à 19:30` |
 | `reminder` (tâche) | Famille | `Rappel — Réserver le restaurant` |
+| `task_response` | Famille | `Léa Marchand accepte : Réserver le restaurant` |
 | `reminder` (événement) | Amis | `Rappel — Randonnée du lac Blanc à 09:00` |
 
 Trois conventions cohabitaient avant : le nom du groupe pour les messages, le
@@ -2227,7 +2296,8 @@ Trois autres vivent ailleurs, sur le même modèle : `after insert` et `after
 update on event_participants` (tranche 3b, `event_invitation`), et les trois de
 la tranche 8 sur `task_assignees` — dépôt d'un `task_assigned`, clôture à la
 réponse, et clôture au **retrait** de l'assigné, `definir_assignes_tache`
-supprimant la ligne au lieu de la modifier.
+supprimant la ligne au lieu de la modifier. Une quatrième y remonte la réponse
+à qui a confié la tâche (`task_response`).
 
 Les clôtures ne sont pas du confort : sans elles, une invitation acceptée
 laisserait sa pastille allumée indéfiniment. **Un compteur doit refléter ce qui
@@ -2269,8 +2339,9 @@ indéfiniment.
 
 `NotificationType.navIndex` associe chaque type à **un seul** onglet :
 `group_invitation` → Groupes, `contact_request` → Contacts,
-`event_invitation` → Calendrier, `task_assigned` → Accueil, comme le reste :
-les tâches n'ont pas d'onglet, et c'est de l'accueil que leur liste s'ouvre.
+`event_invitation` → Calendrier, `task_assigned` et `task_response` →
+Accueil, comme le reste : les tâches n'ont pas d'onglet, et c'est de l'accueil
+que leur liste s'ouvre.
 Un élément n'est donc jamais compté deux fois, et le total de la cloche reste
 exactement la somme des pastilles. Ajouter un type impose de lui choisir un
 onglet — c'est voulu.
@@ -2524,7 +2595,11 @@ s'en passe.
   réponse à trois choix et son enregistrement, la réponse déjà donnée qui ne
   verrouille rien, l'événement supprimé. Côté tâche : les quatre lignes dont
   la priorité, l'assigné, l'acceptation, la tâche non assignée et la tâche
-  supprimée. Enfin, les deux ouvertures depuis la boîte de notifications.
+  supprimée. Côté bandeau : la couverture présente sur les trois écrans,
+  l'image propre à un événement qui l'emporte sur celle du groupe, le repli
+  sans image inventée, et le nom du groupe lu dans la réponse plutôt que dans
+  la liste locale. Enfin les ouvertures depuis la boîte de notifications, dont
+  la réponse à une tâche — acceptée, déclinée — qui mène au **détail**.
 - `test/auth_failure_test.dart` couvre la traduction des erreurs PostgREST
   sans widget : une colonne absente ne doit pas inviter à réessayer, et les
   cas déjà couverts — pseudo pris, refus RLS, repli générique — ne bougent
@@ -2574,7 +2649,7 @@ s'en passe.
 - `test/push_notifications_test.dart` couvre les réglages de notification :
   l'activation qui enregistre l'abonnement en base, le refus et sa marche à
   suivre, la désactivation des deux côtés, la consigne d'installation iOS sans
-  bouton, les sept types désactivables, l'interrupteur qui revient si l'écriture
+  bouton, les huit types désactivables, l'interrupteur qui revient si l'écriture
   échoue, et le réenregistrement au démarrage.
 
 Onze faux dépôts vivent dans `test/fakes/` : authentification, profil, groupes,
@@ -2693,7 +2768,9 @@ sûr d'éprouver son caractère contextuel.
 - Le test de fumée couvre les tranches 3, 3b, 4, 5a, 5b, 5c, 5d, 6 et 8 — plus
   de trente fonctions réellement appelées, contrôles négatifs de l'accès au
   bucket, de la mémoire des rappels, du rangement des adhésions, de la portée
-  d'`invitation_par_id` et de l'auto-attribution qui ne notifie pas.
+  d'`invitation_par_id` et de l'auto-attribution qui ne notifie pas. Le retour
+  à l'auteur y est éprouvé des deux côtés : la ligne déposée dans la boîte et
+  celle empilée pour le téléphone.
   La tranche 6 y fait entrer `inviter_dans_groupe`,
   `accepter_invitation`, `rejoindre_groupe_par_jeton` et
   `apercu_groupe_par_jeton`, qui datent de la tranche 2 : le reste de cette

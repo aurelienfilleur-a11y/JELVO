@@ -318,6 +318,16 @@ void main() {
     await tester.tap(find.byIcon(Icons.settings_outlined));
     await tester.pumpAndSettle();
 
+    // Le bouton est en bas d'une liste que les types de notification
+    // allongent : il faut y descendre plutôt que compter sur la hauteur de la
+    // surface de test.
+    await tester.scrollUntilVisible(
+      find.text('Se déconnecter'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
     await tester.tap(find.text('Se déconnecter').last);
     await tester.pumpAndSettle();
     // Confirme dans la boîte de dialogue.

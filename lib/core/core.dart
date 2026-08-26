@@ -14,6 +14,7 @@ export 'utils/date_formatting.dart';
 export 'widgets/app_card.dart';
 export 'widgets/app_screen.dart';
 export 'widgets/app_text_field.dart';
+export 'widgets/cover_banner.dart';
 export 'widgets/avatar_stack.dart';
 export 'widgets/empty_state.dart';
 export 'widgets/event_card.dart';

@@ -228,6 +228,22 @@ void main() {
       expect(find.text('Déjà dans le groupe'), findsOneWidget);
     });
 
+    testWidgets('la photo de couverture du groupe coiffe l’écran', (
+      WidgetTester tester,
+    ) async {
+      await _pump(
+        tester,
+        const InvitationScreen(invitationId: 'inv-1'),
+        groups: FakeGroupRepository(
+          invitationDetails: <GroupInvitationDetail>[
+            _detail(statut: InvitationScreenStatus.valide),
+          ],
+        ),
+      );
+
+      expect(find.byType(CoverBanner), findsOneWidget);
+    });
+
     testWidgets('les deux boutons sont Refuser puis Rejoindre', (
       WidgetTester tester,
     ) async {
@@ -430,7 +446,64 @@ void main() {
       expect(find.text('Paul Girard'), findsOneWidget);
     });
 
-    testWidgets('sans image, aucune illustration n’est inventée', (
+    testWidgets('l’image de l’événement l’emporte sur la couverture', (
+      WidgetTester tester,
+    ) async {
+      await _pump(
+        tester,
+        const EventInvitationScreen(eventId: 'e1'),
+        events: FakeEventRepository(
+          events: <CalendarEvent>[
+            CalendarEvent(
+              id: 'e1',
+              title: 'Randonnée du lac Blanc',
+              start: DateTime(2026, 8, 10, 9),
+              end: DateTime(2026, 8, 10, 17),
+              groupId: 'g1',
+              imageUrl: 'https://exemple.test/rando.jpg',
+              groupPhotoUrl: 'https://exemple.test/couverture.jpg',
+              authorName: 'Julie Martin',
+            ),
+          ],
+        ),
+      );
+
+      final CoverBanner bandeau = tester.widget<CoverBanner>(
+        find.byType(CoverBanner),
+      );
+      expect(bandeau.photoUrl, 'https://exemple.test/rando.jpg');
+    });
+
+    testWidgets('sans image propre, la couverture du groupe prend le relais', (
+      WidgetTester tester,
+    ) async {
+      await _pump(
+        tester,
+        const EventInvitationScreen(eventId: 'e1'),
+        events: FakeEventRepository(
+          events: <CalendarEvent>[
+            CalendarEvent(
+              id: 'e1',
+              title: 'Randonnée du lac Blanc',
+              start: DateTime(2026, 8, 10, 9),
+              end: DateTime(2026, 8, 10, 17),
+              groupId: 'g1',
+              groupName: 'Famille Rousseau',
+              groupPhotoUrl: 'https://exemple.test/couverture.jpg',
+              authorName: 'Julie Martin',
+            ),
+          ],
+        ),
+      );
+
+      final CoverBanner bandeau = tester.widget<CoverBanner>(
+        find.byType(CoverBanner),
+      );
+      expect(bandeau.photoUrl, 'https://exemple.test/couverture.jpg');
+      expect(bandeau.name, 'Famille Rousseau');
+    });
+
+    testWidgets('sans rien, le bandeau retombe sur l’accent, sans image', (
       WidgetTester tester,
     ) async {
       await _pump(
@@ -439,6 +512,11 @@ void main() {
         events: FakeEventRepository(events: lesEvenements()),
       );
 
+      final CoverBanner bandeau = tester.widget<CoverBanner>(
+        find.byType(CoverBanner),
+      );
+      expect(bandeau.photoUrl, isNull);
+      // Aucune illustration inventée : le repli est un dégradé, pas une image.
       expect(find.byType(Image), findsNothing);
     });
 
@@ -578,6 +656,62 @@ void main() {
       expect(find.textContaining('Camille Rousseau'), findsOneWidget);
     });
 
+    testWidgets('la couverture du groupe coiffe aussi la tâche confiée', (
+      WidgetTester tester,
+    ) async {
+      await _pump(
+        tester,
+        const TaskAssignmentScreen(taskId: 't1'),
+        tasks: FakeTaskRepository(
+          tasks: <Task>[
+            Task(
+              id: 't1',
+              title: 'Réserver le restaurant',
+              groupId: 'g1',
+              groupName: 'Famille Rousseau',
+              groupPhotoUrl: 'https://exemple.test/couverture.jpg',
+              myStatus: AssigneeStatus.pending,
+              authorName: 'Julie Martin',
+            ),
+          ],
+        ),
+      );
+
+      final CoverBanner bandeau = tester.widget<CoverBanner>(
+        find.byType(CoverBanner),
+      );
+      expect(bandeau.photoUrl, 'https://exemple.test/couverture.jpg');
+      // Le nom vient de `mes_taches`, pas de la liste locale des groupes :
+      // un assigné n'est pas forcément membre.
+      expect(bandeau.name, 'Famille Rousseau');
+      expect(find.text('Famille Rousseau'), findsWidgets);
+    });
+
+    testWidgets('une tâche personnelle garde le bandeau, sans photo', (
+      WidgetTester tester,
+    ) async {
+      await _pump(
+        tester,
+        const TaskAssignmentScreen(taskId: 't1'),
+        tasks: FakeTaskRepository(
+          tasks: <Task>[
+            const Task(
+              id: 't1',
+              title: 'Renouveler le passeport',
+              myStatus: AssigneeStatus.pending,
+              authorName: 'Julie Martin',
+            ),
+          ],
+        ),
+      );
+
+      final CoverBanner bandeau = tester.widget<CoverBanner>(
+        find.byType(CoverBanner),
+      );
+      expect(bandeau.photoUrl, isNull);
+      expect(bandeau.name, 'Personnel');
+    });
+
     testWidgets('les deux boutons sont Refuser puis Accepter', (
       WidgetTester tester,
     ) async {
@@ -692,6 +826,65 @@ void main() {
       await tester.tap(find.text('Réserver le restaurant'));
       await tester.pumpAndSettle();
       expect(find.byType(TaskAssignmentScreen), findsOneWidget);
+    });
+
+    testWidgets('la réponse à une tâche confiée revient à son auteur', (
+      WidgetTester tester,
+    ) async {
+      await _pump(
+        tester,
+        const NotificationsScreen(),
+        tasks: FakeTaskRepository(
+          tasks: <Task>[const Task(id: 't9', title: 'Réserver le restaurant')],
+        ),
+        notifications: FakeNotificationRepository(
+          notifications: <AppNotification>[
+            AppNotification(
+              id: 'n3',
+              type: NotificationType.taskResponse,
+              payload: const <String, dynamic>{
+                'task_id': 't9',
+                'titre': 'Réserver le restaurant',
+                'reponse': 'accepted',
+                'auteur': 'Léa Marchand',
+              },
+              createdAt: _maintenant,
+            ),
+          ],
+        ),
+      );
+
+      expect(find.text('Léa Marchand accepte cette tâche.'), findsOneWidget);
+
+      // Le **détail**, pas l'écran d'attribution : qui a confié la tâche n'y
+      // est pas assigné et n'aurait rien à y répondre.
+      await tester.tap(find.text('Réserver le restaurant'));
+      await tester.pumpAndSettle();
+      expect(find.text('détail tâche'), findsOneWidget);
+    });
+
+    testWidgets('un refus se lit comme un refus', (WidgetTester tester) async {
+      await _pump(
+        tester,
+        const NotificationsScreen(),
+        notifications: FakeNotificationRepository(
+          notifications: <AppNotification>[
+            AppNotification(
+              id: 'n4',
+              type: NotificationType.taskResponse,
+              payload: const <String, dynamic>{
+                'task_id': 't9',
+                'titre': 'Réserver le restaurant',
+                'reponse': 'declined',
+                'auteur': 'Léa Marchand',
+              },
+              createdAt: _maintenant,
+            ),
+          ],
+        ),
+      );
+
+      expect(find.text('Léa Marchand décline cette tâche.'), findsOneWidget);
     });
 
     testWidgets('une invitation à un événement ouvre l’écran d’invitation', (

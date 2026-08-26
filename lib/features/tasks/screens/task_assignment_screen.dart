@@ -67,6 +67,9 @@ class _TaskAssignmentScreenState extends ConsumerState<TaskAssignmentScreen> {
     final Group? groupe = tache.groupId == null
         ? null
         : ref.watch(groupByIdProvider(tache.groupId!));
+    // `mes_taches` renvoie le nom du groupe ; la liste locale ne sert que de
+    // repli, car un assigné n'est pas forcément membre.
+    final String? nomDuGroupe = tache.groupName ?? groupe?.name;
 
     // `mon_statut` est nul quand on n'est pas assigné : il n'y a alors rien à
     // répondre, et proposer deux boutons serait proposer deux boutons sans
@@ -75,154 +78,183 @@ class _TaskAssignmentScreenState extends ConsumerState<TaskAssignmentScreen> {
     final bool aRepondre = statut == AssigneeStatus.pending;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.screenMargin,
-        AppSpacing.xl,
-        AppSpacing.screenMargin,
-        AppSpacing.xxl,
-      ),
+      padding: const EdgeInsets.only(bottom: AppSpacing.xxl),
       children: <Widget>[
-        InvitationHeader(
-          author: AvatarData(
-            name: tache.authorName ?? 'Un membre',
-            imageUrl: tache.authorAvatarUrl,
+        // La couverture du groupe, comme sur les deux autres écrans. Une tâche
+        // personnelle n'en a pas : le repli d'accent, dérivé de son
+        // identifiant, tient la même place sans rien inventer.
+        ClipRRect(
+          borderRadius: const BorderRadius.vertical(
+            bottom: Radius.circular(AppSpacing.lg),
           ),
-          // Sans auteur identifiable, la phrase se reformule sans sujet —
-          // même règle que la notification système.
-          action: tache.authorName == null
-              ? 'Cette tâche vous a été confiée'
-              : 'vous a confié une tâche',
-          // Pas d'ancienneté : `task_assignees` ne retient pas **quand** la
-          // tâche a été confiée. La date de création de la tâche s'en
-          // approche, mais serait fausse pour un assigné ajouté après coup.
-          now: now,
+          child: CoverBanner(
+            name: nomDuGroupe ?? 'Personnel',
+            subtitle: tache.dueDate == null
+                ? null
+                : 'Échéance ${AppDates.shortDate(tache.dueDate!)}',
+            accentColor: GroupAccent.forId(tache.groupId ?? tache.id).color,
+            icon: Icons.task_alt_rounded,
+            photoUrl: tache.groupPhotoUrl ?? groupe?.photoUrl,
+          ),
         ),
 
-        AppSpacing.gapXl,
-        Text(tache.title, style: AppTypography.h2),
-
-        AppSpacing.gapLg,
-        AppCard(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.xs,
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.screenMargin,
+            AppSpacing.xl,
+            AppSpacing.screenMargin,
+            0,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              InvitationDetailRow(
-                icon: Icons.groups_outlined,
-                label: 'Groupe',
-                value: groupe?.name ?? 'Personnel',
-              ),
-              if (tache.notes != null && tache.notes!.isNotEmpty)
-                InvitationDetailRow(
-                  icon: Icons.notes_rounded,
-                  label: 'Description',
-                  value: tache.notes!,
+              InvitationHeader(
+                author: AvatarData(
+                  name: tache.authorName ?? 'Un membre',
+                  imageUrl: tache.authorAvatarUrl,
                 ),
-              if (tache.dueDate != null)
-                InvitationDetailRow(
-                  icon: Icons.event_outlined,
-                  label: 'Échéance',
-                  value:
-                      '${AppDates.fullDate(tache.dueDate!)} à '
-                      '${AppDates.time(tache.dueDate!)}',
-                ),
-              // `task_priority` existe bel et bien : `low`, `medium`, `high`.
-              InvitationDetailRow(
-                icon: Icons.flag_outlined,
-                label: 'Priorité',
-                value: tache.priority.label,
-                dernier: true,
+                // Sans auteur identifiable, la phrase se reformule sans sujet —
+                // même règle que la notification système.
+                action: tache.authorName == null
+                    ? 'Cette tâche vous a été confiée'
+                    : 'vous a confié une tâche',
+                // Pas d'ancienneté : `task_assignees` ne retient pas **quand** la
+                // tâche a été confiée. La date de création de la tâche s'en
+                // approche, mais serait fausse pour un assigné ajouté après coup.
+                now: now,
               ),
+
+              AppSpacing.gapXl,
+              Text(tache.title, style: AppTypography.h2),
+
+              AppSpacing.gapLg,
+              AppCard(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.xs,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    InvitationDetailRow(
+                      icon: Icons.groups_outlined,
+                      label: 'Groupe',
+                      value: nomDuGroupe ?? 'Personnel',
+                    ),
+                    if (tache.notes != null && tache.notes!.isNotEmpty)
+                      InvitationDetailRow(
+                        icon: Icons.notes_rounded,
+                        label: 'Description',
+                        value: tache.notes!,
+                      ),
+                    if (tache.dueDate != null)
+                      InvitationDetailRow(
+                        icon: Icons.event_outlined,
+                        label: 'Échéance',
+                        value:
+                            '${AppDates.fullDate(tache.dueDate!)} à '
+                            '${AppDates.time(tache.dueDate!)}',
+                      ),
+                    // `task_priority` existe bel et bien : `low`, `medium`, `high`.
+                    InvitationDetailRow(
+                      icon: Icons.flag_outlined,
+                      label: 'Priorité',
+                      value: tache.priority.label,
+                      dernier: true,
+                    ),
+                  ],
+                ),
+              ),
+
+              if (tache.assignees.isNotEmpty) ...<Widget>[
+                AppSpacing.gapXl,
+                SectionHeader(
+                  title: tache.assignees.length > 1 ? 'Assignés' : 'Assignée à',
+                ),
+                AppSpacing.gapMd,
+                for (final TaskAssignee a in tache.assignees)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                    child: Row(
+                      children: <Widget>[
+                        AvatarImage(
+                          data: AvatarData(
+                            name: a.displayName,
+                            imageUrl: a.avatarUrl,
+                          ),
+                          size: 32,
+                        ),
+                        AppSpacing.hGapMd,
+                        Expanded(
+                          child: Text(
+                            a.userId == moi
+                                ? '${a.displayName} (vous)'
+                                : a.displayName,
+                            style: AppTypography.body,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        AppSpacing.hGapSm,
+                        StatusDot(
+                          tone: _tonPour(a.status),
+                          label: a.status.label,
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+
+              if (tache.isOverdue(now)) ...<Widget>[
+                AppSpacing.gapXl,
+                _Bandeau(
+                  icone: Icons.warning_amber_rounded,
+                  couleur: AppColors.danger,
+                  fond: AppColors.dangerSoft,
+                  texte: 'L’échéance est déjà passée.',
+                ),
+              ],
+
+              AppSpacing.gapXxl,
+              if (aRepondre)
+                InvitationActions(
+                  refuser: 'Refuser',
+                  accepter: 'Accepter',
+                  enCours: _enCours,
+                  onRefuser: () => _repondre(tache, AssigneeStatus.declined),
+                  onAccepter: () => _repondre(tache, AssigneeStatus.accepted),
+                )
+              else ...<Widget>[
+                _Bandeau(
+                  icone: statut == null
+                      ? Icons.info_outline_rounded
+                      : Icons.how_to_reg_rounded,
+                  couleur: statut == AssigneeStatus.declined
+                      ? AppColors.textSecondary
+                      : AppColors.success,
+                  fond: statut == AssigneeStatus.declined
+                      ? AppColors.border
+                      : AppColors.successSoft,
+                  texte: switch (statut) {
+                    AssigneeStatus.accepted => 'Vous avez accepté cette tâche.',
+                    AssigneeStatus.declined => 'Vous avez décliné cette tâche.',
+                    AssigneeStatus.done => 'Vous avez terminé votre part.',
+                    AssigneeStatus.pending ||
+                    null => 'Cette tâche ne vous est pas assignée.',
+                  },
+                ),
+                AppSpacing.gapLg,
+                PrimaryButton(
+                  label: 'Ouvrir la tâche',
+                  onPressed: () => context.pushReplacementNamed(
+                    AppRoutes.taskDetail,
+                    pathParameters: <String, String>{'id': tache.id},
+                  ),
+                ),
+              ],
             ],
           ),
         ),
-
-        if (tache.assignees.isNotEmpty) ...<Widget>[
-          AppSpacing.gapXl,
-          SectionHeader(
-            title: tache.assignees.length > 1 ? 'Assignés' : 'Assignée à',
-          ),
-          AppSpacing.gapMd,
-          for (final TaskAssignee a in tache.assignees)
-            Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-              child: Row(
-                children: <Widget>[
-                  AvatarImage(
-                    data: AvatarData(
-                      name: a.displayName,
-                      imageUrl: a.avatarUrl,
-                    ),
-                    size: 32,
-                  ),
-                  AppSpacing.hGapMd,
-                  Expanded(
-                    child: Text(
-                      a.userId == moi
-                          ? '${a.displayName} (vous)'
-                          : a.displayName,
-                      style: AppTypography.body,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  AppSpacing.hGapSm,
-                  StatusDot(tone: _tonPour(a.status), label: a.status.label),
-                ],
-              ),
-            ),
-        ],
-
-        if (tache.isOverdue(now)) ...<Widget>[
-          AppSpacing.gapXl,
-          _Bandeau(
-            icone: Icons.warning_amber_rounded,
-            couleur: AppColors.danger,
-            fond: AppColors.dangerSoft,
-            texte: 'L’échéance est déjà passée.',
-          ),
-        ],
-
-        AppSpacing.gapXxl,
-        if (aRepondre)
-          InvitationActions(
-            refuser: 'Refuser',
-            accepter: 'Accepter',
-            enCours: _enCours,
-            onRefuser: () => _repondre(tache, AssigneeStatus.declined),
-            onAccepter: () => _repondre(tache, AssigneeStatus.accepted),
-          )
-        else ...<Widget>[
-          _Bandeau(
-            icone: statut == null
-                ? Icons.info_outline_rounded
-                : Icons.how_to_reg_rounded,
-            couleur: statut == AssigneeStatus.declined
-                ? AppColors.textSecondary
-                : AppColors.success,
-            fond: statut == AssigneeStatus.declined
-                ? AppColors.border
-                : AppColors.successSoft,
-            texte: switch (statut) {
-              AssigneeStatus.accepted => 'Vous avez accepté cette tâche.',
-              AssigneeStatus.declined => 'Vous avez décliné cette tâche.',
-              AssigneeStatus.done => 'Vous avez terminé votre part.',
-              AssigneeStatus.pending ||
-              null => 'Cette tâche ne vous est pas assignée.',
-            },
-          ),
-          AppSpacing.gapLg,
-          PrimaryButton(
-            label: 'Ouvrir la tâche',
-            onPressed: () => context.pushReplacementNamed(
-              AppRoutes.taskDetail,
-              pathParameters: <String, String>{'id': tache.id},
-            ),
-          ),
-        ],
       ],
     );
   }

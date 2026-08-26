@@ -9,11 +9,14 @@
 --    état**. `mes_invitations` ne renvoie que les `pending` sur un groupe
 --    vivant ; une invitation déjà acceptée y disparaît, et l'écran ne pouvait
 --    dire que « introuvable » — le mot le plus vague pour les quatre cas.
--- 2. `auteur` et `auteur_avatar` sur `mon_agenda` et `mes_taches` : le nom de
---    qui invite. Il était en base, aucune lecture ne le remontait.
+-- 2. `auteur`, `auteur_avatar`, `groupe_nom` et `groupe_photo` sur
+--    `mon_agenda` et `mes_taches` : le nom de qui invite, et la couverture du
+--    groupe. Tout était en base, aucune lecture ne le remontait.
 -- 3. `task_assigned` dans `notifications` : la tranche 5c envoyait la
 --    notification **système**, mais ne déposait aucune ligne dans la boîte.
 --    L'écran d'attribution n'avait donc pas d'entrée.
+-- 4. `task_response` : accepter ou refuser une tâche ne prévenait personne.
+--    L'aller existait, le retour non.
 --
 -- Idempotent : toute la tranche se rejoue sans effet de bord.
 --
@@ -194,7 +197,9 @@ returns table (
   participants     jsonb,
   nombre_oui       integer,
   auteur           text,
-  auteur_avatar    text
+  auteur_avatar    text,
+  groupe_nom       text,
+  groupe_photo     text
 )
 language sql
 security definer
@@ -225,7 +230,12 @@ as $$
       where p.event_id = e.id and p.response = 'yes'),
     public.nom_affiche(e.owner_id),
     (select coalesce('preset:' || pa.avatar_preset, pa.avatar_url)
-       from public.profiles pa where pa.id = e.owner_id)
+       from public.profiles pa where pa.id = e.owner_id),
+    -- Le groupe est renvoyé ici plutôt que relu côté client : un convive n'est
+    -- pas forcément membre du groupe, et `groupsProvider` ne lui montrerait
+    -- alors ni le nom ni la photo de couverture.
+    (select g.name from public.groups g where g.id = e.group_id),
+    (select g.photo_url from public.groups g where g.id = e.group_id)
   from public.events e
   where e.deleted_at is null
     and (p_group_id is null or e.group_id = p_group_id)
@@ -265,7 +275,9 @@ returns table (
   articles        integer,
   articles_coches integer,
   auteur          text,
-  auteur_avatar   text
+  auteur_avatar   text,
+  groupe_nom      text,
+  groupe_photo    text
 )
 language sql
 security definer
@@ -298,7 +310,11 @@ as $$
       where i.task_id = t.id and i.checked_at is not null),
     public.nom_affiche(t.created_by),
     (select coalesce('preset:' || pa.avatar_preset, pa.avatar_url)
-       from public.profiles pa where pa.id = t.created_by)
+       from public.profiles pa where pa.id = t.created_by),
+    -- Même raison que pour l'agenda : un assigné peut ne pas être membre du
+    -- groupe, et l'écran d'attribution afficherait alors « Personnel » à tort.
+    (select g.name from public.groups g where g.id = t.group_id),
+    (select g.photo_url from public.groups g where g.id = t.group_id)
   from public.tasks t
   where t.deleted_at is null
     and (p_group_id is null or t.group_id = p_group_id)
@@ -449,3 +465,94 @@ drop trigger if exists trg_clore_notification_tache_retiree
 create trigger trg_clore_notification_tache_retiree
 after delete on public.task_assignees
 for each row execute function public.clore_notification_tache_retiree();
+
+
+-- ---------------------------------------------------------------------------
+-- 4. La réponse remonte à qui a confié la tâche
+-- ---------------------------------------------------------------------------
+-- Confier une tâche prévenait l'assigné ; accepter ou refuser ne prévenait
+-- personne. C'était un aller sans retour : celui qui compte sur la tâche
+-- devait rouvrir l'écran pour savoir si elle était prise.
+--
+-- Symétrique exact de `push_reponse_evenement`, qui remonte déjà la réponse à
+-- l'organisateur d'un événement — et pour la même raison : c'est **lui** que
+-- la réponse intéresse, et lui seul.
+--
+-- Deux dépôts, comme partout ailleurs : une ligne dans `notifications` pour la
+-- boîte, qui se dépile, et une ligne dans `push_outbox` pour le téléphone.
+-- Répondre à sa **propre** tâche ne notifie pas : on sait ce qu'on vient
+-- d'écrire.
+
+create or replace function public.notifier_reponse_tache()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  tache    public.tasks%rowtype;
+  groupe   text;
+  qui      text;
+  verbe    text;
+begin
+  -- Seul le passage de « en attente » à une réponse compte. Un `done` posé
+  -- plus tard est un avancement, pas une réponse à l'attribution.
+  if new.status not in ('accepted'::assignee_status,
+                        'declined'::assignee_status)
+     or old.status = new.status then
+    return new;
+  end if;
+
+  select * into tache from public.tasks t where t.id = new.task_id;
+  if not found or tache.deleted_at is not null
+     or tache.created_by is null
+     or tache.created_by = new.user_id then
+    return new;
+  end if;
+
+  select g.name into groupe from public.groups g where g.id = tache.group_id;
+  qui := public.nom_affiche(new.user_id);
+  verbe := case when new.status = 'accepted'::assignee_status
+                then 'accepte' else 'décline' end;
+
+  insert into public.notifications (user_id, type, payload)
+  values (
+    tache.created_by,
+    'task_response',
+    jsonb_build_object(
+      'task_id',    tache.id,
+      'titre',      tache.title,
+      'reponse',    new.status::text,
+      'group_id',   tache.group_id,
+      'group_name', groupe,
+      'auteur',     qui
+    )
+  );
+
+  -- Titre = le contexte, corps = qui fait quoi. Sans répondant identifiable,
+  -- la phrase se reformule sans sujet plutôt que d'inventer un nom.
+  perform public.empiler_push(
+    tache.created_by,
+    'task_response',
+    coalesce(groupe, 'Personnel'),
+    case when qui is null
+         then tache.title || ' — ' || verbe || 'e'
+         else qui || ' ' || verbe || ' : ' || tache.title
+    end,
+    '/taches/' || tache.id::text
+  );
+
+  return new;
+exception
+  when others then
+    raise warning 'Notification de réponse à une tâche impossible : % (%)',
+      sqlerrm, sqlstate;
+    return new;
+end;
+$$;
+
+drop trigger if exists trg_notifier_reponse_tache on public.task_assignees;
+
+create trigger trg_notifier_reponse_tache
+after update on public.task_assignees
+for each row execute function public.notifier_reponse_tache();

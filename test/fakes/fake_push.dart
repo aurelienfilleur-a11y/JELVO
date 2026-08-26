@@ -69,7 +69,7 @@ class FakePushRepository implements PushRepository {
   bool? lastToggledValue;
   int registrations = 0;
 
-  /// Les sept types renvoyés par `types_de_notification()`, tous activés :
+  /// Les huit types renvoyés par `types_de_notification()`, tous activés :
   /// le modèle est un opt-out. L'ordre et les libellés reprennent ceux du
   /// SQL — un écart ici ferait passer un test que la vraie liste échouerait.
   static List<NotificationPreference> demoPreferences() =>
@@ -109,6 +109,14 @@ class FakePushRepository implements PushRepository {
           label: 'Réponses aux événements',
           description:
               'Quand quelqu’un répond à un événement que vous organisez',
+          enabled: true,
+        ),
+        const NotificationPreference(
+          type: 'task_response',
+          label: 'Réponses aux tâches',
+          description:
+              'Quand quelqu’un accepte ou décline une tâche que vous avez '
+              'confiée',
           enabled: true,
         ),
         const NotificationPreference(

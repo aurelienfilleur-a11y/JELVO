@@ -66,6 +66,8 @@ declare
   creneau    uuid;
   message    uuid;
   message2   uuid;
+  vocal      uuid;
+  photo2     uuid;
   invit      uuid;
 begin
   -- Tâches -----------------------------------------------------------------
@@ -359,6 +361,39 @@ begin
             '22222222-2222-2222-2222-222222222222'::uuid)
            where task_id is not null) >= 1,
          'aucune carte de tâche déposée dans la conversation';
+
+  -- Message vocal : la valeur `audio` du type et la durée qui l'accompagne.
+  vocal := public.envoyer_message(
+    '22222222-2222-2222-2222-222222222222'::uuid,
+    p_media_url => 'chat-media/22222222/vocal.m4a',
+    p_media_kind => 'audio', p_media_duree_s => 12);
+
+  assert (select media_kind = 'audio' and media_duree_s = 12
+            from public.messages_du_groupe(
+              '22222222-2222-2222-2222-222222222222'::uuid)
+           where id = vocal),
+         'la durée du message vocal ne ressort pas de la lecture';
+
+  -- Contrôle négatif : une durée **passée** avec une photo n'est pas retenue.
+  -- La garder laisserait une valeur qu'aucune lecture ne saurait interpréter.
+  photo2 := public.envoyer_message(
+    '22222222-2222-2222-2222-222222222222'::uuid,
+    p_media_url => 'chat-media/22222222/autre.jpg',
+    p_media_kind => 'image', p_media_duree_s => 99);
+
+  assert (select media_duree_s is null
+            from public.messages_du_groupe(
+              '22222222-2222-2222-2222-222222222222'::uuid)
+           where id = photo2),
+         'une durée a été retenue sur un média qui n''est pas sonore';
+
+  -- Et la suppression douce l'efface, comme le reste du média.
+  assert public.supprimer_message(vocal), 'supprimer un message vocal';
+  assert (select media_duree_s is null and media_url is null
+            from public.messages_du_groupe(
+              '22222222-2222-2222-2222-222222222222'::uuid)
+           where id = vocal),
+         'un message vocal supprimé laisse fuiter sa durée';
 
   -- La clé primaire tient la règle : une seule réaction par personne. Poser un
   -- second emoji remplace le premier, il ne s'y ajoute pas.

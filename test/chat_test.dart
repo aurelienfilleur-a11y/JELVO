@@ -10,14 +10,19 @@ import 'package:jelvo/data/app_config.dart';
 import 'package:jelvo/data/data_providers.dart';
 import 'package:jelvo/features/auth/providers/auth_providers.dart';
 import 'package:jelvo/features/availability/providers/availability_providers.dart';
+import 'package:jelvo/features/calendar/models/calendar_event.dart';
 import 'package:jelvo/features/calendar/providers/calendar_providers.dart';
 import 'package:jelvo/features/chat/models/media_selection.dart';
 import 'package:jelvo/features/chat/models/message.dart';
 import 'package:jelvo/features/chat/models/message_card.dart';
 import 'package:jelvo/features/chat/providers/chat_providers.dart';
 import 'package:jelvo/features/chat/repository/chat_repository.dart';
+import 'package:jelvo/features/chat/widgets/chat_day_divider.dart';
+import 'package:jelvo/features/chat/widgets/chat_header.dart';
 import 'package:jelvo/features/chat/widgets/chat_media.dart';
+import 'package:jelvo/features/chat/widgets/emoji_picker.dart';
 import 'package:jelvo/features/chat/widgets/message_card_tile.dart';
+import 'package:jelvo/features/chat/widgets/voice_message.dart';
 import 'package:jelvo/features/contacts/providers/contact_providers.dart';
 import 'package:jelvo/features/groups/providers/group_providers.dart';
 import 'package:jelvo/features/groups/widgets/group_quick_actions.dart';
@@ -25,6 +30,7 @@ import 'package:jelvo/features/notifications/models/app_notification.dart';
 import 'package:jelvo/features/notifications/providers/notification_providers.dart';
 import 'package:jelvo/features/notifications/providers/push_providers.dart';
 import 'package:jelvo/features/profile/providers/profile_providers.dart';
+import 'package:jelvo/features/tasks/models/task.dart';
 import 'package:jelvo/features/tasks/providers/task_providers.dart';
 import 'package:jelvo/main.dart';
 import 'package:jelvo/router/app_bottom_nav.dart';
@@ -38,6 +44,7 @@ import 'fakes/fake_group_repository.dart';
 import 'fakes/fake_notification_repository.dart';
 import 'fakes/fake_push.dart';
 import 'fakes/fake_task_repository.dart';
+import 'fakes/fake_voice.dart';
 
 final DateTime _testNow = DateTime(2026, 8, 3, 9);
 
@@ -48,6 +55,8 @@ Future<FakeChatRepository> _pumpApp(
   List<Message>? messages,
   FakeTaskRepository? tasks,
   FakeEventRepository? events,
+  FakeVoiceRecorder? recorder,
+  FakeVoicePlayer? player,
 }) async {
   tester.view.physicalSize = const Size(420, 1600);
   tester.view.devicePixelRatio = 1;
@@ -75,6 +84,15 @@ Future<FakeChatRepository> _pumpApp(
         ),
         contactRepositoryProvider.overrideWithValue(FakeContactRepository()),
         chatRepositoryProvider.overrideWithValue(chat),
+        // Ni micro ni haut-parleur dans un test de widget : sans ces deux
+        // surcharges, `record` et `just_audio` cherchent un canal de
+        // plateforme qui n'existe pas.
+        voiceRecorderProvider.overrideWithValue(
+          recorder ?? FakeVoiceRecorder(),
+        ),
+        voicePlayerFactoryProvider.overrideWithValue(
+          () => player ?? FakeVoicePlayer(),
+        ),
         pushServiceProvider.overrideWithValue(FakePushService()),
         pushRepositoryProvider.overrideWithValue(FakePushRepository()),
         availabilityRepositoryProvider.overrideWithValue(
@@ -288,12 +306,13 @@ void main() {
       await _ouvrirDiscussion(tester);
 
       // Des espaces seuls ne sont pas un message : `envoyer_message` les
-      // refuserait, autant ne pas les envoyer.
+      // refuserait, autant ne pas les envoyer. Le bouton de droite reste
+      // donc le micro — il n'y a rien à envoyer.
       await tester.enterText(find.byType(TextField), '   ');
       await tester.pump();
-      await tester.tap(find.byTooltip('Envoyer'));
-      await tester.pumpAndSettle();
 
+      expect(find.byTooltip('Envoyer'), findsNothing);
+      expect(find.byTooltip('Enregistrer un message vocal'), findsOneWidget);
       expect(chat.lastSentContent, isNull);
     });
 
@@ -379,13 +398,24 @@ void main() {
   });
 
   group('Médias', () {
-    testWidgets('le bouton de pièce jointe est proposé', (
+    testWidgets('le « + » ouvre les trois choses qu’on peut ajouter', (
       WidgetTester tester,
     ) async {
       await _pumpApp(tester);
       await _ouvrirDiscussion(tester);
 
-      expect(find.byTooltip('Joindre une photo ou une vidéo'), findsOneWidget);
+      await tester.tap(find.byTooltip('Ajouter à la conversation'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Nouvelle tâche'), findsOneWidget);
+      expect(find.text('Nouvel événement'), findsOneWidget);
+      expect(find.text('Photo ou vidéo'), findsOneWidget);
+
+      // Les listes, les dépenses et les notes n'existent nulle part dans
+      // Jelvo : les proposer promettrait ce qui n'arrive pas.
+      expect(find.text('Nouvelle liste'), findsNothing);
+      expect(find.text('Nouvelle dépense'), findsNothing);
+      expect(find.text('Nouvelle note'), findsNothing);
     });
 
     testWidgets('la feuille propose photo et vidéo, jamais un document', (
@@ -394,7 +424,9 @@ void main() {
       await _pumpApp(tester);
       await _ouvrirDiscussion(tester);
 
-      await tester.tap(find.byTooltip('Joindre une photo ou une vidéo'));
+      await tester.tap(find.byTooltip('Ajouter à la conversation'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Photo ou vidéo'));
       await tester.pumpAndSettle();
 
       expect(find.text('Photo de la galerie'), findsOneWidget);
@@ -1107,4 +1139,426 @@ void main() {
       expect(carte, lessThan(apres));
     });
   });
+
+  group('Écran de discussion refondu', () {
+    testWidgets('l’en-tête porte le groupe, son effectif, et rien d’autre', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester);
+      await _ouvrirDiscussion(tester);
+
+      expect(
+        find.descendant(
+          of: find.byType(ChatHeader),
+          matching: find.text('Famille Rousseau'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(ChatHeader),
+          matching: find.text('3 membres'),
+        ),
+        findsOneWidget,
+      );
+
+      // Jelvo n'a ni appel audio ni appel vidéo : les pictogrammes de la
+      // maquette promettraient une fonctionnalité qui n'arrive pas.
+      expect(find.byIcon(Icons.call_rounded), findsNothing);
+      expect(find.byIcon(Icons.call_outlined), findsNothing);
+      expect(find.byIcon(Icons.videocam_rounded), findsNothing);
+      expect(find.byIcon(Icons.videocam_outlined), findsNothing);
+    });
+
+    testWidgets('toucher l’en-tête ouvre l’écran du groupe', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester);
+      await _ouvrirDiscussion(tester);
+
+      await tester.tap(
+        find.descendant(
+          of: find.byType(ChatHeader),
+          matching: find.text('Famille Rousseau'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Anniversaires, vacances et rendez-vous médicaux'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('la barre de raccourcis compte ce qui est en cours', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester);
+      await _ouvrirDiscussion(tester);
+
+      final Finder barre = find.byType(ChatShortcutBar);
+      expect(barre, findsOneWidget);
+      // Une tâche ouverte et un événement à venir dans g1 : les deux sortent
+      // de `mes_taches` et `mon_agenda`, déjà chargées.
+      expect(
+        find.descendant(of: barre, matching: find.text('tâche')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: barre, matching: find.text('événement')),
+        findsOneWidget,
+      );
+
+      // Ni listes ni dépenses : elles n'existent nulle part dans Jelvo.
+      expect(
+        find.descendant(of: barre, matching: find.text('liste')),
+        findsNothing,
+      );
+      expect(
+        find.descendant(of: barre, matching: find.text('dépense')),
+        findsNothing,
+      );
+    });
+
+    testWidgets('un groupe sans rien ne dit pas « 0 tâche »', (
+      WidgetTester tester,
+    ) async {
+      // Ni tâche ni événement dans g1 : « 0 tâche · 0 événement » serait vrai,
+      // inutile, et se lirait comme un défaut de chargement.
+      await _pumpApp(
+        tester,
+        tasks: FakeTaskRepository(tasks: <Task>[]),
+        events: FakeEventRepository(events: <CalendarEvent>[]),
+      );
+      await _ouvrirDiscussion(tester);
+
+      final Finder barre = find.byType(ChatShortcutBar);
+      expect(
+        find.descendant(of: barre, matching: find.text('0')),
+        findsNothing,
+      );
+      expect(
+        find.descendant(
+          of: barre,
+          matching: find.text('Rien de prévu pour l’instant'),
+        ),
+        findsOneWidget,
+      );
+      // Le chevron reste : la barre est aussi un chemin vers le groupe.
+      expect(
+        find.descendant(
+          of: barre,
+          matching: find.byIcon(Icons.chevron_right_rounded),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('le chevron de la barre mène au groupe', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester);
+      await _ouvrirDiscussion(tester);
+
+      await tester.tap(find.byType(ChatShortcutBar));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Anniversaires, vacances et rendez-vous médicaux'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('un séparateur coiffe chaque journée', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(
+        tester,
+        messages: <Message>[
+          Message(
+            id: 'j2',
+            groupId: 'g1',
+            senderId: 'u2',
+            createdAt: DateTime(2026, 8, 3, 8),
+            content: 'ce matin',
+            senderName: 'Léa Marchand',
+          ),
+          Message(
+            id: 'j1',
+            groupId: 'g1',
+            senderId: 'u2',
+            createdAt: DateTime(2026, 8, 2, 20),
+            content: 'hier soir',
+            senderName: 'Léa Marchand',
+          ),
+        ],
+      );
+      await _ouvrirDiscussion(tester);
+
+      expect(find.byType(ChatDayDivider), findsNWidgets(2));
+      expect(find.text('Aujourd\'hui'), findsOneWidget);
+      expect(find.text('Hier'), findsOneWidget);
+
+      // Le séparateur coiffe la journée : « Hier » est au-dessus du message
+      // d'hier, et « Aujourd'hui » au-dessus de celui de ce matin.
+      expect(
+        tester.getCenter(find.text('Hier')).dy,
+        lessThan(tester.getCenter(find.text('hier soir')).dy),
+      );
+      expect(
+        tester.getCenter(find.text('hier soir')).dy,
+        lessThan(tester.getCenter(find.text('Aujourd\'hui')).dy),
+      );
+    });
+
+    testWidgets('un changement de jour recoupe la série', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(
+        tester,
+        messages: <Message>[
+          Message(
+            id: 'j2',
+            groupId: 'g1',
+            senderId: 'u2',
+            createdAt: DateTime(2026, 8, 3, 8),
+            content: 'ce matin',
+            senderName: 'Léa Marchand',
+          ),
+          Message(
+            id: 'j1',
+            groupId: 'g1',
+            senderId: 'u2',
+            createdAt: DateTime(2026, 8, 2, 20),
+            content: 'hier soir',
+            senderName: 'Léa Marchand',
+          ),
+        ],
+      );
+      await _ouvrirDiscussion(tester);
+
+      // Même expéditeur des deux côtés du séparateur : son nom se relit
+      // quand même, sinon la journée du dessous commencerait sans dire qui
+      // parle.
+      expect(find.text('Léa Marchand'), findsNWidgets(2));
+    });
+
+    testWidgets('le nom de l’expéditeur porte sa propre couleur', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(
+        tester,
+        messages: <Message>[
+          Message(
+            id: 'd2',
+            groupId: 'g1',
+            senderId: 'u9',
+            createdAt: DateTime(2026, 8, 3, 8, 10),
+            content: 'et moi le pain',
+            senderName: 'Thomas Bernard',
+          ),
+          Message(
+            id: 'd1',
+            groupId: 'g1',
+            senderId: 'u2',
+            createdAt: DateTime(2026, 8, 3, 8),
+            content: 'j’apporte le dessert',
+            senderName: 'Léa Marchand',
+          ),
+        ],
+      );
+      await _ouvrirDiscussion(tester);
+
+      Color couleurDe(String nom) =>
+          tester.widget<Text>(find.text(nom)).style!.color!;
+
+      expect(couleurDe('Léa Marchand'), SpeakerAccent.colorFor('u2'));
+      expect(couleurDe('Thomas Bernard'), SpeakerAccent.colorFor('u9'));
+      // Deux personnes, deux couleurs : c'est tout l'objet du dispositif.
+      expect(couleurDe('Léa Marchand'), isNot(couleurDe('Thomas Bernard')));
+      // Et jamais le gris de légende, qui ne distinguait personne.
+      expect(couleurDe('Léa Marchand'), isNot(AppColors.textSecondary));
+    });
+  });
+
+  group('Sélecteur d’emoji', () {
+    testWidgets('le panneau s’ouvre et se referme', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester);
+      await _ouvrirDiscussion(tester);
+
+      expect(find.byType(EmojiPicker), findsNothing);
+
+      await tester.tap(find.byTooltip('Emojis'));
+      await tester.pumpAndSettle();
+      expect(find.byType(EmojiPicker), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Fermer les emojis'));
+      await tester.pumpAndSettle();
+      expect(find.byType(EmojiPicker), findsNothing);
+    });
+
+    testWidgets('l’emoji s’insère à l’endroit du curseur', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester);
+      await _ouvrirDiscussion(tester);
+
+      await tester.enterText(find.byType(TextField), 'bravo !');
+      await tester.pump();
+
+      // Le curseur est replacé après « bravo », avant le point
+      // d'exclamation : on pose souvent un emoji au milieu d'une phrase
+      // déjà écrite.
+      final EditableTextState champ = tester.state<EditableTextState>(
+        find.byType(EditableText),
+      );
+      champ.updateEditingValue(
+        const TextEditingValue(
+          text: 'bravo !',
+          selection: TextSelection.collapsed(offset: 5),
+        ),
+      );
+      await tester.pump();
+
+      await tester.tap(find.byTooltip('Emojis'));
+      await tester.pumpAndSettle();
+      // Un emoji de la première famille, celle qui s'ouvre — et qui ne sert
+      // pas d'onglet, sans quoi le finder en trouverait deux.
+      await tester.tap(
+        find.descendant(
+          of: find.byType(EmojiPicker),
+          matching: find.text('🙂'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        'bravo🙂 !',
+      );
+    });
+  });
+
+  group('Messages vocaux', () {
+    testWidgets('le micro remplace l’envoi tant qu’on n’a rien écrit', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester);
+      await _ouvrirDiscussion(tester);
+
+      expect(find.byTooltip('Enregistrer un message vocal'), findsOneWidget);
+      expect(find.byTooltip('Envoyer'), findsNothing);
+
+      await tester.enterText(find.byType(TextField), 'coucou');
+      await tester.pump();
+
+      expect(find.byTooltip('Envoyer'), findsOneWidget);
+      expect(find.byTooltip('Enregistrer un message vocal'), findsNothing);
+    });
+
+    testWidgets('enregistrer puis envoyer dépose un message audio', (
+      WidgetTester tester,
+    ) async {
+      final FakeVoiceRecorder micro = FakeVoiceRecorder(
+        duree: const Duration(seconds: 8),
+      );
+      final FakeChatRepository chat = await _pumpApp(tester, recorder: micro);
+      await _ouvrirDiscussion(tester);
+
+      await tester.tap(find.byTooltip('Enregistrer un message vocal'));
+      await tester.pumpAndSettle();
+
+      // La barre change d'état : on annule ou on envoie, on n'écrit plus.
+      expect(find.text('Enregistrement…'), findsOneWidget);
+      expect(micro.demarrages, 1);
+
+      await tester.tap(find.byTooltip('Envoyer le message vocal'));
+      await tester.pumpAndSettle();
+
+      expect(chat.lastSentKind, MediaKind.audio);
+      expect(chat.lastSentDuration, const Duration(seconds: 8));
+      // Le chemin suit la convention du bucket : le groupe en premier
+      // segment, c'est lui que lisent les politiques.
+      expect(chat.lastUploadedPath, startsWith('g1/'));
+      expect(chat.lastUploadedPath, endsWith('.m4a'));
+    });
+
+    testWidgets('annuler n’envoie rien', (WidgetTester tester) async {
+      final FakeVoiceRecorder micro = FakeVoiceRecorder();
+      final FakeChatRepository chat = await _pumpApp(tester, recorder: micro);
+      await _ouvrirDiscussion(tester);
+
+      await tester.tap(find.byTooltip('Enregistrer un message vocal'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Annuler l’enregistrement'));
+      await tester.pumpAndSettle();
+
+      expect(micro.annulations, 1);
+      expect(chat.lastSentKind, isNull);
+      expect(find.text('Enregistrement…'), findsNothing);
+    });
+
+    testWidgets('un micro refusé le dit, et n’enregistre pas', (
+      WidgetTester tester,
+    ) async {
+      final FakeVoiceRecorder micro = FakeVoiceRecorder(autorisation: false);
+      await _pumpApp(tester, recorder: micro);
+      await _ouvrirDiscussion(tester);
+
+      await tester.tap(find.byTooltip('Enregistrer un message vocal'));
+      await tester.pumpAndSettle();
+
+      // Un refus est définitif côté application : l'écran renvoie aux
+      // réglages du navigateur plutôt qu'à un bouton qui ne ferait rien.
+      expect(
+        find.textContaining('réglages de votre navigateur'),
+        findsOneWidget,
+      );
+      expect(find.text('Enregistrement…'), findsNothing);
+    });
+
+    testWidgets('la bulle annonce la durée sans rien télécharger', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester, messages: <Message>[_vocal()]);
+      await _ouvrirDiscussion(tester);
+
+      // La durée vient de `messages.media_duree_s` : elle s'affiche avant
+      // toute lecture, sans URL signée ni octet transféré.
+      expect(find.byType(VoiceMessage), findsOneWidget);
+      expect(find.text('0:12'), findsOneWidget);
+      expect(find.byTooltip('Écouter'), findsOneWidget);
+
+      // Un message vocal n'est pas une vignette : pas de cadre d'image.
+      expect(find.byType(ChatMedia), findsNothing);
+    });
+
+    testWidgets('écouter demande l’URL signée et lance la lecture', (
+      WidgetTester tester,
+    ) async {
+      final FakeVoicePlayer lecteur = FakeVoicePlayer();
+      await _pumpApp(tester, messages: <Message>[_vocal()], player: lecteur);
+      await _ouvrirDiscussion(tester);
+
+      await tester.tap(find.byTooltip('Écouter'));
+      await tester.pumpAndSettle();
+
+      expect(lecteur.urlChargee, contains('g1/vocal.m4a'));
+      expect(find.byTooltip('Mettre en pause'), findsOneWidget);
+    });
+  });
 }
+
+/// Un message vocal de douze secondes, prêt à être posé dans un décor.
+Message _vocal() => Message(
+  id: 'v1',
+  groupId: 'g1',
+  senderId: 'u2',
+  createdAt: DateTime(2026, 8, 3, 8, 45),
+  mediaUrl: 'g1/vocal.m4a',
+  mediaKind: MediaKind.audio,
+  mediaDuration: const Duration(seconds: 12),
+  senderName: 'Léa Marchand',
+);

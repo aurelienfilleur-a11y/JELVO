@@ -1,4 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Messages vocaux. Sans cette déclaration, `record` ne peut même pas
+         demander l'autorisation : le système refuse en silence. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+
     <application
         android:label="Jelvo"
         android:name="${applicationName}"

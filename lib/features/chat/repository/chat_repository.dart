@@ -51,11 +51,15 @@ abstract interface class ChatRepository {
   Stream<void> watchChanges(String groupId);
 
   /// Renvoie l'identifiant du message créé.
+  ///
+  /// [mediaDuration] n'a de sens que pour un message vocal : la fonction SQL
+  /// l'écarte pour tout autre type de média.
   Future<String> send(
     String groupId, {
     String? content,
     String? mediaUrl,
     MediaKind? mediaKind,
+    Duration? mediaDuration,
   });
 
   /// Suppression douce. **Le booléen fait foi**, pas l'absence d'exception :
@@ -243,6 +247,7 @@ class SupabaseChatRepository implements ChatRepository {
     String? content,
     String? mediaUrl,
     MediaKind? mediaKind,
+    Duration? mediaDuration,
   }) async {
     try {
       final Object? result = await _client.rpc<Object?>(
@@ -252,6 +257,7 @@ class SupabaseChatRepository implements ChatRepository {
           'p_content': content,
           'p_media_url': mediaUrl,
           'p_media_kind': mediaKind?.dbValue,
+          'p_media_duree_s': mediaDuration?.inSeconds,
         },
       );
       if (result is String) return result;
@@ -415,12 +421,22 @@ class SupabaseChatRepository implements ChatRepository {
         'webp' => 'image/webp',
         'heic' => 'image/heic',
         'jpg' || 'jpeg' => 'image/jpeg',
-        'mp4' => 'video/mp4',
+        'mp4' => kind == MediaKind.audio ? 'audio/mp4' : 'video/mp4',
         'mov' => 'video/quicktime',
-        'webm' => 'video/webm',
+        'webm' => kind == MediaKind.audio ? 'audio/webm' : 'video/webm',
+        // Messages vocaux. Deux familles, parce qu'aucun format n'est
+        // enregistrable partout : Safari produit de l'AAC dans un conteneur
+        // MP4, Chrome et Firefox de l'Opus dans un conteneur WebM.
+        'm4a' || 'aac' => 'audio/mp4',
+        'ogg' || 'oga' || 'opus' => 'audio/ogg',
+        'mp3' => 'audio/mpeg',
         // Repli cohérent avec le type déclaré plutôt qu'un
         // `application/octet-stream` qui empêcherait tout affichage.
-        _ => kind == MediaKind.video ? 'video/mp4' : 'image/jpeg',
+        _ => switch (kind) {
+          MediaKind.video => 'video/mp4',
+          MediaKind.audio => 'audio/mp4',
+          MediaKind.image => 'image/jpeg',
+        },
       };
 
   @override

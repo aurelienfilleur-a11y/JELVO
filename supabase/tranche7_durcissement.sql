@@ -632,7 +632,12 @@ begin
          allowed_mime_types = array[
            'image/jpeg', 'image/png', 'image/webp', 'image/gif',
            'image/heic', 'image/heif',
-           'video/mp4', 'video/quicktime', 'video/webm'
+           'video/mp4', 'video/quicktime', 'video/webm',
+           -- Messages vocaux. Deux familles, parce qu'aucun format n'est lu
+           -- partout : Safari enregistre en AAC dans un conteneur MP4,
+           -- Chrome et Firefox en Opus dans un conteneur WebM.
+           'audio/mp4', 'audio/aac', 'audio/mpeg',
+           'audio/webm', 'audio/ogg'
          ]
    where id = 'chat-media';
 

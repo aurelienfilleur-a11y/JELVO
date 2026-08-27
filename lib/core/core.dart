@@ -10,6 +10,7 @@ export 'theme/app_shadows.dart';
 export 'theme/app_spacing.dart';
 export 'theme/app_theme.dart';
 export 'theme/app_typography.dart';
+export 'theme/speaker_accent.dart';
 export 'utils/date_formatting.dart';
 export 'widgets/app_card.dart';
 export 'widgets/app_screen.dart';

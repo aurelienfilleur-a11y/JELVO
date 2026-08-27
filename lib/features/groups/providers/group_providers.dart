@@ -443,15 +443,9 @@ final groupActivityProvider = Provider.family<String, String>((
   Ref ref,
   String groupId,
 ) {
-  final DateTime now = ref.watch(nowProvider);
-  final int taches = ref
-      .watch(tasksForGroupProvider(groupId))
-      .where((Task t) => !t.isDone)
-      .length;
-  final int evenements = ref
-      .watch(eventsForGroupProvider(groupId))
-      .where((CalendarEvent e) => e.end.isAfter(now))
-      .length;
+  final GroupActivity activite = ref.watch(groupOngoingProvider(groupId));
+  final int taches = activite.taches;
+  final int evenements = activite.evenements;
 
   final List<String> morceaux = <String>[
     if (taches > 0) '$taches tâche${taches > 1 ? 's' : ''} en cours',
@@ -460,4 +454,38 @@ final groupActivityProvider = Provider.family<String, String>((
   ];
   if (morceaux.isEmpty) return 'Rien de prévu pour l’instant';
   return morceaux.join(' · ');
+});
+
+/// Ce qui est en cours dans un groupe, en chiffres.
+///
+/// Les deux nombres servent à deux endroits — la ligne d'activité d'une carte
+/// et la barre de raccourcis de la conversation. Les recalculer de part et
+/// d'autre finirait par afficher deux comptes différents de la même chose.
+@immutable
+class GroupActivity {
+  const GroupActivity({required this.taches, required this.evenements});
+
+  /// Tâches non terminées, quelle que soit leur échéance.
+  final int taches;
+
+  /// Événements dont la **fin** est encore devant nous : celui qui a commencé
+  /// ce matin et dure jusqu'au soir est toujours à venir pour qui y est.
+  final int evenements;
+}
+
+final groupOngoingProvider = Provider.family<GroupActivity, String>((
+  Ref ref,
+  String groupId,
+) {
+  final DateTime now = ref.watch(nowProvider);
+  return GroupActivity(
+    taches: ref
+        .watch(tasksForGroupProvider(groupId))
+        .where((Task t) => !t.isDone)
+        .length,
+    evenements: ref
+        .watch(eventsForGroupProvider(groupId))
+        .where((CalendarEvent e) => e.end.isAfter(now))
+        .length,
+  );
 });

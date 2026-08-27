@@ -35,6 +35,10 @@ correctif_invitations_type.sql
 tranche3_taches_et_evenements.sql
 tranche3b_details_et_administration.sql
 tranche4_disponibilites.sql
+# La valeur `audio` du type `media_type` et la colonne `media_duree_s`
+# précèdent le chat : `messages_du_groupe` renvoie la durée, et un
+# `returns table` citant une colonne absente ne se crée pas.
+colonne_media_audio.sql
 tranche5a_chat.sql
 tranche5b_medias_chat.sql
 tranche5c_notifications_push.sql

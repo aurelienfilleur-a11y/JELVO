@@ -421,7 +421,7 @@ class _Resultats extends StatelessWidget {
               value: selected.contains(contact.id),
               onChanged: enabled ? (_) => onToggle(contact.id) : null,
               controlAffinity: ListTileControlAffinity.trailing,
-              title: Text(contact.fullName, style: AppTypography.body),
+              title: EmojiText(contact.fullName, style: AppTypography.body),
               subtitle: contact.pseudo == null
                   ? null
                   : Text(contact.pseudoHandle, style: AppTypography.caption),

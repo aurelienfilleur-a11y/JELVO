@@ -55,7 +55,7 @@ class MemberTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(
+                EmojiText(
                   isMe ? '${member.displayName} (vous)' : member.displayName,
                   style: AppTypography.body.copyWith(
                     fontWeight: AppTypography.semiBold,
@@ -65,7 +65,7 @@ class MemberTile extends StatelessWidget {
                 ),
                 if (member.pseudo != null) ...<Widget>[
                   const SizedBox(height: 2),
-                  Text(
+                  EmojiText(
                     '@${member.pseudo}',
                     style: AppTypography.caption,
                     maxLines: 1,

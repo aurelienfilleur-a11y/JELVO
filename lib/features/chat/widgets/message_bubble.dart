@@ -71,7 +71,7 @@ class MessageBubble extends StatelessWidget {
           if (showSender && !isMine)
             Padding(
               padding: const EdgeInsets.only(left: AppSpacing.xs, bottom: 2),
-              child: Text(
+              child: EmojiText(
                 message.senderName ?? 'Membre',
                 style: AppTypography.caption.copyWith(
                   // Une couleur par personne, dérivée de son identifiant :
@@ -122,7 +122,7 @@ class MessageBubble extends StatelessWidget {
                             ChatMedia(message: message),
                           if (message.content != null &&
                               message.content!.isNotEmpty)
-                            Text(
+                            EmojiText(
                               message.content!,
                               style: AppTypography.body.copyWith(color: texte),
                             ),
@@ -270,7 +270,7 @@ class MessageBubble extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppRadii.pill),
                   border: Border.all(color: AppColors.border),
                 ),
-                child: Text(
+                child: EmojiText(
                   entree.value.length > 1
                       ? '${entree.key} ${entree.value.length}'
                       : entree.key,

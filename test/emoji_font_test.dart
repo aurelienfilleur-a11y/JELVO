@@ -67,4 +67,153 @@ void main() {
       expect(style?.fontFamilyFallback, contains('NotoColorEmoji'));
     }
   });
+
+  group('Le découpage des suites', () {
+    // Ces trois cas sont ceux qu'on a demandé d'éprouver : un cœur du clavier,
+    // un emoji composé, un drapeau.
+    test('le cœur du clavier porte son sélecteur, et devient un emoji', () {
+      // U+2764 U+FE0F — ce que produit le clavier d'un iPhone. Sans le
+      // sélecteur, Unicode dit « présentation texte », et le cœur noir
+      // d'Inter est alors le rendu juste : les deux cas se distinguent.
+      expect(grappeEstEmoji('❤️'), isTrue);
+      expect(grappeEstEmoji('❤'), isFalse);
+    });
+
+    test('un emoji composé reste d’un seul tenant', () {
+      // Famille, ton de peau, séquence ZWJ : découper la grappe empêcherait
+      // la ligature `GSUB` de se former, et sortirait les composants un à un.
+      for (final String compose in <String>[
+        '\u{1F468}‍\u{1F469}‍\u{1F467}',
+        '\u{1F44D}\u{1F3FD}',
+        '\u{1F469}‍⚕️',
+      ]) {
+        final List<EmojiRun> suites = decouperEmojis(compose);
+        expect(suites, hasLength(1), reason: compose);
+        expect(suites.single.isEmoji, isTrue, reason: compose);
+        expect(suites.single.text, compose);
+      }
+    });
+
+    test('un drapeau est une grappe, pas deux lettres', () {
+      final List<EmojiRun> suites = decouperEmojis('\u{1F1EB}\u{1F1F7}');
+      expect(suites, hasLength(1));
+      expect(suites.single.isEmoji, isTrue);
+    });
+
+    test('le texte et les emojis se séparent dans l’ordre', () {
+      expect(decouperEmojis('Bravo ❤️ merci'), <EmojiRun>[
+        const EmojiRun('Bravo ', isEmoji: false),
+        const EmojiRun('❤️', isEmoji: true),
+        const EmojiRun(' merci', isEmoji: false),
+      ]);
+    });
+
+    test('ce qui n’est pas un emoji le reste', () {
+      // `©` et `1` sont couverts par la police d'emojis, mais ce sont du
+      // texte : les y envoyer changerait le rendu d'un copyright et d'un
+      // chiffre. Seule l'enceinte des touches fait de `1` un emoji.
+      expect(grappeEstEmoji('©'), isFalse);
+      expect(grappeEstEmoji('1'), isFalse);
+      expect(grappeEstEmoji('1️⃣'), isTrue);
+      expect(decouperEmojis('Jelvo © 2026'), hasLength(1));
+    });
+
+    test('un carré blanc est un emoji sans porter de sélecteur', () {
+      // `U+2B1C` a `Emoji_Presentation=Yes` **et** figure dans Inter : c'est
+      // le seul cas où la règle du sélecteur ne suffirait pas.
+      expect(grappeEstEmoji('⬜'), isTrue);
+    });
+  });
+
+  group('EmojiText', () {
+    Future<void> poser(WidgetTester tester, Widget enfant) => tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: Center(child: enfant)),
+      ),
+    );
+
+    testWidgets('un texte sans emoji reste un Text ordinaire', (
+      WidgetTester tester,
+    ) async {
+      await poser(tester, const EmojiText('On se retrouve à midi'));
+
+      // Pas de `Text.rich` : `find.text` continue de fonctionner, et l'arbre
+      // de sémantique ne change pas.
+      final Text rendu = tester.widget<Text>(find.byType(Text));
+      expect(rendu.data, 'On se retrouve à midi');
+      expect(rendu.style?.fontFamily, isNot(AppTypography.emojiFamily));
+    });
+
+    testWidgets('un cœur du clavier reçoit la police d’emojis', (
+      WidgetTester tester,
+    ) async {
+      await poser(tester, EmojiText('Bravo ❤️', style: AppTypography.body));
+
+      final List<TextSpan> suites = _feuilles(tester);
+
+      expect(suites[0].text, 'Bravo ');
+      expect(suites[0].style?.fontFamily, isNot(AppTypography.emojiFamily));
+
+      expect(suites[1].text, '❤️');
+      expect(suites[1].style?.fontFamily, AppTypography.emojiFamily);
+      // Le repli d'Inter est vidé : le laisser rouvrirait la porte qu'on
+      // ferme, puisque c'est précisément Inter qui capturait le cœur.
+    });
+
+    testWidgets('un emoji seul garde un Text, avec la bonne police', (
+      WidgetTester tester,
+    ) async {
+      await poser(tester, const EmojiText('👍'));
+
+      final Text rendu = tester.widget<Text>(find.byType(Text));
+      expect(rendu.data, '👍');
+      expect(rendu.style?.fontFamily, AppTypography.emojiFamily);
+    });
+
+    testWidgets('le champ de saisie colore aussi ce qu’on tape', (
+      WidgetTester tester,
+    ) async {
+      // Sans le contrôleur, l'emoji serait noir dans le champ puis coloré
+      // dans la bulle — les deux étant à l'écran en même temps.
+      final EmojiTextEditingController controleur = EmojiTextEditingController(
+        text: 'Merci ❤️',
+      );
+      addTearDown(controleur.dispose);
+
+      await poser(tester, TextField(controller: controleur));
+
+      final TextSpan span = controleur.buildTextSpan(
+        context: tester.element(find.byType(TextField)),
+        withComposing: false,
+      );
+      final List<TextSpan> suites = <TextSpan>[];
+      _aplatir(span, suites);
+
+      expect(suites.last.text, '❤️');
+      expect(suites.last.style?.fontFamily, AppTypography.emojiFamily);
+    });
+  });
+}
+
+/// Les `TextSpan` qui portent réellement du texte, dans l'ordre.
+///
+/// `Text.rich` emboîte le span reçu sous celui du style effectif : lire
+/// `children` au premier niveau ne rend donc que l'emballage.
+List<TextSpan> _feuilles(WidgetTester tester) {
+  final RichText rendu = tester.widget<RichText>(
+    find.descendant(
+      of: find.byType(EmojiText),
+      matching: find.byType(RichText),
+    ),
+  );
+  final List<TextSpan> feuilles = <TextSpan>[];
+  _aplatir(rendu.text as TextSpan, feuilles);
+  return feuilles;
+}
+
+void _aplatir(TextSpan span, List<TextSpan> sortie) {
+  if (span.text != null) sortie.add(span);
+  for (final InlineSpan enfant in span.children ?? const <InlineSpan>[]) {
+    if (enfant is TextSpan) _aplatir(enfant, sortie);
+  }
 }

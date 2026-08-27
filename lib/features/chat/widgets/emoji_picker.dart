@@ -61,7 +61,7 @@ class _EmojiPickerState extends State<EmojiPicker> {
                           ? AppColors.primarySoft
                           : Colors.transparent,
                     ),
-                    child: Text(
+                    child: EmojiText(
                       famillesEmoji[index].onglet,
                       style: const TextStyle(fontSize: 20),
                     ),
@@ -85,7 +85,10 @@ class _EmojiPickerState extends State<EmojiPicker> {
                   onTap: () => widget.onSelected(emoji),
                   borderRadius: AppRadii.fieldRadius,
                   child: Center(
-                    child: Text(emoji, style: const TextStyle(fontSize: 26)),
+                    child: EmojiText(
+                      emoji,
+                      style: const TextStyle(fontSize: 26),
+                    ),
                   ),
                 );
               },

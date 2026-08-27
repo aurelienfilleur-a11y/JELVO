@@ -43,9 +43,9 @@ class EventFormSheet extends ConsumerStatefulWidget {
 }
 
 class _EventFormSheetState extends ConsumerState<EventFormSheet> {
-  final TextEditingController _titre = TextEditingController();
-  final TextEditingController _lieu = TextEditingController();
-  final TextEditingController _description = TextEditingController();
+  final TextEditingController _titre = EmojiTextEditingController();
+  final TextEditingController _lieu = EmojiTextEditingController();
+  final TextEditingController _description = EmojiTextEditingController();
 
   late String? _groupId;
   late Set<String> _participants;

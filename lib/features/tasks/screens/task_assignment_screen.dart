@@ -125,7 +125,7 @@ class _TaskAssignmentScreenState extends ConsumerState<TaskAssignmentScreen> {
               ),
 
               AppSpacing.gapXl,
-              Text(tache.title, style: AppTypography.h2),
+              EmojiText(tache.title, style: AppTypography.h2),
 
               AppSpacing.gapLg,
               AppCard(

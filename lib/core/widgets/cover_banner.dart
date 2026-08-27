@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
+import 'emoji_text.dart';
 
 /// Bandeau d'en-tête : photo de couverture si elle existe, dégradé d'accent
 /// sinon, et nom en surimpression.
@@ -78,7 +79,7 @@ class CoverBanner extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(
+                EmojiText(
                   name,
                   style: AppTypography.h2.copyWith(color: Colors.white),
                   maxLines: 2,

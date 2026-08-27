@@ -4,6 +4,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_radii.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
+import 'emoji_text.dart';
 import 'app_card.dart';
 import 'avatar_stack.dart';
 import 'cover_banner.dart';
@@ -97,7 +98,7 @@ class GroupCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
-                          Text(
+                          EmojiText(
                             name,
                             style: AppTypography.h3,
                             maxLines: 1,

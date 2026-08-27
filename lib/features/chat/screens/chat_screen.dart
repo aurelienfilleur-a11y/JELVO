@@ -396,7 +396,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       // Un emoji n'est pas une icône : `Text` le rend, et
                       // l'infobulle donne au lecteur d'écran ce que le glyphe
                       // ne dit pas.
-                      icon: Text(emoji, style: const TextStyle(fontSize: 24)),
+                      icon: EmojiText(
+                        emoji,
+                        style: const TextStyle(fontSize: 24),
+                      ),
                       tooltip: 'Réagir $emoji',
                       isSelected: message.reactionOf(moi) == emoji,
                       onPressed: () {

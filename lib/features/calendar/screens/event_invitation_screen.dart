@@ -126,7 +126,7 @@ class _EventInvitationScreenState extends ConsumerState<EventInvitationScreen> {
               ),
 
               AppSpacing.gapXl,
-              Text(evenement.title, style: AppTypography.h2),
+              EmojiText(evenement.title, style: AppTypography.h2),
 
               AppSpacing.gapLg,
               AppCard(

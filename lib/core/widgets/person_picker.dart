@@ -4,6 +4,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_radii.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
+import 'emoji_text.dart';
 import 'app_text_field.dart';
 import 'avatar_stack.dart';
 
@@ -331,7 +332,10 @@ class _PersonPickerSheetState extends State<PersonPickerSheet> {
                         return CheckboxListTile(
                           value: _selection.contains(personne.id),
                           controlAffinity: ListTileControlAffinity.trailing,
-                          title: Text(personne.name, style: AppTypography.body),
+                          title: EmojiText(
+                            personne.name,
+                            style: AppTypography.body,
+                          ),
                           secondary: AvatarImage(
                             data: personne.avatar,
                             size: 40,

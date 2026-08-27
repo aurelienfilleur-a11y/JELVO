@@ -101,7 +101,7 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
               if (preview.description != null &&
                   preview.description!.isNotEmpty) ...<Widget>[
                 AppSpacing.gapMd,
-                Text(preview.description!, style: AppTypography.bodyMuted),
+                EmojiText(preview.description!, style: AppTypography.bodyMuted),
               ],
 
               // Une adhésion qui s'arrête n'est pas la même offre qu'une

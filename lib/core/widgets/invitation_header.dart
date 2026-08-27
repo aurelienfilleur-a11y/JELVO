@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
+import 'emoji_text.dart';
 import '../utils/date_formatting.dart';
 import 'avatar_stack.dart';
 import 'primary_button.dart';
@@ -53,14 +54,14 @@ class InvitationHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Text(
+              EmojiText(
                 author.name,
                 style: AppTypography.h3,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 2),
-              Text(
+              EmojiText(
                 action,
                 style: AppTypography.bodyMuted,
                 maxLines: 2,
@@ -134,7 +135,7 @@ class InvitationDetailRow extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    Text(
+                    EmojiText(
                       value,
                       style: AppTypography.body.copyWith(
                         fontWeight: AppTypography.semiBold,

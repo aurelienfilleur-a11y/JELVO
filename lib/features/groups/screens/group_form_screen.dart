@@ -31,8 +31,9 @@ class GroupFormScreen extends ConsumerStatefulWidget {
 }
 
 class _GroupFormScreenState extends ConsumerState<GroupFormScreen> {
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _nameController = EmojiTextEditingController();
+  final TextEditingController _descriptionController =
+      EmojiTextEditingController();
 
   Uint8List? _photoBytes;
   String? _photoExtension;

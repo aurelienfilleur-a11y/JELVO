@@ -54,7 +54,7 @@ class ContactTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(
+                EmojiText(
                   contact.fullName,
                   style: AppTypography.body.copyWith(
                     fontWeight: AppTypography.semiBold,
@@ -64,7 +64,7 @@ class ContactTile extends StatelessWidget {
                 ),
                 if (contact.pseudo != null) ...<Widget>[
                   const SizedBox(height: 2),
-                  Text(
+                  EmojiText(
                     contact.pseudoHandle,
                     style: AppTypography.caption,
                     maxLines: 1,

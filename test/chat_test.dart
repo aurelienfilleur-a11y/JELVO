@@ -21,6 +21,7 @@ import 'package:jelvo/features/chat/widgets/chat_day_divider.dart';
 import 'package:jelvo/features/chat/widgets/chat_header.dart';
 import 'package:jelvo/features/chat/widgets/chat_media.dart';
 import 'package:jelvo/features/chat/widgets/emoji_picker.dart';
+import 'package:jelvo/features/chat/widgets/message_bubble.dart';
 import 'package:jelvo/features/chat/widgets/message_card_tile.dart';
 import 'package:jelvo/features/chat/widgets/voice_message.dart';
 import 'package:jelvo/features/contacts/providers/contact_providers.dart';
@@ -1397,6 +1398,61 @@ void main() {
       await tester.tap(find.byTooltip('Fermer les emojis'));
       await tester.pumpAndSettle();
       expect(find.byType(EmojiPicker), findsNothing);
+    });
+
+    testWidgets('un cœur tapé au clavier sort en couleur dans la bulle', (
+      WidgetTester tester,
+    ) async {
+      // Le défaut d'origine : `❤️` (U+2764 U+FE0F) est couvert par Inter, qui
+      // le capturait avant que le repli d'emojis soit consulté — d'où un cœur
+      // noir, alors que `😀`, absent d'Inter, sortait bien en couleur.
+      await _pumpApp(
+        tester,
+        messages: <Message>[
+          Message(
+            id: 'c1',
+            groupId: 'g1',
+            senderId: 'u2',
+            createdAt: DateTime(2026, 8, 3, 8),
+            content: 'Merci ❤️ à demain',
+            senderName: 'Léa Marchand',
+          ),
+        ],
+      );
+      await _ouvrirDiscussion(tester);
+
+      final List<TextSpan> feuilles = <TextSpan>[];
+      void aplatir(TextSpan span) {
+        if (span.text != null) feuilles.add(span);
+        for (final InlineSpan e in span.children ?? const <InlineSpan>[]) {
+          if (e is TextSpan) aplatir(e);
+        }
+      }
+
+      // La bulle porte plusieurs `RichText` — le nom, le contenu, l'heure :
+      // on les aplatit tous plutôt que de parier sur leur ordre.
+      for (final RichText morceau in tester.widgetList<RichText>(
+        find.descendant(
+          of: find.byType(MessageBubble),
+          matching: find.byType(RichText),
+        ),
+      )) {
+        aplatir(morceau.text as TextSpan);
+      }
+
+      final TextSpan coeur = feuilles.firstWhere(
+        (TextSpan s) => s.text == '❤️',
+      );
+      expect(coeur.style?.fontFamily, AppTypography.emojiFamily);
+
+      // Et le texte autour n'a pas changé de police pour autant.
+      expect(
+        feuilles
+            .firstWhere((TextSpan s) => s.text == 'Merci ')
+            .style
+            ?.fontFamily,
+        isNot(AppTypography.emojiFamily),
+      );
     });
 
     testWidgets('l’emoji s’insère à l’endroit du curseur', (

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
+import 'emoji_text.dart';
 import 'app_card.dart';
 import 'avatar_stack.dart';
 import 'status_dot.dart';
@@ -93,7 +94,7 @@ class EventCard extends StatelessWidget {
                     ],
                   ),
                   AppSpacing.gapXs,
-                  Text(
+                  EmojiText(
                     title,
                     style: AppTypography.body.copyWith(
                       fontWeight: AppTypography.semiBold,
@@ -114,7 +115,7 @@ class EventCard extends StatelessWidget {
                         ),
                         AppSpacing.hGapXs,
                         Flexible(
-                          child: Text(
+                          child: EmojiText(
                             <String?>[
                               groupName,
                               location,

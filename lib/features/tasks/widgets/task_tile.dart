@@ -81,7 +81,7 @@ class TaskTile extends ConsumerWidget {
           children: <Widget>[
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-              child: Text(
+              child: EmojiText(
                 task.title,
                 style: AppTypography.h3,
                 maxLines: 2,

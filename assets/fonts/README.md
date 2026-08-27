@@ -9,9 +9,21 @@ un contour monochrome. Le rendu était donc incohérent d'un poste à l'autre, e
 d'un emoji à l'autre sur le même poste.
 
 La police est déclarée dans `pubspec.yaml` sous la famille `NotoColorEmoji`, et
-`AppTypography` la pose en `fontFamilyFallback` sur **tous** ses styles. Inter
-n'ayant aucun glyphe d'emoji, le moteur ne descend ici que pour eux : le texte
-latin ne change pas d'un pixel.
+`AppTypography` la pose en `fontFamilyFallback` sur **tous** ses styles.
+
+### Le repli ne suffit pas
+
+Il n'est consulté que pour les caractères qu'Inter ne couvre **pas** — or Inter
+en couvre trente-sept, dont `❤ ⚠ ☀ ⬆ ♥ © ® ™ ‼ ⁉`, les flèches et `⬜`. Pour
+ceux-là Inter gagne, le repli n'est jamais atteint, et le glyphe sorti est
+noir : c'est le défaut du « cœur du clavier iPhone qui apparaît en cœur noir ».
+Le sélecteur `U+FE0F` n'y change rien, la résolution de police se faisant
+caractère par caractère.
+
+Le texte saisi par quelqu'un passe donc par `EmojiText`
+(`lib/core/widgets/emoji_text.dart`), qui donne la police d'emojis en police
+**principale** aux suites concernées. Le repli, lui, reste utile pour tout le
+reste.
 
 ### Quelle variante, et pourquoi
 

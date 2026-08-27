@@ -766,7 +766,7 @@ class _Description extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Expanded(
-          child: Text(
+          child: EmojiText(
             vide ? 'Décrivez ce groupe en une phrase.' : texte,
             style: vide
                 ? AppTypography.bodyMuted.copyWith(fontStyle: FontStyle.italic)

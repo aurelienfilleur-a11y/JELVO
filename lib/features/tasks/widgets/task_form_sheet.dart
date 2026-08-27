@@ -49,8 +49,8 @@ class TaskFormSheet extends ConsumerStatefulWidget {
 }
 
 class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
-  final TextEditingController _titre = TextEditingController();
-  final TextEditingController _description = TextEditingController();
+  final TextEditingController _titre = EmojiTextEditingController();
+  final TextEditingController _description = EmojiTextEditingController();
 
   late String? _groupId;
   late Set<String> _assignes;

@@ -180,7 +180,7 @@ class _Entete extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Expanded(
-                child: Text(
+                child: EmojiText(
                   task.title,
                   style: AppTypography.h2.copyWith(
                     decoration: task.isDone ? TextDecoration.lineThrough : null,
@@ -200,7 +200,7 @@ class _Entete extends StatelessWidget {
           ),
           if (task.notes != null && task.notes!.isNotEmpty) ...<Widget>[
             AppSpacing.gapMd,
-            Text(task.notes!, style: AppTypography.bodyMuted),
+            EmojiText(task.notes!, style: AppTypography.bodyMuted),
           ],
         ],
       ),
@@ -447,7 +447,7 @@ class _ListeDeCourses extends ConsumerStatefulWidget {
 }
 
 class _ListeDeCoursesState extends ConsumerState<_ListeDeCourses> {
-  final TextEditingController _controller = TextEditingController();
+  final TextEditingController _controller = EmojiTextEditingController();
   bool _envoi = false;
 
   @override

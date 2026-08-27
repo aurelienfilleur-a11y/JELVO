@@ -292,7 +292,7 @@ class _Entete extends StatelessWidget {
                 style: AppTypography.caption.copyWith(color: couleur),
               ),
               const SizedBox(height: 2),
-              Text(
+              EmojiText(
                 titre,
                 style: AppTypography.h3.copyWith(
                   decoration: barre ? TextDecoration.lineThrough : null,
@@ -322,7 +322,7 @@ class _Ligne extends StatelessWidget {
         Icon(icone, size: 15, color: AppColors.textSecondary),
         AppSpacing.hGapSm,
         Expanded(
-          child: Text(
+          child: EmojiText(
             texte,
             style: AppTypography.caption,
             maxLines: 1,
@@ -365,7 +365,7 @@ class _Titulaire extends StatelessWidget {
         ),
         AppSpacing.hGapSm,
         Expanded(
-          child: Text(
+          child: EmojiText(
             phrase,
             style: AppTypography.body.copyWith(
               fontWeight: AppTypography.semiBold,

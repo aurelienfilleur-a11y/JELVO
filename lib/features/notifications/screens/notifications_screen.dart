@@ -268,7 +268,7 @@ class _NotificationTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text(
+                    EmojiText(
                       notification.title,
                       style: AppTypography.body.copyWith(
                         fontWeight: notification.isUnread
@@ -279,7 +279,7 @@ class _NotificationTile extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
-                    Text(
+                    EmojiText(
                       notification.message,
                       style: AppTypography.caption,
                       maxLines: 2,

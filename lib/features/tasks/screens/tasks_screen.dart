@@ -49,7 +49,7 @@ class TasksScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(groupe?.name ?? 'Tâches'),
+        title: EmojiText(groupe?.name ?? 'Tâches'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           tooltip: 'Retour',

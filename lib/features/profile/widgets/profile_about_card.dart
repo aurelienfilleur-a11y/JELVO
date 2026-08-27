@@ -22,7 +22,7 @@ class ProfileAboutCard extends ConsumerStatefulWidget {
 }
 
 class _ProfileAboutCardState extends ConsumerState<ProfileAboutCard> {
-  final TextEditingController _controleur = TextEditingController();
+  final TextEditingController _controleur = EmojiTextEditingController();
   final FocusNode _focus = FocusNode();
 
   bool _enEdition = false;
@@ -257,7 +257,7 @@ class _LigneBio extends StatelessWidget {
                           ),
                         )
                       else
-                        Text(
+                        EmojiText(
                           // Une bio vide n'est pas un trou à cacher : la ligne
                           // reste, et invite à la remplir.
                           vide

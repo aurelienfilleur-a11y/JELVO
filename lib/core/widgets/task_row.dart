@@ -4,6 +4,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_radii.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
+import 'emoji_text.dart';
 import 'status_dot.dart';
 
 /// Ligne de tâche avec case à cocher personnalisée.
@@ -85,7 +86,7 @@ class TaskRow extends StatelessWidget {
                         Row(
                           children: <Widget>[
                             Flexible(
-                              child: Text(
+                              child: EmojiText(
                                 title,
                                 style: AppTypography.body.copyWith(
                                   fontWeight: AppTypography.medium,
@@ -109,7 +110,7 @@ class TaskRow extends StatelessWidget {
                         ),
                         if (subtitle != null) ...<Widget>[
                           const SizedBox(height: 2),
-                          Text(
+                          EmojiText(
                             subtitle!,
                             style: AppTypography.caption,
                             maxLines: 1,
@@ -132,7 +133,7 @@ class TaskRow extends StatelessWidget {
                                 AppSpacing.hGapSm,
                               if (assignee != null)
                                 Flexible(
-                                  child: Text(
+                                  child: EmojiText(
                                     assignee!,
                                     style: AppTypography.caption,
                                     maxLines: 1,

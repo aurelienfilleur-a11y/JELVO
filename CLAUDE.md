@@ -399,10 +399,13 @@ teintés des pastilles et vignettes.
 
 #### Les emojis ont leur police, embarquée
 
-Le web ne garantit **aucune** police d'emojis : selon la machine, un cœur tapé
-au clavier iPhone s'affichait en rouge, en noir et blanc, ou pas du tout. Le
-rendu était incohérent d'un poste à l'autre, et d'un emoji à l'autre sur le
-même poste.
+Le web ne garantit **aucune** police d'emojis : selon la machine, un emoji
+s'affichait en couleur, en noir et blanc, ou pas du tout. Le rendu était
+incohérent d'un poste à l'autre, et d'un emoji à l'autre sur le même poste.
+
+L'embarquer était nécessaire, mais **pas suffisant** : voir « Le repli ne
+suffit pas » plus bas, qui est la moitié du problème que la police seule ne
+règle pas.
 
 `assets/fonts/NotoColorEmoji.ttf` est donc embarquée et posée en
 `fontFamilyFallback` sur **tous** les styles d'`AppTypography` — pas seulement
@@ -435,6 +438,78 @@ servir la police depuis le réseau sur le web. Les deux sont des arbitrages.
 `GoogleFonts.inter()` **n'accepte pas** `fontFamilyFallback` : il passe par un
 `copyWith` (`AppTypography._avecEmojis`). L'oublier sur un style le rendrait
 muet, sans erreur.
+
+#### Le repli ne suffit pas — et c'est le piège central
+
+**Un repli de police n'est consulté que pour ce que la police principale ne
+couvre pas.** Or Inter couvre **trente-sept** des caractères de Noto Color
+Emoji, dont les plus employés :
+
+```
+❤ U+2764   ⚠ U+26A0   ☀ U+2600   ⬆ U+2B06   ♥ U+2665
+© U+00A9   ® U+00AE   ™ U+2122   ‼ U+203C   ⁉ U+2049
+↔ ↕ ↖ ↗ ↘ ↙ ↩ ↪ ⏏ Ⓜ ▪ ▶ ◀ ⬜   et les chiffres 0-9, # et *
+```
+
+Pour ceux-là, **Inter gagne, le repli n'est jamais atteint**, et le glyphe
+sorti est celui d'une police de texte — c'est-à-dire noir. C'est exactement ce
+qu'on a constaté : « un cœur rouge tapé au clavier iPhone apparaît en cœur
+noir », alors que `😀`, absent d'Inter, sortait bien en couleur.
+
+**Le sélecteur `U+FE0F` n'y change rien.** Il est censé forcer la présentation
+emoji, mais la résolution de police se fait **caractère par caractère** : le
+cœur est déjà attribué à Inter quand le sélecteur est examiné, et Inter ne le
+couvrant pas, il est simplement écarté.
+
+Le rendu a été mesuré, pas supposé : la ligne du haut est un `Text` ordinaire
+avec le repli, celle du bas passe par `EmojiText`.
+
+| | ❤️ | ⚠️ | 🇫🇷 | 👍🏽 |
+| --- | --- | --- | --- | --- |
+| repli seul | **noir** | **noir** | couleur | couleur |
+| police principale | rouge | jaune | couleur | couleur |
+
+#### `EmojiText` — la police d'emojis en **principale**
+
+D'où `core/widgets/emoji_text.dart` : le texte est découpé en suites, et les
+suites d'emojis reçoivent `fontFamily: 'NotoColorEmoji'` en police
+**principale**, `fontFamilyFallback` vidé — le laisser rouvrirait la porte
+qu'on ferme. Le repli du système reste en dernier recours : une grappe mal
+classée s'affiche, elle ne devient pas un carré vide.
+
+**Le découpage se fait par grappe de graphèmes** (`String.characters`), jamais
+par point de code : un drapeau, une famille, un ton de peau ou une séquence à
+sélecteur sont plusieurs points de code qui doivent rester ensemble, faute de
+quoi la ligature `GSUB` ne se forme pas et `🇫🇷` sort en deux lettres carrées.
+
+Trois règles décident, et **aucune ne suffit seule** :
+
+| Règle | Ce qu'elle rattrape |
+| --- | --- |
+| la grappe porte `U+FE0F` | `❤️` du clavier — la règle qui manquait |
+| la grappe porte `U+20E3` | `1️⃣`, l'enceinte des touches |
+| `Emoji_Presentation=Yes` | `😀`, `👍`, les drapeaux — et `⬜`, seul cas qu'Inter couvre sans sélecteur |
+
+`❤` **sans** sélecteur reste du texte, et le cœur noir d'Inter est alors le
+rendu juste — c'est ce que dit Unicode. De même, `©` au fil d'une phrase reste
+un copyright, et `1` reste un chiffre.
+
+Les plages d'`Emoji_Presentation` sont relevées sur `emoji-data.txt` de l'UCD,
+pas devinées.
+
+**Un texte sans emoji ne construit aucun span** : `EmojiText` se réduit alors à
+un `Text`, et un emoji seul aussi. Ce n'est pas qu'une économie — `Text.rich`
+avec des enfants échappe à `find.text`, et n'y recourir que pour les chaînes
+vraiment mixtes garde les tests et l'arbre de sémantique intacts.
+
+**Le champ de saisie a son contrôleur**, `EmojiTextEditingController` :
+`TextField` ne prend qu'un `style` unique, et le découpage doit donc se faire
+dans le contrôleur. Sans lui, l'emoji serait noir dans le champ puis coloré
+dans la bulle — les deux étant à l'écran en même temps.
+
+**Règle pour la suite : tout texte saisi par quelqu'un s'affiche par
+`EmojiText`.** Le texte de l'application, lui, reste un `Text` — il n'y a pas
+d'emoji dans les libellés de Jelvo, et c'est déjà une règle ailleurs.
 
 ### Une couleur par personne — `SpeakerAccent`
 
@@ -610,6 +685,7 @@ halo violet du bouton central. Ne pas utiliser l'`elevation` Material.
 | `OptionRow` / `OptionIcon`    | ligne de réglage : icône, libellé, aide, valeur violette |
 | `ExpandableOptions`           | carte « Plus d'options » qui se replie sur son contenu |
 | `PersonAvatarRow` / `PersonPickerSheet` | rangée d'avatars sélectionnables, et la liste complète avec recherche |
+| `EmojiText` / `EmojiTextEditingController` | **tout texte saisi par quelqu'un** : les emojis y reçoivent leur police en principale |
 
 **Les composants de `core/widgets` ne connaissent pas le domaine** : ils
 prennent des `String`, `IconData`, `Color` et `AvatarData`, jamais un `Group` ou
@@ -3718,8 +3794,10 @@ sécurité.
   son chevron, le séparateur qui coiffe chaque journée, et le changement de
   jour qui recoupe la série. Côté couleurs : deux expéditeurs, deux teintes,
   et jamais le gris de légende qui ne distinguait personne.
-  Côté emojis : le panneau qui s'ouvre et se referme, et l'emoji inséré **à
-  l'endroit du curseur** plutôt qu'à la fin. Côté messages vocaux : le micro
+  Côté emojis : le panneau qui s'ouvre et se referme, l'emoji inséré **à
+  l'endroit du curseur** plutôt qu'à la fin, et le cœur tapé au clavier qui
+  ressort de la bulle avec la police d'emojis en principale — le texte autour
+  gardant la sienne. Côté messages vocaux : le micro
   qui remplace l'avion tant qu'on n'a rien écrit, l'enregistrement envoyé en
   `audio` avec sa durée et le chemin à la convention du bucket, l'annulation
   qui n'envoie rien, le micro refusé qui renvoie aux réglages du navigateur,
@@ -3734,6 +3812,17 @@ sécurité.
   cartes titrées, l'absence de toute ligne qui ne mènerait nulle part, le
   rangement des huit types dans leurs trois familles, le changement de mot de
   passe enfin atteignable, et la version annoncée par « À propos ».
+- `test/emoji_font_test.dart` couvre la police d'emojis et son câblage : la
+  variante COLRv1 au dépôt, le repli posé sur tous les styles de l'échelle et
+  sur le thème, puis **le découpage** — le cœur du clavier qui devient un
+  emoji quand `❤` nu n'en est pas un, un emoji composé qui reste d'un seul
+  tenant (famille, ton de peau, séquence ZWJ), un drapeau qui n'est pas deux
+  lettres, le texte et les emojis séparés dans l'ordre, `©` et `1` qui restent
+  du texte quand `1️⃣` n'en est pas, et `⬜` que la seule règle du sélecteur
+  laisserait passer. Côté widget : un texte sans emoji qui reste un `Text`
+  ordinaire, un cœur qui reçoit bien la police en **principale** avec son
+  repli vidé, un emoji seul qui garde un `Text`, et le champ de saisie qui
+  colore ce qu'on tape.
 - `test/app_version_test.dart` confronte `AppConfig.version` au `pubspec.yaml`,
   sans widget : la version est recopiée à la main, et une version fausse est
   pire qu'une version absente.

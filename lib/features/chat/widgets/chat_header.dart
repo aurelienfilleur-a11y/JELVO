@@ -63,7 +63,7 @@ class ChatHeader extends StatelessWidget implements PreferredSizeWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: <Widget>[
-                            Text(
+                            EmojiText(
                               g?.name ?? 'Discussion',
                               style: AppTypography.h3,
                               maxLines: 1,

@@ -85,7 +85,7 @@ class ProfileHeaderCard extends StatelessWidget {
           ),
 
           AppSpacing.gapMd,
-          Text(
+          EmojiText(
             profile.displayName,
             style: AppTypography.h2,
             textAlign: TextAlign.center,
@@ -93,7 +93,7 @@ class ProfileHeaderCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 2),
-          Text(
+          EmojiText(
             profile.pseudoHandle,
             style: AppTypography.body.copyWith(color: AppColors.primary),
             maxLines: 1,

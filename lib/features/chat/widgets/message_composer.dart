@@ -54,7 +54,7 @@ class MessageComposer extends StatefulWidget {
 }
 
 class _MessageComposerState extends State<MessageComposer> {
-  final TextEditingController _controleur = TextEditingController();
+  final TextEditingController _controleur = EmojiTextEditingController();
   final FocusNode _focus = FocusNode();
 
   Timer? _finDeFrappe;
@@ -401,7 +401,7 @@ class TypingIndicator extends StatelessWidget {
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.screenMargin,
               ),
-              child: Text(
+              child: EmojiText(
                 _libelle(),
                 style: AppTypography.caption.copyWith(
                   color: AppColors.textSecondary,

@@ -225,7 +225,7 @@ class _Carte extends StatelessWidget {
                       ),
                       AppSpacing.hGapSm,
                       Expanded(
-                        child: Text(
+                        child: EmojiText(
                           entry.title,
                           style: AppTypography.h3,
                           maxLines: 1,
@@ -237,7 +237,7 @@ class _Carte extends StatelessWidget {
                   if (entry.subtitle != null && entry.subtitle!.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
-                      child: Text(
+                      child: EmojiText(
                         entry.subtitle!,
                         style: AppTypography.caption.copyWith(
                           color: AppColors.textSecondary,
@@ -330,7 +330,7 @@ class _Creneau extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(
+                EmojiText(
                   entry.title,
                   style: AppTypography.body.copyWith(
                     color: entry.accent,
@@ -340,7 +340,7 @@ class _Creneau extends StatelessWidget {
                 if (entry.subtitle != null && entry.subtitle!.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
-                    child: Text(
+                    child: EmojiText(
                       entry.subtitle!,
                       style: AppTypography.caption.copyWith(
                         color: AppColors.textSecondary,

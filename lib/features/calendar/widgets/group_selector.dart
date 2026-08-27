@@ -59,7 +59,7 @@ class GroupSelector extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text(
+                    EmojiText(
                       choisi?.name ?? 'Personnel',
                       style: AppTypography.body.copyWith(
                         fontWeight: AppTypography.semiBold,
@@ -203,7 +203,7 @@ class _Ligne extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       leading: _Vignette(groupe: groupe),
-      title: Text(groupe?.name ?? 'Personnel', style: AppTypography.body),
+      title: EmojiText(groupe?.name ?? 'Personnel', style: AppTypography.body),
       subtitle: Text(
         groupe?.memberLabel ?? 'Vous seul le verrez',
         style: AppTypography.caption,

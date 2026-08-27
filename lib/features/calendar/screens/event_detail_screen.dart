@@ -141,7 +141,7 @@ class _Corps extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Text(event.title, style: AppTypography.h2),
+              EmojiText(event.title, style: AppTypography.h2),
               AppSpacing.gapSm,
               Text(
                 '${AppDates.fullDate(event.start)} · '
@@ -150,7 +150,7 @@ class _Corps extends ConsumerWidget {
               ),
               if (event.notes != null && event.notes!.isNotEmpty) ...<Widget>[
                 AppSpacing.gapMd,
-                Text(event.notes!, style: AppTypography.bodyMuted),
+                EmojiText(event.notes!, style: AppTypography.bodyMuted),
               ],
             ],
           ),
@@ -248,7 +248,7 @@ class _Corps extends ConsumerWidget {
                           ),
                           AppSpacing.hGapMd,
                           Expanded(
-                            child: Text(
+                            child: EmojiText(
                               p.userId == moi
                                   ? '${p.displayName} (vous)'
                                   : p.displayName,
@@ -315,7 +315,7 @@ class _Ligne extends StatelessWidget {
               Expanded(child: Text(label, style: AppTypography.body)),
               AppSpacing.hGapSm,
               Flexible(
-                child: Text(
+                child: EmojiText(
                   value,
                   textAlign: TextAlign.end,
                   maxLines: 2,

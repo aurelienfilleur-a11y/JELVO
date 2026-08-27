@@ -21,8 +21,8 @@ class ProfileEditScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
-  final TextEditingController _prenom = TextEditingController();
-  final TextEditingController _nom = TextEditingController();
+  final TextEditingController _prenom = EmojiTextEditingController();
+  final TextEditingController _nom = EmojiTextEditingController();
 
   /// Profil dont les contrôleurs reflètent le contenu, pour ne pas écraser
   /// une saisie en cours à chaque reconstruction.

@@ -392,3 +392,72 @@ final groupStatsProvider = Provider.family<GroupStats, String>((
         .length,
   );
 });
+
+/// Filtre de recherche de la liste des groupes.
+///
+/// Un `Notifier` et non un état d'écran : la barre de recherche et la liste
+/// sont deux widgets, et un `TextEditingController` partagé les aurait
+/// couplés.
+final NotifierProvider<GroupQuery, String> groupQueryProvider =
+    NotifierProvider<GroupQuery, String>(GroupQuery.new);
+
+class GroupQuery extends Notifier<String> {
+  @override
+  String build() => '';
+
+  void set(String valeur) => state = valeur.trim();
+}
+
+/// Les groupes de la liste, filtrés par la recherche.
+///
+/// La recherche porte sur le **nom et la description** : on cherche « Corse »
+/// aussi bien dans « Vacances en Corse » que dans ce qu'on en a écrit.
+final Provider<List<Group>> filteredGroupsProvider = Provider<List<Group>>((
+  Ref ref,
+) {
+  final String terme = ref.watch(groupQueryProvider).toLowerCase();
+  final List<Group> groupes = ref.watch(activeGroupsProvider);
+  if (terme.isEmpty) return groupes;
+
+  return groupes
+      .where(
+        (Group g) =>
+            g.name.toLowerCase().contains(terme) ||
+            (g.description?.toLowerCase().contains(terme) ?? false),
+      )
+      .toList();
+});
+
+/// La ligne d'activité d'une carte : « 3 tâches en cours · 2 événements à
+/// venir ».
+///
+/// **Elle ne coûte aucune lecture par carte.** `mes_taches` et `mon_agenda`
+/// sont déjà chargées une fois pour toutes, sans bornes de dates et avec
+/// `group_id` : `tasksForGroupProvider` et `eventsForGroupProvider` ne font
+/// que filtrer en mémoire.
+///
+/// **Zéro ne se dit pas.** « 0 tâche · 0 événement » est vrai et inutile, et
+/// se lit comme un défaut de chargement ; un groupe sans rien annonce donc
+/// qu'il est calme, et une moitié vide s'efface au lieu d'afficher son zéro.
+final groupActivityProvider = Provider.family<String, String>((
+  Ref ref,
+  String groupId,
+) {
+  final DateTime now = ref.watch(nowProvider);
+  final int taches = ref
+      .watch(tasksForGroupProvider(groupId))
+      .where((Task t) => !t.isDone)
+      .length;
+  final int evenements = ref
+      .watch(eventsForGroupProvider(groupId))
+      .where((CalendarEvent e) => e.end.isAfter(now))
+      .length;
+
+  final List<String> morceaux = <String>[
+    if (taches > 0) '$taches tâche${taches > 1 ? 's' : ''} en cours',
+    if (evenements > 0)
+      '$evenements événement${evenements > 1 ? 's' : ''} à venir',
+  ];
+  if (morceaux.isEmpty) return 'Rien de prévu pour l’instant';
+  return morceaux.join(' · ');
+});

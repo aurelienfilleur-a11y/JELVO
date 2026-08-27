@@ -16,6 +16,7 @@ import 'package:jelvo/features/groups/models/group_member.dart';
 import 'package:jelvo/features/calendar/providers/calendar_providers.dart';
 import 'package:jelvo/features/chat/providers/chat_providers.dart';
 import 'package:jelvo/features/groups/providers/group_providers.dart';
+import 'package:jelvo/features/groups/models/group.dart';
 import 'package:jelvo/features/groups/widgets/group_header.dart';
 import 'package:jelvo/features/groups/widgets/group_stats_row.dart';
 import 'package:jelvo/features/calendar/models/calendar_event.dart';
@@ -144,6 +145,14 @@ Future<void> _pumpJoinScreen(
   );
   await tester.pumpAndSettle();
 }
+
+/// Trois groupes : c'est le seuil à partir duquel la recherche apparaît.
+FakeGroupRepository _troisGroupes() => FakeGroupRepository(
+  groups: <Group>[
+    ...FakeGroupRepository.demoGroups,
+    const Group(id: 'g3', name: 'Coloc Bastille', memberCount: 2),
+  ],
+);
 
 void main() {
   setUpAll(() => initializeDateFormatting(AppDates.locale));
@@ -690,6 +699,161 @@ void main() {
 
       expect(fakes.contacts.lastRequestedUserId, 'u5');
       expect(find.text('Demande envoyée.'), findsOneWidget);
+    });
+  });
+
+  group('Liste des groupes refondue', () {
+    Future<void> ouvrirListe(WidgetTester tester) async {
+      await tester.tap(find.text('Groupes'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('le titre et le bouton + sont ceux de la maquette', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester);
+      await ouvrirListe(tester);
+
+      expect(find.text('Mes groupes'), findsOneWidget);
+      expect(find.byTooltip('Nouveau groupe'), findsWidgets);
+    });
+
+    testWidgets('la carte porte nom, membres, avatars et activité', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester);
+      await ouvrirListe(tester);
+
+      final Finder carte = find.ancestor(
+        of: find.text('Famille Rousseau'),
+        matching: find.byType(GroupCard),
+      );
+      expect(carte, findsOneWidget);
+      expect(
+        find.descendant(of: carte, matching: find.text('3 membres')),
+        findsOneWidget,
+      );
+      // Deux profils d'aperçu pour trois membres : le reste part dans le
+      // « +N », qui se calcule sur l'effectif et non sur la rangée.
+      expect(
+        find.descendant(of: carte, matching: find.byType(AvatarStack)),
+        findsOneWidget,
+      );
+      expect(find.descendant(of: carte, matching: find.text('+1')), findsOne);
+      // L'activité sort des tâches et des événements déjà chargés.
+      expect(
+        find.descendant(
+          of: carte,
+          matching: find.textContaining('tâche', findRichText: true),
+        ),
+        findsWidgets,
+      );
+    });
+
+    testWidgets('la pastille de non-lus compte les messages du groupe', (
+      WidgetTester tester,
+    ) async {
+      // Le faux dépôt de chat pose deux messages non lus dans g1 : c'est bien
+      // `messages_non_lus`, et non un compteur de notifications.
+      await _pumpApp(tester);
+      await ouvrirListe(tester);
+
+      final Finder carte = find.ancestor(
+        of: find.text('Famille Rousseau'),
+        matching: find.byType(GroupCard),
+      );
+      expect(
+        find.descendant(of: carte, matching: find.text('2')),
+        findsOneWidget,
+      );
+
+      // L'autre groupe n'a rien reçu : aucune pastille, et pas un zéro.
+      final Finder autre = find.ancestor(
+        of: find.text('Vacances en Corse'),
+        matching: find.byType(GroupCard),
+      );
+      expect(
+        find.descendant(of: autre, matching: find.text('0')),
+        findsNothing,
+      );
+    });
+
+    testWidgets('un groupe sans activité ne dit pas « 0 tâche »', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(
+        tester,
+        taskRepository: FakeTaskRepository(tasks: <Task>[]),
+        eventRepository: FakeEventRepository(events: <CalendarEvent>[]),
+      );
+      await ouvrirListe(tester);
+
+      expect(find.text('Rien de prévu pour l’instant'), findsWidgets);
+      expect(find.textContaining('0 tâche'), findsNothing);
+      expect(find.textContaining('0 événement'), findsNothing);
+    });
+
+    testWidgets('une seule moitié vide s’efface au lieu d’afficher son zéro', (
+      WidgetTester tester,
+    ) async {
+      // Une tâche ouverte dans g1, aucun événement : la ligne ne doit parler
+      // que des tâches.
+      await _pumpApp(
+        tester,
+        taskRepository: FakeTaskRepository(
+          tasks: <Task>[
+            const Task(id: 't1', title: 'Sortir les poubelles', groupId: 'g1'),
+          ],
+        ),
+        eventRepository: FakeEventRepository(events: <CalendarEvent>[]),
+      );
+      await ouvrirListe(tester);
+
+      expect(find.text('1 tâche en cours'), findsOneWidget);
+    });
+
+    testWidgets('la recherche n’apparaît qu’à partir de trois groupes', (
+      WidgetTester tester,
+    ) async {
+      // Deux groupes tiennent à l'écran : un champ vide ne ferait que les
+      // repousser.
+      await _pumpApp(tester);
+      await ouvrirListe(tester);
+      expect(find.text('Rechercher un groupe'), findsNothing);
+
+      await _pumpApp(tester, groupRepository: _troisGroupes());
+      await ouvrirListe(tester);
+      expect(find.text('Rechercher un groupe'), findsOneWidget);
+    });
+
+    testWidgets('la recherche filtre sur le nom', (WidgetTester tester) async {
+      await _pumpApp(tester, groupRepository: _troisGroupes());
+      await ouvrirListe(tester);
+
+      await tester.enterText(find.byType(TextField).first, 'corse');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Vacances en Corse'), findsOneWidget);
+      expect(find.text('Famille Rousseau'), findsNothing);
+    });
+
+    testWidgets('une recherche sans résultat ne propose pas de créer', (
+      WidgetTester tester,
+    ) async {
+      // Deux vides, deux causes : proposer « Créer un groupe » ici enverrait
+      // créer ce qu'on cherche justement à retrouver.
+      await _pumpApp(tester, groupRepository: _troisGroupes());
+      await ouvrirListe(tester);
+
+      await tester.enterText(find.byType(TextField).first, 'zzz');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Aucun groupe à ce nom'), findsOneWidget);
+      expect(find.text('Aucun groupe pour le moment'), findsNothing);
+
+      await tester.tap(find.text('Effacer la recherche'));
+      await tester.pumpAndSettle();
+      expect(find.text('Famille Rousseau'), findsOneWidget);
     });
   });
 

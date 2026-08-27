@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/widgets/avatar_stack.dart';
 import '../../../data/app_config.dart';
 import '../../auth/models/auth_failure.dart';
 import '../models/group.dart';
@@ -155,22 +156,17 @@ class SupabaseGroupRepository implements GroupRepository {
 
       if (rows.isEmpty) return const <Group>[];
 
-      final Map<String, int> counts = await _memberCounts(
-        rows
-            .map(
-              (Map<String, dynamic> r) =>
-                  (r['groups'] as Map<String, dynamic>)['id'] as String,
-            )
-            .toList(),
-      );
+      final Map<String, _GroupPreview> apercus = await _memberPreviews();
 
       final List<Group> groups = rows.map((Map<String, dynamic> row) {
         final Map<String, dynamic> groupRow =
             row['groups'] as Map<String, dynamic>;
+        final _GroupPreview? apercu = apercus[groupRow['id'] as String];
         return Group.fromRow(
           groupRow,
           myRole: GroupRole.fromDb(row['role'] as String?),
-          memberCount: counts[groupRow['id'] as String] ?? 0,
+          memberCount: apercu?.count ?? 0,
+          memberPreviews: apercu?.avatars ?? const <AvatarData>[],
         );
       }).toList();
 
@@ -184,22 +180,59 @@ class SupabaseGroupRepository implements GroupRepository {
     }
   }
 
-  /// Effectif de chaque groupe, en une requête plutôt qu'une par carte.
-  Future<Map<String, int>> _memberCounts(List<String> groupIds) async {
-    if (groupIds.isEmpty) return const <String, int>{};
+  /// Effectif **et aperçu des membres** de chaque groupe, en une requête
+  /// plutôt qu'une par carte.
+  ///
+  /// La rangée d'avatars de la liste demande des profils, que RLS ne donne pas
+  /// forcément pour autrui : d'où `mes_groupes_apercu`, `security definer`,
+  /// plutôt qu'une jointure PostgREST qui rendrait des profils partiellement
+  /// nuls sans le dire. Elle remplace l'ancien comptage sans ajouter de
+  /// requête.
+  Future<Map<String, _GroupPreview>> _memberPreviews() async {
+    final List<dynamic> rows =
+        await _client.rpc('mes_groupes_apercu') as List<dynamic>;
 
+    final Map<String, _GroupPreview> apercus = <String, _GroupPreview>{};
+    for (final dynamic brut in rows) {
+      final Map<String, dynamic> row = brut as Map<String, dynamic>;
+      final List<dynamic> membres =
+          (row['membres'] as List<dynamic>?) ?? const <dynamic>[];
+      apercus[row['group_id'] as String] = _GroupPreview(
+        count: (row['nombre_membres'] as num?)?.toInt() ?? 0,
+        avatars: <AvatarData>[
+          for (final dynamic m in membres)
+            AvatarData(
+              name: _nomAffiche(m as Map<String, dynamic>),
+              imageUrl: m['avatar_url'] as String?,
+            ),
+        ],
+      );
+    }
+    return apercus;
+  }
+
+  /// Effectif d'un seul groupe, pour son écran de détail.
+  ///
+  /// Il ne passe pas par `mes_groupes_apercu` : celle-ci rend tous les groupes,
+  /// et l'écran de détail charge de toute façon la liste complète de ses
+  /// membres juste après.
+  Future<int> _memberCount(String groupId) async {
     final List<Map<String, dynamic>> rows = await _client
         .from('group_members')
-        .select('group_id')
-        .inFilter('group_id', groupIds)
+        .select('user_id')
+        .eq('group_id', groupId)
         .or(_activeMembership);
+    return rows.length;
+  }
 
-    final Map<String, int> counts = <String, int>{};
-    for (final Map<String, dynamic> row in rows) {
-      final String id = row['group_id'] as String;
-      counts[id] = (counts[id] ?? 0) + 1;
-    }
-    return counts;
+  /// De quoi tirer des initiales : prénom et nom, à défaut le pseudo.
+  static String _nomAffiche(Map<String, dynamic> row) {
+    final String complet = <String?>[
+      row['first_name'] as String?,
+      row['last_name'] as String?,
+    ].whereType<String>().where((String s) => s.isNotEmpty).join(' ');
+    if (complet.isNotEmpty) return complet;
+    return (row['pseudo'] as String?) ?? '?';
   }
 
   @override
@@ -227,12 +260,10 @@ class SupabaseGroupRepository implements GroupRepository {
           .or(_activeMembership)
           .maybeSingle();
 
-      final Map<String, int> counts = await _memberCounts(<String>[groupId]);
-
       return Group.fromRow(
         row,
         myRole: GroupRole.fromDb(membership?['role'] as String?),
-        memberCount: counts[groupId] ?? 0,
+        memberCount: await _memberCount(groupId),
       );
     } catch (error) {
       throw AuthFailure.from(error);
@@ -685,4 +716,12 @@ class SupabaseGroupRepository implements GroupRepository {
         'heic' => 'image/heic',
         _ => 'image/jpeg',
       };
+}
+
+/// Ce que `mes_groupes_apercu` rend pour un groupe.
+class _GroupPreview {
+  const _GroupPreview({required this.count, required this.avatars});
+
+  final int count;
+  final List<AvatarData> avatars;
 }

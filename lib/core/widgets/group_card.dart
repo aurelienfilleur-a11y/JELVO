@@ -6,9 +6,10 @@ import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 import 'app_card.dart';
 import 'avatar_stack.dart';
+import 'cover_banner.dart';
 
-/// Carte représentant un groupe : pastille colorée, nom, description,
-/// participants et compteur d'activité.
+/// Grande carte d'un groupe dans la liste : photo de couverture en bandeau,
+/// puis le nom, l'effectif, la rangée d'avatars et une ligne d'activité.
 ///
 /// Le composant reste volontairement « bête » : il ne connaît pas le modèle
 /// `Group` du domaine, ce qui le garde réutilisable et testable isolément.
@@ -16,26 +17,41 @@ class GroupCard extends StatelessWidget {
   const GroupCard({
     super.key,
     required this.name,
-    this.description,
     this.icon = Icons.groups_rounded,
     this.accentColor = AppColors.primary,
+    this.photoUrl,
     this.members = const <AvatarData>[],
-    this.trailingLabel,
+    this.hiddenMembers = 0,
+    this.memberLabel,
+    this.activityLabel,
     this.unreadCount = 0,
     this.onTap,
   });
 
   final String name;
-  final String? description;
   final IconData icon;
 
-  /// Couleur d'identité du groupe, appliquée à la vignette.
+  /// Couleur d'identité du groupe, appliquée au repli du bandeau.
   final Color accentColor;
+
+  /// Photo de couverture. Absente, `CoverBanner` retombe sur le dégradé
+  /// d'accent — le même repli que partout ailleurs.
+  final String? photoUrl;
 
   final List<AvatarData> members;
 
-  /// Métadonnée de droite : « 3 événements », « 2 tâches »…
-  final String? trailingLabel;
+  /// Membres que la rangée ne montre pas, pour le « +N ».
+  ///
+  /// Il est passé plutôt que déduit : la rangée ne reçoit qu'un aperçu, et
+  /// `members.length` ne dit donc pas l'effectif du groupe.
+  final int hiddenMembers;
+
+  /// « 8 membres ».
+  final String? memberLabel;
+
+  /// « 3 tâches en cours · 2 événements à venir », ou ce qui en tient lieu
+  /// quand il ne se passe rien.
+  final String? activityLabel;
 
   /// Messages non lus de la conversation. Zéro n'affiche rien.
   ///
@@ -47,105 +63,100 @@ class GroupCard extends StatelessWidget {
 
   final VoidCallback? onTap;
 
+  /// Hauteur du bandeau. Paysage, comme sur la maquette : une photo de groupe
+  /// se regarde en large, et c'est le format sous lequel elle est téléversée.
+  static const double _bandeau = 132;
+
   @override
   Widget build(BuildContext context) {
     return AppCard(
       onTap: onTap,
+      padding: EdgeInsets.zero,
+      // La photo va d'un bord à l'autre de la carte : sans rognage, elle
+      // dépasserait des coins arrondis.
+      clipContent: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  // Vignette teintée : l'accent à faible opacité garde la carte
-                  // légère tout en identifiant le groupe d'un coup d'œil.
-                  color: accentColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(AppSpacing.md),
-                ),
-                child: Icon(icon, size: 22, color: accentColor),
-              ),
-              AppSpacing.hGapMd,
-              Expanded(
-                child: Column(
+          CoverBanner(
+            name: '',
+            accentColor: accentColor,
+            icon: icon,
+            photoUrl: photoUrl,
+            height: _bandeau,
+          ),
+          Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Row(
-                      children: <Widget>[
-                        Flexible(
-                          child: Text(
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
                             name,
                             style: AppTypography.h3,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                        if (unreadCount > 0) ...<Widget>[
-                          AppSpacing.hGapSm,
-                          _PastilleNonLus(count: unreadCount),
+                          if (memberLabel != null) ...<Widget>[
+                            const SizedBox(height: 2),
+                            Text(
+                              memberLabel!,
+                              style: AppTypography.caption,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
                         ],
-                      ],
-                    ),
-                    if (description != null) ...<Widget>[
-                      const SizedBox(height: 2),
-                      Text(
-                        description!,
-                        style: AppTypography.caption,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
                       ),
+                    ),
+                    if (members.isNotEmpty) ...<Widget>[
+                      AppSpacing.hGapSm,
+                      AvatarStack(
+                        avatars: members,
+                        size: 30,
+                        // La rangée montre ce qu'elle a reçu ; le reste part
+                        // dans le « +N », calculé sur l'effectif réel.
+                        maxVisible: members.length,
+                        extraCount: hiddenMembers,
+                      ),
+                    ],
+                    if (unreadCount > 0) ...<Widget>[
+                      AppSpacing.hGapSm,
+                      _PastilleNonLus(count: unreadCount),
                     ],
                   ],
                 ),
-              ),
-              if (onTap != null) ...<Widget>[
-                AppSpacing.hGapSm,
-                const Icon(
-                  Icons.chevron_right_rounded,
-                  size: 20,
-                  color: AppColors.textSecondary,
-                ),
-              ],
-            ],
-          ),
-          if (members.isNotEmpty || trailingLabel != null) ...<Widget>[
-            AppSpacing.gapLg,
-            Row(
-              children: <Widget>[
-                if (members.isNotEmpty) ...<Widget>[
-                  AvatarStack(avatars: members, size: 28, maxVisible: 4),
-                  AppSpacing.hGapMd,
-                ],
-                // `Expanded` plutôt qu'un `Spacer` : sur un écran étroit, le
-                // libellé doit pouvoir être tronqué au lieu de déborder.
-                Expanded(
-                  child: Text(
-                    trailingLabel ?? '',
-                    textAlign: TextAlign.right,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                if (activityLabel != null) ...<Widget>[
+                  AppSpacing.gapSm,
+                  Text(
+                    activityLabel!,
                     style: AppTypography.caption.copyWith(
-                      fontWeight: AppTypography.medium,
+                      color: AppColors.textSecondary,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
+                ],
               ],
             ),
-          ],
+          ),
         ],
       ),
     );
   }
 }
 
-/// Compteur de messages non lus posé à côté du nom du groupe.
+/// Le compteur de messages non lus, en pastille violette pleine.
 ///
-/// Violet plein plutôt que rouge : ce n'est pas une alerte, c'est une
-/// conversation qui attend. Le rouge de [NavBadge] est réservé à ce qui
-/// demande une décision — une invitation, une demande de contact.
+/// Violet et non rouge : ce n'est pas une alerte, c'est de l'activité. Le
+/// rouge de `NavBadge` sert les compteurs de la barre, qui réclament une
+/// action.
 class _PastilleNonLus extends StatelessWidget {
   const _PastilleNonLus({required this.count});
 
@@ -154,21 +165,25 @@ class _PastilleNonLus extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: count == 1 ? '1 message non lu' : '$count messages non lus',
+      label:
+          '$count message${count > 1 ? 's' : ''} non lu'
+          '${count > 1 ? 's' : ''}',
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        constraints: const BoxConstraints(minWidth: 20),
+        constraints: const BoxConstraints(minWidth: 26),
+        height: 26,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+        // Pastille et non cercle strict : à un chiffre les deux se
+        // confondent, mais un cercle rognerait « 12 ».
         decoration: BoxDecoration(
           color: AppColors.primary,
-          borderRadius: BorderRadius.circular(AppRadii.pill),
+          borderRadius: AppRadii.pillRadius,
         ),
+        alignment: Alignment.center,
         child: Text(
           count > 99 ? '99+' : '$count',
-          textAlign: TextAlign.center,
           style: AppTypography.caption.copyWith(
             color: Colors.white,
             fontWeight: AppTypography.semiBold,
-            fontSize: 11,
           ),
         ),
       ),

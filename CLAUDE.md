@@ -555,6 +555,8 @@ halo violet du bouton central. Ne pas utiliser l'`elevation` Material.
 | `AppScreen` / `AppScreenAction` | gabarit d'écran d'onglet (en-tête H1 + slivers) |
 | `CoverBanner`                 | photo de couverture, repli d'accent, nom en surimpression |
 | `TaskRow.badge`               | pastille après le titre d'une tâche — sa priorité |
+| `AvatarStack.extraCount`      | personnes à compter dans le « +N » au-delà des avatars reçus |
+| `AppCard.clipContent`         | rogne au rayon de la carte, pour un enfant qui va d'un bord à l'autre |
 | `InvitationHeader`            | auteur, ce qu'il demande, depuis quand            |
 | `InvitationDetailRow`         | ligne icône / libellé / valeur d'une carte d'invitation |
 | `InvitationActions`           | refus en contour à gauche, accord en plein à droite |
@@ -1042,7 +1044,7 @@ diagnostic à l'écart.
 **L'ordre du fichier n'est pas celui des numéros**, et ne peut pas l'être :
 `tranche7_durcissement.sql` referme l'exécution de toute fonction absente de sa
 liste et **lève si un nom de sa liste n'existe pas en base**. Il reste donc le
-dernier passage, et les tranches 8, 9 et 10 s'insèrent avant lui.
+dernier passage, et les tranches 8, 9, 10 et 11 s'insèrent avant lui.
 
 Trois entrées de `supabase/` ne sont **pas** des migrations : elles n'écrivent
 rien et ne changent rien.
@@ -1072,6 +1074,7 @@ La tranche 2 apporte les favoris personnels, `expires_at`, la table
 | `mes_invitations`, `inviter_dans_groupe`, `accepter_invitation`, `refuser_invitation` | invitations nominatives |
 | `invitation_par_id` | *(tranche 8)* une invitation **dans l'état où elle se trouve**, pour son écran |
 | `creer_groupe` | groupe + adhésion admin en une transaction (voir ci-dessus) |
+| `mes_groupes_apercu` | *(tranche 11)* effectif **et** quatre profils par groupe, en une lecture |
 
 `supabase/correctif_invitations_type.sql` renseigne `invitations.type` dans
 `inviter_dans_groupe` et restreint `accepter_invitation` et `mes_invitations`
@@ -1595,6 +1598,72 @@ encore la réponse ; griser les boutons poserait une règle qu'elle n'a pas. De
 même, une réponse déjà donnée est rappelée par un pavé, sans empêcher d'en
 changer — contrairement à une invitation de groupe, qui ne se répond qu'une
 fois.
+
+### La liste des groupes
+
+Grande carte par groupe : photo de couverture en bandeau paysage, puis le nom,
+l'effectif, la rangée d'avatars et une ligne d'activité. La pastille violette
+des non lus est à droite.
+
+#### La rangée d'avatars ne coûte pas une lecture par carte
+
+C'était le piège de cet écran. La façon évidente d'avoir des avatars —
+`membres_du_groupe` par carte — donne **une requête par ligne de la liste**, et
+la liste est ce qu'on ouvre en premier.
+
+`fetchMyGroups` comptait déjà les membres « en une requête plutôt qu'une par
+carte ». `mes_groupes_apercu` reprend ce compte et lui adjoint les quatre
+profils que la rangée montre : **le nombre de requêtes ne bouge pas**, la
+rangée est offerte.
+
+**Pourquoi une fonction et non un embed PostgREST.** Joindre `profiles` depuis
+`group_members` paraît plus simple, mais depuis la tranche 7 `profiles_select`
+vaut `id = auth.uid() or has_social_link(id)`. L'embed rendrait donc des
+profils **partiellement nuls, sans erreur** — des avatars manquants au hasard,
+et rien pour le dire. C'est la raison d'être de `membres_du_groupe`, et elle
+vaut ici aussi.
+
+Quatre profils au plus : au-delà, `AvatarStack` bascule sur « +N », et
+`memberCount` dit déjà le reste. Le « +N » se calcule donc sur l'**effectif** et
+non sur la longueur de la rangée — d'où `AvatarStack.extraCount`, sans quoi un
+groupe de huit afficherait quatre visages et aucun reste.
+
+L'ordre de l'aperçu est **stable** — les plus anciens d'abord, `user_id` pour
+départager. Sans lui, la rangée changerait de visages d'une lecture à l'autre
+sans que rien n'ait bougé.
+
+#### La ligne d'activité ne lit rien de plus
+
+`mes_taches` et `mon_agenda` sont déjà chargées sans bornes de dates et portent
+`group_id` : `groupActivityProvider` filtre en mémoire, comme les compteurs de
+l'écran d'un groupe.
+
+**Zéro ne se dit pas.** « 0 tâche · 0 événement » est vrai et inutile, et se lit
+comme un défaut de chargement. Un groupe sans rien annonce donc « Rien de prévu
+pour l'instant », et **une seule moitié vide s'efface** au lieu d'afficher son
+zéro : trois tâches et aucun événement donnent « 3 tâches en cours », pas
+« 3 tâches en cours · 0 événement à venir ».
+
+#### La recherche n'apparaît qu'à partir de trois groupes
+
+En deçà, la liste tient à l'écran : un champ vide ne ferait que la repousser.
+C'est le même arbitrage que le rail alphabétique du carnet, qui disparaît sous
+deux sections.
+
+**Deux vides, deux causes**, et l'action diffère : aucun groupe appelle à en
+créer un, une recherche sans résultat appelle à l'effacer. Proposer « Créer un
+groupe » à quelqu'un qui cherche « Corse » l'enverrait créer ce qu'il essaie de
+retrouver.
+
+#### La pastille violette compte les messages, pas les notifications
+
+C'est `unreadForGroupProvider`, donc `messages_non_lus()` — le compte réel des
+messages non lus de **cette** conversation. Elle est violette et non rouge : ce
+n'est pas une alerte, c'est de l'activité. Le rouge de `NavBadge` sert les
+compteurs de la barre, qui réclament une action.
+
+C'est la carte qui dit ce nombre, là où la pastille de l'onglet Groupes compte
+des *conversations* — voir « Deux compteurs qui répondent à deux questions ».
 
 ### La tranche 8 s'applique avant la tranche 7
 
@@ -3281,6 +3350,13 @@ sécurité.
   contact, l'encodage du QR code, et le « + » contextuel : depuis l'écran d'un
   groupe il n'offre plus d'en créer un, sa feuille ouvre `/creer` déjà réglée
   sur ce groupe, et les deux sections portent leur propre action « Ajouter ».
+  Côté liste refondue : le titre « Mes groupes » et son « + », la carte qui
+  porte nom, effectif, avatars et **« +1 » calculé sur l'effectif** plutôt que
+  sur la rangée, la pastille violette qui compte les messages du groupe — et
+  son absence, plutôt qu'un zéro, sur le groupe sans message —, un groupe sans
+  activité qui ne dit pas « 0 tâche », **une moitié vide qui s'efface** au lieu
+  d'afficher son zéro, la recherche qui n'apparaît qu'à trois groupes, son
+  filtrage, et la recherche sans résultat qui ne propose pas de créer.
   Côté écran de groupe refondu : le bandeau qui porte le nom, le nombre de
   membres, les avatars et **les trois pastilles seulement**, le repli sans
   photo qui ne charge aucune image, le crayon réservé à l'administrateur, les

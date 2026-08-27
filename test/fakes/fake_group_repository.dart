@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:jelvo/core/core.dart';
 import 'package:jelvo/features/groups/models/group.dart';
 import 'package:jelvo/features/groups/models/group_invite.dart';
 import 'package:jelvo/features/groups/models/group_member.dart';
@@ -87,12 +88,19 @@ class FakeGroupRepository implements GroupRepository {
       description: 'Anniversaires, vacances et rendez-vous médicaux',
       myRole: GroupRole.admin,
       memberCount: 3,
+      // L'aperçu vient de `mes_groupes_apercu` : deux profils pour trois
+      // membres, ce qui doit donner « +1 » sur la carte.
+      memberPreviews: <AvatarData>[
+        AvatarData(name: 'Camille Rousseau'),
+        AvatarData(name: 'Léa Marchand'),
+      ],
     ),
     Group(
       id: 'g2',
       name: 'Vacances en Corse',
       description: 'Billets, location et programme du séjour',
       memberCount: 4,
+      memberPreviews: <AvatarData>[AvatarData(name: 'Yanis Bertrand')],
     ),
   ];
 

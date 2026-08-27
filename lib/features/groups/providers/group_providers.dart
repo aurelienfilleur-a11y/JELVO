@@ -1,9 +1,13 @@
-import 'dart:typed_data';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../data/data_providers.dart';
 import '../../../data/supabase_providers.dart';
 import '../../auth/providers/auth_providers.dart';
+import '../../calendar/models/calendar_event.dart';
+import '../../calendar/providers/calendar_providers.dart';
+import '../../tasks/models/task.dart';
+import '../../tasks/providers/task_providers.dart';
 import '../models/group.dart';
 import '../models/group_invite.dart';
 import '../models/group_member.dart';
@@ -345,3 +349,46 @@ class GroupActions {
   Future<void> _refreshGroups() =>
       _ref.read(myGroupsProvider.notifier).refresh();
 }
+
+/// Les deux compteurs de l'écran d'un groupe.
+///
+/// **Les deux se calculent proprement, et sans aucune lecture de plus.**
+/// `mes_taches` et `mon_agenda` sont déjà chargées sans bornes de dates, et
+/// portent `group_id` : il n'y a qu'à filtrer.
+///
+/// - **tâches en retard** — `completed_at is null` et `due_at` dépassée. C'est
+///   `Task.isOverdue`, qui dérive de `completed_at`, seule source du statut
+///   d'une tâche : rien ne peut se contredire ;
+/// - **événements à venir** — ceux dont la **fin** est encore devant nous. La
+///   fin plutôt que le début, sans quoi un événement commencé ce matin et qui
+///   dure jusqu'à ce soir serait déjà compté comme passé.
+///
+/// Les deux ne comptent que ce que l'utilisateur voit : `mes_taches` et
+/// `mon_agenda` sont `security definer` et filtrent déjà les adhésions échues.
+@immutable
+class GroupStats {
+  const GroupStats({
+    required this.tachesEnRetard,
+    required this.evenementsAVenir,
+  });
+
+  final int tachesEnRetard;
+  final int evenementsAVenir;
+}
+
+final groupStatsProvider = Provider.family<GroupStats, String>((
+  Ref ref,
+  String groupId,
+) {
+  final DateTime now = ref.watch(nowProvider);
+  return GroupStats(
+    tachesEnRetard: ref
+        .watch(tasksForGroupProvider(groupId))
+        .where((Task t) => t.isOverdue(now))
+        .length,
+    evenementsAVenir: ref
+        .watch(eventsForGroupProvider(groupId))
+        .where((CalendarEvent e) => e.end.isAfter(now))
+        .length,
+  );
+});

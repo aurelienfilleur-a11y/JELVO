@@ -16,6 +16,11 @@ import 'package:jelvo/features/groups/models/group_member.dart';
 import 'package:jelvo/features/calendar/providers/calendar_providers.dart';
 import 'package:jelvo/features/chat/providers/chat_providers.dart';
 import 'package:jelvo/features/groups/providers/group_providers.dart';
+import 'package:jelvo/features/groups/widgets/group_header.dart';
+import 'package:jelvo/features/groups/widgets/group_stats_row.dart';
+import 'package:jelvo/features/calendar/models/calendar_event.dart';
+import 'package:jelvo/features/tasks/models/task.dart';
+import 'package:jelvo/features/tasks/screens/tasks_screen.dart';
 import 'package:jelvo/features/tasks/providers/task_providers.dart';
 import 'package:jelvo/features/groups/screens/join_group_screen.dart';
 import 'package:jelvo/features/auth/providers/auth_providers.dart';
@@ -41,6 +46,8 @@ Future<({FakeGroupRepository groups, FakeContactRepository contacts})> _pumpApp(
   WidgetTester tester, {
   FakeGroupRepository? groupRepository,
   FakeContactRepository? contactRepository,
+  FakeTaskRepository? taskRepository,
+  FakeEventRepository? eventRepository,
 }) async {
   tester.view.physicalSize = const Size(420, 1600);
   tester.view.devicePixelRatio = 1;
@@ -60,8 +67,12 @@ Future<({FakeGroupRepository groups, FakeContactRepository contacts})> _pumpApp(
         authRepositoryProvider.overrideWithValue(auth),
         profileRepositoryProvider.overrideWithValue(FakeProfileRepository()),
         groupRepositoryProvider.overrideWithValue(groups),
-        taskRepositoryProvider.overrideWithValue(FakeTaskRepository()),
-        eventRepositoryProvider.overrideWithValue(FakeEventRepository()),
+        taskRepositoryProvider.overrideWithValue(
+          taskRepository ?? FakeTaskRepository(),
+        ),
+        eventRepositoryProvider.overrideWithValue(
+          eventRepository ?? FakeEventRepository(),
+        ),
         contactRepositoryProvider.overrideWithValue(contacts),
         chatRepositoryProvider.overrideWithValue(FakeChatRepository()),
         pushServiceProvider.overrideWithValue(FakePushService()),
@@ -517,7 +528,11 @@ void main() {
       fakes = await _pumpApp(tester);
       await ouvrirGroupe(tester);
 
-      await tester.tap(find.text('Inviter'));
+      // « Inviter » vit désormais dans le menu « … » du bandeau : la
+      // maquette ne garde que trois pastilles par-dessus la photo.
+      await tester.tap(find.byTooltip('Actions'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Inviter quelqu’un'));
       await tester.pumpAndSettle();
 
       expect(find.text('Durée de l’adhésion'), findsOneWidget);
@@ -542,7 +557,11 @@ void main() {
       fakes = await _pumpApp(tester);
       await ouvrirGroupe(tester);
 
-      await tester.tap(find.text('Inviter'));
+      // « Inviter » vit désormais dans le menu « … » du bandeau : la
+      // maquette ne garde que trois pastilles par-dessus la photo.
+      await tester.tap(find.byTooltip('Actions'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Inviter quelqu’un'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField).last, 'sarah');
       // Laisse passer le débounce de la recherche par pseudo.
@@ -561,6 +580,8 @@ void main() {
       fakes = await _pumpApp(tester);
       await ouvrirGroupe(tester);
 
+      await tester.tap(find.byTooltip('Actions'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Partager un lien'));
       await tester.pumpAndSettle();
 
@@ -669,6 +690,218 @@ void main() {
 
       expect(fakes.contacts.lastRequestedUserId, 'u5');
       expect(find.text('Demande envoyée.'), findsOneWidget);
+    });
+  });
+
+  group('Écran de groupe refondu', () {
+    Future<void> ouvrir(WidgetTester tester) async {
+      await tester.tap(find.text('Groupes'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Famille Rousseau'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('le bandeau porte le nom, les membres et les avatars', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester);
+      await ouvrir(tester);
+
+      expect(
+        find.descendant(
+          of: find.byType(GroupHeader),
+          matching: find.text('Famille Rousseau'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(GroupHeader),
+          matching: find.text('3 membres'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(GroupHeader),
+          matching: find.byType(AvatarStack),
+        ),
+        findsOneWidget,
+      );
+      // Les trois pastilles de la maquette, et rien d'autre par-dessus la
+      // photo.
+      expect(find.byTooltip('Retour'), findsOneWidget);
+      expect(find.byTooltip('Notifications'), findsOneWidget);
+      expect(find.byTooltip('Actions'), findsOneWidget);
+    });
+
+    testWidgets('sans photo, le bandeau retombe sur l’accent du groupe', (
+      WidgetTester tester,
+    ) async {
+      // Les groupes de démonstration n'ont pas de `photo_url` : le repli est
+      // donc le cas éprouvé ici, et il ne doit charger aucune image.
+      await _pumpApp(tester);
+      await ouvrir(tester);
+
+      expect(
+        find.descendant(
+          of: find.byType(GroupHeader),
+          matching: find.byType(Image),
+        ),
+        findsNothing,
+      );
+      expect(find.byType(CoverBanner), findsOneWidget);
+    });
+
+    testWidgets('la description porte le crayon pour un administrateur', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester);
+      await ouvrir(tester);
+
+      expect(
+        find.text('Anniversaires, vacances et rendez-vous médicaux'),
+        findsOneWidget,
+      );
+      expect(find.byTooltip('Modifier le groupe'), findsOneWidget);
+    });
+
+    testWidgets('les deux compteurs sortent des données', (
+      WidgetTester tester,
+    ) async {
+      // Décor : une tâche en retard et une à venir dans g1, un événement de g1
+      // qui n'est pas terminé.
+      final FakeTaskRepository taches = FakeTaskRepository(
+        tasks: <Task>[
+          Task(
+            id: 't1',
+            title: 'Rendre les clés',
+            groupId: 'g1',
+            dueDate: DateTime(2026, 8, 1),
+          ),
+          Task(
+            id: 't2',
+            title: 'Réserver le restaurant',
+            groupId: 'g1',
+            dueDate: DateTime(2026, 8, 20),
+            priority: TaskPriority.high,
+          ),
+          // Une autre appartenance : elle ne doit pas être comptée ici.
+          Task(
+            id: 't3',
+            title: 'Payer la caution',
+            groupId: 'g2',
+            dueDate: DateTime(2026, 7, 30),
+          ),
+        ],
+      );
+      await _pumpApp(tester, taskRepository: taches);
+      await ouvrir(tester);
+
+      final Finder compteurs = find.byType(GroupStatsRow);
+      expect(
+        find.descendant(of: compteurs, matching: find.text('1')),
+        findsNWidgets(2),
+      );
+      expect(find.textContaining('tâches\nen retard'), findsOneWidget);
+      expect(find.textContaining('événements\nà venir'), findsOneWidget);
+    });
+
+    testWidgets('la rangée d’accès rapides ne propose que ce qui existe', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester);
+      await ouvrir(tester);
+
+      expect(find.text('Discussion'), findsOneWidget);
+      expect(find.text('Tâches'), findsOneWidget);
+      expect(find.text('Événements'), findsOneWidget);
+
+      // Ni listes, ni dépenses, ni notes : rien de tout cela n'existe dans
+      // Jelvo, et un pictogramme les promettrait.
+      expect(find.text('Listes'), findsNothing);
+      expect(find.text('Dépenses'), findsNothing);
+      expect(find.text('Notes'), findsNothing);
+    });
+
+    testWidgets('le compteur des tâches ouvre celles du groupe', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester);
+      await ouvrir(tester);
+
+      await tester.tap(
+        find.descendant(
+          of: find.byType(GroupStatsRow),
+          matching: find.textContaining('tâches'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // La liste s'ouvre sur le groupe, et non sur toutes les tâches : son
+      // titre porte le nom du groupe.
+      expect(find.byType(TasksScreen), findsOneWidget);
+      expect(find.text('Famille Rousseau'), findsWidgets);
+      expect(find.text('Renouveler le passeport'), findsNothing);
+    });
+
+    testWidgets('« Voir tout » mène à la même liste', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester);
+      await ouvrir(tester);
+
+      expect(find.text('Tâches prioritaires'), findsOneWidget);
+      await tester.tap(find.text('Voir tout').last);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TasksScreen), findsOneWidget);
+    });
+
+    testWidgets('les tâches sont rangées par priorité, badge à l’appui', (
+      WidgetTester tester,
+    ) async {
+      final FakeTaskRepository taches = FakeTaskRepository(
+        tasks: <Task>[
+          const Task(id: 't1', title: 'Sortir les poubelles', groupId: 'g1'),
+          const Task(
+            id: 't2',
+            title: 'Acheter le cadeau',
+            groupId: 'g1',
+            priority: TaskPriority.high,
+          ),
+        ],
+      );
+      await _pumpApp(tester, taskRepository: taches);
+      await ouvrir(tester);
+
+      // La haute priorité passe devant, et elle seule porte la pastille : sur
+      // une liste où tout est « Normale », la pastille ne dirait rien.
+      final double haute = tester.getTopLeft(find.text('Acheter le cadeau')).dy;
+      final double normale = tester
+          .getTopLeft(find.text('Sortir les poubelles'))
+          .dy;
+      expect(haute, lessThan(normale));
+      expect(find.text('Haute priorité'), findsOneWidget);
+      expect(find.text('Normale priorité'), findsNothing);
+    });
+
+    testWidgets('les sections vides proposent chacune leur action', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(
+        tester,
+        taskRepository: FakeTaskRepository(tasks: <Task>[]),
+        eventRepository: FakeEventRepository(events: <CalendarEvent>[]),
+      );
+      await ouvrir(tester);
+
+      expect(find.text('Aucun événement'), findsOneWidget);
+      expect(find.text('Proposer une date'), findsOneWidget);
+      expect(find.text('Aucune tâche ouverte'), findsOneWidget);
+      expect(find.text('Ajouter une tâche'), findsOneWidget);
+      // Rien à ouvrir, donc pas de « Voir tout ».
+      expect(find.text('Voir tout'), findsNothing);
     });
   });
 

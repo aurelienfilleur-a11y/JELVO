@@ -223,8 +223,9 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
         path: AppRoutes.tasksPath,
         name: AppRoutes.tasks,
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (BuildContext context, GoRouterState state) =>
-            const TasksScreen(),
+        builder: (BuildContext context, GoRouterState state) => TasksScreen(
+          groupId: state.uri.queryParameters[AppRoutes.tasksGroupParam],
+        ),
         routes: <RouteBase>[
           GoRoute(
             path: ':id',

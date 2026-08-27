@@ -13,6 +13,7 @@ import '../../calendar/widgets/event_form_sheet.dart';
 import '../../chat/providers/chat_providers.dart';
 import '../../contacts/models/contact.dart';
 import '../../contacts/providers/contact_providers.dart';
+import '../../notifications/providers/notification_providers.dart';
 import '../../tasks/models/task.dart';
 import '../../tasks/providers/task_providers.dart';
 import '../../tasks/widgets/task_form_sheet.dart';
@@ -22,6 +23,9 @@ import '../models/group_invite.dart';
 import '../models/group_member.dart';
 import '../providers/group_providers.dart';
 
+import '../widgets/group_header.dart';
+import '../widgets/group_quick_actions.dart';
+import '../widgets/group_stats_row.dart';
 import '../widgets/invite_link_sheet.dart';
 import '../widgets/member_tile.dart';
 import '../widgets/membership_term_picker.dart';
@@ -131,37 +135,46 @@ class _GroupView extends ConsumerWidget {
         membersAsync.value ?? const <GroupMember>[];
     final String? myId = ref.watch(currentUserIdProvider);
 
+    final GroupStats stats = ref.watch(groupStatsProvider(group.id));
+    final int nonLues = ref.watch(unreadCountProvider);
+
     return CustomScrollView(
       slivers: <Widget>[
-        SliverAppBar(
-          pinned: true,
-          expandedHeight: 200,
-          backgroundColor: AppColors.surface,
-          foregroundColor: Colors.white,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_rounded),
-            tooltip: 'Retour',
-            onPressed: () => _goBack(context),
-          ),
-          actions: <Widget>[
-            if (group.isAdmin)
-              IconButton(
-                icon: const Icon(Icons.edit_outlined),
-                tooltip: 'Modifier le groupe',
-                onPressed: () => context.pushNamed(
+        SliverToBoxAdapter(
+          child: GroupHeader(
+            group: group,
+            membres: members,
+            notificationsNonLues: nonLues,
+            onBack: () => _goBack(context),
+            onNotifications: () => context.pushNamed(AppRoutes.notifications),
+            menu: PopupMenuButton<_GroupAction>(
+              tooltip: 'Actions',
+              icon: const Icon(Icons.more_horiz_rounded),
+              onSelected: (_GroupAction action) => switch (action) {
+                _GroupAction.invite => _openInviteSheet(context),
+                _GroupAction.link => _openLinkSheet(context),
+                _GroupAction.edit => context.pushNamed(
                   AppRoutes.groupEdit,
                   pathParameters: <String, String>{'id': group.id},
                 ),
-              ),
-            PopupMenuButton<_GroupAction>(
-              tooltip: 'Actions',
-              icon: const Icon(Icons.more_vert_rounded),
-              onSelected: (_GroupAction action) => switch (action) {
                 _GroupAction.leave => _confirmLeave(context, ref),
                 _GroupAction.delete => _confirmDelete(context, ref),
               },
               itemBuilder: (BuildContext context) =>
                   <PopupMenuEntry<_GroupAction>>[
+                    const PopupMenuItem<_GroupAction>(
+                      value: _GroupAction.invite,
+                      child: Text('Inviter quelqu’un'),
+                    ),
+                    const PopupMenuItem<_GroupAction>(
+                      value: _GroupAction.link,
+                      child: Text('Partager un lien'),
+                    ),
+                    if (group.isAdmin)
+                      const PopupMenuItem<_GroupAction>(
+                        value: _GroupAction.edit,
+                        child: Text('Modifier le groupe'),
+                      ),
                     const PopupMenuItem<_GroupAction>(
                       value: _GroupAction.leave,
                       child: Text('Quitter le groupe'),
@@ -172,16 +185,6 @@ class _GroupView extends ConsumerWidget {
                         child: Text('Supprimer le groupe'),
                       ),
                   ],
-            ),
-          ],
-          flexibleSpace: FlexibleSpaceBar(
-            background: CoverBanner(
-              name: group.name,
-              subtitle: group.memberLabel,
-              accentColor: group.accent.color,
-              icon: group.icon,
-              photoUrl: group.photoUrl,
-              height: 200,
             ),
           ),
         ),
@@ -197,29 +200,38 @@ class _GroupView extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                if (group.description != null &&
-                    group.description!.isNotEmpty) ...<Widget>[
-                  Text(group.description!, style: AppTypography.bodyMuted),
-                  AppSpacing.gapLg,
-                ],
-                _LigneDiscussion(groupId: group.id),
+                _Description(group: group),
                 AppSpacing.gapLg,
-                Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: PrimaryButton(
-                        label: 'Inviter',
-                        icon: Icons.person_add_alt_rounded,
-                        onPressed: () => _openInviteSheet(context),
+
+                GroupStatsRow(
+                  tachesEnRetard: stats.tachesEnRetard,
+                  evenementsAVenir: stats.evenementsAVenir,
+                  onTachesPressed: () => _ouvrirLesTaches(context, group),
+                  onEvenementsPressed: () =>
+                      _ouvrirLeCalendrier(context, ref, group),
+                ),
+                AppSpacing.gapMd,
+
+                GroupQuickActions(
+                  actions: <GroupQuickAction>[
+                    GroupQuickAction(
+                      icon: Icons.forum_outlined,
+                      label: 'Discussion',
+                      badge: ref.watch(unreadForGroupProvider(group.id)),
+                      onPressed: () => context.pushNamed(
+                        AppRoutes.groupChat,
+                        pathParameters: <String, String>{'id': group.id},
                       ),
                     ),
-                    AppSpacing.hGapMd,
-                    Expanded(
-                      child: SecondaryButton(
-                        label: 'Partager un lien',
-                        icon: Icons.link_rounded,
-                        onPressed: () => _openLinkSheet(context),
-                      ),
+                    GroupQuickAction(
+                      icon: Icons.task_alt_rounded,
+                      label: 'Tâches',
+                      onPressed: () => _ouvrirLesTaches(context, group),
+                    ),
+                    GroupQuickAction(
+                      icon: Icons.calendar_month_rounded,
+                      label: 'Événements',
+                      onPressed: () => _ouvrirLeCalendrier(context, ref, group),
                     ),
                   ],
                 ),
@@ -325,14 +337,19 @@ class _GroupView extends ConsumerWidget {
           );
 
     return <Widget>[
+      // « Voir tout » plutôt que « Ajouter » : c'est le lien de la maquette, et
+      // il mène au calendrier filtré sur ce groupe — soit exactement la liste
+      // complète que cette section abrège. Ajouter reste à une touche par le
+      // « + » de la barre et par l'état vide.
       _header(
         title: 'À venir',
         subtitle: events.isEmpty
             ? 'Rien de prévu'
             : '${events.length} événement${events.length > 1 ? 's' : ''}',
-        actionLabel: 'Ajouter',
-        onActionPressed: () =>
-            ouvrirFormulaireDEvenement(context, groupId: group.id),
+        actionLabel: events.isEmpty ? null : 'Voir tout',
+        onActionPressed: events.isEmpty
+            ? null
+            : () => _ouvrirLeCalendrier(context, ref, group),
       ),
       if (events.isEmpty)
         SliverToBoxAdapter(
@@ -347,7 +364,7 @@ class _GroupView extends ConsumerWidget {
                 ouvrirFormulaireDEvenement(context, groupId: group.id),
           ),
         )
-      else
+      else ...<Widget>[
         SliverPadding(
           padding: AppSpacing.screenHorizontal,
           sliver: SliverList.separated(
@@ -375,6 +392,12 @@ class _GroupView extends ConsumerWidget {
             },
           ),
         ),
+        _AjouterSliver(
+          semantique: 'Ajouter un événement',
+          onPressed: () =>
+              ouvrirFormulaireDEvenement(context, groupId: group.id),
+        ),
+      ],
     ];
   }
 
@@ -385,21 +408,39 @@ class _GroupView extends ConsumerWidget {
     Group group,
   ) {
     final DateTime now = ref.watch(nowProvider);
-    final List<Task> tasks = ref
-        .watch(tasksForGroupProvider(group.id))
-        .where((Task t) => !t.isDone)
-        .toList();
+
+    // **Prioritaires, donc triées** : priorité décroissante, puis échéance la
+    // plus proche, les tâches sans échéance en dernier. Sans ce tri, « Tâches
+    // prioritaires » ne serait qu'un autre nom pour « toutes les tâches ».
+    final List<Task> tasks =
+        ref
+            .watch(tasksForGroupProvider(group.id))
+            .where((Task t) => !t.isDone)
+            .toList()
+          ..sort((Task a, Task b) {
+            final int parPriorite = b.priority.index.compareTo(
+              a.priority.index,
+            );
+            if (parPriorite != 0) return parPriorite;
+            return switch ((a.dueDate, b.dueDate)) {
+              (null, null) => 0,
+              (null, _) => 1,
+              (_, null) => -1,
+              (final DateTime x, final DateTime y) => x.compareTo(y),
+            };
+          });
 
     return <Widget>[
       _header(
-        title: 'Tâches à faire',
+        title: 'Tâches prioritaires',
         subtitle: tasks.isEmpty
             ? 'Tout est à jour'
             : '${tasks.length} tâche${tasks.length > 1 ? 's' : ''} ouverte'
                   '${tasks.length > 1 ? 's' : ''}',
-        actionLabel: 'Ajouter',
-        onActionPressed: () =>
-            ouvrirFormulaireDeTache(context, groupId: group.id),
+        actionLabel: tasks.isEmpty ? null : 'Voir tout',
+        onActionPressed: tasks.isEmpty
+            ? null
+            : () => _ouvrirLesTaches(context, group),
       ),
       if (tasks.isEmpty)
         SliverToBoxAdapter(
@@ -412,7 +453,7 @@ class _GroupView extends ConsumerWidget {
                 ouvrirFormulaireDeTache(context, groupId: group.id),
           ),
         )
-      else
+      else ...<Widget>[
         SliverPadding(
           padding: AppSpacing.screenHorizontal,
           sliver: SliverToBoxAdapter(
@@ -420,17 +461,25 @@ class _GroupView extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
               child: Column(
                 children: <Widget>[
-                  for (int i = 0; i < tasks.length; i++)
+                  // Trois au plus : la section abrège, « Voir tout » ouvre la
+                  // liste complète du groupe.
+                  for (int i = 0; i < tasks.length && i < 3; i++)
                     TaskTile(
                       task: tasks[i],
                       now: now,
-                      showDivider: i < tasks.length - 1,
+                      showPriority: true,
+                      showDivider: i < tasks.length - 1 && i < 2,
                     ),
                 ],
               ),
             ),
           ),
         ),
+        _AjouterSliver(
+          semantique: 'Ajouter une tâche',
+          onPressed: () => ouvrirFormulaireDeTache(context, groupId: group.id),
+        ),
+      ],
     ];
   }
 
@@ -456,6 +505,31 @@ class _GroupView extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  /// Ouvre la liste des tâches **de ce groupe**.
+  ///
+  /// `?groupe=…` plutôt que la liste entière : une section qui n'annonçait que
+  /// les tâches de ce groupe ne doit pas ouvrir celles de tous les autres.
+  static void _ouvrirLesTaches(BuildContext context, Group group) {
+    context.pushNamed(
+      AppRoutes.tasks,
+      queryParameters: <String, String>{AppRoutes.tasksGroupParam: group.id},
+    );
+  }
+
+  /// Ouvre le calendrier **filtré sur ce groupe**.
+  ///
+  /// Le filtre par groupe existait déjà : il n'y a qu'à le poser avant de
+  /// naviguer, plutôt que d'inventer un écran d'événements par groupe.
+  static void _ouvrirLeCalendrier(
+    BuildContext context,
+    WidgetRef ref,
+    Group group,
+  ) {
+    ref.read(calendarFilterProvider.notifier).clear();
+    ref.read(calendarFilterProvider.notifier).toggle(group.id);
+    context.goNamed(AppRoutes.calendar);
   }
 
   void _goBack(BuildContext context) {
@@ -607,67 +681,59 @@ class _GroupView extends ConsumerWidget {
   }
 }
 
-/// Entrée vers la conversation du groupe.
-///
-/// Elle est posée **au-dessus** des boutons d'invitation, et non reléguée dans
-/// une section plus bas : c'est ce qu'on vient ouvrir le plus souvent, et un
-/// groupe se vit d'abord par sa discussion.
-class _LigneDiscussion extends ConsumerWidget {
-  const _LigneDiscussion({required this.groupId});
+enum _GroupAction { invite, link, edit, leave, delete }
 
-  final String groupId;
+/// Le « Ajouter » posé sous une section pleine.
+///
+/// **Le « + » de la barre n'est jamais le seul chemin.** Le lien de l'en-tête
+/// dit « Voir tout » — c'est la maquette, et il ouvre la liste complète —, si
+/// bien que sans cette ligne, créer depuis une section pleine ne passerait plus
+/// que par un bouton d'icône. L'état vide, lui, porte déjà son action.
+class _AjouterSliver extends StatelessWidget {
+  const _AjouterSliver({required this.semantique, required this.onPressed});
+
+  /// Ce qu'annonce un lecteur d'écran : « Ajouter » seul ne dirait pas quoi.
+  final String semantique;
+
+  final VoidCallback onPressed;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final int nonLus = ref.watch(unreadForGroupProvider(groupId));
-
-    return AppCard(
-      padding: EdgeInsets.zero,
-      child: InkWell(
-        onTap: () => context.pushNamed(
-          AppRoutes.groupChat,
-          pathParameters: <String, String>{'id': groupId},
-        ),
-        borderRadius: AppRadii.cardRadius,
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Row(
-            children: <Widget>[
-              NavBadge(
-                count: nonLus,
-                child: const Icon(
-                  Icons.forum_outlined,
-                  color: AppColors.primary,
-                ),
-              ),
-              AppSpacing.hGapMd,
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text('Discussion', style: AppTypography.h3),
-                    const SizedBox(height: 2),
-                    Text(
-                      nonLus == 0
-                          ? 'La conversation du groupe'
-                          : '$nonLus message${nonLus > 1 ? 's' : ''} non lu'
-                                '${nonLus > 1 ? 's' : ''}',
-                      style: AppTypography.caption.copyWith(
-                        color: nonLus == 0
-                            ? AppColors.textSecondary
-                            : AppColors.primary,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+  Widget build(BuildContext context) {
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screenMargin,
+        AppSpacing.sm,
+        AppSpacing.screenMargin,
+        0,
+      ),
+      sliver: SliverToBoxAdapter(
+        child: Semantics(
+          button: true,
+          label: semantique,
+          child: InkWell(
+            onTap: onPressed,
+            borderRadius: AppRadii.fieldRadius,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  const Icon(
+                    Icons.add_rounded,
+                    size: 18,
+                    color: AppColors.primary,
+                  ),
+                  AppSpacing.hGapXs,
+                  Text(
+                    'Ajouter',
+                    style: AppTypography.caption.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: AppTypography.semiBold,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: AppColors.textSecondary,
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -675,7 +741,55 @@ class _LigneDiscussion extends ConsumerWidget {
   }
 }
 
-enum _GroupAction { leave, delete }
+/// La description du groupe, et le crayon qui mène à sa modification.
+///
+/// **Le crayon n'apparaît que pour un administrateur** : `groups` n'est
+/// modifiable que par eux, et un crayon qui ouvrirait un formulaire refusé par
+/// la base serait pire qu'une ligne inerte.
+///
+/// Sans description, la ligne invite à en écrire une plutôt que de disparaître
+/// — un groupe sans description laisserait sinon un vide inexpliqué entre le
+/// bandeau et les compteurs. Pour un membre non administrateur, en revanche,
+/// elle s'efface : il n'y a ni texte à lire, ni geste à proposer.
+class _Description extends StatelessWidget {
+  const _Description({required this.group});
+
+  final Group group;
+
+  @override
+  Widget build(BuildContext context) {
+    final String? texte = group.description?.trim();
+    final bool vide = texte == null || texte.isEmpty;
+    if (vide && !group.isAdmin) return const SizedBox.shrink();
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Expanded(
+          child: Text(
+            vide ? 'Décrivez ce groupe en une phrase.' : texte,
+            style: vide
+                ? AppTypography.bodyMuted.copyWith(fontStyle: FontStyle.italic)
+                : AppTypography.bodyMuted,
+          ),
+        ),
+        if (group.isAdmin) ...<Widget>[
+          AppSpacing.hGapSm,
+          IconButton(
+            icon: const Icon(Icons.edit_outlined, size: 18),
+            color: AppColors.primary,
+            tooltip: 'Modifier le groupe',
+            visualDensity: VisualDensity.compact,
+            onPressed: () => context.pushNamed(
+              AppRoutes.groupEdit,
+              pathParameters: <String, String>{'id': group.id},
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
 
 /// Invitation nominative : recherche d'un pseudo déjà inscrit.
 class _InviteMemberSheet extends ConsumerStatefulWidget {

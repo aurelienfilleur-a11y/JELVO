@@ -24,6 +24,7 @@ class CoverBanner extends StatelessWidget {
     this.photoUrl,
     this.subtitle,
     this.height = 168,
+    this.showFallbackIcon = true,
   });
 
   final String name;
@@ -32,6 +33,13 @@ class CoverBanner extends StatelessWidget {
   final String? photoUrl;
   final String? subtitle;
   final double height;
+
+  /// Pictogramme centré du repli, quand il n'y a pas de photo.
+  ///
+  /// À éteindre là où l'appelant pose déjà sa propre marque par-dessus — la
+  /// vignette ronde de l'écran d'un groupe porte la même icône, et les deux
+  /// superposées se lisaient comme un défaut d'affichage.
+  final bool showFallbackIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -103,8 +111,14 @@ class CoverBanner extends StatelessWidget {
         colors: <Color>[accentColor, accentColor.withValues(alpha: 0.72)],
       ),
     ),
-    child: Center(
-      child: Icon(icon, size: 56, color: Colors.white.withValues(alpha: 0.5)),
-    ),
+    child: showFallbackIcon
+        ? Center(
+            child: Icon(
+              icon,
+              size: 56,
+              color: Colors.white.withValues(alpha: 0.5),
+            ),
+          )
+        : null,
   );
 }

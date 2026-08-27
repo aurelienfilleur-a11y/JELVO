@@ -19,22 +19,37 @@ import '../widgets/task_tile.dart';
 /// groupes. Cet écran est la vue d'ensemble, ouverte depuis le compteur du
 /// récapitulatif d'accueil.
 class TasksScreen extends ConsumerWidget {
-  const TasksScreen({super.key});
+  const TasksScreen({super.key, this.groupId});
+
+  /// Restreint la liste à un groupe, via `?groupe=…`.
+  ///
+  /// C'est ce qui donne une destination au « Voir tout » de l'écran d'un
+  /// groupe : ouvrir la liste de **toutes** les tâches depuis une section qui
+  /// n'annonçait que celles d'un groupe serait un chemin qui ment.
+  final String? groupId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<Task>> toutes = ref.watch(tasksProvider);
     final DateTime now = ref.watch(nowProvider);
+    final Group? groupe = groupId == null
+        ? null
+        : ref.watch(groupByIdProvider(groupId!));
 
-    final List<Task> ouvertes = ref.watch(openTasksProvider);
+    bool retenue(Task t) => groupId == null || t.groupId == groupId;
+
+    final List<Task> ouvertes = ref
+        .watch(openTasksProvider)
+        .where(retenue)
+        .toList();
     final List<Task> terminees = (toutes.value ?? const <Task>[])
-        .where((Task t) => t.isDone)
+        .where((Task t) => t.isDone && retenue(t))
         .toList();
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Tâches'),
+        title: Text(groupe?.name ?? 'Tâches'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           tooltip: 'Retour',
@@ -46,7 +61,7 @@ class TasksScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.add_rounded),
             tooltip: 'Nouvelle tâche',
-            onPressed: () => ouvrirFormulaireDeTache(context),
+            onPressed: () => ouvrirFormulaireDeTache(context, groupId: groupId),
           ),
         ],
       ),
@@ -64,7 +79,7 @@ class TasksScreen extends ConsumerWidget {
           : RefreshIndicator(
               onRefresh: () => ref.read(tasksProvider.notifier).refresh(),
               child: ouvertes.isEmpty && terminees.isEmpty
-                  ? _vide(context, toutes.isLoading)
+                  ? _vide(context, toutes.isLoading, groupId)
                   : ListView(
                       padding: const EdgeInsets.fromLTRB(
                         AppSpacing.screenMargin,
@@ -100,7 +115,7 @@ class TasksScreen extends ConsumerWidget {
     );
   }
 
-  Widget _vide(BuildContext context, bool chargement) {
+  Widget _vide(BuildContext context, bool chargement, String? groupId) {
     if (chargement) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -111,9 +126,12 @@ class TasksScreen extends ConsumerWidget {
         EmptyState(
           icon: Icons.task_alt_rounded,
           title: 'Aucune tâche',
-          message: 'Tout est fait — ou rien n’a encore été noté.',
+          message: groupId == null
+              ? 'Tout est fait — ou rien n’a encore été noté.'
+              : 'Ce groupe n’a aucune tâche pour l’instant.',
           actionLabel: 'Nouvelle tâche',
-          onActionPressed: () => ouvrirFormulaireDeTache(context),
+          onActionPressed: () =>
+              ouvrirFormulaireDeTache(context, groupId: groupId),
         ),
       ],
     );

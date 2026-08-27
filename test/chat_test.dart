@@ -20,6 +20,7 @@ import 'package:jelvo/features/chat/widgets/chat_media.dart';
 import 'package:jelvo/features/chat/widgets/message_card_tile.dart';
 import 'package:jelvo/features/contacts/providers/contact_providers.dart';
 import 'package:jelvo/features/groups/providers/group_providers.dart';
+import 'package:jelvo/features/groups/widgets/group_quick_actions.dart';
 import 'package:jelvo/features/notifications/models/app_notification.dart';
 import 'package:jelvo/features/notifications/providers/notification_providers.dart';
 import 'package:jelvo/features/notifications/providers/push_providers.dart';
@@ -224,8 +225,16 @@ void main() {
       await tester.tap(find.text('Famille Rousseau'));
       await tester.pumpAndSettle();
 
+      // La rangée d'accès rapides remplace la ligne « Discussion » : le
+      // compte passe de la phrase à la pastille posée sur le pictogramme.
       expect(find.text('Discussion'), findsOneWidget);
-      expect(find.text('2 messages non lus'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(GroupQuickActions),
+          matching: find.text('2'),
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('ouvrir la conversation la marque comme lue', (

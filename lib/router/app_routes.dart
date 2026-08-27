@@ -106,6 +106,15 @@ abstract final class AppRoutes {
   /// l'écran qui sait la satisfaire.
   static const String groupLinkParam = 'lien';
 
+  /// Restreint `/taches` à un groupe.
+  ///
+  /// C'est ce qui donne une destination réelle au « Voir tout » des tâches sur
+  /// l'écran d'un groupe : sans lui, il ouvrirait la liste de **toutes** les
+  /// tâches, ce qui n'est pas ce qu'annonce la section qu'on vient de lire.
+  /// Même forme que `/creer?groupe=…`, et pour la même raison — un `extra` se
+  /// perdrait au rafraîchissement du web.
+  static const String tasksGroupParam = 'groupe';
+
   // Profil et réglages, empilés sur le navigateur racine.
   static const String profile = 'profile';
   static const String profilePath = '/profil';

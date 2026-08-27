@@ -24,6 +24,7 @@ class TaskRow extends StatelessWidget {
     this.assignee,
     this.showDivider = true,
     this.trailing,
+    this.badge,
   });
 
   final String title;
@@ -52,6 +53,12 @@ class TaskRow extends StatelessWidget {
   /// chaque feature y met ce qui lui est propre.
   final Widget? trailing;
 
+  /// Pastille posée **à la suite du titre** — une priorité, un état.
+  ///
+  /// Un `Widget` nu comme [trailing] : `core/widgets` ne connaît pas le
+  /// domaine, et c'est à la feature de dire ce que la pastille annonce.
+  final Widget? badge;
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -75,20 +82,30 @@ class TaskRow extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        Text(
-                          title,
-                          style: AppTypography.body.copyWith(
-                            fontWeight: AppTypography.medium,
-                            color: done
-                                ? AppColors.textSecondary
-                                : AppColors.midnight,
-                            decoration: done
-                                ? TextDecoration.lineThrough
-                                : TextDecoration.none,
-                            decorationColor: AppColors.textSecondary,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
+                        Row(
+                          children: <Widget>[
+                            Flexible(
+                              child: Text(
+                                title,
+                                style: AppTypography.body.copyWith(
+                                  fontWeight: AppTypography.medium,
+                                  color: done
+                                      ? AppColors.textSecondary
+                                      : AppColors.midnight,
+                                  decoration: done
+                                      ? TextDecoration.lineThrough
+                                      : TextDecoration.none,
+                                  decorationColor: AppColors.textSecondary,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (badge != null) ...<Widget>[
+                              AppSpacing.hGapSm,
+                              badge!,
+                            ],
+                          ],
                         ),
                         if (subtitle != null) ...<Widget>[
                           const SizedBox(height: 2),

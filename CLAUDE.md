@@ -554,6 +554,7 @@ halo violet du bouton central. Ne pas utiliser l'`elevation` Material.
 | `AppCard`                     | conteneur de base des cartes (surface + ombre)    |
 | `AppScreen` / `AppScreenAction` | gabarit d'écran d'onglet (en-tête H1 + slivers) |
 | `CoverBanner`                 | photo de couverture, repli d'accent, nom en surimpression |
+| `TaskRow.badge`               | pastille après le titre d'une tâche — sa priorité |
 | `InvitationHeader`            | auteur, ce qu'il demande, depuis quand            |
 | `InvitationDetailRow`         | ligne icône / libellé / valeur d'une carte d'invitation |
 | `InvitationActions`           | refus en contour à gauche, accord en plein à droite |
@@ -622,9 +623,15 @@ rechargeable. `CreateScreen` pré-remplit sans verrouiller : les deux champs
 restent modifiables.
 
 Le « + » n'est jamais le **seul** chemin. Les sections « À venir » et « Tâches
-à faire » de l'écran de groupe portent leur propre action « Ajouter », et leurs
-états vides une action pleine. Une fonctionnalité qui n'est atteignable que par
-un bouton d'icône dans une barre est, en pratique, intestable.
+prioritaires » de l'écran de groupe portent chacune un « Ajouter » sous leur
+contenu, et leurs états vides une action pleine. Une fonctionnalité qui n'est
+atteignable que par un bouton d'icône dans une barre est, en pratique,
+intestable.
+
+Ce « Ajouter » a changé de place et non de rôle : l'en-tête de section porte
+désormais « Voir tout », qui ouvre la liste complète. Les deux ne se
+remplacent pas — l'un crée, l'autre déplie —, et supprimer le premier aurait
+laissé la création au seul « + ».
 
 ### Liens externes et stratégie d'URL
 
@@ -1083,6 +1090,91 @@ et une seule suffirait :
 retrait, promotion du plus ancien membre, suppression douce du groupe — qui,
 enchaînées depuis le client, laisseraient un groupe sans administrateur en cas
 d'échec au milieu.
+
+### L'écran d'un groupe
+
+Bandeau photo, description, deux compteurs, trois accès rapides, puis les
+sections « À venir », « Tâches prioritaires » et « Membres ».
+
+#### Ce que la maquette proposait et qui n'existe pas
+
+| Écarté | Pourquoi |
+| --- | --- |
+| pictogrammes **Listes** et **Dépenses** | aucune table, aucun écran, rien nulle part |
+| pictogramme et compteur **Notes** | idem — la maquette le montrait, le projet ne l'a jamais eu |
+| compteurs **listes actives** et **notes** | un compteur qu'aucune donnée n'alimente vaut zéro pour tout le monde, pour toujours |
+| section **« Prochains événements »** | elle listait les mêmes événements que « À venir », une section plus bas |
+
+`task_list_items` pourrait faire croire à des listes : c'est la case à cocher
+**d'une tâche**, pas un objet qu'on ouvre. La confondre avec la ligne
+« Listes » de la maquette donnerait un écran sans contenu.
+
+**Il reste donc deux compteurs et trois accès rapides**, et chacun mène quelque
+part de réel : la conversation, les tâches du groupe, le calendrier filtré sur
+lui.
+
+#### Les deux compteurs se calculent sans une lecture de plus
+
+`mes_taches` et `mon_agenda` sont déjà chargées **sans bornes de dates** et
+portent `group_id` : `groupStatsProvider` n'a qu'à filtrer.
+
+| Compteur | Règle |
+| --- | --- |
+| tâches en retard | `Task.isOverdue` — `completed_at` vide et `due_at` dépassée |
+| événements à venir | **`end`** encore devant nous, et non `start` |
+
+La fin plutôt que le début n'est pas un détail : un événement commencé ce matin
+et qui dure jusqu'au soir serait sinon compté comme passé alors qu'on y est.
+
+**Zéro n'est pas une erreur, mais il ne s'alarme pas** : la pastille du retard
+ne devient rouge qu'au-delà de zéro. Un rond rouge sur un « 0 » annoncerait un
+problème qui n'existe pas.
+
+#### « Voir tout » demandait une destination qui n'existait pas
+
+Le lien des tâches ouvrait `/taches`, c'est-à-dire **toutes** les tâches — pas
+celles du groupe qu'on venait de lire. D'où `?groupe=<id>`
+(`AppRoutes.tasksGroupParam`), qui restreint la liste et titre l'écran du nom
+du groupe. Même forme que `/creer?groupe=…`, et pour la même raison : un
+`extra` se perdrait au rafraîchissement du web.
+
+Côté événements, rien à inventer : le filtre par groupe du calendrier existe
+depuis sa refonte. « Voir tout » le pose et navigue.
+
+#### Le bandeau
+
+Les trois commandes sont des **pastilles blanches opaques** posées sur la
+photo. Ce n'est pas décoratif : une icône blanche disparaît sur une photo
+claire, une icône sombre sur une photo de nuit — le disque tranche dans les
+deux cas. C'est le même problème que résout le dégradé de `CoverBanner` pour le
+texte.
+
+**La cloche compte les notifications de tout le monde, pas celles du groupe.**
+`notifications` n'a pas de colonne de groupe, et son `payload` ne porte pas
+l'identifiant pour tous les types : un compteur par groupe demanderait une
+lecture que la base ne sait pas faire. Elle ouvre donc la boîte complète.
+
+Sans photo, le repli est le dégradé d'accent — et `CoverBanner` reçoit
+`showFallbackIcon: false`, la vignette ronde portant déjà la même icône juste
+en dessous. Les deux superposées se lisaient comme un défaut d'affichage.
+
+**Les avatars n'apparaissent qu'une fois les membres chargés.** Une rangée
+factice mentirait sur qui est là.
+
+#### Le crayon de la description est réservé aux administrateurs
+
+`groups` n'est modifiable que par eux : un crayon qui ouvrirait un formulaire
+que la base refuse serait pire qu'une ligne inerte. Sans description, la ligne
+invite un administrateur à en écrire une, et **disparaît** pour un membre
+simple — il n'y a alors ni texte à lire ni geste à proposer.
+
+#### « Tâches prioritaires » trie, sinon le titre ment
+
+Priorité décroissante, puis échéance la plus proche, sans échéance en dernier.
+Trois lignes au plus. **Seule la priorité « Haute » porte une pastille** :
+« Normale » est le défaut de `creer_tache`, et l'afficher sur les trois quarts
+des lignes noierait les deux qui comptent. « Basse » garde le gris — lui donner
+`warning` lui prêterait une urgence qu'elle dit précisément ne pas avoir.
 
 ### Le groupe et ses premiers membres se décident ensemble
 
@@ -3189,6 +3281,15 @@ sécurité.
   contact, l'encodage du QR code, et le « + » contextuel : depuis l'écran d'un
   groupe il n'offre plus d'en créer un, sa feuille ouvre `/creer` déjà réglée
   sur ce groupe, et les deux sections portent leur propre action « Ajouter ».
+  Côté écran de groupe refondu : le bandeau qui porte le nom, le nombre de
+  membres, les avatars et **les trois pastilles seulement**, le repli sans
+  photo qui ne charge aucune image, le crayon réservé à l'administrateur, les
+  deux compteurs confrontés à un décor où une tâche est en retard et une autre
+  non — **une tâche d'un autre groupe ne comptant pas** —, la rangée d'accès
+  rapides qui n'offre ni listes, ni dépenses, ni notes, le compteur et le
+  « Voir tout » qui ouvrent tous deux les tâches **du groupe** et non toutes,
+  le tri par priorité avec sa pastille sur la seule « Haute », et les deux
+  sections vides qui gardent chacune leur action sans proposer de « Voir tout ».
   Côté adhésion temporaire : la date de fin lisible sur la ligne du membre —
   et absente pour un membre permanent —, le réglage depuis le menu qui
   n'écrit qu'à la confirmation, « Sans terme » qui rend l'adhésion permanente,

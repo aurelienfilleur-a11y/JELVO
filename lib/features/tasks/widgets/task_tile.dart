@@ -23,12 +23,20 @@ class TaskTile extends ConsumerWidget {
     required this.now,
     this.groupName,
     this.showDivider = true,
+    this.showPriority = false,
   });
 
   final Task task;
   final DateTime now;
   final String? groupName;
   final bool showDivider;
+
+  /// Affiche la priorité en pastille après le titre.
+  ///
+  /// Éteint par défaut : sur une liste où tout est « Normale », la pastille ne
+  /// distinguerait rien. Elle n'a de sens que là où le tri s'en réclame — la
+  /// section « Tâches prioritaires » d'un groupe.
+  final bool showPriority;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -38,6 +46,12 @@ class TaskTile extends ConsumerWidget {
           ? '${task.checkedCount} sur ${task.itemCount} articles'
           : (groupName ?? task.notes),
       done: task.isDone,
+      // La priorité normale ne se dit pas : c'est le défaut de `creer_tache`,
+      // et l'annoncer sur les trois quarts des lignes noierait les deux qui
+      // comptent.
+      badge: showPriority && task.priority != TaskPriority.medium
+          ? _PastillePriorite(priority: task.priority)
+          : null,
       dueLabel: task.dueDate == null
           ? null
           : AppDates.relativeDay(task.dueDate!, now: now),
@@ -121,3 +135,39 @@ class TaskTile extends ConsumerWidget {
 }
 
 enum _ChoixCase { terminer, supprimer }
+
+/// La priorité d'une tâche, en pastille teintée.
+///
+/// Seule « Haute » prend une couleur — `danger`, celui de l'urgence. Une
+/// priorité basse n'est pas une alerte : lui donner `warning` lui prêterait
+/// une urgence qu'elle dit précisément ne pas avoir. Elle garde donc le gris
+/// du texte secondaire.
+class _PastillePriorite extends StatelessWidget {
+  const _PastillePriorite({required this.priority});
+
+  final TaskPriority priority;
+
+  @override
+  Widget build(BuildContext context) {
+    final (Color teinte, Color fond) = switch (priority) {
+      TaskPriority.high => (AppColors.danger, AppColors.dangerSoft),
+      TaskPriority.medium => (AppColors.textSecondary, AppColors.background),
+      TaskPriority.low => (AppColors.textSecondary, AppColors.background),
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: 2,
+      ),
+      decoration: BoxDecoration(color: fond, borderRadius: AppRadii.pillRadius),
+      child: Text(
+        '${priority.label} priorité',
+        style: AppTypography.caption.copyWith(
+          color: teinte,
+          fontWeight: AppTypography.medium,
+        ),
+      ),
+    );
+  }
+}

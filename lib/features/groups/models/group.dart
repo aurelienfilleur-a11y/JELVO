@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/avatar_stack.dart';
 import 'group_member.dart';
 
 /// Couleur d'identité d'un groupe.
@@ -59,12 +60,14 @@ class Group {
     this.createdAt,
     this.myRole = GroupRole.member,
     this.memberCount = 0,
+    this.memberPreviews = const <AvatarData>[],
   });
 
   factory Group.fromRow(
     Map<String, dynamic> row, {
     GroupRole myRole = GroupRole.member,
     int memberCount = 0,
+    List<AvatarData> memberPreviews = const <AvatarData>[],
   }) {
     return Group(
       id: row['id'] as String,
@@ -76,6 +79,7 @@ class Group {
       createdAt: DateTime.tryParse((row['created_at'] as String?) ?? ''),
       myRole: myRole,
       memberCount: memberCount,
+      memberPreviews: memberPreviews,
     );
   }
 
@@ -92,6 +96,21 @@ class Group {
 
   final int memberCount;
 
+  /// Quelques membres, de quoi peupler la rangée d'avatars de la liste.
+  ///
+  /// **Quatre au plus, et c'est voulu** : au-delà, `AvatarStack` bascule sur
+  /// « +N », et `memberCount` dit déjà le reste. Ils viennent de
+  /// `mes_groupes_apercu`, qui les rend pour tous les groupes en une lecture —
+  /// un appel à `membres_du_groupe` par carte aurait coûté une requête par
+  /// ligne de la liste.
+  final List<AvatarData> memberPreviews;
+
+  /// Combien de membres la rangée d'avatars ne montre pas.
+  int get hiddenMemberCount {
+    final int reste = memberCount - memberPreviews.length;
+    return reste > 0 ? reste : 0;
+  }
+
   bool get isAdmin => myRole == GroupRole.admin;
 
   GroupAccent get accent => GroupAccent.forId(id);
@@ -107,6 +126,7 @@ class Group {
     bool? isPrivate,
     GroupRole? myRole,
     int? memberCount,
+    List<AvatarData>? memberPreviews,
   }) {
     return Group(
       id: id,
@@ -118,6 +138,7 @@ class Group {
       createdAt: createdAt,
       myRole: myRole ?? this.myRole,
       memberCount: memberCount ?? this.memberCount,
+      memberPreviews: memberPreviews ?? this.memberPreviews,
     );
   }
 

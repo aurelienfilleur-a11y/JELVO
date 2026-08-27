@@ -19,6 +19,7 @@ class AppCard extends StatelessWidget {
     this.color = AppColors.surface,
     this.borderColor = AppColors.border,
     this.shadows = AppShadows.card,
+    this.clipContent = false,
   });
 
   final Widget child;
@@ -27,6 +28,14 @@ class AppCard extends StatelessWidget {
   final Color color;
   final Color? borderColor;
   final List<BoxShadow> shadows;
+
+  /// Rogne le contenu au rayon de la carte.
+  ///
+  /// Nécessaire dès qu'un enfant va d'un bord à l'autre — la photo de
+  /// couverture d'un groupe déborderait sinon des coins arrondis. Éteint par
+  /// défaut : le rognage coûte une couche de composition, et les cartes à
+  /// marge intérieure n'en ont pas besoin.
+  final bool clipContent;
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +53,12 @@ class AppCard extends StatelessWidget {
           borderRadius: AppRadii.cardRadius,
           splashColor: AppColors.primarySoft,
           highlightColor: AppColors.primarySoft,
-          child: Padding(padding: padding, child: child),
+          child: clipContent
+              ? ClipRRect(
+                  borderRadius: AppRadii.cardRadius,
+                  child: Padding(padding: padding, child: child),
+                )
+              : Padding(padding: padding, child: child),
         ),
       ),
     );

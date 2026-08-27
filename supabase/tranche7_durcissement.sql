@@ -378,6 +378,7 @@ declare
     'mes_invitations', 'invitation_par_id',
     'apercu_groupe_par_jeton', 'rejoindre_groupe_par_jeton',
     'promouvoir_membre', 'retrograder_membre', 'retirer_membre',
+    'mes_groupes_apercu',
     'definir_terme_adhesion',
     -- Contacts et recherche
     'mes_contacts', 'chercher_profils_par_pseudo',

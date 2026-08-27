@@ -70,8 +70,8 @@ class InvitationsScreen extends ConsumerWidget {
               final GroupInvitation invitation = invitations[index];
               return GroupCard(
                 name: invitation.groupName,
-                description: 'Invitation de ${invitation.senderName}',
-                trailingLabel: invitation.memberLabel,
+                memberLabel: invitation.memberLabel,
+                activityLabel: 'Invitation de ${invitation.senderName}',
                 onTap: () => context.pushNamed(
                   AppRoutes.invitation,
                   pathParameters: <String, String>{'id': invitation.id},

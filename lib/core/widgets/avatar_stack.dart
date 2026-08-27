@@ -69,6 +69,7 @@ class AvatarStack extends StatelessWidget {
     required this.avatars,
     this.size = 32,
     this.maxVisible = 4,
+    this.extraCount = 0,
     this.overlap = 0.32,
   });
 
@@ -79,6 +80,12 @@ class AvatarStack extends StatelessWidget {
 
   /// Nombre d'avatars affichés avant de basculer sur « +N ».
   final int maxVisible;
+
+  /// Personnes à compter dans le « +N » **au-delà** de [avatars].
+  ///
+  /// La liste des groupes ne reçoit qu'un aperçu de quatre membres : sans
+  /// cela, un groupe de huit afficherait quatre visages et aucun reste.
+  final int extraCount;
 
   /// Part du diamètre recouverte par l'avatar suivant (0 = pas de chevauchement).
   final double overlap;
@@ -97,7 +104,7 @@ class AvatarStack extends StatelessWidget {
     if (avatars.isEmpty) return const SizedBox.shrink();
 
     final List<AvatarData> visible = avatars.take(maxVisible).toList();
-    final int overflow = avatars.length - visible.length;
+    final int overflow = avatars.length - visible.length + extraCount;
     final double step = size * (1 - overlap);
     final int slots = visible.length + (overflow > 0 ? 1 : 0);
     final double width = step * (slots - 1) + size;

@@ -1459,4 +1459,101 @@ begin
 end;
 $carnet$;
 
+-- ---------------------------------------------------------------------------
+-- L'aperçu des groupes (tranche 11).
+--
+-- Ce qui est éprouvé ici : la fonction rend **une ligne par groupe actif**,
+-- avec l'effectif juste et au plus quatre profils. Les deux contrôles négatifs
+-- portent sur les filtres qui pourraient silencieusement laisser passer un
+-- groupe qu'on ne voit plus.
+-- ---------------------------------------------------------------------------
+
+do $apercu$
+declare
+  camille uuid := '11111111-1111-1111-1111-111111111111'::uuid;
+  lea     uuid := '33333333-3333-3333-3333-333333333333'::uuid;
+  groupe  uuid := '22222222-2222-2222-2222-222222222222'::uuid;
+  attendu integer;
+  lignes  integer;
+  compte  integer;
+  apercu  jsonb;
+begin
+  set local role postgres;
+  -- Le décor a pu changer : les blocs précédents ajoutent des membres. On
+  -- remet le groupe et ses adhésions dans un état connu, et on **relit
+  -- l'effectif dans la table** plutôt que de le supposer — c'est justement
+  -- l'accord entre les deux qu'on éprouve.
+  update public.groups set deleted_at = null where id = groupe;
+  update public.group_members set expires_at = null where group_id = groupe;
+
+  select count(*) into attendu
+    from public.group_members where group_id = groupe;
+
+  perform set_config('request.jwt.claims',
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}',
+    true);
+  set local role authenticated;
+
+  select nombre_membres, membres into compte, apercu
+    from public.mes_groupes_apercu() where group_id = groupe;
+
+  assert compte = attendu,
+         format('effectif %s attendu, reçu %s', attendu, compte);
+  -- Quatre profils au plus : au-delà, la rangée bascule sur « +N » et le
+  -- reste ne serait transporté pour personne.
+  assert jsonb_array_length(apercu) = least(attendu, 4),
+         format('%s profils attendus, reçu %s',
+                least(attendu, 4), jsonb_array_length(apercu));
+  -- Le profil est bien joint : sans lui, la rangée n'aurait aucun nom à
+  -- afficher, et c'est tout l'objet de la fonction.
+  assert apercu -> 0 ->> 'user_id' is not null,
+         'un aperçu sans identifiant de membre';
+
+  -- **Contrôle négatif : une adhésion échue ne compte plus.**
+  reset role;
+  update public.group_members
+     set expires_at = now() - interval '1 day'
+   where group_id = groupe and user_id = lea;
+
+  perform set_config('request.jwt.claims',
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}',
+    true);
+  set local role authenticated;
+  select nombre_membres into compte
+    from public.mes_groupes_apercu() where group_id = groupe;
+  assert compte = attendu - 1,
+         format('une adhésion échue compte encore, reçu %s', compte);
+
+  -- **Contrôle négatif : un groupe supprimé disparaît de l'aperçu.**
+  reset role;
+  update public.groups set deleted_at = now() where id = groupe;
+
+  perform set_config('request.jwt.claims',
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}',
+    true);
+  set local role authenticated;
+  select count(*) into lignes
+    from public.mes_groupes_apercu() where group_id = groupe;
+  assert lignes = 0,
+         format('un groupe supprimé reste dans l''aperçu, reçu %s', lignes);
+
+  -- **Contrôle négatif : ce n'est pas l'aperçu de tout le monde.** Léa vient
+  -- de voir son adhésion expirer : elle ne doit plus rien voir de ce groupe.
+  reset role;
+  update public.groups set deleted_at = null where id = groupe;
+
+  perform set_config('request.jwt.claims',
+    '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}',
+    true);
+  set local role authenticated;
+  select count(*) into lignes
+    from public.mes_groupes_apercu() where group_id = groupe;
+  assert lignes = 0,
+         format('une adhésion échue donne encore l''aperçu, reçu %s', lignes);
+
+  reset role;
+  raise notice 'Fumée : l''aperçu des groupes de la tranche 11 répond.';
+end;
+$apercu$;
+
 rollback;

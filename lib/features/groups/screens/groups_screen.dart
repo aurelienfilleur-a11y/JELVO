@@ -11,25 +11,72 @@ import '../models/group_invite.dart';
 import '../providers/group_providers.dart';
 
 /// Écran Groupes : invitations reçues, puis groupes de l'utilisateur.
-class GroupsScreen extends ConsumerWidget {
+class GroupsScreen extends ConsumerStatefulWidget {
   const GroupsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<GroupsScreen> createState() => _GroupsScreenState();
+}
+
+class _GroupsScreenState extends ConsumerState<GroupsScreen> {
+  final TextEditingController _recherche = TextEditingController();
+
+  @override
+  void dispose() {
+    _recherche.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final AsyncValue<List<Group>> groupsAsync = ref.watch(myGroupsProvider);
-    final List<Group> groups = ref.watch(activeGroupsProvider);
+    final List<Group> tous = ref.watch(activeGroupsProvider);
+    final List<Group> groups = ref.watch(filteredGroupsProvider);
+    final String terme = ref.watch(groupQueryProvider);
     final List<GroupInvitation> invitations =
         ref.watch(invitationsProvider).value ?? const <GroupInvitation>[];
 
     return AppScreen(
-      title: 'Groupes',
-      subtitle: 'Partagez agenda et tâches avec vos proches.',
+      title: 'Mes groupes',
       headerAction: AppScreenAction(
         icon: Icons.add_rounded,
         tooltip: 'Nouveau groupe',
+        accented: true,
         onPressed: () => context.pushNamed(AppRoutes.groupCreate),
       ),
       slivers: <Widget>[
+        // La recherche n'apparaît qu'à partir de trois groupes : en deçà, la
+        // liste tient à l'écran et un champ vide ne ferait que la repousser.
+        if (tous.length >= 3)
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.screenMargin,
+              0,
+              AppSpacing.screenMargin,
+              AppSpacing.lg,
+            ),
+            sliver: SliverToBoxAdapter(
+              child: AppTextField(
+                hint: 'Rechercher un groupe',
+                controller: _recherche,
+                prefixIcon: Icons.search_rounded,
+                suffixIcon: terme.isEmpty
+                    ? null
+                    : IconButton(
+                        icon: const Icon(Icons.cancel_rounded, size: 20),
+                        color: AppColors.textSecondary,
+                        tooltip: 'Effacer la recherche',
+                        onPressed: () {
+                          _recherche.clear();
+                          ref.read(groupQueryProvider.notifier).set('');
+                        },
+                      ),
+                onChanged: (String valeur) =>
+                    ref.read(groupQueryProvider.notifier).set(valeur),
+              ),
+            ),
+          ),
+
         if (invitations.isNotEmpty)
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(
@@ -60,7 +107,10 @@ class GroupsScreen extends ConsumerWidget {
                   ref.read(myGroupsProvider.notifier).refresh(),
             ),
           )
-        else if (groups.isEmpty)
+        // **Deux vides, deux causes.** Aucun groupe appelle à en créer un ;
+        // une recherche sans résultat appelle à la corriger. Confondre les
+        // deux proposerait de créer « Corse » à quelqu'un qui l'a déjà.
+        else if (tous.isEmpty)
           SliverFillRemaining(
             hasScrollBody: false,
             child: EmptyState(
@@ -73,30 +123,37 @@ class GroupsScreen extends ConsumerWidget {
               onActionPressed: () => context.pushNamed(AppRoutes.groupCreate),
             ),
           )
-        else ...<Widget>[
-          SliverPadding(
-            padding: AppSpacing.screenHorizontal,
-            sliver: SliverToBoxAdapter(
-              child: SectionHeader(
-                title: '${groups.length} groupe${groups.length > 1 ? 's' : ''}',
-                subtitle: 'Par ordre alphabétique',
-              ),
+        else if (groups.isEmpty)
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: EmptyState(
+              icon: Icons.search_off_rounded,
+              title: 'Aucun groupe à ce nom',
+              message: 'Aucun de vos groupes ne correspond à « $terme ».',
+              actionLabel: 'Effacer la recherche',
+              onActionPressed: () {
+                _recherche.clear();
+                ref.read(groupQueryProvider.notifier).set('');
+              },
             ),
-          ),
-          const SliverToBoxAdapter(child: AppSpacing.gapMd),
+          )
+        else
           SliverPadding(
             padding: AppSpacing.screenHorizontal,
             sliver: SliverList.separated(
               itemCount: groups.length,
-              separatorBuilder: (_, _) => AppSpacing.gapMd,
+              separatorBuilder: (_, _) => AppSpacing.gapLg,
               itemBuilder: (BuildContext context, int index) {
                 final Group group = groups[index];
                 return GroupCard(
                   name: group.name,
-                  description: group.description,
                   icon: group.icon,
                   accentColor: group.accent.color,
-                  trailingLabel: group.memberLabel,
+                  photoUrl: group.photoUrl,
+                  members: group.memberPreviews,
+                  hiddenMembers: group.hiddenMemberCount,
+                  memberLabel: group.memberLabel,
+                  activityLabel: ref.watch(groupActivityProvider(group.id)),
                   // Savoir *lequel* est actif, pas seulement qu'il se passe
                   // quelque chose quelque part.
                   unreadCount: ref.watch(unreadForGroupProvider(group.id)),
@@ -108,7 +165,6 @@ class GroupsScreen extends ConsumerWidget {
               },
             ),
           ),
-        ],
       ],
     );
   }

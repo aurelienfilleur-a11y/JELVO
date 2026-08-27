@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/core.dart';
 import '../models/message.dart';
 import 'chat_media.dart';
+import 'voice_message.dart';
 
 /// Une bulle de la conversation.
 ///
@@ -73,8 +74,11 @@ class MessageBubble extends StatelessWidget {
               child: Text(
                 message.senderName ?? 'Membre',
                 style: AppTypography.caption.copyWith(
-                  color: AppColors.textSecondary,
-                  fontWeight: AppTypography.medium,
+                  // Une couleur par personne, dérivée de son identifiant :
+                  // dans un groupe de huit, le gris uniforme obligeait à lire
+                  // le nom pour savoir qui parle.
+                  color: SpeakerAccent.colorFor(message.senderId),
+                  fontWeight: AppTypography.semiBold,
                 ),
               ),
             ),
@@ -110,7 +114,12 @@ class MessageBubble extends StatelessWidget {
                     : Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
-                          if (message.hasMedia) ChatMedia(message: message),
+                          // Un message vocal n'est pas une vignette : il se
+                          // lit sur place, et sa bulle porte le bouton.
+                          if (message.isVoice)
+                            VoiceMessage(message: message, couleur: texte)
+                          else if (message.hasMedia)
+                            ChatMedia(message: message),
                           if (message.content != null &&
                               message.content!.isNotEmpty)
                             Text(

@@ -44,6 +44,14 @@ abstract final class AppConfig {
   /// Durée maximale demandée au sélecteur pour une vidéo.
   static const Duration chatMediaMaxVideoDuration = Duration(seconds: 60);
 
+  /// Durée maximale d'un message vocal. L'enregistrement s'arrête tout seul à
+  /// ce terme : une borne annoncée et tenue vaut mieux qu'un envoi refusé
+  /// après coup, quand la parole est déjà dite.
+  ///
+  /// Deux minutes en Opus à 32 kbit/s pèsent environ 480 kio, très en deçà des
+  /// 25 Mio du bucket — c'est bien la durée, et non le poids, qui borne ici.
+  static const Duration chatVoiceMaxDuration = Duration(minutes: 2);
+
   /// Clé VAPID **publique**, nécessaire au navigateur pour s'abonner aux
   /// notifications système.
   ///

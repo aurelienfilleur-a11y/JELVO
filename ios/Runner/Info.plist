@@ -53,6 +53,10 @@
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
+	<!-- Messages vocaux. iOS refuse l'accès au micro sans ce texte, et
+	     l'affiche tel quel dans la demande d'autorisation. -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Jelvo utilise le microphone pour enregistrer les messages vocaux que vous envoyez dans une conversation de groupe.</string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

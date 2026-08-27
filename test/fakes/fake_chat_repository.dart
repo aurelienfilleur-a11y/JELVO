@@ -25,6 +25,8 @@ class FakeChatRepository implements ChatRepository {
 
   /// Dernier appel reçu, pour les assertions.
   String? lastSentContent;
+  MediaKind? lastSentKind;
+  Duration? lastSentDuration;
   String? lastDeletedId;
   String? lastReactedId;
   String? lastEmoji;
@@ -103,8 +105,11 @@ class FakeChatRepository implements ChatRepository {
     String? content,
     String? mediaUrl,
     MediaKind? mediaKind,
+    Duration? mediaDuration,
   }) async {
     lastSentContent = content;
+    lastSentKind = mediaKind;
+    lastSentDuration = mediaDuration;
     final Message message = Message(
       id: 'm${_messages.length + 1}',
       groupId: groupId,
@@ -113,6 +118,7 @@ class FakeChatRepository implements ChatRepository {
       content: content,
       mediaUrl: mediaUrl,
       mediaKind: mediaKind,
+      mediaDuration: mediaDuration,
     );
     _messages.insert(0, message);
     return message.id;

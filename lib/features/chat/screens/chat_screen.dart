@@ -1,15 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/core.dart';
+import '../../../data/data_providers.dart';
+import '../../../router/app_routes.dart';
 import '../../auth/models/auth_failure.dart';
 import '../../auth/providers/auth_providers.dart';
+import '../../create/models/creation_kind.dart';
 import '../../groups/models/group.dart';
 import '../../groups/providers/group_providers.dart';
 import '../../profile/providers/profile_providers.dart';
 import '../models/media_selection.dart';
 import '../models/message.dart';
 import '../providers/chat_providers.dart';
+import '../services/voice_recorder.dart';
+import '../widgets/chat_actions_sheet.dart';
+import '../widgets/chat_day_divider.dart';
+import '../widgets/chat_header.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/message_card_tile.dart';
 import '../widgets/media_picker_sheet.dart';
@@ -94,18 +102,26 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       Future<void>.microtask(_marquerLu);
     }
 
+    final GroupActivity activite = ref.watch(
+      groupOngoingProvider(widget.groupId),
+    );
+
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: Text(groupe?.name ?? 'Discussion'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Retour',
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
+      appBar: ChatHeader(
+        group: groupe,
+        onBack: () => Navigator.of(context).maybePop(),
+        onOpenGroup: _ouvrirLeGroupe,
       ),
       body: Column(
         children: <Widget>[
+          // Ce qui est en cours dans le groupe, sans une lecture de plus :
+          // `mes_taches` et `mon_agenda` sont déjà chargées.
+          ChatShortcutBar(
+            taches: activite.taches,
+            evenements: activite.evenements,
+            onOpenGroup: _ouvrirLeGroupe,
+          ),
           Expanded(
             child: conversation.hasError && messages.isEmpty
                 ? EmptyState(
@@ -134,7 +150,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           MessageComposer(
             onSend: _envoyer,
             onTypingChanged: _annoncerFrappe,
-            onAttach: _joindre,
+            onAction: _agir,
+            onVoice: _envoyerVocal,
+            recorder: ref.watch(voiceRecorderProvider),
             enabled: !_envoiMedia,
           ),
         ],
@@ -143,6 +161,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Widget _liste(List<Message> messages, String? moi) {
+    final DateTime maintenant = ref.watch(nowProvider);
+
     return ListView.builder(
       controller: _defilement,
       reverse: true,
@@ -156,43 +176,76 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       itemBuilder: (BuildContext context, int index) {
         final Message message = messages[index];
 
-        // Une carte n'est pas une bulle : elle occupe toute la largeur, ne
-        // porte ni avatar ni réaction, et se répond sur place. Elle reste en
-        // revanche **à sa place**, puisque c'est une ligne de `messages` comme
-        // les autres.
-        if (message.isCard) return MessageCardTile(message: message);
-
-        // La liste est inversée : le message « suivant » à l'écran est celui
-        // d'indice supérieur, donc plus ancien.
-        final Message? precedent = index + 1 < messages.length
+        // La liste est inversée : le message d'indice supérieur est le
+        // **précédent** dans le temps. Le séparateur de date coiffe donc le
+        // premier message d'une journée, et se pose au-dessus de lui — ce qui,
+        // dans une liste inversée, veut dire après lui dans la colonne.
+        final Message? avant = index + 1 < messages.length
             ? messages[index + 1]
             : null;
+        final bool changeDeJour =
+            avant == null || !_memeJour(avant.createdAt, message.createdAt);
 
-        // La liste étant inversée, le message affiché **sous** celui-ci est
-        // d'indice inférieur. L'avatar se pose sur le dernier d'une série,
-        // c'est-à-dire celui dont le voisin du dessous change d'expéditeur —
-        // ou le tout dernier de la conversation.
-        final Message? suivant = index > 0 ? messages[index - 1] : null;
+        final Widget ligne = _ligne(messages, index, moi);
+        if (!changeDeJour) return ligne;
 
-        return MessageBubble(
-          message: message,
-          isMine: message.senderId == moi,
-          // Une carte coupe la série : la bulle qui la suit recommence par
-          // son nom, celle qui la précède reprend son avatar.
-          showSender:
-              precedent == null ||
-              precedent.isCard ||
-              precedent.senderId != message.senderId,
-          showAvatar:
-              suivant == null ||
-              suivant.isCard ||
-              suivant.senderId != message.senderId,
-          timeLabel: AppDates.time(message.createdAt),
-          onLongPress: () => _ouvrirActions(message, moi),
-          onReactionTap: (String emoji) => _reagir(message, emoji),
-          onRetry: message.failed ? () => _reessayer(message) : null,
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            ChatDayDivider(
+              label: AppDates.relativeDay(message.createdAt, now: maintenant),
+            ),
+            ligne,
+          ],
         );
       },
+    );
+  }
+
+  static bool _memeJour(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  Widget _ligne(List<Message> messages, int index, String? moi) {
+    final Message message = messages[index];
+
+    // Une carte n'est pas une bulle : elle occupe toute la largeur, ne
+    // porte ni avatar ni réaction, et se répond sur place. Elle reste en
+    // revanche **à sa place**, puisque c'est une ligne de `messages` comme
+    // les autres.
+    if (message.isCard) return MessageCardTile(message: message);
+
+    // La liste est inversée : le message « suivant » à l'écran est celui
+    // d'indice supérieur, donc plus ancien.
+    final Message? precedent = index + 1 < messages.length
+        ? messages[index + 1]
+        : null;
+
+    // La liste étant inversée, le message affiché **sous** celui-ci est
+    // d'indice inférieur. L'avatar se pose sur le dernier d'une série,
+    // c'est-à-dire celui dont le voisin du dessous change d'expéditeur —
+    // ou le tout dernier de la conversation.
+    final Message? suivant = index > 0 ? messages[index - 1] : null;
+
+    return MessageBubble(
+      message: message,
+      isMine: message.senderId == moi,
+      // Une carte coupe la série : la bulle qui la suit recommence par
+      // son nom, celle qui la précède reprend son avatar. Un changement de
+      // jour la coupe aussi : le nom se relit sous le séparateur.
+      showSender:
+          precedent == null ||
+          precedent.isCard ||
+          precedent.senderId != message.senderId ||
+          !_memeJour(precedent.createdAt, message.createdAt),
+      showAvatar:
+          suivant == null ||
+          suivant.isCard ||
+          suivant.senderId != message.senderId ||
+          !_memeJour(suivant.createdAt, message.createdAt),
+      timeLabel: AppDates.time(message.createdAt),
+      onLongPress: () => _ouvrirActions(message, moi),
+      onReactionTap: (String emoji) => _reagir(message, emoji),
+      onRetry: message.failed ? () => _reessayer(message) : null,
     );
   }
 
@@ -204,6 +257,66 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       messenger.showSnackBar(
         SnackBar(content: Text(AuthFailure.from(error).message)),
       );
+    }
+  }
+
+  /// Ouvre l'écran du groupe — l'en-tête et le chevron y mènent tous deux.
+  ///
+  /// **On dépile, on n'empile pas.** La conversation est posée sur le
+  /// navigateur racine, au-dessus de l'écran du groupe : y pousser une
+  /// seconde fois `/groupes/<id>` mettrait deux fois la même page dans la
+  /// pile, ce que Flutter refuse. Le repli sert le cas où l'on est arrivé
+  /// directement — par une notification, par exemple —, et où il n'y a rien
+  /// à dépiler.
+  void _ouvrirLeGroupe() {
+    final GoRouter routeur = GoRouter.of(context);
+    if (routeur.canPop()) {
+      routeur.pop();
+      return;
+    }
+    routeur.goNamed(
+      AppRoutes.groupDetail,
+      pathParameters: <String, String>{'id': widget.groupId},
+    );
+  }
+
+  /// Ce que fait le « + ».
+  void _agir(ChatAction action) {
+    switch (action) {
+      case ChatAction.media:
+        _joindre();
+      case ChatAction.tache:
+        _creer(CreationKind.task);
+      case ChatAction.evenement:
+        _creer(CreationKind.event);
+    }
+  }
+
+  /// Le contexte passe par l'**URL** — `/creer?type=task&groupe=<id>` — et non
+  /// par un `extra`, qui se perdrait au rafraîchissement du web.
+  void _creer(CreationKind kind) {
+    context.pushNamed(
+      AppRoutes.create,
+      queryParameters: <String, String>{
+        AppRoutes.createKindParam: kind.name,
+        AppRoutes.createGroupParam: widget.groupId,
+      },
+    );
+  }
+
+  Future<void> _envoyerVocal(VoiceRecording enregistrement) async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    setState(() => _envoiMedia = true);
+    try {
+      await ref
+          .read(chatActionsProvider)
+          .sendVoice(widget.groupId, enregistrement: enregistrement);
+    } catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(AuthFailure.from(error).message)),
+      );
+    } finally {
+      if (mounted) setState(() => _envoiMedia = false);
     }
   }
 

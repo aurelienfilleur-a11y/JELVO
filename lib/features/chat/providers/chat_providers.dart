@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -8,6 +8,8 @@ import '../../../data/supabase_providers.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../models/message.dart';
 import '../repository/chat_repository.dart';
+import '../services/voice_player.dart';
+import '../services/voice_recorder.dart';
 
 /// Dépôt du chat. Surchargé dans les tests par un faux dépôt.
 final Provider<ChatRepository> chatRepositoryProvider =
@@ -92,6 +94,7 @@ class ConversationNotifier extends AsyncNotifier<List<Message>> {
     String? content,
     String? mediaUrl,
     MediaKind? mediaKind,
+    Duration? mediaDuration,
   }) async {
     final String? moi = ref.read(currentUserIdProvider);
     final DateTime maintenant = ref.read(clockProvider).now();
@@ -105,6 +108,7 @@ class ConversationNotifier extends AsyncNotifier<List<Message>> {
       content: content,
       mediaUrl: mediaUrl,
       mediaKind: mediaKind,
+      mediaDuration: mediaDuration,
       pending: true,
     );
 
@@ -117,6 +121,7 @@ class ConversationNotifier extends AsyncNotifier<List<Message>> {
         content: content,
         mediaUrl: mediaUrl,
         mediaKind: mediaKind,
+        mediaDuration: mediaDuration,
       );
       _enAttente.removeWhere((Message m) => m.id == cleLocale);
       await _relire();
@@ -278,6 +283,164 @@ final signedMediaUrlProvider = FutureProvider.autoDispose
           ref.watch(chatRepositoryProvider).signedMediaUrl(path),
     );
 
+/// Enregistreur de messages vocaux. Surchargé dans les tests : un micro et un
+/// canal de plateforme n'existent pas dans un test de widget.
+final Provider<VoiceRecorder> voiceRecorderProvider = Provider<VoiceRecorder>((
+  Ref ref,
+) {
+  final VoiceRecorder enregistreur = SystemVoiceRecorder();
+  ref.onDispose(enregistreur.disposer);
+  return enregistreur;
+});
+
+/// Fabrique du lecteur audio, pour la même raison.
+final Provider<VoicePlayer Function()> voicePlayerFactoryProvider =
+    Provider<VoicePlayer Function()>((Ref ref) => JustAudioVoicePlayer.new);
+
+/// Ce qui joue, où l'on en est.
+///
+/// Un seul message vocal à la fois : c'est l'état qui le tient, et non chaque
+/// bulle. Deux voix simultanées ne s'écoutent ni l'une ni l'autre.
+@immutable
+class VoicePlayback {
+  const VoicePlayback({
+    this.messageId,
+    this.playing = false,
+    this.loading = false,
+    this.position = Duration.zero,
+    this.duration,
+  });
+
+  /// Message actuellement chargé — pas forcément en train de jouer.
+  final String? messageId;
+  final bool playing;
+
+  /// L'URL signée est en cours de demande, ou le fichier de chargement.
+  final bool loading;
+  final Duration position;
+
+  /// Celle annoncée par le fichier. Nulle tant qu'il n'est pas chargé : la
+  /// bulle affiche alors celle que la base a retenue.
+  final Duration? duration;
+
+  bool estCharge(String id) => messageId == id;
+  bool joue(String id) => messageId == id && playing;
+
+  VoicePlayback copyWith({
+    String? messageId,
+    bool? playing,
+    bool? loading,
+    Duration? position,
+    Duration? duration,
+  }) => VoicePlayback(
+    messageId: messageId ?? this.messageId,
+    playing: playing ?? this.playing,
+    loading: loading ?? this.loading,
+    position: position ?? this.position,
+    duration: duration ?? this.duration,
+  );
+}
+
+final NotifierProvider<VoicePlaybackNotifier, VoicePlayback>
+voicePlaybackProvider = NotifierProvider<VoicePlaybackNotifier, VoicePlayback>(
+  VoicePlaybackNotifier.new,
+);
+
+class VoicePlaybackNotifier extends Notifier<VoicePlayback> {
+  VoicePlayer? _lecteur;
+  final List<StreamSubscription<void>> _abonnements =
+      <StreamSubscription<void>>[];
+
+  @override
+  VoicePlayback build() {
+    ref.onDispose(() {
+      for (final StreamSubscription<void> a in _abonnements) {
+        a.cancel();
+      }
+      _lecteur?.disposer();
+    });
+    return const VoicePlayback();
+  }
+
+  /// Lance, met en pause ou reprend. Un seul appel pour les trois : côté
+  /// bulle, c'est un seul bouton.
+  Future<void> basculer(String messageId, String chemin) async {
+    if (state.estCharge(messageId) && _lecteur != null) {
+      if (state.playing) {
+        await _lecteur!.pauser();
+      } else {
+        await _lecteur!.jouer();
+      }
+      return;
+    }
+
+    // Changer de message : le lecteur précédent s'arrête et disparaît. Le
+    // garder ferait tourner deux flux dont un que personne n'écoute.
+    await _liberer();
+
+    state = VoicePlayback(messageId: messageId, loading: true);
+
+    try {
+      final String url = await ref
+          .read(chatRepositoryProvider)
+          .signedMediaUrl(chemin);
+
+      final VoicePlayer lecteur = ref.read(voicePlayerFactoryProvider)();
+      _lecteur = lecteur;
+
+      final Duration? duree = await lecteur.charger(url);
+
+      _abonnements.add(
+        lecteur.positions.listen((Duration position) {
+          if (state.messageId == messageId) {
+            state = state.copyWith(position: position);
+          }
+        }),
+      );
+      _abonnements.add(
+        lecteur.lectures.listen((bool joue) {
+          if (state.messageId == messageId) {
+            state = state.copyWith(playing: joue, loading: false);
+          }
+        }),
+      );
+      _abonnements.add(
+        lecteur.fins.listen((_) {
+          // Revenir au début plutôt que rester à la fin : le bouton
+          // « lire » doit relire, et non ne rien faire.
+          if (state.messageId == messageId) {
+            state = VoicePlayback(messageId: messageId, duration: duree);
+          }
+        }),
+      );
+
+      state = state.copyWith(loading: false, duration: duree);
+      await lecteur.jouer();
+    } catch (_) {
+      // Une lecture qui échoue laisse la bulle telle quelle : le message est
+      // là, seul son son manque, et une conversation ne doit pas s'arrêter
+      // là-dessus.
+      await _liberer();
+      state = const VoicePlayback();
+    }
+  }
+
+  Future<void> allerA(Duration position) async {
+    if (_lecteur == null) return;
+    await _lecteur!.allerA(position);
+    state = state.copyWith(position: position);
+  }
+
+  Future<void> _liberer() async {
+    for (final StreamSubscription<void> abonnement in _abonnements) {
+      await abonnement.cancel();
+    }
+    _abonnements.clear();
+    await _lecteur?.disposer();
+    _lecteur = null;
+  }
+}
+
 /// Écritures. Les widgets ne touchent jamais au dépôt.
 final Provider<ChatActions> chatActionsProvider = Provider<ChatActions>(
   ChatActions.new,
@@ -295,9 +458,15 @@ class ChatActions {
     String? content,
     String? mediaUrl,
     MediaKind? mediaKind,
+    Duration? mediaDuration,
   }) => _ref
       .read(conversationProvider(groupId).notifier)
-      .send(content: content, mediaUrl: mediaUrl, mediaKind: mediaKind);
+      .send(
+        content: content,
+        mediaUrl: mediaUrl,
+        mediaKind: mediaKind,
+        mediaDuration: mediaDuration,
+      );
 
   /// Téléverse puis envoie. Les deux vont ensemble : un objet déposé sans
   /// message qui le référence resterait dans le bucket sans que personne ne
@@ -308,6 +477,7 @@ class ChatActions {
     required String extension,
     required MediaKind kind,
     String? caption,
+    Duration? duration,
   }) async {
     final String chemin = await _repository.uploadMedia(
       groupId: groupId,
@@ -315,8 +485,27 @@ class ChatActions {
       extension: extension,
       kind: kind,
     );
-    await send(groupId, content: caption, mediaUrl: chemin, mediaKind: kind);
+    await send(
+      groupId,
+      content: caption,
+      mediaUrl: chemin,
+      mediaKind: kind,
+      mediaDuration: duration,
+    );
   }
+
+  /// Téléverse et envoie un message vocal. Même chemin que [sendMedia], à la
+  /// durée près — elle vient de l'enregistrement, et non du fichier.
+  Future<void> sendVoice(
+    String groupId, {
+    required VoiceRecording enregistrement,
+  }) => sendMedia(
+    groupId,
+    bytes: enregistrement.bytes,
+    extension: enregistrement.extension,
+    kind: MediaKind.audio,
+    duration: enregistrement.duration,
+  );
 
   /// Renvoie faux si rien n'a été supprimé — c'est la fonction SQL qui le dit,
   /// et non l'absence d'exception : sans politique DELETE, une écriture sans

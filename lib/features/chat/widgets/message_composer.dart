@@ -3,6 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../core/core.dart';
+import '../../../data/app_config.dart';
+import '../services/voice_recorder.dart';
+import 'chat_actions_sheet.dart';
+import 'emoji_picker.dart';
 
 /// Barre de saisie du chat.
 ///
@@ -10,12 +14,19 @@ import '../../../core/core.dart';
 /// vaut empêcher la saisie que rendre un `23514` traduit après coup. Le
 /// compteur n'apparaît qu'aux abords de la limite — l'afficher en permanence
 /// mettrait un décompte sous les yeux de gens qui écrivent trois mots.
+///
+/// **Le « + » a remplacé le trombone.** Il n'ouvrait que le choix d'un média ;
+/// il ouvre désormais les trois choses qu'on peut ajouter à une conversation —
+/// une tâche, un événement, un média —, ce qui met au même endroit ce que la
+/// maquette y range.
 class MessageComposer extends StatefulWidget {
   const MessageComposer({
     super.key,
     required this.onSend,
     required this.onTypingChanged,
-    this.onAttach,
+    required this.recorder,
+    this.onAction,
+    this.onVoice,
     this.enabled = true,
   });
 
@@ -24,8 +35,15 @@ class MessageComposer extends StatefulWidget {
   /// Appelé quand on commence à écrire, et quand on s'arrête.
   final ValueChanged<bool> onTypingChanged;
 
-  /// Ajout d'un média. Absent tant que la tranche 5b n'est pas livrée.
-  final VoidCallback? onAttach;
+  /// Ce que propose le « + ». Absent, le bouton disparaît.
+  final ValueChanged<ChatAction>? onAction;
+
+  /// Un message vocal terminé. Absent, le micro disparaît.
+  final ValueChanged<VoiceRecording>? onVoice;
+
+  /// L'enregistreur, injecté pour que les tests puissent le remplacer : un
+  /// micro n'existe pas dans un test de widget.
+  final VoiceRecorder recorder;
 
   final bool enabled;
 
@@ -42,9 +60,17 @@ class _MessageComposerState extends State<MessageComposer> {
   Timer? _finDeFrappe;
   bool _annonceEnCours = false;
 
+  bool _emojisOuverts = false;
+
+  /// Enregistrement en cours, et depuis combien de temps.
+  bool _enregistre = false;
+  Duration _ecoule = Duration.zero;
+  Timer? _minuterie;
+
   @override
   void dispose() {
     _finDeFrappe?.cancel();
+    _minuterie?.cancel();
     _controleur.dispose();
     _focus.dispose();
     super.dispose();
@@ -76,16 +102,95 @@ class _MessageComposerState extends State<MessageComposer> {
     if (texte.isEmpty) return;
     _controleur.clear();
     _arreterFrappe();
-    setState(() {});
+    setState(() => _emojisOuverts = false);
     widget.onSend(texte);
+  }
+
+  /// Insère l'emoji **là où est le curseur**, et non à la fin : on en pose
+  /// souvent un au milieu d'une phrase déjà écrite.
+  void _insererEmoji(String emoji) {
+    final TextEditingValue valeur = _controleur.value;
+    final TextSelection selection = valeur.selection;
+    final int debut = selection.isValid ? selection.start : valeur.text.length;
+    final int fin = selection.isValid ? selection.end : valeur.text.length;
+
+    final String texte = valeur.text.replaceRange(debut, fin, emoji);
+    _controleur.value = TextEditingValue(
+      text: texte,
+      selection: TextSelection.collapsed(offset: debut + emoji.length),
+    );
+    _surSaisie(texte);
+  }
+
+  Future<void> _ouvrirActions() async {
+    final ValueChanged<ChatAction>? rappel = widget.onAction;
+    if (rappel == null) return;
+    setState(() => _emojisOuverts = false);
+    final ChatAction? choix = await ChatActionsSheet.ouvrir(context);
+    if (choix != null) rappel(choix);
+  }
+
+  // --- Messages vocaux ------------------------------------------------------
+
+  Future<void> _demarrerEnregistrement() async {
+    final ScaffoldMessengerState messager = ScaffoldMessenger.of(context);
+    final bool parti = await widget.recorder.demarrer();
+
+    if (!parti) {
+      // Un refus du micro est **définitif** côté application : l'API ne permet
+      // pas de redemander. Renvoyer aux réglages du navigateur vaut mieux
+      // qu'un bouton qui ne ferait plus rien.
+      messager.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Le microphone n’est pas accessible. Autorisez-le dans les '
+            'réglages de votre navigateur, puis rouvrez la conversation.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _enregistre = true;
+      _ecoule = Duration.zero;
+      _emojisOuverts = false;
+    });
+
+    _minuterie = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() => _ecoule += const Duration(seconds: 1));
+      // La borne est tenue, pas seulement annoncée : arrêter tout seul vaut
+      // mieux qu'un envoi refusé une fois la parole dite.
+      if (_ecoule >= AppConfig.chatVoiceMaxDuration) _terminerEnregistrement();
+    });
+  }
+
+  Future<void> _terminerEnregistrement() async {
+    _minuterie?.cancel();
+    final VoiceRecording? capture = await widget.recorder.arreter();
+    if (!mounted) return;
+    setState(() => _enregistre = false);
+
+    // Une seconde de son est un doigt qui a glissé, pas un message.
+    if (capture == null || capture.duration.inMilliseconds < 700) return;
+    widget.onVoice?.call(capture);
+  }
+
+  Future<void> _annulerEnregistrement() async {
+    _minuterie?.cancel();
+    await widget.recorder.annuler();
+    if (!mounted) return;
+    setState(() => _enregistre = false);
   }
 
   @override
   Widget build(BuildContext context) {
     final int restants =
         MessageComposer.maxCaracteres - _controleur.text.characters.length;
-    final bool peutEnvoyer =
-        widget.enabled && _controleur.text.trim().isNotEmpty && restants >= 0;
+    final bool aDuTexte = _controleur.text.trim().isNotEmpty;
+    final bool peutEnvoyer = widget.enabled && aDuTexte && restants >= 0;
 
     return Container(
       decoration: const BoxDecoration(
@@ -94,85 +199,186 @@ class _MessageComposerState extends State<MessageComposer> {
       ),
       child: SafeArea(
         top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.md,
-            AppSpacing.sm,
-            AppSpacing.md,
-            AppSpacing.sm,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              if (restants <= 100)
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Text(
-                    '$restants',
-                    style: AppTypography.caption.copyWith(
-                      color: restants < 0
-                          ? AppColors.danger
-                          : AppColors.textSecondary,
-                    ),
-                  ),
-                ),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.sm,
+                AppSpacing.sm,
+                AppSpacing.sm,
+                AppSpacing.sm,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
-                  if (widget.onAttach != null)
-                    IconButton(
-                      icon: const Icon(Icons.add_photo_alternate_outlined),
-                      tooltip: 'Joindre une photo ou une vidéo',
-                      color: AppColors.textSecondary,
-                      onPressed: widget.enabled ? widget.onAttach : null,
-                    ),
-                  Expanded(
-                    child: TextField(
-                      controller: _controleur,
-                      focusNode: _focus,
-                      enabled: widget.enabled,
-                      minLines: 1,
-                      maxLines: 5,
-                      maxLength: MessageComposer.maxCaracteres,
-                      textCapitalization: TextCapitalization.sentences,
-                      textInputAction: TextInputAction.newline,
-                      onChanged: _surSaisie,
-                      style: AppTypography.body,
-                      decoration: InputDecoration(
-                        hintText: 'Votre message',
-                        hintStyle: AppTypography.bodyMuted,
-                        counterText: '',
-                        filled: true,
-                        fillColor: AppColors.background,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.md,
-                          vertical: AppSpacing.sm,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppRadii.pill),
-                          borderSide: BorderSide.none,
+                  if (restants <= 100 && !_enregistre)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        '$restants',
+                        style: AppTypography.caption.copyWith(
+                          color: restants < 0
+                              ? AppColors.danger
+                              : AppColors.textSecondary,
                         ),
                       ),
                     ),
-                  ),
-                  AppSpacing.hGapSm,
-                  IconButton.filled(
-                    icon: const Icon(Icons.send_rounded, size: 20),
-                    tooltip: 'Envoyer',
-                    onPressed: peutEnvoyer ? _envoyer : null,
-                    style: IconButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: AppColors.border,
-                    ),
-                  ),
+                  _enregistre
+                      ? _barreEnregistrement()
+                      : _barreSaisie(
+                          peutEnvoyer: peutEnvoyer,
+                          aDuTexte: aDuTexte,
+                        ),
                 ],
+              ),
+            ),
+            if (_emojisOuverts) EmojiPicker(onSelected: _insererEmoji),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _barreSaisie({required bool peutEnvoyer, required bool aDuTexte}) {
+    // Micro ou avion en papier, jamais les deux : le bouton de droite fait ce
+    // que la barre permet à cet instant. Deux boutons côte à côte
+    // demanderaient de choisir entre envoyer et enregistrer alors qu'on n'a
+    // qu'une seule chose à faire.
+    final bool micro = !aDuTexte && widget.onVoice != null;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: <Widget>[
+        if (widget.onAction != null)
+          IconButton(
+            icon: const Icon(Icons.add_rounded),
+            tooltip: 'Ajouter à la conversation',
+            color: AppColors.textSecondary,
+            onPressed: widget.enabled ? _ouvrirActions : null,
+          ),
+        Expanded(
+          child: TextField(
+            controller: _controleur,
+            focusNode: _focus,
+            enabled: widget.enabled,
+            minLines: 1,
+            maxLines: 5,
+            maxLength: MessageComposer.maxCaracteres,
+            textCapitalization: TextCapitalization.sentences,
+            textInputAction: TextInputAction.newline,
+            onChanged: _surSaisie,
+            style: AppTypography.body,
+            decoration: InputDecoration(
+              hintText: 'Votre message',
+              hintStyle: AppTypography.bodyMuted,
+              counterText: '',
+              filled: true,
+              fillColor: AppColors.background,
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _emojisOuverts
+                      ? Icons.keyboard_alt_outlined
+                      : Icons.emoji_emotions_outlined,
+                ),
+                tooltip: _emojisOuverts ? 'Fermer les emojis' : 'Emojis',
+                color: AppColors.textSecondary,
+                onPressed: widget.enabled
+                    ? () {
+                        // Refermer le clavier système : les deux panneaux
+                        // occupent le même bas d'écran, et se disputeraient la
+                        // place l'un de l'autre.
+                        if (!_emojisOuverts) _focus.unfocus();
+                        setState(() => _emojisOuverts = !_emojisOuverts);
+                      }
+                    : null,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppRadii.pill),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+        ),
+        AppSpacing.hGapSm,
+        IconButton.filled(
+          icon: Icon(micro ? Icons.mic_rounded : Icons.send_rounded, size: 20),
+          tooltip: micro ? 'Enregistrer un message vocal' : 'Envoyer',
+          onPressed: micro
+              ? (widget.enabled ? _demarrerEnregistrement : null)
+              : (peutEnvoyer ? _envoyer : null),
+          style: IconButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+            disabledBackgroundColor: AppColors.border,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Ce que la barre devient pendant l'enregistrement : annuler à gauche, le
+  /// temps qui court au milieu, envoyer à droite.
+  Widget _barreEnregistrement() {
+    return Row(
+      children: <Widget>[
+        IconButton(
+          icon: const Icon(Icons.delete_outline_rounded),
+          tooltip: 'Annuler l’enregistrement',
+          color: AppColors.danger,
+          onPressed: _annulerEnregistrement,
+        ),
+        Expanded(
+          child: Row(
+            children: <Widget>[
+              Container(
+                width: 8,
+                height: 8,
+                decoration: const BoxDecoration(
+                  color: AppColors.danger,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              AppSpacing.hGapSm,
+              Text(
+                _minutage(_ecoule),
+                style: AppTypography.body.copyWith(
+                  fontWeight: AppTypography.semiBold,
+                ),
+              ),
+              AppSpacing.hGapSm,
+              Expanded(
+                child: Text(
+                  'Enregistrement…',
+                  style: AppTypography.caption,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),
         ),
-      ),
+        IconButton.filled(
+          icon: const Icon(Icons.send_rounded, size: 20),
+          tooltip: 'Envoyer le message vocal',
+          onPressed: _terminerEnregistrement,
+          style: IconButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+          ),
+        ),
+      ],
     );
+  }
+
+  static String _minutage(Duration duree) {
+    final int secondes = duree.inSeconds;
+    return '${secondes ~/ 60}:${(secondes % 60).toString().padLeft(2, '0')}';
   }
 }
 

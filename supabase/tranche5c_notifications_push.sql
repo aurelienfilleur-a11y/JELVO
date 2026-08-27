@@ -397,7 +397,9 @@ begin
       coalesce(groupe, 'Personnel'),
       expediteur || ' : ' || coalesce(
         nullif(new.content, ''),
-        case when new.media_kind = 'video' then 'a envoyé une vidéo'
+        case new.media_kind::text
+             when 'video' then 'a envoyé une vidéo'
+             when 'audio' then 'a envoyé un message vocal'
              else 'a envoyé une photo' end),
       '/groupes/' || new.group_id::text || '/discussion'
     );

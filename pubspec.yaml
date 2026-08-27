@@ -45,6 +45,13 @@ dependencies:
   qr_flutter: ^4.1.0
   mobile_scanner: ^7.1.4
   share_plus: ^12.0.1
+  # Messages vocaux. `record` enregistre, `just_audio` lit ; `path_provider`
+  # donne le fichier temporaire qu'exigent les cibles natives — le web l'ignore
+  # et rend une URL `blob:` —, et `cross_file` lit indifféremment les deux.
+  record: ^7.1.1
+  just_audio: ^0.10.6
+  path_provider: ^2.1.6
+  cross_file: ^0.3.5+5
 
 dev_dependencies:
   flutter_test:
@@ -70,6 +77,15 @@ flutter:
 
   # Génère AppLocalizations à partir des fichiers ARB de lib/l10n.
   generate: true
+
+  # Police de repli des emojis. Le web ne garantit aucune police d'emojis :
+  # sans elle, un cœur tapé au clavier iPhone s'affiche en noir et blanc.
+  # Variante COLRv1 (vectorielle) et non CBDT (bitmap) — voir
+  # assets/fonts/README.md pour le poids et l'arbitrage.
+  fonts:
+    - family: NotoColorEmoji
+      fonts:
+        - asset: assets/fonts/NotoColorEmoji.ttf
 
   # Les 93 avatars prédéfinis, embarqués plutôt que servis depuis Supabase :
   # ils sont fixes, identiques pour tout le monde, et un aller-retour réseau

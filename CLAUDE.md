@@ -397,6 +397,53 @@ teintés des pastilles et vignettes.
 
 `bodyMuted` est la variante de `body` en `textSecondary`.
 
+#### Les emojis ont leur police, embarquée
+
+Le web ne garantit **aucune** police d'emojis : selon la machine, un cœur tapé
+au clavier iPhone s'affichait en rouge, en noir et blanc, ou pas du tout. Le
+rendu était incohérent d'un poste à l'autre, et d'un emoji à l'autre sur le
+même poste.
+
+`assets/fonts/NotoColorEmoji.ttf` est donc embarquée et posée en
+`fontFamilyFallback` sur **tous** les styles d'`AppTypography` — pas seulement
+sur les bulles : partout où du texte saisi par quelqu'un s'affiche, c'est-à-dire
+aussi les noms de groupes, les titres et descriptions de tâches et
+d'événements, et la bio du profil. Inter n'ayant aucun glyphe d'emoji, le
+moteur ne descend ici que pour eux : le texte latin ne bouge pas d'un pixel.
+
+**La variante compte, et le double est en jeu** :
+
+| Variante | Table | Brut | gzip |
+| --- | --- | --- | --- |
+| bitmap | `CBDT`/`CBLC` | 10,18 Mio | 9,43 Mio |
+| **vectorielle (retenue)** | `COLR`/`CPAL` | 4,76 Mio | **2,69 Mio** |
+
+Le bitmap embarque une image PNG par emoji, déjà compressée : le serveur n'y
+gagne rien. Celle servie par `fonts.gstatic.com` pèse 23,95 Mio — c'est la même
+COLRv1, non optimisée ; celle du dépôt `googlefonts/noto-emoji` est la bonne.
+
+**Un sous-ensemble ne conviendrait pas**, et c'est la première question qu'on
+se pose : sous-ensembler suppose de connaître à l'avance les emojis employés,
+or le texte concerné est **saisi par les utilisateurs**. Quelqu'un tape 🫠 et
+obtient un carré vide, sans que rien ne l'ait annoncé — le défaut qu'on
+corrige, en plus sournois parce qu'intermittent.
+
+`assets/fonts/README.md` porte le détail, dont les deux pistes qui, elles,
+tiennent : ne pas embarquer sur mobile — iOS et Android ont déjà la leur —, et
+servir la police depuis le réseau sur le web. Les deux sont des arbitrages.
+
+`GoogleFonts.inter()` **n'accepte pas** `fontFamilyFallback` : il passe par un
+`copyWith` (`AppTypography._avecEmojis`). L'oublier sur un style le rendrait
+muet, sans erreur.
+
+### Une couleur par personne — `SpeakerAccent`
+
+Huit teintes dérivées d'un identifiant, pour le nom d'un expéditeur au-dessus
+de ses bulles. Même mécanisme que `GroupAccent.forId` — somme de contrôle
+stable, jamais `String.hashCode` — mais **pas la même palette** : celle des
+groupes est faite pour des aplats, et son `warning` ne donne que 1,90:1 sur le
+fond de l'application. Voir « Une couleur par personne » sous le chat.
+
 ### Rayons — `AppRadii`
 
 Cartes **16** · boutons **14** · champs **12** · bottom sheets **24** (coins
@@ -1045,6 +1092,12 @@ diagnostic à l'écart.
 `tranche7_durcissement.sql` referme l'exécution de toute fonction absente de sa
 liste et **lève si un nom de sa liste n'existe pas en base**. Il reste donc le
 dernier passage, et les tranches 8, 9, 10 et 11 s'insèrent avant lui.
+
+Deux fichiers **précèdent** au contraire tout le reste, et pour la même
+raison : ils ajoutent une colonne ou une valeur d'énumération que des fonctions
+en `language sql` — dont PostgreSQL valide le corps à la création —
+mentionnent. `colonne_avatar_predefini.sql` ouvre le manifeste,
+`colonne_media_audio.sql` se place juste avant `tranche5a_chat.sql`.
 
 Trois entrées de `supabase/` ne sont **pas** des migrations : elles n'écrivent
 rien et ne changent rien.
@@ -2128,12 +2181,13 @@ n'en crée aucune, il n'ajoute que six fonctions.
 
 | Table | Colonnes | Ce que la forme impose |
 | --- | --- | --- |
-| `messages` | `id`, `group_id`, `sender_id`, `content`, `media_url`, `media_kind`, `created_at`, `deleted_at`, **`task_id`**, **`event_id`**, **`tache_prise`** | `CHECK (content is not null or media_url is not null)`, contenu ≤ 2000 |
+| `messages` | `id`, `group_id`, `sender_id`, `content`, `media_url`, `media_kind`, **`media_duree_s`**, `created_at`, `deleted_at`, **`task_id`**, **`event_id`**, **`tache_prise`** | `CHECK (content is not null or media_url is not null)`, contenu ≤ 2000 |
 | `message_reactions` | `message_id`, `user_id`, `emoji` — **PK `(message_id, user_id)`** | une réaction par personne et par message, **tenu par la base** |
 | `message_reads` | `group_id`, `user_id`, `last_read_at` — **PK `(group_id, user_id)`** | l'accusé de lecture est **par conversation**, jamais par message |
 
-`media_type` ne connaît que `image` et `video` : c'est **le type**, et non une
-règle d'écran, qui interdit les documents.
+`media_type` ne connaît que `image`, `video` et `audio` : c'est **le type**, et
+non une règle d'écran, qui interdit les documents. `audio` est arrivé avec les
+messages vocaux — voir plus bas ; les deux autres sont du schéma initial.
 
 ### Trois conséquences qui ne se négocient pas
 
@@ -2293,6 +2347,209 @@ resterait « en train d'écrire » indéfiniment.
 Le composeur annonce **une fois** au début, puis la fin après deux secondes de
 silence. Émettre à chaque touche inonderait le canal.
 
+### L'écran, rapproché de la maquette
+
+Quatre pièces, dont trois n'existaient pas : l'en-tête, la barre de raccourcis,
+les séparateurs de date. Les réactions en pastille et la coche de lecture,
+elles, étaient là depuis la tranche 5a.
+
+| Pièce | Ce qu'elle porte |
+| --- | --- |
+| `ChatHeader` | retour, photo du groupe, nom, effectif |
+| `ChatShortcutBar` | tâches en cours, événements à venir, chevron vers le groupe |
+| `ChatDayDivider` | « Aujourd'hui », « Hier », puis la date |
+| `ChatActionsSheet` | ce que propose le « + » |
+
+**Ni téléphone ni caméra dans l'en-tête.** La maquette pose deux pictogrammes
+d'appel : Jelvo n'a ni appel audio ni appel vidéo — aucune table, aucun
+service, aucun écran. Les laisser en gris promettrait une fonctionnalité qui
+n'arrive pas ; les laisser actifs ouvrirait sur du vide. Même règle pour les
+listes, les dépenses et les notes de la feuille du « + » et de la barre de
+raccourcis, écartées comme elles l'ont été de l'écran du groupe.
+
+**Les deux compteurs ne coûtent aucune lecture.** `mes_taches` et `mon_agenda`
+sont déjà chargées sans bornes de dates et portent `group_id` :
+`groupOngoingProvider` filtre en mémoire, et c'est le **même** provider qui
+alimente la ligne d'activité d'une carte de groupe. Deux calculs parallèles
+finiraient par afficher deux comptes différents de la même chose.
+
+**Zéro ne se dit pas**, ici comme sur la carte d'un groupe : « 0 tâche ·
+0 événement » se lit comme un défaut de chargement. Une moitié vide s'efface,
+un groupe sans rien annonce « Rien de prévu pour l'instant » — et le chevron
+reste, la barre étant aussi un chemin.
+
+#### On dépile pour aller au groupe, on n'empile pas
+
+La conversation est posée sur le **navigateur racine**
+(`parentNavigatorKey: _rootNavigatorKey`), au-dessus de l'écran du groupe, qui
+vit dans la branche Groupes. Y pousser une seconde fois `/groupes/<id>` met
+deux fois la même page dans la pile, ce que Flutter refuse net :
+
+```
+'!keyReservation.contains(key)': is not true.
+```
+
+`_ouvrirLeGroupe` dépile donc, et ne se rabat sur `goNamed` que si rien n'est
+dépilable — le cas d'une arrivée directe par notification. La règle vaut pour
+tout écran empilé sur la racine qui voudrait « revenir » à son parent.
+
+#### Le séparateur coiffe la journée, et recoupe la série
+
+La liste est **inversée** : le message d'indice supérieur est le précédent dans
+le temps. Le séparateur se pose donc au-dessus du premier message d'une
+journée, ce qui, dans une liste inversée, veut dire *après* lui dans la
+colonne — d'où le `Column` qui les emballe tous les deux.
+
+Un changement de jour **coupe la série** au même titre qu'une carte : le nom de
+l'expéditeur se relit sous le séparateur, et son avatar se repose au-dessus.
+Sans cela, la journée du dessous commencerait sans dire qui parle.
+
+Le libellé vient d'`AppDates.relativeDay`, celui qu'emploient déjà le
+calendrier et l'accueil. Une seconde façon de nommer les jours aurait fini par
+diverger de la première.
+
+### Une couleur par personne, pour son nom seulement
+
+**Les bulles ne changent pas de couleur** : violet pour soi, blanc pour les
+autres. Ce qui change, c'est le **nom** au-dessus des bulles des autres, qui
+prend une teinte dérivée de l'identifiant de son auteur — dans un groupe de
+huit, le gris uniforme obligeait à lire le nom pour savoir qui parle.
+
+**Les accents de groupe n'étaient pas transposables tels quels.** Ils sont
+faits pour des aplats et des vignettes, pas pour du texte de 13 :
+
+| Accent | Contraste sur `#F7F7FB` |
+| --- | --- |
+| `warning` | 1,90:1 |
+| `success` | 3,12:1 |
+| `danger` | 3,66:1 |
+
+WCAG demande **4,5:1** pour du texte courant. `SpeakerAccent`
+(`core/theme/speaker_accent.dart`) reprend donc le mécanisme — même somme de
+contrôle stable que `GroupAccent.forId`, jamais `String.hashCode`, qui change
+d'une exécution à l'autre — avec huit teintes assombries qui passent toutes la
+barre, de 5,48:1 à 9,51:1.
+
+### Le sélecteur d'emoji est une liste, pas un paquet
+
+Les paquets de sélecteur embarquent leur propre police et leur propre
+catalogue, c'est-à-dire une **seconde source de vérité** pour un rendu que
+`NotoColorEmoji` assure déjà. Ce qu'il faut ici tient dans une liste : six
+familles, quelques centaines de glyphes.
+
+Le catalogue est volontairement **court**. Un sélecteur complet compte plus de
+trois mille emojis et demande une recherche pour être utilisable ; celui qu'on
+ouvre dans une conversation de famille sert à répondre vite, et le clavier du
+système reste là pour le reste — c'est lui qui a la recherche.
+
+L'emoji s'insère **là où est le curseur**, et non à la fin : on en pose souvent
+un au milieu d'une phrase déjà écrite. Ouvrir le panneau referme le clavier
+système : les deux occupent le même bas d'écran.
+
+### Messages vocaux
+
+Enregistrement depuis la barre de saisie, envoi dans `chat-media` — le bucket
+existant —, lecture dans la bulle avec la durée.
+
+#### Le format n'est pas le même partout, et ne peut pas l'être
+
+Sur le web, l'enregistrement passe par `MediaRecorder`, dont les formats
+dépendent du navigateur, et de sa version :
+
+| Navigateur | Ce qu'il sait enregistrer |
+| --- | --- |
+| Safari, iOS compris | AAC dans un conteneur MP4 (`.m4a`) |
+| Chrome, Edge | Opus en WebM ; AAC en MP4 sur les versions récentes |
+| Firefox | Opus en WebM, ou Ogg |
+
+Imposer un format unique reviendrait donc à priver une famille de navigateurs
+de la fonctionnalité. L'encodeur est **négocié** par `isEncoderSupported`, AAC
+d'abord : c'est le seul que Safari écrit *et* lit, et il se lit partout
+ailleurs. L'extension suit l'encodeur retenu, et c'est elle qui décide du type
+MIME à l'envoi — un `.webm` annoncé `audio/mp4` ne se lirait nulle part.
+
+Trois limites du navigateur, qu'aucun code ne contourne :
+
+- **le refus du micro est définitif** côté application, l'API ne permettant pas
+  de redemander. L'écran renvoie aux réglages du navigateur, comme pour les
+  notifications système ;
+- **il faut un geste de l'utilisateur** pour ouvrir le flux : rien ne peut
+  déclencher un enregistrement depuis une minuterie ;
+- **Safari n'accorde le micro qu'en HTTPS**, ou sur `localhost`.
+
+Côté natif, `RECORD_AUDIO` est déclarée dans le manifeste Android et
+`NSMicrophoneUsageDescription` dans l'`Info.plist` : sans elles, le système
+refuse **avant** que l'autorisation soit demandée.
+
+#### La durée est une colonne, pas une lecture de fichier
+
+`messages.media_duree_s` (`supabase/colonne_media_audio.sql`). La lire dans le
+fichier imposerait de le **télécharger** pour l'afficher : une URL signée et un
+aller-retour par bulle, avant même que quiconque appuie sur « lire ». Celui qui
+enregistre la connaît — elle voyage avec le message.
+
+Elle vient de l'horloge de l'enregistrement et non du conteneur : les fichiers
+produits par `MediaRecorder` n'annoncent pas toujours leur durée, et un
+« 0:00 » sur un message de vingt secondes serait pire qu'un arrondi.
+
+`envoyer_message` **l'écarte pour tout autre type de média** : une durée posée
+sur une photo laisserait une valeur qu'aucune lecture ne saurait interpréter.
+Le test de fumée en fait un contrôle négatif.
+
+#### Ce que la valeur `audio` a coûté
+
+`alter type public.media_type add value if not exists 'audio'` vit dans son
+propre fichier, **avant** `tranche5a_chat.sql` dans `migrations.txt` — même
+raison que `colonne_avatar_predefini.sql` : `messages_du_groupe` est en
+`language sql`, dont le corps est validé à la création, et un `returns table`
+citant une colonne absente ne se crée pas.
+
+**`appliquer.sh` applique chaque fichier dans une transaction**, et depuis
+PostgreSQL 12 un `alter type … add value` y est accepté. Ce qui reste interdit,
+c'est d'**employer** la nouvelle valeur avant la validation : le fichier ne
+fait que l'ajouter, et les fonctions qui la manipulent sont appliquées ensuite,
+donc dans d'autres transactions.
+
+Deux signatures ont dû changer, et aucune ne pouvait l'être par `create or
+replace` : `envoyer_message` gagne un paramètre — ce serait une **surcharge**,
+et PostgREST, qui appelle par noms d'arguments, n'aurait pas de quoi trancher —
+et `messages_du_groupe` une colonne de sortie. Les deux fichiers reposent leur
+propre `grant execute` après le `drop`, sans quoi la tranche 7 — qui ne se
+rejoue que si elle change — les laisserait fermées.
+
+#### Pas de forme d'onde
+
+Les barres qu'on voit ailleurs représentent l'**amplitude** du son, que rien
+n'enregistre ici. Les dessiner au hasard donnerait un motif décoratif qui
+*ressemble* à une donnée sans en être une — la même règle que la pastille de
+présence écartée du profil. Une barre de progression dit ce qu'elle sait : où
+l'on en est.
+
+#### Un seul lecteur pour toute la conversation
+
+Ce n'est pas une économie de mémoire, c'est la règle voulue : deux messages
+vocaux qui parlent en même temps ne s'écoutent ni l'un ni l'autre. L'état vit
+dans `voicePlaybackProvider` et non dans chaque bulle ; lancer le second arrête
+donc le premier sans que rien n'ait à s'en occuper.
+
+`VoiceRecorder` et `VoicePlayer` sont des **interfaces**, pour la même raison
+que les dépôts : un test de widget n'a ni micro ni haut-parleur, et `record`
+comme `just_audio` y lèveraient sur un canal de plateforme absent.
+
+#### Les bornes
+
+Deux minutes (`AppConfig.chatVoiceMaxDuration`), 32 kbit/s en mono — environ
+480 kio, très en deçà des 25 Mio du bucket : c'est bien la durée, et non le
+poids, qui borne. L'enregistrement **s'arrête tout seul** au terme : une borne
+annoncée et tenue vaut mieux qu'un envoi refusé une fois la parole dite. En
+deçà de 0,7 seconde, rien ne part — c'est un doigt qui a glissé, pas un
+message.
+
+Les types MIME sonores ont été ajoutés à `chat-media` dans la tranche 7 :
+`audio/mp4`, `audio/aac`, `audio/mpeg`, `audio/webm`, `audio/ogg`. La borne
+côté serveur est la seule qui protège de plus qu'une requête depuis
+l'application.
+
 ---
 
 ## Notifications système (Web Push)
@@ -2341,7 +2598,7 @@ notification ; le corps, à savoir quoi.
 
 | Type | Titre | Corps |
 | --- | --- | --- |
-| `chat_message` | Famille | `Julie Martin : On fait un barbecue ?` |
+| `chat_message` | Famille | `Julie Martin : On fait un barbecue ?` — ou `a envoyé une photo` / `une vidéo` / `un message vocal` |
 | `group_invitation` | Famille | `Julie Martin vous invite dans le groupe` |
 | `event_invitation` | Famille | `Julie Martin vous convie à Randonnée du lac Blanc` |
 | `task_assigned` | Famille | `Julie Martin vous a confié : Réserver le restaurant` |
@@ -3454,6 +3711,20 @@ sécurité.
   porte qu'un seul visage, posé sur le dernier, la gouttière garde les bulles
   alignées, ses propres messages n'en ont pas, et l'avatar prédéfini de
   l'expéditeur est rendu par le même point que partout ailleurs.
+  Côté écran refondu : l'en-tête qui porte le nom et l'effectif **sans aucun
+  pictogramme d'appel**, l'en-tête et le chevron qui mènent tous deux au
+  groupe, les deux compteurs de la barre de raccourcis — sans liste ni
+  dépense —, le groupe sans rien qui ne dit pas « 0 tâche » tout en gardant
+  son chevron, le séparateur qui coiffe chaque journée, et le changement de
+  jour qui recoupe la série. Côté couleurs : deux expéditeurs, deux teintes,
+  et jamais le gris de légende qui ne distinguait personne.
+  Côté emojis : le panneau qui s'ouvre et se referme, et l'emoji inséré **à
+  l'endroit du curseur** plutôt qu'à la fin. Côté messages vocaux : le micro
+  qui remplace l'avion tant qu'on n'a rien écrit, l'enregistrement envoyé en
+  `audio` avec sa durée et le chemin à la convention du bucket, l'annulation
+  qui n'envoie rien, le micro refusé qui renvoie aux réglages du navigateur,
+  la bulle qui annonce sa durée **sans rien télécharger**, et l'écoute qui
+  demande l'URL signée.
 
 - `test/push_notifications_test.dart` couvre les réglages de notification :
   l'activation qui enregistre l'abonnement en base, le refus et sa marche à
@@ -3493,7 +3764,10 @@ sécurité.
   du lien après la création, son contrôle négatif, et « Choisir dans mes
   contacts » qui ouvre le carnet entier en noms complets.
 
-Onze faux dépôts vivent dans `test/fakes/` : authentification, profil, groupes,
+Treize faux vivent dans `test/fakes/` — onze dépôts, plus l'enregistreur et le
+lecteur audio (`fake_voice.dart`), sans lesquels ouvrir la conversation
+lèverait une `MissingPluginException` : un test de widget n'a ni micro ni
+haut-parleur. La liste : authentification, profil, groupes,
 contacts, notifications, tâches, agenda, disponibilités, chat, navigateur
 (`FakePushService`) et préférences de notification. **Tous les
 fichiers de test les surchargent tous** — un provider oublié tombe sur
@@ -3560,7 +3834,21 @@ sûr d'éprouver son caractère contextuel.
   sont sélectionnées, bornées en poids, téléversées, stockées et affichées
   comme pièce jointe ; seule la **lecture en place** manque, car elle demande
   `video_player`, c'est-à-dire une nouvelle dépendance — un arbitrage, pas une
-  exécution. Les photos, elles, sont complètes : vignette et plein écran.
+  exécution. Les photos, elles, sont complètes : vignette et plein écran, et
+  les messages vocaux aussi : enregistrement, envoi et lecture.
+- **Les messages vocaux n'ont été éprouvés que par les tests.** Ils passent par
+  `record` et `just_audio`, deux paquets qui embarquent du natif : comme
+  `mobile_scanner`, ni la cible Android ni la cible iOS n'ont pu être compilées
+  ici. Sur le web, le format dépend du navigateur — voir « Messages vocaux ».
+  Le point à surveiller est **la lecture croisée** : un navigateur qui
+  n'accepte que l'Opus en WebM produit un fichier qu'un Safari ancien peut
+  refuser de lire, la prise en charge de WebM y étant récente et variable
+  selon la version. L'inverse ne pose pas de question — l'AAC se lit partout.
+  C'est précisément pourquoi l'encodeur est négocié **AAC d'abord** : les
+  navigateurs qui savent l'écrire, Safari comme les Chrome récents, produisent
+  alors un fichier universel, et le repli WebM ne sert que ceux qui n'ont pas
+  le choix. La solution complète serait un transcodage côté serveur, qu'aucune
+  fonction Edge ne fait aujourd'hui.
 - **Le temps réel n'est pas éprouvé automatiquement.** Les tests simulent le
   flux par un `StreamController` ; qu'un événement arrive réellement dépend de
   la publication `supabase_realtime` et d'une socket, et ne se constate qu'à

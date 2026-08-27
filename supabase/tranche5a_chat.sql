@@ -11,7 +11,7 @@
 -- relevées sur `supabase/schema_actuel.sql`, pas devinées :
 --
 --   messages           id, group_id, sender_id, content, media_url,
---                      media_kind, created_at, deleted_at
+--                      media_kind, media_duree_s, created_at, deleted_at
 --     CHECK (content is not null or media_url is not null)
 --     CHECK (char_length(content) <= 2000)
 --
@@ -22,7 +22,7 @@
 --   message_reads      group_id, user_id, last_read_at
 --     PRIMARY KEY (group_id, user_id)     ← l'accusé est par CONVERSATION
 --
---   media_type         image | video — d'où « pas de documents », verrouillé
+--   media_type         image | video | audio — d'où « pas de documents »
 --                      par le type et non par une règle d'écran
 --
 --
@@ -117,6 +117,12 @@ alter table public.messages replica identity full;
 --
 -- Renvoie les plus récents d'abord ; l'écran affiche en liste inversée.
 
+-- La durée du média est une colonne de sortie de plus : `create or replace`
+-- refuse de changer un `returns table`, d'où le `drop function`. Même
+-- arbitrage qu'en tranches 6, 8 et 9.
+
+drop function if exists public.messages_du_groupe(uuid, timestamptz, integer);
+
 create or replace function public.messages_du_groupe(
   p_group_id uuid,
   p_avant timestamptz default null,
@@ -129,6 +135,7 @@ returns table (
   content text,
   media_url text,
   media_kind text,
+  media_duree_s integer,
   created_at timestamptz,
   deleted_at timestamptz,
   pseudo text,
@@ -151,6 +158,7 @@ as $$
     case when m.deleted_at is null then m.content end,
     case when m.deleted_at is null then m.media_url end,
     case when m.deleted_at is null then m.media_kind::text end,
+    case when m.deleted_at is null then m.media_duree_s end,
     m.created_at,
     m.deleted_at,
     p.pseudo,
@@ -189,11 +197,18 @@ grant execute on function public.messages_du_groupe(uuid, timestamptz, integer)
 -- La contrainte `messages_check` exige un contenu **ou** un média. On le
 -- vérifie ici pour rendre un message français plutôt qu'un `23514` brut.
 
+-- Un paramètre de plus n'est pas un remplacement mais une **surcharge** :
+-- PostgREST appelle par noms d'arguments, et deux signatures dont l'une a un
+-- défaut le laisseraient sans moyen de trancher. D'où le `drop function`.
+
+drop function if exists public.envoyer_message(uuid, text, text, text);
+
 create or replace function public.envoyer_message(
   p_group_id uuid,
   p_content text default null,
   p_media_url text default null,
-  p_media_kind text default null
+  p_media_kind text default null,
+  p_media_duree_s integer default null
 )
 returns uuid
 language plpgsql
@@ -222,7 +237,7 @@ begin
   end if;
 
   insert into public.messages (
-    group_id, sender_id, content, media_url, media_kind)
+    group_id, sender_id, content, media_url, media_kind, media_duree_s)
   values (
     p_group_id, utilisateur, texte, p_media_url,
     -- Conversion explicite : un littéral seul est `unknown` et se laisserait
@@ -230,7 +245,10 @@ begin
     -- du `text`, et il n'existe pas de conversion implicite vers un énuméré.
     -- C'est le défaut qui a bloqué toute la tranche 3.
     (case when p_media_url is null then null
-          else coalesce(p_media_kind, 'image') end)::public.media_type)
+          else coalesce(p_media_kind, 'image') end)::public.media_type,
+    -- La durée n'a de sens que pour du son : la poser sur une photo
+    -- laisserait une valeur qu'aucune lecture ne saurait interpréter.
+    (case when p_media_kind = 'audio' then p_media_duree_s end))
   returning id into nouveau;
 
   -- Envoyer, c'est avoir lu : sans cela le compteur de non-lus de
@@ -244,7 +262,8 @@ begin
 end;
 $$;
 
-grant execute on function public.envoyer_message(uuid, text, text, text)
+grant execute on function
+  public.envoyer_message(uuid, text, text, text, integer)
   to authenticated;
 
 
@@ -276,7 +295,8 @@ begin
      set deleted_at = now(),
          content = '',
          media_url = null,
-         media_kind = null
+         media_kind = null,
+         media_duree_s = null
    where id = p_message_id
      and sender_id = utilisateur
      and deleted_at is null;

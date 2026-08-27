@@ -2,18 +2,23 @@ import 'package:flutter/foundation.dart';
 
 import 'message_card.dart';
 
-/// Nature d'un média joint. Reflète le type `media_type` du schéma initial,
-/// qui ne connaît que ces deux valeurs — c'est **lui**, et non une règle
-/// d'écran, qui interdit les documents.
+/// Nature d'un média joint. Reflète le type `media_type`, qui ne connaît que
+/// ces trois valeurs — c'est **lui**, et non une règle d'écran, qui interdit
+/// les documents.
+///
+/// `audio` est venu avec les messages vocaux (`colonne_media_audio.sql`) ;
+/// `image` et `video` sont du schéma initial.
 enum MediaKind {
   image,
-  video;
+  video,
+  audio;
 
   String get dbValue => name;
 
   static MediaKind? fromDb(String? value) => switch (value) {
     'image' => MediaKind.image,
     'video' => MediaKind.video,
+    'audio' => MediaKind.audio,
     _ => null,
   };
 }
@@ -58,6 +63,7 @@ class Message {
     this.content,
     this.mediaUrl,
     this.mediaKind,
+    this.mediaDuration,
     this.deletedAt,
     this.senderName,
     this.senderAvatarUrl,
@@ -82,6 +88,7 @@ class Message {
       content: row['content'] as String?,
       mediaUrl: row['media_url'] as String?,
       mediaKind: MediaKind.fromDb(row['media_kind'] as String?),
+      mediaDuration: _duree(row['media_duree_s']),
       deletedAt: DateTime.tryParse(
         (row['deleted_at'] as String?) ?? '',
       )?.toLocal(),
@@ -109,6 +116,11 @@ class Message {
   final String? content;
   final String? mediaUrl;
   final MediaKind? mediaKind;
+
+  /// Durée d'un message vocal. Elle vient de la base et non du fichier : la
+  /// lire dans le fichier imposerait de le télécharger pour l'afficher,
+  /// c'est-à-dire un aller-retour réseau par bulle avant même qu'on écoute.
+  final Duration? mediaDuration;
 
   /// Renseigné pour un message supprimé. La fonction SQL ne renvoie alors ni
   /// contenu ni média : il ne s'agit pas de les masquer à l'écran, mais de ne
@@ -156,6 +168,18 @@ class Message {
 
   bool get hasMedia => mediaUrl != null && !isDeleted;
 
+  /// Vrai pour un message vocal encore présent.
+  bool get isVoice => hasMedia && mediaKind == MediaKind.audio;
+
+  /// « 0:07 », « 1:42 » — jamais d'heures : la durée est bornée à deux
+  /// minutes, et « 00:07 » ferait attendre un compteur qui n'existe pas.
+  String? get mediaDurationLabel {
+    final Duration? duree = mediaDuration;
+    if (duree == null) return null;
+    final int secondes = duree.inSeconds;
+    return '${secondes ~/ 60}:${(secondes % 60).toString().padLeft(2, '0')}';
+  }
+
   /// Vrai si au moins un autre membre l'a lu.
   bool get isRead => readCount > 0;
 
@@ -192,6 +216,7 @@ class Message {
       content: content,
       mediaUrl: mediaUrl,
       mediaKind: mediaKind,
+      mediaDuration: mediaDuration,
       deletedAt: deletedAt ?? this.deletedAt,
       senderName: senderName,
       senderAvatarUrl: senderAvatarUrl,
@@ -203,6 +228,14 @@ class Message {
       eventId: eventId,
       card: card,
     );
+  }
+
+  /// La base compte en secondes entières : afficher « 12 s » ou « 1:07 » ne
+  /// demande pas mieux, et un centième donnerait un compteur qui danse.
+  static Duration? _duree(Object? brute) {
+    final int? secondes = (brute as num?)?.toInt();
+    if (secondes == null || secondes <= 0) return null;
+    return Duration(seconds: secondes);
   }
 
   static String? _nomAffiche(Map<String, dynamic> row) {

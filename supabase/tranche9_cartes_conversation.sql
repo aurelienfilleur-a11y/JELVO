@@ -241,7 +241,7 @@ grant execute on function public.se_desister(uuid) to authenticated;
 -- tâche et celle d'un événement ne portent pas les mêmes champs, et deux jeux
 -- de colonnes dont la moitié est toujours nulle se liraient mal.
 --
--- Trois colonnes de sortie de plus imposent un `drop function` — `create or
+-- Quatre colonnes de sortie de plus imposent un `drop function` — `create or
 -- replace` refuse de changer la signature d'un `returns table`. Même arbitrage
 -- qu'en tranche 6 et 8.
 
@@ -259,6 +259,7 @@ returns table (
   content text,
   media_url text,
   media_kind text,
+  media_duree_s integer,
   created_at timestamptz,
   deleted_at timestamptz,
   pseudo text,
@@ -284,6 +285,7 @@ as $$
     case when m.deleted_at is null then m.content end,
     case when m.deleted_at is null then m.media_url end,
     case when m.deleted_at is null then m.media_kind::text end,
+    case when m.deleted_at is null then m.media_duree_s end,
     m.created_at,
     m.deleted_at,
     p.pseudo,

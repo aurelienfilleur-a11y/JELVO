@@ -83,12 +83,14 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
         if (_infoMessage != null) ...<Widget>[
           Text(
             _infoMessage!,
-            style: AppTypography.caption.copyWith(color: AppColors.success),
+            style: context.typo.caption.copyWith(
+              color: context.couleurs.success,
+            ),
           ),
           AppSpacing.gapLg,
         ],
 
-        Text('Code de vérification', style: AppTypography.caption),
+        Text('Code de vérification', style: context.typo.caption),
         AppSpacing.gapSm,
         VerificationCodeField(
           controller: _codeController,
@@ -132,7 +134,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                   _resending
                       ? 'Envoi en cours…'
                       : 'Nouveau code possible dans $_secondsLeft s',
-                  style: AppTypography.caption,
+                  style: context.typo.caption,
                 ),
         ),
       ],

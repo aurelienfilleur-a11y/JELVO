@@ -78,7 +78,7 @@ class _AvailabilityFormSheetState extends ConsumerState<AvailabilityFormSheet> {
           children: <Widget>[
             Text(
               _modification ? 'Modifier le créneau' : 'Nouveau créneau',
-              style: AppTypography.h2,
+              style: context.typo.h2,
             ),
             AppSpacing.gapLg,
 
@@ -149,13 +149,13 @@ class _AvailabilityFormSheetState extends ConsumerState<AvailabilityFormSheet> {
               Container(
                 padding: const EdgeInsets.all(AppSpacing.md),
                 decoration: BoxDecoration(
-                  color: AppColors.dangerSoft,
+                  color: context.couleurs.dangerSoft,
                   borderRadius: AppRadii.fieldRadius,
                 ),
                 child: Text(
                   _erreur!,
-                  style: AppTypography.caption.copyWith(
-                    color: AppColors.danger,
+                  style: context.typo.caption.copyWith(
+                    color: context.couleurs.danger,
                   ),
                 ),
               ),

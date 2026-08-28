@@ -36,7 +36,7 @@ class _TaskAssignmentScreenState extends ConsumerState<TaskAssignmentScreen> {
     final Task? tache = ref.watch(taskByIdProvider(widget.taskId));
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.couleurs.background,
       appBar: AppBar(
         title: const Text('Tâche confiée'),
         leading: IconButton(
@@ -92,7 +92,9 @@ class _TaskAssignmentScreenState extends ConsumerState<TaskAssignmentScreen> {
             subtitle: tache.dueDate == null
                 ? null
                 : 'Échéance ${AppDates.shortDate(tache.dueDate!)}',
-            accentColor: GroupAccent.forId(tache.groupId ?? tache.id).color,
+            accentColor: GroupAccent.forId(
+              tache.groupId ?? tache.id,
+            ).color(context.couleurs),
             icon: Icons.task_alt_rounded,
             photoUrl: tache.groupPhotoUrl ?? groupe?.photoUrl,
           ),
@@ -125,7 +127,7 @@ class _TaskAssignmentScreenState extends ConsumerState<TaskAssignmentScreen> {
               ),
 
               AppSpacing.gapXl,
-              EmojiText(tache.title, style: AppTypography.h2),
+              EmojiText(tache.title, style: context.typo.h2),
 
               AppSpacing.gapLg,
               AppCard(
@@ -190,7 +192,7 @@ class _TaskAssignmentScreenState extends ConsumerState<TaskAssignmentScreen> {
                             a.userId == moi
                                 ? '${a.displayName} (vous)'
                                 : a.displayName,
-                            style: AppTypography.body,
+                            style: context.typo.body,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -209,8 +211,8 @@ class _TaskAssignmentScreenState extends ConsumerState<TaskAssignmentScreen> {
                 AppSpacing.gapXl,
                 _Bandeau(
                   icone: Icons.warning_amber_rounded,
-                  couleur: AppColors.danger,
-                  fond: AppColors.dangerSoft,
+                  couleur: context.couleurs.danger,
+                  fond: context.couleurs.dangerSoft,
                   texte: 'L’échéance est déjà passée.',
                 ),
               ],
@@ -230,11 +232,11 @@ class _TaskAssignmentScreenState extends ConsumerState<TaskAssignmentScreen> {
                       ? Icons.info_outline_rounded
                       : Icons.how_to_reg_rounded,
                   couleur: statut == AssigneeStatus.declined
-                      ? AppColors.textSecondary
-                      : AppColors.success,
+                      ? context.couleurs.textSecondary
+                      : context.couleurs.success,
                   fond: statut == AssigneeStatus.declined
-                      ? AppColors.border
-                      : AppColors.successSoft,
+                      ? context.couleurs.border
+                      : context.couleurs.successSoft,
                   texte: switch (statut) {
                     AssigneeStatus.accepted => 'Vous avez accepté cette tâche.',
                     AssigneeStatus.declined => 'Vous avez décliné cette tâche.',
@@ -329,7 +331,9 @@ class _Bandeau extends StatelessWidget {
           Expanded(
             child: Text(
               texte,
-              style: AppTypography.caption.copyWith(color: AppColors.midnight),
+              style: context.typo.caption.copyWith(
+                color: context.couleurs.encre,
+              ),
             ),
           ),
         ],

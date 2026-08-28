@@ -51,14 +51,14 @@ class _MembershipTermSheetState extends ConsumerState<MembershipTermSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text('Durée de l’adhésion', style: AppTypography.h2),
+          Text('Durée de l’adhésion', style: context.typo.h2),
           AppSpacing.gapSm,
           Text(
             membre.isTemporary
                 ? '${membre.displayName} fait partie du groupe jusqu’au '
                       '${AppDates.fullDate(membre.expiresAt!)}.'
                 : '${membre.displayName} fait partie du groupe sans terme.',
-            style: AppTypography.bodyMuted,
+            style: context.typo.bodyMuted,
           ),
 
           if (_erreur != null) ...<Widget>[
@@ -66,12 +66,14 @@ class _MembershipTermSheetState extends ConsumerState<MembershipTermSheet> {
             Container(
               padding: const EdgeInsets.all(AppSpacing.md),
               decoration: BoxDecoration(
-                color: AppColors.dangerSoft,
+                color: context.couleurs.dangerSoft,
                 borderRadius: AppRadii.fieldRadius,
               ),
               child: Text(
                 _erreur!,
-                style: AppTypography.caption.copyWith(color: AppColors.danger),
+                style: context.typo.caption.copyWith(
+                  color: context.couleurs.danger,
+                ),
               ),
             ),
           ],

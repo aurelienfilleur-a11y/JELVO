@@ -100,15 +100,15 @@ class _Ligne extends StatelessWidget {
               padding: const EdgeInsets.only(top: AppSpacing.md),
               child: Text(
                 entry.timeLabel ?? '',
-                style: AppTypography.caption.copyWith(
-                  color: AppColors.textSecondary,
+                style: context.typo.caption.copyWith(
+                  color: context.couleurs.textSecondary,
                   fontWeight: AppTypography.medium,
                 ),
               ),
             ),
           ),
           _Rail(
-            couleur: entry.accent,
+            couleur: entry.accentColor(context.couleurs),
             premiere: premiere,
             derniere: derniere,
             creux: entry.kind == AgendaEntryKind.availability,
@@ -161,27 +161,27 @@ class _Rail extends StatelessWidget {
             height: AppSpacing.md,
             child: premiere
                 ? null
-                : const VerticalDivider(
+                : VerticalDivider(
                     width: 1,
                     thickness: 1,
-                    color: AppColors.border,
+                    color: context.couleurs.border,
                   ),
           ),
           Container(
             width: 10,
             height: 10,
             decoration: BoxDecoration(
-              color: creux ? AppColors.surface : couleur,
+              color: creux ? context.couleurs.surface : couleur,
               border: Border.all(color: couleur, width: 2),
               shape: BoxShape.circle,
             ),
           ),
           if (!derniere)
-            const Expanded(
+            Expanded(
               child: VerticalDivider(
                 width: 1,
                 thickness: 1,
-                color: AppColors.border,
+                color: context.couleurs.border,
               ),
             ),
         ],
@@ -220,14 +220,14 @@ class _Carte extends StatelessWidget {
                         _icone(entry.kind),
                         size: 15,
                         color: dansUneCarte
-                            ? entry.accent
-                            : AppColors.textSecondary,
+                            ? entry.accentColor(context.couleurs)
+                            : context.couleurs.textSecondary,
                       ),
                       AppSpacing.hGapSm,
                       Expanded(
                         child: EmojiText(
                           entry.title,
-                          style: AppTypography.h3,
+                          style: context.typo.h3,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -239,8 +239,8 @@ class _Carte extends StatelessWidget {
                       padding: const EdgeInsets.only(top: 2),
                       child: EmojiText(
                         entry.subtitle!,
-                        style: AppTypography.caption.copyWith(
-                          color: AppColors.textSecondary,
+                        style: context.typo.caption.copyWith(
+                          color: context.couleurs.textSecondary,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -256,8 +256,8 @@ class _Carte extends StatelessWidget {
               AppSpacing.hGapSm,
               Text(
                 AppDates.timeRange(entry.start, entry.end),
-                style: AppTypography.caption.copyWith(
-                  color: AppColors.textSecondary,
+                style: context.typo.caption.copyWith(
+                  color: context.couleurs.textSecondary,
                 ),
               ),
             ] else if (!dansUneCarte && entry.avatars.isNotEmpty) ...<Widget>[
@@ -265,10 +265,10 @@ class _Carte extends StatelessWidget {
               // groupe, savoir qui vient est ce qu'on cherche.
               AppSpacing.hGapSm,
               AvatarStack(avatars: entry.avatars, size: 26, maxVisible: 3),
-              const Icon(
+              Icon(
                 Icons.chevron_right_rounded,
                 size: 20,
-                color: AppColors.textSecondary,
+                color: context.couleurs.textSecondary,
               ),
             ] else if (entry.statusTone != null) ...<Widget>[
               AppSpacing.hGapSm,
@@ -290,7 +290,7 @@ class _Carte extends StatelessWidget {
     // n'a été introduite pour la maquette.
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: entry.accent.withValues(alpha: 0.08),
+        color: entry.accentColor(context.couleurs).withValues(alpha: 0.08),
         borderRadius: AppRadii.cardRadius,
       ),
       child: contenu,
@@ -313,7 +313,8 @@ class _Creneau extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool disponible = entry.accent == AppColors.success;
+    final bool disponible =
+        entry.accentColor(context.couleurs) == context.couleurs.success;
 
     return Container(
       padding: const EdgeInsets.symmetric(
@@ -321,7 +322,7 @@ class _Creneau extends StatelessWidget {
         vertical: AppSpacing.md,
       ),
       decoration: BoxDecoration(
-        color: entry.accent.withValues(alpha: 0.08),
+        color: entry.accentColor(context.couleurs).withValues(alpha: 0.08),
         borderRadius: AppRadii.cardRadius,
       ),
       child: Row(
@@ -332,8 +333,8 @@ class _Creneau extends StatelessWidget {
               children: <Widget>[
                 EmojiText(
                   entry.title,
-                  style: AppTypography.body.copyWith(
-                    color: entry.accent,
+                  style: context.typo.body.copyWith(
+                    color: entry.accentColor(context.couleurs),
                     fontWeight: AppTypography.semiBold,
                   ),
                 ),
@@ -342,8 +343,8 @@ class _Creneau extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 2),
                     child: EmojiText(
                       entry.subtitle!,
-                      style: AppTypography.caption.copyWith(
-                        color: AppColors.textSecondary,
+                      style: context.typo.caption.copyWith(
+                        color: context.couleurs.textSecondary,
                       ),
                     ),
                   ),
@@ -358,7 +359,7 @@ class _Creneau extends StatelessWidget {
                 ? Icons.check_circle_rounded
                 : Icons.remove_circle_rounded,
             size: 22,
-            color: entry.accent,
+            color: entry.accentColor(context.couleurs),
           ),
         ],
       ),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_colors.dart';
+import '../theme/jelvo_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 import 'emoji_text.dart';
@@ -66,7 +66,12 @@ class CoverBanner extends StatelessWidget {
                 end: Alignment.bottomCenter,
                 colors: <Color>[
                   Colors.transparent,
-                  AppColors.midnight.withValues(alpha: 0.55),
+                  // **Noir, et non un jeton du thème.** Ce voile est posé sur
+                  // une photographie, qui n'a pas d'apparence : en sombre,
+                  // `encre` est presque blanc et le dégradé éclaircirait le
+                  // bas de l'image, effaçant le titre blanc qu'il est censé
+                  // détacher.
+                  Colors.black.withValues(alpha: 0.55),
                 ],
               ),
             ),
@@ -81,7 +86,7 @@ class CoverBanner extends StatelessWidget {
               children: <Widget>[
                 EmojiText(
                   name,
-                  style: AppTypography.h2.copyWith(color: Colors.white),
+                  style: context.typo.h2.copyWith(color: Colors.white),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -89,7 +94,7 @@ class CoverBanner extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     subtitle!,
-                    style: AppTypography.caption.copyWith(
+                    style: context.typo.caption.copyWith(
                       color: Colors.white.withValues(alpha: 0.9),
                     ),
                     maxLines: 1,

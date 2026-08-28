@@ -39,7 +39,7 @@ class _AvatarGalleryScreenState extends ConsumerState<AvatarGalleryScreen> {
     }
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.couleurs.background,
       appBar: AppBar(
         title: const Text('Choisir un avatar'),
         leading: IconButton(
@@ -64,13 +64,13 @@ class _AvatarGalleryScreenState extends ConsumerState<AvatarGalleryScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(AppSpacing.md),
                   decoration: BoxDecoration(
-                    color: AppColors.dangerSoft,
+                    color: context.couleurs.dangerSoft,
                     borderRadius: AppRadii.fieldRadius,
                   ),
                   child: Text(
                     _erreur!,
-                    style: AppTypography.caption.copyWith(
-                      color: AppColors.danger,
+                    style: context.typo.caption.copyWith(
+                      color: context.couleurs.danger,
                     ),
                   ),
                 ),
@@ -108,9 +108,9 @@ class _AvatarGalleryScreenState extends ConsumerState<AvatarGalleryScreen> {
                 AppSpacing.screenMargin,
                 AppSpacing.lg,
               ),
-              decoration: const BoxDecoration(
-                color: AppColors.surface,
-                boxShadow: AppShadows.overlay,
+              decoration: BoxDecoration(
+                color: context.couleurs.surface,
+                boxShadow: context.ombres.overlay,
               ),
               child: PrimaryButton(
                 label: 'Utiliser cet avatar',
@@ -169,11 +169,11 @@ class _Vignette extends StatelessWidget {
         child: DecoratedBox(
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: AppColors.surface,
+            color: context.couleurs.surface,
             border: choisi
-                ? Border.all(color: AppColors.primary, width: 3)
-                : Border.all(color: AppColors.border),
-            boxShadow: choisi ? AppShadows.accent : null,
+                ? Border.all(color: context.couleurs.primary, width: 3)
+                : Border.all(color: context.couleurs.border),
+            boxShadow: choisi ? context.ombres.accent : null,
           ),
           child: ClipOval(
             child: Padding(
@@ -183,10 +183,13 @@ class _Vignette extends StatelessWidget {
               child: Image.asset(
                 cheminAvatar(id),
                 fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => const ColoredBox(
-                  color: AppColors.primarySoft,
+                errorBuilder: (_, _, _) => ColoredBox(
+                  color: context.couleurs.primarySoft,
                   child: Center(
-                    child: Icon(Icons.person_rounded, color: AppColors.primary),
+                    child: Icon(
+                      Icons.person_rounded,
+                      color: context.couleurs.primary,
+                    ),
                   ),
                 ),
               ),

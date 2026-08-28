@@ -40,14 +40,15 @@ void main() {
     // Le repli est posé une fois pour toutes dans `AppTypography` plutôt que
     // site par site : un écran ajouté demain l'a par construction, là où une
     // liste de sites finirait par en oublier un.
+    const AppTypography typo = AppTypography(JelvoColors.clair);
     for (final TextStyle style in <TextStyle>[
-      AppTypography.h1,
-      AppTypography.h2,
-      AppTypography.h3,
-      AppTypography.body,
-      AppTypography.bodyMuted,
-      AppTypography.caption,
-      AppTypography.button,
+      typo.h1,
+      typo.h2,
+      typo.h3,
+      typo.body,
+      typo.bodyMuted,
+      typo.caption,
+      typo.button,
     ]) {
       expect(style.fontFamilyFallback, contains('NotoColorEmoji'));
     }
@@ -56,7 +57,7 @@ void main() {
   test('le thème complet le porte aussi', () {
     // `textTheme` est ce que lisent les widgets Material qui ne passent pas
     // par `AppTypography` directement.
-    final TextTheme theme = AppTypography.textTheme;
+    final TextTheme theme = const AppTypography(JelvoColors.clair).textTheme;
     for (final TextStyle? style in <TextStyle?>[
       theme.headlineLarge,
       theme.titleMedium,
@@ -147,7 +148,13 @@ void main() {
     testWidgets('un cœur du clavier reçoit la police d’emojis', (
       WidgetTester tester,
     ) async {
-      await poser(tester, EmojiText('Bravo ❤️', style: AppTypography.body));
+      await poser(
+        tester,
+        EmojiText(
+          'Bravo ❤️',
+          style: const AppTypography(JelvoColors.clair).body,
+        ),
+      );
 
       final List<TextSpan> suites = _feuilles(tester);
 

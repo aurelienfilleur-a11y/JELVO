@@ -48,8 +48,10 @@ class _KindCard extends StatelessWidget {
       onTap: onTap,
       // Le contour prend la couleur du type sélectionné ; l'ombre est retirée
       // sur les cartes inactives pour que la sélection ressorte.
-      borderColor: selected ? kind.color : AppColors.border,
-      shadows: selected ? AppShadows.raised : const <BoxShadow>[],
+      borderColor: selected
+          ? kind.color(context.couleurs)
+          : context.couleurs.border,
+      shadows: selected ? context.ombres.raised : const <BoxShadow>[],
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Row(
         children: <Widget>[
@@ -57,21 +59,25 @@ class _KindCard extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: kind.color.withValues(alpha: 0.12),
+              color: kind.color(context.couleurs).withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(AppSpacing.md),
             ),
-            child: Icon(kind.icon, color: kind.color, size: 22),
+            child: Icon(
+              kind.icon,
+              color: kind.color(context.couleurs),
+              size: 22,
+            ),
           ),
           AppSpacing.hGapMd,
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(kind.label, style: AppTypography.h3),
+                Text(kind.label, style: context.typo.h3),
                 const SizedBox(height: 2),
                 Text(
                   kind.description,
-                  style: AppTypography.caption,
+                  style: context.typo.caption,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -79,7 +85,7 @@ class _KindCard extends StatelessWidget {
             ),
           ),
           AppSpacing.hGapSm,
-          _RadioMark(selected: selected, color: kind.color),
+          _RadioMark(selected: selected, color: kind.color(context.couleurs)),
         ],
       ),
     );
@@ -102,12 +108,16 @@ class _RadioMark extends StatelessWidget {
         shape: BoxShape.circle,
         color: selected ? color : Colors.transparent,
         border: Border.all(
-          color: selected ? color : AppColors.border,
+          color: selected ? color : context.couleurs.border,
           width: 1.5,
         ),
       ),
       child: selected
-          ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
+          ? Icon(
+              Icons.check_rounded,
+              size: 14,
+              color: context.couleurs.onAccent,
+            )
           : null,
     );
   }

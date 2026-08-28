@@ -35,7 +35,7 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
     final bool signedIn = ref.watch(authStatusProvider) == AuthStatus.signedIn;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.couleurs.background,
       body: SafeArea(
         child: previewAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
@@ -78,7 +78,7 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
             subtitle:
                 '${preview.memberCount} membre'
                 '${preview.memberCount > 1 ? 's' : ''}',
-            accentColor: AppColors.primary,
+            accentColor: context.couleurs.primary,
             icon: Icons.groups_rounded,
             photoUrl: preview.photoUrl,
           ),
@@ -96,12 +96,12 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
             children: <Widget>[
               Text(
                 'Vous êtes invité à rejoindre ce groupe sur Jelvo.',
-                style: AppTypography.h3,
+                style: context.typo.h3,
               ),
               if (preview.description != null &&
                   preview.description!.isNotEmpty) ...<Widget>[
                 AppSpacing.gapMd,
-                EmojiText(preview.description!, style: AppTypography.bodyMuted),
+                EmojiText(preview.description!, style: context.typo.bodyMuted),
               ],
 
               // Une adhésion qui s'arrête n'est pas la même offre qu'une
@@ -112,15 +112,15 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
                 Container(
                   padding: const EdgeInsets.all(AppSpacing.md),
                   decoration: BoxDecoration(
-                    color: AppColors.warningSoft,
+                    color: context.couleurs.warningSoft,
                     borderRadius: AppRadii.fieldRadius,
                   ),
                   child: Row(
                     children: <Widget>[
-                      const Icon(
+                      Icon(
                         Icons.schedule_rounded,
                         size: 18,
-                        color: AppColors.warning,
+                        color: context.couleurs.warning,
                       ),
                       AppSpacing.hGapSm,
                       Expanded(
@@ -128,8 +128,8 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
                           'Adhésion temporaire : vous ferez partie du groupe '
                           'jusqu’au '
                           '${AppDates.fullDate(preview.membershipExpiresAt!)}.',
-                          style: AppTypography.caption.copyWith(
-                            color: AppColors.midnight,
+                          style: context.typo.caption.copyWith(
+                            color: context.couleurs.encre,
                           ),
                         ),
                       ),
@@ -143,13 +143,13 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
                 Container(
                   padding: const EdgeInsets.all(AppSpacing.md),
                   decoration: BoxDecoration(
-                    color: AppColors.dangerSoft,
+                    color: context.couleurs.dangerSoft,
                     borderRadius: AppRadii.fieldRadius,
                   ),
                   child: Text(
                     _resultMessage!,
-                    style: AppTypography.caption.copyWith(
-                      color: AppColors.danger,
+                    style: context.typo.caption.copyWith(
+                      color: context.couleurs.danger,
                     ),
                   ),
                 ),
@@ -178,7 +178,7 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
                 Text(
                   'Le groupe sera rejoint automatiquement une fois votre '
                   'compte créé.',
-                  style: AppTypography.caption,
+                  style: context.typo.caption,
                 ),
               ],
             ],

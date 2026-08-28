@@ -135,18 +135,18 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
                     Expanded(
                       child: Text(
                         query.isEmpty ? 'Contacts' : 'Résultats',
-                        style: AppTypography.h3,
+                        style: context.typo.h3,
                       ),
                     ),
                     TextButton.icon(
                       onPressed: ref.read(contactSortProvider.notifier).toggle,
-                      icon: Text(tri.label, style: AppTypography.caption),
+                      icon: Text(tri.label, style: context.typo.caption),
                       label: const Icon(
                         Icons.keyboard_arrow_down_rounded,
                         size: 18,
                       ),
                       style: TextButton.styleFrom(
-                        foregroundColor: AppColors.primary,
+                        foregroundColor: context.couleurs.primary,
                         visualDensity: VisualDensity.compact,
                       ),
                     ),
@@ -213,8 +213,8 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
                           // figure aussi dans le rail de droite, et les deux
                           // doivent pouvoir se distinguer.
                           key: ValueKey<String>('lettre-${section.letter}'),
-                          style: AppTypography.caption.copyWith(
-                            color: AppColors.textSecondary,
+                          style: context.typo.caption.copyWith(
+                            color: context.couleurs.textSecondary,
                             fontWeight: AppTypography.semiBold,
                           ),
                         ),
@@ -281,20 +281,20 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
             onPressed: () => _decline(request),
             tooltip: 'Refuser',
             visualDensity: VisualDensity.compact,
-            icon: const Icon(
+            icon: Icon(
               Icons.close_rounded,
               size: 20,
-              color: AppColors.textSecondary,
+              color: context.couleurs.textSecondary,
             ),
           ),
           IconButton(
             onPressed: () => _accept(request),
             tooltip: 'Accepter',
             visualDensity: VisualDensity.compact,
-            icon: const Icon(
+            icon: Icon(
               Icons.check_circle_rounded,
               size: 22,
-              color: AppColors.success,
+              color: context.couleurs.success,
             ),
           ),
         ],

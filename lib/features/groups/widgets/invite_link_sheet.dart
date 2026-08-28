@@ -60,12 +60,12 @@ class _InviteLinkSheetState extends ConsumerState<InviteLinkSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text('Inviter par lien', style: AppTypography.h2),
+          Text('Inviter par lien', style: context.typo.h2),
           AppSpacing.gapSm,
           Text(
             'Partagez ce lien par SMS, messagerie ou e-mail. La personne '
             'pourra créer son compte puis rejoindre « ${widget.group.name} ».',
-            style: AppTypography.bodyMuted,
+            style: context.typo.bodyMuted,
           ),
 
           if (_errorMessage != null) ...<Widget>[
@@ -73,12 +73,14 @@ class _InviteLinkSheetState extends ConsumerState<InviteLinkSheet> {
             Container(
               padding: const EdgeInsets.all(AppSpacing.md),
               decoration: BoxDecoration(
-                color: AppColors.dangerSoft,
+                color: context.couleurs.dangerSoft,
                 borderRadius: AppRadii.fieldRadius,
               ),
               child: Text(
                 _errorMessage!,
-                style: AppTypography.caption.copyWith(color: AppColors.danger),
+                style: context.typo.caption.copyWith(
+                  color: context.couleurs.danger,
+                ),
               ),
             ),
           ],
@@ -89,7 +91,7 @@ class _InviteLinkSheetState extends ConsumerState<InviteLinkSheet> {
           else if (active.isEmpty)
             Text(
               'Aucun lien actif pour le moment.',
-              style: AppTypography.caption,
+              style: context.typo.caption,
             )
           else
             for (final GroupInviteLink link in active) ...<Widget>[
@@ -220,7 +222,9 @@ class _LinkCard extends StatelessWidget {
         children: <Widget>[
           Text(
             AppConfig.inviteUrl(link.token),
-            style: AppTypography.caption.copyWith(color: AppColors.primary),
+            style: context.typo.caption.copyWith(
+              color: context.couleurs.primary,
+            ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
@@ -228,7 +232,7 @@ class _LinkCard extends StatelessWidget {
           Text(
             '${link.usesLabel} · expire le '
             '${AppDates.shortDate(link.expiresAt)}',
-            style: AppTypography.caption,
+            style: context.typo.caption,
           ),
           // Deux dates que rien ne rapproche : celle du dessus dit jusqu'à
           // quand le lien sert, celle-ci ce qu'il accorde. Un lien valable
@@ -238,8 +242,8 @@ class _LinkCard extends StatelessWidget {
             Text(
               'Adhésion jusqu’au '
               '${AppDates.shortDate(link.membershipExpiresAt!)}',
-              style: AppTypography.caption.copyWith(
-                color: AppColors.warning,
+              style: context.typo.caption.copyWith(
+                color: context.couleurs.warning,
                 fontWeight: AppTypography.semiBold,
               ),
             ),
@@ -263,10 +267,10 @@ class _LinkCard extends StatelessWidget {
               IconButton(
                 onPressed: onRevoke,
                 tooltip: 'Révoquer le lien',
-                icon: const Icon(
+                icon: Icon(
                   Icons.link_off_rounded,
                   size: 20,
-                  color: AppColors.danger,
+                  color: context.couleurs.danger,
                 ),
               ),
             ],

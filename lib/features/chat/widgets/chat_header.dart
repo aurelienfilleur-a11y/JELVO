@@ -65,14 +65,14 @@ class ChatHeader extends StatelessWidget implements PreferredSizeWidget {
                           children: <Widget>[
                             EmojiText(
                               g?.name ?? 'Discussion',
-                              style: AppTypography.h3,
+                              style: context.typo.h3,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                             if (g != null)
                               Text(
                                 g.memberLabel,
-                                style: AppTypography.caption,
+                                style: context.typo.caption,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -110,7 +110,7 @@ class _Vignette extends StatelessWidget {
     final Widget repli = Container(
       width: _taille,
       height: _taille,
-      color: g.accent.color,
+      color: g.accent.color(context.couleurs),
       alignment: Alignment.center,
       child: Icon(g.icon, size: 20, color: Colors.white),
     );
@@ -180,7 +180,7 @@ class ChatShortcutBar extends StatelessWidget {
               Expanded(
                 child: Text(
                   'Rien de prévu pour l’instant',
-                  style: AppTypography.bodyMuted,
+                  style: context.typo.bodyMuted,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -189,8 +189,8 @@ class ChatShortcutBar extends StatelessWidget {
               if (taches > 0)
                 _Compteur(
                   icon: Icons.check_circle_outline_rounded,
-                  teinte: AppColors.success,
-                  fond: AppColors.successSoft,
+                  teinte: context.couleurs.success,
+                  fond: context.couleurs.successSoft,
                   valeur: taches,
                   // Le singulier compte : « 1 tâches » se voit tout de suite.
                   libelle: taches > 1 ? 'tâches' : 'tâche',
@@ -199,16 +199,16 @@ class ChatShortcutBar extends StatelessWidget {
               if (evenements > 0)
                 _Compteur(
                   icon: Icons.calendar_month_rounded,
-                  teinte: AppColors.primary,
-                  fond: AppColors.primarySoft,
+                  teinte: context.couleurs.primary,
+                  fond: context.couleurs.primarySoft,
                   valeur: evenements,
                   libelle: evenements > 1 ? 'événements' : 'événement',
                 ),
               const Spacer(),
             ],
-            const Icon(
+            Icon(
               Icons.chevron_right_rounded,
-              color: AppColors.textSecondary,
+              color: context.couleurs.textSecondary,
             ),
           ],
         ),
@@ -254,12 +254,12 @@ class _Compteur extends StatelessWidget {
           children: <Widget>[
             Text(
               '$valeur',
-              style: AppTypography.body.copyWith(
+              style: context.typo.body.copyWith(
                 fontWeight: AppTypography.semiBold,
                 height: 1.1,
               ),
             ),
-            Text(libelle, style: AppTypography.caption.copyWith(height: 1.1)),
+            Text(libelle, style: context.typo.caption.copyWith(height: 1.1)),
           ],
         ),
       ],

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_colors.dart';
+import '../theme/jelvo_colors.dart';
 import '../theme/app_typography.dart';
 
 /// Une personne représentée dans un [AvatarStack].
@@ -90,15 +90,6 @@ class AvatarStack extends StatelessWidget {
   /// Part du diamètre recouverte par l'avatar suivant (0 = pas de chevauchement).
   final double overlap;
 
-  static const List<Color> _palette = <Color>[
-    AppColors.primary,
-    AppColors.primaryDark,
-    AppColors.success,
-    AppColors.warning,
-    AppColors.danger,
-    AppColors.midnight,
-  ];
-
   @override
   Widget build(BuildContext context) {
     if (avatars.isEmpty) return const SizedBox.shrink();
@@ -132,8 +123,14 @@ class AvatarStack extends StatelessWidget {
     );
   }
 
-  static Color colorFor(AvatarData data, int index) =>
-      data.color ?? _palette[(data.name.hashCode + index) % _palette.length];
+  /// Couleur de repli d'un avatar sans photo.
+  ///
+  /// Elle reprend les six accents de groupe : ce sont les seules teintes de la
+  /// palette faites pour porter un aplat et du blanc dessus.
+  static Color colorFor(AvatarData data, int index, JelvoColors couleurs) =>
+      data.color ??
+      couleurs.groupAccents[(data.name.hashCode + index) %
+          couleurs.groupAccents.length];
 }
 
 class _Avatar extends StatelessWidget {
@@ -148,7 +145,7 @@ class _Avatar extends StatelessWidget {
     data: data,
     size: size,
     index: index,
-    border: Border.all(color: AppColors.surface, width: 2),
+    border: Border.all(color: context.couleurs.surface, width: 2),
   );
 }
 
@@ -179,7 +176,7 @@ class AvatarImage extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: AvatarStack.colorFor(data, index),
+        color: AvatarStack.colorFor(data, index, context.couleurs),
         shape: BoxShape.circle,
         border: border,
       ),
@@ -191,23 +188,23 @@ class AvatarImage extends StatelessWidget {
           fit: BoxFit.cover,
           width: size,
           height: size,
-          errorBuilder: (_, _, _) => Center(child: _initiales),
+          errorBuilder: (_, _, _) => Center(child: _initialesAvec(context)),
         ),
         (null, final String url) => Image.network(
           url,
           fit: BoxFit.cover,
           width: size,
           height: size,
-          errorBuilder: (_, _, _) => Center(child: _initiales),
+          errorBuilder: (_, _, _) => Center(child: _initialesAvec(context)),
         ),
-        _ => _initiales,
+        _ => _initialesAvec(context),
       },
     );
   }
 
-  Widget get _initiales => Text(
+  Widget _initialesAvec(BuildContext context) => Text(
     data.initials,
-    style: AppTypography.caption.copyWith(
+    style: context.typo.caption.copyWith(
       color: Colors.white,
       fontWeight: AppTypography.semiBold,
       fontSize: size * 0.36,
@@ -229,14 +226,14 @@ class _OverflowBadge extends StatelessWidget {
       height: size,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: context.couleurs.background,
         shape: BoxShape.circle,
-        border: Border.all(color: AppColors.surface, width: 2),
+        border: Border.all(color: context.couleurs.surface, width: 2),
       ),
       child: Text(
         '+$count',
-        style: AppTypography.caption.copyWith(
-          color: AppColors.textSecondary,
+        style: context.typo.caption.copyWith(
+          color: context.couleurs.textSecondary,
           fontWeight: AppTypography.semiBold,
           fontSize: size * 0.32,
           height: 1,

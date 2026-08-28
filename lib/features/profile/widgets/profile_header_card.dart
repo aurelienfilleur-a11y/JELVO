@@ -66,14 +66,14 @@ class ProfileHeaderCard extends StatelessWidget {
                           width: 38,
                           height: 38,
                           decoration: BoxDecoration(
-                            color: AppColors.surface,
+                            color: context.couleurs.surface,
                             shape: BoxShape.circle,
-                            boxShadow: AppShadows.card,
+                            boxShadow: context.ombres.card,
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.photo_camera_rounded,
                             size: 19,
-                            color: AppColors.primary,
+                            color: context.couleurs.primary,
                           ),
                         ),
                       ),
@@ -87,7 +87,7 @@ class ProfileHeaderCard extends StatelessWidget {
           AppSpacing.gapMd,
           EmojiText(
             profile.displayName,
-            style: AppTypography.h2,
+            style: context.typo.h2,
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -95,13 +95,13 @@ class ProfileHeaderCard extends StatelessWidget {
           const SizedBox(height: 2),
           EmojiText(
             profile.pseudoHandle,
-            style: AppTypography.body.copyWith(color: AppColors.primary),
+            style: context.typo.body.copyWith(color: context.couleurs.primary),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
 
           AppSpacing.gapLg,
-          const Divider(height: 1, color: AppColors.border),
+          Divider(height: 1, color: context.couleurs.border),
           AppSpacing.gapSm,
           Row(
             children: <Widget>[
@@ -141,9 +141,13 @@ class _Trait extends StatelessWidget {
   const _Trait();
 
   @override
-  Widget build(BuildContext context) => const SizedBox(
+  Widget build(BuildContext context) => SizedBox(
     height: 56,
-    child: VerticalDivider(width: 1, thickness: 1, color: AppColors.border),
+    child: VerticalDivider(
+      width: 1,
+      thickness: 1,
+      color: context.couleurs.border,
+    ),
   );
 }
 
@@ -176,20 +180,24 @@ class _Action extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: accented ? AppColors.primarySoft : AppColors.background,
+                color: accented
+                    ? context.couleurs.primarySoft
+                    : context.couleurs.background,
                 borderRadius: AppRadii.fieldRadius,
               ),
               child: Icon(
                 icon,
                 size: 21,
-                color: accented ? AppColors.primary : AppColors.midnight,
+                color: accented
+                    ? context.couleurs.primary
+                    : context.couleurs.encre,
               ),
             ),
             AppSpacing.gapSm,
             Text(
               label,
-              style: AppTypography.caption.copyWith(
-                color: AppColors.midnight,
+              style: context.typo.caption.copyWith(
+                color: context.couleurs.encre,
                 fontWeight: AppTypography.semiBold,
               ),
               maxLines: 1,

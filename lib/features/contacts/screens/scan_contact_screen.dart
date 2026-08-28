@@ -48,7 +48,7 @@ class _ScanContactScreenState extends ConsumerState<ScanContactScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.couleurs.background,
       appBar: AppBar(
         title: const Text('Scanner un QR code'),
         leading: IconButton(
@@ -98,7 +98,7 @@ class _ScanContactScreenState extends ConsumerState<ScanContactScreen> {
                           'Visez le QR code d’un proche pour lui envoyer une '
                               'demande de contact.',
                       textAlign: TextAlign.center,
-                      style: AppTypography.caption,
+                      style: context.typo.caption,
                     ),
                   ),
                 ],

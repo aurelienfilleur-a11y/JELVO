@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_colors.dart';
+import '../theme/jelvo_colors.dart';
 import '../theme/app_typography.dart';
 
 /// Pastille de compteur posée sur un enfant — icône d'onglet, bouton de barre.
@@ -14,13 +14,15 @@ class NavBadge extends StatelessWidget {
     required this.count,
     required this.child,
     this.max = 99,
-    this.color = AppColors.danger,
+    this.color,
   });
 
   final int count;
   final Widget child;
   final int max;
-  final Color color;
+
+  /// `null` : le rouge du thème, résolu au `build`.
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
@@ -40,17 +42,17 @@ class NavBadge extends StatelessWidget {
             height: 18,
             padding: const EdgeInsets.symmetric(horizontal: 5),
             decoration: BoxDecoration(
-              color: color,
+              color: color ?? context.couleurs.danger,
               borderRadius: BorderRadius.circular(9),
               // Le liseré blanc détache la pastille de l'icône : sans lui, les
               // deux se confondent dès que l'icône est sombre.
-              border: Border.all(color: AppColors.surface, width: 1.5),
+              border: Border.all(color: context.couleurs.surface, width: 1.5),
             ),
             alignment: Alignment.center,
             child: Text(
               label,
-              style: AppTypography.caption.copyWith(
-                color: Colors.white,
+              style: context.typo.caption.copyWith(
+                color: context.couleurs.onAccent,
                 fontSize: 10,
                 height: 1,
                 fontWeight: AppTypography.semiBold,

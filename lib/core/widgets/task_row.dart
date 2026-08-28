@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_colors.dart';
+import '../theme/jelvo_colors.dart';
 import '../theme/app_radii.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
@@ -88,15 +88,16 @@ class TaskRow extends StatelessWidget {
                             Flexible(
                               child: EmojiText(
                                 title,
-                                style: AppTypography.body.copyWith(
+                                style: context.typo.body.copyWith(
                                   fontWeight: AppTypography.medium,
                                   color: done
-                                      ? AppColors.textSecondary
-                                      : AppColors.midnight,
+                                      ? context.couleurs.textSecondary
+                                      : context.couleurs.encre,
                                   decoration: done
                                       ? TextDecoration.lineThrough
                                       : TextDecoration.none,
-                                  decorationColor: AppColors.textSecondary,
+                                  decorationColor:
+                                      context.couleurs.textSecondary,
                                 ),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
@@ -112,7 +113,7 @@ class TaskRow extends StatelessWidget {
                           const SizedBox(height: 2),
                           EmojiText(
                             subtitle!,
-                            style: AppTypography.caption,
+                            style: context.typo.caption,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -135,7 +136,7 @@ class TaskRow extends StatelessWidget {
                                 Flexible(
                                   child: EmojiText(
                                     assignee!,
-                                    style: AppTypography.caption,
+                                    style: context.typo.caption,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -156,7 +157,7 @@ class TaskRow extends StatelessWidget {
           ),
         ),
         if (showDivider)
-          const Divider(height: 1, thickness: 1, color: AppColors.border),
+          Divider(height: 1, thickness: 1, color: context.couleurs.border),
       ],
     );
   }
@@ -186,15 +187,21 @@ class _Checkbox extends StatelessWidget {
             width: 22,
             height: 22,
             decoration: BoxDecoration(
-              color: done ? AppColors.success : Colors.transparent,
+              color: done ? context.couleurs.success : Colors.transparent,
               borderRadius: BorderRadius.circular(AppSpacing.sm),
               border: Border.all(
-                color: done ? AppColors.success : AppColors.border,
+                color: done
+                    ? context.couleurs.success
+                    : context.couleurs.border,
                 width: 1.5,
               ),
             ),
             child: done
-                ? const Icon(Icons.check_rounded, size: 15, color: Colors.white)
+                ? Icon(
+                    Icons.check_rounded,
+                    size: 15,
+                    color: context.couleurs.onAccent,
+                  )
                 : null,
           ),
         ),

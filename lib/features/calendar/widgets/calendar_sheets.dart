@@ -51,7 +51,7 @@ class CalendarFilterSheet extends ConsumerWidget {
           children: <Widget>[
             Row(
               children: <Widget>[
-                Expanded(child: Text('Filtres', style: AppTypography.h2)),
+                Expanded(child: Text('Filtres', style: context.typo.h2)),
                 if (selection.isNotEmpty)
                   TextButton(
                     onPressed: () =>
@@ -62,7 +62,7 @@ class CalendarFilterSheet extends ConsumerWidget {
             ),
             AppSpacing.gapLg,
 
-            Text('Afficher', style: AppTypography.h3),
+            Text('Afficher', style: context.typo.h3),
             AppSpacing.gapSm,
             Wrap(
               spacing: AppSpacing.sm,
@@ -70,7 +70,7 @@ class CalendarFilterSheet extends ConsumerWidget {
               children: <Widget>[
                 _Puce(
                   label: 'Personnel',
-                  couleur: AppColors.primary,
+                  couleur: context.couleurs.primary,
                   choisie:
                       selection.isEmpty ||
                       selection.contains(CalendarGroupFilter.personal),
@@ -81,7 +81,7 @@ class CalendarFilterSheet extends ConsumerWidget {
                 for (final Group groupe in groupes)
                   _Puce(
                     label: groupe.name,
-                    couleur: groupe.accent.color,
+                    couleur: groupe.accent.color(context.couleurs),
                     choisie: selection.isEmpty || selection.contains(groupe.id),
                     onTap: () => ref
                         .read(calendarFilterProvider.notifier)
@@ -91,18 +91,18 @@ class CalendarFilterSheet extends ConsumerWidget {
             ),
 
             AppSpacing.gapLg,
-            const Divider(height: 1, color: AppColors.border),
+            Divider(height: 1, color: context.couleurs.border),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               value: creneaux,
               onChanged: (_) =>
                   ref.read(showAvailabilityProvider.notifier).toggle(),
-              title: Text('Mes disponibilités', style: AppTypography.body),
+              title: Text('Mes disponibilités', style: context.typo.body),
               subtitle: Text(
                 'Les créneaux déclarés, en fond de journée. Ils ne dépendent '
                 'd’aucun groupe.',
-                style: AppTypography.caption.copyWith(
-                  color: AppColors.textSecondary,
+                style: context.typo.caption.copyWith(
+                  color: context.couleurs.textSecondary,
                 ),
               ),
             ),
@@ -165,7 +165,7 @@ class _CalendarSearchSheetState extends ConsumerState<CalendarSearchSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text('Rechercher', style: AppTypography.h2),
+            Text('Rechercher', style: context.typo.h2),
             AppSpacing.gapLg,
             AppTextField(
               controller: _controleur,
@@ -179,12 +179,12 @@ class _CalendarSearchSheetState extends ConsumerState<CalendarSearchSheet> {
             if (_terme.trim().length < 2)
               Text(
                 'Deux lettres suffisent à chercher.',
-                style: AppTypography.caption,
+                style: context.typo.caption,
               )
             else if (resultats.isEmpty)
               Text(
                 'Rien ne correspond à « ${_terme.trim()} ».',
-                style: AppTypography.caption,
+                style: context.typo.caption,
               )
             else
               Flexible(
@@ -192,7 +192,7 @@ class _CalendarSearchSheetState extends ConsumerState<CalendarSearchSheet> {
                   shrinkWrap: true,
                   itemCount: resultats.length,
                   separatorBuilder: (_, _) =>
-                      const Divider(height: 1, color: AppColors.border),
+                      Divider(height: 1, color: context.couleurs.border),
                   itemBuilder: (BuildContext context, int index) {
                     final _Resultat r = resultats[index];
                     return ListTile(
@@ -200,13 +200,13 @@ class _CalendarSearchSheetState extends ConsumerState<CalendarSearchSheet> {
                       leading: Icon(r.icone, size: 20, color: r.couleur),
                       title: Text(
                         r.titre,
-                        style: AppTypography.body,
+                        style: context.typo.body,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       subtitle: Text(
                         AppDates.fullDate(r.jour),
-                        style: AppTypography.caption,
+                        style: context.typo.caption,
                       ),
                       onTap: () {
                         ref.read(selectedDayProvider.notifier).select(r.jour);
@@ -234,7 +234,7 @@ class _CalendarSearchSheetState extends ConsumerState<CalendarSearchSheet> {
             titre: e.title,
             jour: e.start,
             icone: Icons.event_rounded,
-            couleur: AppColors.primary,
+            couleur: context.couleurs.primary,
           ),
       for (final Task t in ref.watch(tasksProvider).value ?? const <Task>[])
         if (t.dueDate != null && t.title.toLowerCase().contains(terme))
@@ -242,7 +242,7 @@ class _CalendarSearchSheetState extends ConsumerState<CalendarSearchSheet> {
             titre: t.title,
             jour: t.dueDate!,
             icone: Icons.task_alt_rounded,
-            couleur: AppColors.success,
+            couleur: context.couleurs.success,
           ),
     ]..sort((_Resultat a, _Resultat b) => a.jour.compareTo(b.jour));
 
@@ -289,9 +289,13 @@ class _Puce extends StatelessWidget {
           vertical: AppSpacing.sm,
         ),
         decoration: BoxDecoration(
-          color: choisie ? couleur.withValues(alpha: 0.12) : AppColors.surface,
+          color: choisie
+              ? couleur.withValues(alpha: 0.12)
+              : context.couleurs.surface,
           borderRadius: AppRadii.pillRadius,
-          border: Border.all(color: choisie ? couleur : AppColors.border),
+          border: Border.all(
+            color: choisie ? couleur : context.couleurs.border,
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -304,8 +308,10 @@ class _Puce extends StatelessWidget {
             AppSpacing.hGapSm,
             Text(
               label,
-              style: AppTypography.caption.copyWith(
-                color: choisie ? AppColors.midnight : AppColors.textSecondary,
+              style: context.typo.caption.copyWith(
+                color: choisie
+                    ? context.couleurs.encre
+                    : context.couleurs.textSecondary,
                 fontWeight: choisie ? AppTypography.semiBold : null,
               ),
             ),

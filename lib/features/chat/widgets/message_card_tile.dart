@@ -62,7 +62,7 @@ class _MessageCardTileState extends ConsumerState<MessageCardTile> {
       children: <Widget>[
         _Entete(
           icone: Icons.task_alt_rounded,
-          couleur: AppColors.primary,
+          couleur: context.couleurs.primary,
           libelle: 'Tâche',
           titre: carte.titre,
           barre: carte.supprimee || carte.terminee,
@@ -135,7 +135,7 @@ class _MessageCardTileState extends ConsumerState<MessageCardTile> {
       children: <Widget>[
         _Entete(
           icone: Icons.event_rounded,
-          couleur: AppColors.warning,
+          couleur: context.couleurs.warning,
           libelle: 'Événement',
           titre: carte.titre,
           barre: carte.supprimee,
@@ -289,14 +289,16 @@ class _Entete extends StatelessWidget {
             children: <Widget>[
               Text(
                 libelle,
-                style: AppTypography.caption.copyWith(color: couleur),
+                style: context.typo.caption.copyWith(color: couleur),
               ),
               const SizedBox(height: 2),
               EmojiText(
                 titre,
-                style: AppTypography.h3.copyWith(
+                style: context.typo.h3.copyWith(
                   decoration: barre ? TextDecoration.lineThrough : null,
-                  color: barre ? AppColors.textSecondary : AppColors.midnight,
+                  color: barre
+                      ? context.couleurs.textSecondary
+                      : context.couleurs.encre,
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -319,12 +321,12 @@ class _Ligne extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: <Widget>[
-        Icon(icone, size: 15, color: AppColors.textSecondary),
+        Icon(icone, size: 15, color: context.couleurs.textSecondary),
         AppSpacing.hGapSm,
         Expanded(
           child: EmojiText(
             texte,
-            style: AppTypography.caption,
+            style: context.typo.caption,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -344,7 +346,7 @@ class _Etat extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Text(
     texte,
-    style: AppTypography.caption.copyWith(color: AppColors.textSecondary),
+    style: context.typo.caption.copyWith(color: context.couleurs.textSecondary),
   );
 }
 
@@ -367,7 +369,7 @@ class _Titulaire extends StatelessWidget {
         Expanded(
           child: EmojiText(
             phrase,
-            style: AppTypography.body.copyWith(
+            style: context.typo.body.copyWith(
               fontWeight: AppTypography.semiBold,
             ),
             maxLines: 2,

@@ -366,23 +366,84 @@ features ──> data ──> (rien)
 Toutes les valeurs visuelles viennent de `core/theme`. **Aucun `Color(0x…)`,
 aucune taille de police et aucun rayon littéral ne doit apparaître ailleurs.**
 
-### Couleurs — `AppColors`
+### Couleurs — `JelvoColors`, et `context.couleurs`
 
-| Jeton           | Valeur    | Usage                                  |
-| --------------- | --------- | -------------------------------------- |
-| `primary`       | `#5B2EFF` | actions principales, sélection         |
-| `primaryDark`   | `#3D1DB8` | états pressés, dégradés                |
-| `midnight`      | `#12122B` | texte principal, titres                |
-| `textSecondary` | `#6B6B85` | texte secondaire, légendes             |
-| `background`    | `#F7F7FB` | fond d'écran                           |
-| `surface`       | `#FFFFFF` | cartes, feuilles, barres               |
-| `success`       | `#22A06B` | confirmé, terminé                      |
-| `warning`       | `#F5A623` | en attente, échéance proche            |
-| `danger`        | `#E5484D` | conflit, action destructive            |
-| `border`        | `#ECECF4` | traits, contours de champs             |
+| Jeton           | Clair     | Sombre    | Usage                          |
+| --------------- | --------- | --------- | ------------------------------ |
+| `primary`       | `#5B2EFF` | `#9E86FF` | actions principales, sélection |
+| `primaryDark`   | `#3D1DB8` | `#7A5FE8` | états pressés, dégradés        |
+| `primaryInk`    | `#4A22D6` | `#9E86FF` | le violet **en texte**         |
+| `encre`         | `#12122B` | `#ECECF5` | texte principal, titres        |
+| `textSecondary` | `#6B6B85` | `#A6A6C4` | texte secondaire, légendes     |
+| `background`    | `#F7F7FB` | `#0E0E1A` | fond d'écran                   |
+| `surface`       | `#FFFFFF` | `#1B1B30` | cartes, feuilles, barres       |
+| `success`       | `#22A06B` | `#3ECF8E` | confirmé, terminé              |
+| `warning`       | `#F5A623` | `#F2B544` | en attente, échéance proche    |
+| `danger`        | `#E5484D` | `#F87171` | conflit, action destructive    |
+| `border`        | `#ECECF4` | `#33334F` | traits, contours de champs     |
+| `onAccent`      | `#FFFFFF` | `#12122B` | encre **sur un aplat saturé**  |
 
-Les variantes `…Soft` (`primarySoft`, `successSoft`, …) servent aux fonds
-teintés des pastilles et vignettes.
+Les variantes `…Soft` servent aux fonds teintés ; les variantes `…Ink` sont la
+même teinte **en texte**. `scrim`, `shadow`, les quatre jetons de bulle et les
+deux listes d'accents complètent le jeu — voir `core/theme/jelvo_colors.dart`.
+
+#### `midnight` s'appelle `encre`, et ce n'est pas un caprice
+
+En sombre, ce jeton vaut `#ECECF5` — presque blanc. Le garder « minuit »
+aurait fait mentir le nom sur la moitié des écrans, et un jeton qui ment est
+pire qu'un jeton mal nommé.
+
+#### Une `ThemeExtension`, et non des constantes
+
+Les jetons étaient des `static const`. Une constante ne change pas de valeur à
+l'exécution — et une **variable globale** ne conviendrait pas non plus, pour
+une raison qui n'est pas évidente : Flutter ne reconstruit que ce qui dépend
+d'un `InheritedWidget` modifié, et un widget qui lit une globale n'en dépend
+d'aucun. Basculer le réglage laisserait la moitié de l'écran dans l'ancienne
+palette jusqu'à ce qu'autre chose la fasse reconstruire.
+
+Passer par le thème résout les deux à la fois : la valeur change, et
+`Theme.of` crée la dépendance qui déclenche la reconstruction.
+
+**Tout se lit donc au contexte** : `context.couleurs.surface`,
+`context.typo.body`, `context.ombres.card`. Un modèle ou un provider qui
+devrait choisir une couleur ne le peut plus — il n'a pas de `BuildContext` —,
+et c'est voulu : il dit **ce que la chose est**, le widget en tire la teinte.
+`AgendaEntry` porte un `AgendaAccent` et non une `Color`, `StatusTone` rend
+`color(c)` et `ink(c)`, `GroupAccent` et `SpeakerAccent` rendent leur rang.
+
+**Un thème absent ne fait pas planter** : `context.couleurs` retombe sur la
+palette claire. C'est pour le widget isolé d'un test, pas une invitation à
+s'en passer.
+
+#### Ce qui ne suit **pas** le thème, et pourquoi
+
+| Élément | Ce qu'il fait | La raison |
+| --- | --- | --- |
+| voile d'un bandeau photo | reste **noir** | il est posé sur une photographie, qui n'a pas d'apparence ; bâti sur `encre`, il éclaircirait le bas de l'image en sombre et effacerait le titre blanc qu'il sert à détacher |
+| pastilles du bandeau de groupe | restent **blanches**, encre sombre | elles doivent trancher sur un ciel d'été comme sur une photo de nuit ; suivre le thème les aurait rendues sombres — invisibles sur une photo sombre, le défaut même qu'elles existent pour éviter |
+| bulle de l'utilisateur | reste un **violet profond**, texte blanc | l'encre ne s'inverse pas : c'est ce qui permet à l'heure et à la coche de lecture de garder leur blanc translucide, et c'est la seule pièce qui dit « c'est moi qui parle » |
+| initiale d'un avatar, icône d'un groupe | restent **blanches** | elles sont posées sur un accent, borné pour que le blanc s'y lise dans les deux thèmes |
+
+#### Les teintes fonctionnelles étaient déjà illisibles en texte
+
+Mesuré, pas supposé : `warning` sur `warningSoft` donnait **1,81:1**,
+`success` **2,96:1**, `danger` **3,35:1** — sous les 4,5:1 d'un texte courant,
+et **avant** ce chantier. D'où les variantes `…Ink`, assombries en clair et
+confondues avec la teinte vive en sombre, où c'est le fond qui est foncé.
+`StatusDot` rempli porte désormais l'encre, jamais la teinte vive.
+
+Un seul accent **clair** a changé de valeur : l'ambre des groupes, de
+`#F5A623` à `#C27D0C`. Une icône blanche dessus ne donnait que 2,03:1, dans
+les deux thèmes.
+
+#### En sombre, l'ombre ne sépare plus rien
+
+Une ombre noire à 4 % sur un fond presque noir est invisible. C'est l'écart de
+clarté entre `surface` et `background` qui porte seul la séparation — et c'est
+pour cela que la carte sombre est plus **claire** que son fond. Les opacités
+d'`AppShadows` sont doublées en sombre, ce qui creuse le pourtour sans
+dessiner de halo ; seule l'ombre `accent`, colorée, garde tout son sens.
 
 ### Typographie — `AppTypography` (police **Inter** via `google_fonts`)
 
@@ -691,6 +752,62 @@ halo violet du bouton central. Ne pas utiliser l'`elevation` Material.
 prennent des `String`, `IconData`, `Color` et `AvatarData`, jamais un `Group` ou
 un `CalendarEvent`. La conversion domaine → composant se fait dans les widgets
 de feature (voir `avatarsForContactIdsProvider`).
+
+---
+
+## Le thème sombre
+
+Trois choix — **Clair**, **Sombre**, **Automatique** —, une ligne « Apparence »
+dans les paramètres, et une feuille qui applique le choix **sur place** : une
+apparence se juge en la voyant, un bouton « Enregistrer » obligerait à valider
+à l'aveugle.
+
+### Le réglage vit sur l'appareil, pas sur le compte
+
+`profiles` pourrait le porter. Il ne le porte pas, parce que l'apparence dépend
+de l'écran qu'on a sous les yeux : sombre le soir sur le téléphone, clair sur
+l'ordinateur du bureau. Un réglage de compte imposerait le même aux deux.
+
+`ThemeStorage` reprend donc la brique de `SessionPersistence` et
+d'`OnboardingStorage` — un `LocalStorage` de gotrue détourné, sous la clé
+`jelvo-apparence`. Ce qui est écrit est un **mot** (`clair`, `sombre`,
+`systeme`) et non un rang : un index se décalerait le jour où Flutter
+ajouterait une valeur à `ThemeMode`, et l'appareil se réveillerait dans une
+apparence qu'il n'a jamais choisie.
+
+### Lu avant `runApp`, sinon ça clignote
+
+`main()` charge le réglage **avant** `runApp`, comme la session et le drapeau
+de bienvenue. Sans cela, l'application s'ouvrirait en clair puis basculerait à
+la première image — et un clignotement ne se rattrape pas après coup.
+
+### La palette
+
+Elle vit dans `core/theme/jelvo_colors.dart`, en deux exemplaires bâtis par la
+**même** fonction de thème. Le détail des jetons, la raison de la
+`ThemeExtension`, ce qui ne suit pas le thème et ce qui a changé côté clair
+sont documentés sous « Couleurs » du design system.
+
+### Ce qui a demandé plus qu'un changement de couleur
+
+| Endroit | Ce qu'il a fallu |
+| --- | --- |
+| `AgendaEntry` | il portait une `Color` choisie **dans un provider**, sans contexte : il porte un `AgendaAccent` et le widget en tire la teinte |
+| `StatusTone`, `GroupAccent`, `SpeakerAccent`, `CreationKind`, `NotificationType`, `CategoryState`, `DayMarker` | sept énumérations portaient des couleurs en `const` ; elles rendent désormais un rang ou prennent la palette |
+| bulles de conversation | quatre jetons à elles — `primary` devenant clair en sombre, du texte blanc dessus serait tombé à 2,9:1 |
+| bandeaux photo | voile noir fixe et pastilles blanches fixes : une photographie n'a pas d'apparence |
+| `PrimaryButton`, `NavBadge`, `TaskRow`, la barre de navigation… | le blanc posé sur un aplat de marque devient `onAccent` : en sombre l'aplat est clair |
+| `AppCard`, `EventCard`, `GroupCard`, `NavBadge` | leurs valeurs par défaut lisaient la palette dans la liste de paramètres, où le contexte n'existe pas : elles passent à `null`, résolu au `build` |
+
+### Les images
+
+| Image | Sur fond sombre |
+| --- | --- |
+| logo (`web/icons/Icon-192.png`) | **opaque**, carré violet à monogramme blanc : il porte son propre fond et tient des deux côtés |
+| `assets/illustrations/bienvenue.png` | fond transparent, sujet coloré et de luminance moyenne (112/255) : il tient. Deux pertes mineures — les cheveux et les contours très sombres se fondent au bord de la silhouette, et les confettis bleu foncé disparaissent |
+| avatars prédéfinis | 22 % de transparence au pourtour, mais ils sont toujours posés **sur un disque d'accent** : le fond de l'écran ne les touche pas |
+| photos de couverture | fournies par l'utilisateur : le voile noir et les pastilles blanches gardent le titre lisible, mais une photo déjà sombre donne une carte moins contrastée qu'en clair |
+
 
 ---
 
@@ -3576,7 +3693,7 @@ Téléphone et Localisation écartées.
 | Notifications (4 lignes) | **existaient**, rangées autrement | — |
 | Sécurité et confidentialité | écartée | recouvre ce que les autres lignes font déjà ; le reste — blocage, visibilité — n'existe pas en base |
 | Sessions actives | écartée | **impossible côté client** : gotrue ne liste les sessions qu'avec la clé `service_role`. Il faudrait une fonction Edge |
-| Apparence (thème sombre) | écartée | une palette entière à définir et chaque écran à revoir. `themeMode` reste figé sur `light` |
+| Apparence (thème sombre) | **ajoutée** | trois choix — Clair, Sombre, Automatique — mémorisés sur l'appareil ; voir « Le thème sombre » |
 | Langue | écartée | une seule locale, et la migration vers l'ARB est partielle. Un sélecteur sans second choix ne réglerait rien |
 | Fuseau horaire | écartée | `profiles.timezone` **existe** et vaut `Europe/Paris`, mais **rien ne le lit** : les rappels sont rendus en Europe/Paris en dur, côté SQL. L'afficher laisserait croire à un réglage sans effet |
 | Aide et support | écartée | il n'y a ni adresse de support ni page d'aide à ouvrir |
@@ -3627,6 +3744,10 @@ sécurité.
 
 - **Langue** : identifiants, commentaires et documentation en français ; le
   vocabulaire Flutter reste en anglais (`build`, `onTap`, `copyWith`).
+- **Couleurs, typographie, ombres** : `context.couleurs.x`, `context.typo.x`,
+  `context.ombres.x`. Aucune valeur statique, aucun `Color(0x…)` hors de
+  `core/theme/`. Un modèle ou un provider ne choisit **jamais** une couleur :
+  il dit ce que la chose est, le widget en tire la teinte.
 - **Dates** : passer par `AppDates` (locale `fr_FR`). `initializeDateFormatting`
   est appelé dans `main()` — un test qui formate une date doit faire de même.
 - **Heure courante** : ne jamais appeler `DateTime.now()` dans un provider, un
@@ -3823,6 +3944,18 @@ sécurité.
   ordinaire, un cœur qui reçoit bien la police en **principale** avec son
   repli vidé, un emoji seul qui garde un `Text`, et le champ de saisie qui
   colore ce qu'on tape.
+- `test/dark_theme_test.dart` couvre le thème sombre. Les contrastes sont
+  **recalculés** dans le test plutôt que recopiés en commentaire : un chiffre
+  écrit à la main ne proteste jamais quand il devient faux. Sont éprouvés le
+  texte à 4,5:1 sur les deux fonds, les teintes fonctionnelles sur leur fond
+  teinté — des deux côtés, y compris en clair où elles échouaient —, l'encre
+  des aplats saturés, les huit teintes d'expéditeur, les six accents de groupe
+  sous une icône blanche, et la bulle de l'utilisateur qui garde son encre
+  blanche. Côté réglage : « Apparence » annonce le choix courant, la feuille
+  propose les trois et dit qu'ils ne valent que sur cet appareil, choisir
+  « Sombre » bascule l'écran **et** s'enregistre, et une apparence déjà
+  enregistrée s'applique dès le premier rendu. Enfin le contrôle négatif : un
+  widget sans notre thème se rend en clair plutôt que de lever.
 - `test/app_version_test.dart` confronte `AppConfig.version` au `pubspec.yaml`,
   sans widget : la version est recopiée à la main, et une version fausse est
   pire qu'une version absente.
@@ -4057,9 +4190,11 @@ sûr d'éprouver son caractère contextuel.
   test de fumée prouve que la file se remplit à la bonne heure et une seule
   fois ; que le navigateur affiche bien la notification dépend de la
   planification, des clés VAPID et d'un vrai appareil.
-- Le mode sombre n'est pas au périmètre : `themeMode` est figé sur
-  `ThemeMode.light`. L'écran Paramètres ne propose donc **aucune** ligne
-  « Apparence » — voir l'inventaire de sa section.
+- **Le thème sombre est livré**, avec son réglage. Deux réserves : les
+  captures ont été relues écran par écran mais **sur un rendu de test**, pas
+  sur un vrai appareil ; et une photo de couverture très sombre, fournie par
+  l'utilisateur, reste sombre — le voile noir et les pastilles blanches
+  gardent le titre lisible, mais la carte a moins de relief qu'en clair.
 - **`profiles.timezone` existe et n'est lu par personne.** Les rappels sont
   rendus en Europe/Paris en dur, côté SQL. Offrir un sélecteur de fuseau
   demanderait de le lire dans `empiler_rappels` **et** de formater les dates

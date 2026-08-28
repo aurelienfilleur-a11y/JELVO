@@ -32,7 +32,7 @@ class _AddContactScreenState extends ConsumerState<AddContactScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.couleurs.background,
       appBar: AppBar(
         title: const Text('Ajouter un contact'),
         leading: IconButton(
@@ -89,7 +89,7 @@ class _AddContactScreenState extends ConsumerState<AddContactScreen> {
               AppSpacing.gapSm,
               Text(
                 QrScanSupport.unavailableMessage,
-                style: AppTypography.caption,
+                style: context.typo.caption,
               ),
             ],
 
@@ -98,13 +98,13 @@ class _AddContactScreenState extends ConsumerState<AddContactScreen> {
               Container(
                 padding: const EdgeInsets.all(AppSpacing.md),
                 decoration: BoxDecoration(
-                  color: AppColors.primarySoft,
+                  color: context.couleurs.primarySoft,
                   borderRadius: AppRadii.fieldRadius,
                 ),
                 child: Text(
                   _message!,
-                  style: AppTypography.caption.copyWith(
-                    color: AppColors.primary,
+                  style: context.typo.caption.copyWith(
+                    color: context.couleurs.primary,
                   ),
                 ),
               ),
@@ -204,7 +204,7 @@ class _Results extends ConsumerWidget {
                         children: <Widget>[
                           Text(
                             profile.fullName,
-                            style: AppTypography.body.copyWith(
+                            style: context.typo.body.copyWith(
                               fontWeight: AppTypography.semiBold,
                             ),
                             maxLines: 1,
@@ -212,7 +212,7 @@ class _Results extends ConsumerWidget {
                           ),
                           Text(
                             profile.pseudoHandle,
-                            style: AppTypography.caption,
+                            style: context.typo.caption,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -220,7 +220,7 @@ class _Results extends ConsumerWidget {
                       ),
                     ),
                     if (knownIds.contains(profile.id))
-                      Text('Déjà dans le carnet', style: AppTypography.caption)
+                      Text('Déjà dans le carnet', style: context.typo.caption)
                     else
                       TextButton(
                         onPressed: () => onPick(profile),

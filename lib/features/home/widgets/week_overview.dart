@@ -85,8 +85,8 @@ class _Jour extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Color couleurTexte = estAujourdHui
-        ? Colors.white
-        : AppColors.midnight;
+        ? context.couleurs.onAccent
+        : context.couleurs.encre;
 
     return Semantics(
       button: true,
@@ -101,8 +101,8 @@ class _Jour extends StatelessWidget {
             children: <Widget>[
               Text(
                 AppDates.weekdayInitial(summary.day),
-                style: AppTypography.caption.copyWith(
-                  color: AppColors.textSecondary,
+                style: context.typo.caption.copyWith(
+                  color: context.couleurs.textSecondary,
                   fontWeight: AppTypography.medium,
                 ),
               ),
@@ -112,12 +112,14 @@ class _Jour extends StatelessWidget {
                 height: 32,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: estAujourdHui ? AppColors.primary : Colors.transparent,
+                  color: estAujourdHui
+                      ? context.couleurs.primary
+                      : Colors.transparent,
                   shape: BoxShape.circle,
                 ),
                 child: Text(
                   '${summary.day.day}',
-                  style: AppTypography.body.copyWith(
+                  style: context.typo.body.copyWith(
                     color: couleurTexte,
                     fontWeight: estAujourdHui
                         ? AppTypography.semiBold
@@ -135,11 +137,11 @@ class _Jour extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: <Widget>[
                     if (summary.eventCount > 0)
-                      const _Marqueur(couleur: AppColors.primary),
+                      _Marqueur(couleur: context.couleurs.primary),
                     if (summary.eventCount > 0 && summary.taskCount > 0)
                       const SizedBox(width: 3),
                     if (summary.taskCount > 0)
-                      const _Marqueur(couleur: AppColors.success),
+                      _Marqueur(couleur: context.couleurs.success),
                   ],
                 ),
               ),

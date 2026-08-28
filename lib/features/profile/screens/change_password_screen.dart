@@ -42,7 +42,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.couleurs.background,
       appBar: AppBar(
         title: const Text('Changer de mot de passe'),
         leading: IconButton(
@@ -64,13 +64,13 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
               Container(
                 padding: const EdgeInsets.all(AppSpacing.md),
                 decoration: BoxDecoration(
-                  color: AppColors.dangerSoft,
+                  color: context.couleurs.dangerSoft,
                   borderRadius: AppRadii.fieldRadius,
                 ),
                 child: Text(
                   _erreur!,
-                  style: AppTypography.caption.copyWith(
-                    color: AppColors.danger,
+                  style: context.typo.caption.copyWith(
+                    color: context.couleurs.danger,
                   ),
                 ),
               ),

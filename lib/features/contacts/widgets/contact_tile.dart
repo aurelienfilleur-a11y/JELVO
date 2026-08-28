@@ -56,7 +56,7 @@ class ContactTile extends StatelessWidget {
               children: <Widget>[
                 EmojiText(
                   contact.fullName,
-                  style: AppTypography.body.copyWith(
+                  style: context.typo.body.copyWith(
                     fontWeight: AppTypography.semiBold,
                   ),
                   maxLines: 1,
@@ -66,7 +66,7 @@ class ContactTile extends StatelessWidget {
                   const SizedBox(height: 2),
                   EmojiText(
                     contact.pseudoHandle,
-                    style: AppTypography.caption,
+                    style: context.typo.caption,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -90,15 +90,15 @@ class ContactTile extends StatelessWidget {
                     : Icons.star_border_rounded,
                 size: 22,
                 color: contact.isFavorite
-                    ? AppColors.warning
-                    : AppColors.textSecondary,
+                    ? context.couleurs.warning
+                    : context.couleurs.textSecondary,
               ),
             ),
             if (showChevron)
-              const Icon(
+              Icon(
                 Icons.chevron_right_rounded,
                 size: 20,
-                color: AppColors.textSecondary,
+                color: context.couleurs.textSecondary,
               ),
           ],
         ],
@@ -125,7 +125,7 @@ class _PastilleGroupes extends StatelessWidget {
         vertical: AppSpacing.xs,
       ),
       decoration: BoxDecoration(
-        color: AppColors.primarySoft,
+        color: context.couleurs.primarySoft,
         borderRadius: AppRadii.pillRadius,
       ),
       child: Column(
@@ -133,15 +133,15 @@ class _PastilleGroupes extends StatelessWidget {
         children: <Widget>[
           Text(
             '${contact.sharedGroups}',
-            style: AppTypography.caption.copyWith(
-              color: AppColors.primary,
+            style: context.typo.caption.copyWith(
+              color: context.couleurs.primary,
               fontWeight: AppTypography.semiBold,
             ),
           ),
           Text(
             contact.sharedGroups > 1 ? 'groupes' : 'groupe',
-            style: AppTypography.caption.copyWith(
-              color: AppColors.primary,
+            style: context.typo.caption.copyWith(
+              color: context.couleurs.primary,
               fontSize: 10,
             ),
           ),

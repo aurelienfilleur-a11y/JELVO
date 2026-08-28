@@ -68,10 +68,11 @@ class _GroupFormScreenState extends ConsumerState<GroupFormScreen> {
         : null;
     if (existing != null) _syncControllers(existing);
 
-    final Color accent = existing?.accent.color ?? AppColors.primary;
+    final Color accent =
+        existing?.accent.color(context.couleurs) ?? context.couleurs.primary;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.couleurs.background,
       appBar: AppBar(
         title: Text(_isEditing ? 'Modifier le groupe' : 'Nouveau groupe'),
         leading: IconButton(
@@ -99,7 +100,7 @@ class _GroupFormScreenState extends ConsumerState<GroupFormScreen> {
             if (!_isEditing) ...<Widget>[
               Text(
                 'Créez votre groupe et invitez les premiers membres.',
-                style: AppTypography.bodyMuted,
+                style: context.typo.bodyMuted,
                 textAlign: TextAlign.center,
               ),
               AppSpacing.gapLg,
@@ -107,9 +108,9 @@ class _GroupFormScreenState extends ConsumerState<GroupFormScreen> {
 
             Text(
               'Photo du groupe',
-              style: AppTypography.caption.copyWith(
+              style: context.typo.caption.copyWith(
                 fontWeight: AppTypography.medium,
-                color: AppColors.midnight,
+                color: context.couleurs.encre,
               ),
             ),
             AppSpacing.gapMd,
@@ -135,9 +136,9 @@ class _GroupFormScreenState extends ConsumerState<GroupFormScreen> {
               errorText: _nameError,
               maxLength: _nameMaxLength,
               textCapitalization: TextCapitalization.sentences,
-              suffixIcon: const Icon(
+              suffixIcon: Icon(
                 Icons.groups_rounded,
-                color: AppColors.primary,
+                color: context.couleurs.primary,
               ),
               textInputAction: TextInputAction.next,
               onChanged: (_) => _clearErrors(),
@@ -335,7 +336,7 @@ class _ConfidentialiteCard extends StatelessWidget {
               children: <Widget>[
                 Text(
                   'Groupe privé',
-                  style: AppTypography.body.copyWith(
+                  style: context.typo.body.copyWith(
                     fontWeight: AppTypography.medium,
                   ),
                 ),
@@ -343,7 +344,7 @@ class _ConfidentialiteCard extends StatelessWidget {
                 Text(
                   'Seuls les membres invités pourront le rejoindre et voir '
                   'son contenu. Tous les groupes Jelvo le sont.',
-                  style: AppTypography.caption,
+                  style: context.typo.caption,
                 ),
               ],
             ),
@@ -364,21 +365,23 @@ class _ErrorBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.dangerSoft,
+        color: context.couleurs.dangerSoft,
         borderRadius: AppRadii.fieldRadius,
       ),
       child: Row(
         children: <Widget>[
-          const Icon(
+          Icon(
             Icons.error_outline_rounded,
             size: 20,
-            color: AppColors.danger,
+            color: context.couleurs.danger,
           ),
           AppSpacing.hGapMd,
           Expanded(
             child: Text(
               message,
-              style: AppTypography.caption.copyWith(color: AppColors.danger),
+              style: context.typo.caption.copyWith(
+                color: context.couleurs.danger,
+              ),
             ),
           ),
         ],

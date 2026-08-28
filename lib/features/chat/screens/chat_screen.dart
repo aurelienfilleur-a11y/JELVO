@@ -107,7 +107,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.couleurs.background,
       appBar: ChatHeader(
         group: groupe,
         onBack: () => Navigator.of(context).maybePop(),
@@ -410,16 +410,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 ],
               ),
             ),
-            const Divider(height: 1, color: AppColors.border),
+            Divider(height: 1, color: context.couleurs.border),
             if (message.senderId == moi)
               ListTile(
-                leading: const Icon(
+                leading: Icon(
                   Icons.delete_outline_rounded,
-                  color: AppColors.danger,
+                  color: context.couleurs.danger,
                 ),
                 title: Text(
                   'Supprimer le message',
-                  style: AppTypography.body.copyWith(color: AppColors.danger),
+                  style: context.typo.body.copyWith(
+                    color: context.couleurs.danger,
+                  ),
                 ),
                 onTap: () {
                   Navigator.of(sheetContext).pop();
@@ -427,10 +429,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 },
               )
             else
-              const ListTile(
+              ListTile(
                 leading: Icon(
                   Icons.lock_outline_rounded,
-                  color: AppColors.textSecondary,
+                  color: context.couleurs.textSecondary,
                 ),
                 title: Text('Vous ne pouvez supprimer que vos messages'),
               ),

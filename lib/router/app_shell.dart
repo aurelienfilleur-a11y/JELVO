@@ -37,7 +37,7 @@ class AppShell extends ConsumerWidget {
     );
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.couleurs.background,
       body: navigationShell,
       bottomNavigationBar: AppBottomNav(
         currentIndex: navigationShell.currentIndex,

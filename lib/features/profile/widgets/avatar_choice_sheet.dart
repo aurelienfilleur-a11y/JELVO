@@ -51,19 +51,21 @@ class _AvatarChoiceSheetState extends ConsumerState<AvatarChoiceSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text('Photo de profil', style: AppTypography.h2),
+          Text('Photo de profil', style: context.typo.h2),
 
           if (_erreur != null) ...<Widget>[
             AppSpacing.gapLg,
             Container(
               padding: const EdgeInsets.all(AppSpacing.md),
               decoration: BoxDecoration(
-                color: AppColors.dangerSoft,
+                color: context.couleurs.dangerSoft,
                 borderRadius: AppRadii.fieldRadius,
               ),
               child: Text(
                 _erreur!,
-                style: AppTypography.caption.copyWith(color: AppColors.danger),
+                style: context.typo.caption.copyWith(
+                  color: context.couleurs.danger,
+                ),
               ),
             ),
           ],
@@ -166,7 +168,9 @@ class _Choix extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color couleur = destructive ? AppColors.danger : AppColors.primary;
+    final Color couleur = destructive
+        ? context.couleurs.danger
+        : context.couleurs.primary;
     return InkWell(
       onTap: onTap,
       borderRadius: AppRadii.fieldRadius,
@@ -190,15 +194,15 @@ class _Choix extends StatelessWidget {
                 children: <Widget>[
                   Text(
                     label,
-                    style: AppTypography.body.copyWith(
+                    style: context.typo.body.copyWith(
                       fontWeight: AppTypography.semiBold,
-                      color: destructive ? AppColors.danger : null,
+                      color: destructive ? context.couleurs.danger : null,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     detail,
-                    style: AppTypography.caption,
+                    style: context.typo.caption,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),

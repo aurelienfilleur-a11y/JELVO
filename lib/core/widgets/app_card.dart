@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_colors.dart';
+import '../theme/jelvo_colors.dart';
 import '../theme/app_radii.dart';
 import '../theme/app_shadows.dart';
 import '../theme/app_spacing.dart';
@@ -16,18 +16,21 @@ class AppCard extends StatelessWidget {
     required this.child,
     this.onTap,
     this.padding = const EdgeInsets.all(AppSpacing.lg),
-    this.color = AppColors.surface,
-    this.borderColor = AppColors.border,
-    this.shadows = AppShadows.card,
+    // `null` veut dire « celle du thème », résolue au `build` : une valeur
+    // par défaut ne peut pas lire le contexte. Une carte qui ne veut pas de
+    // contour passe `Colors.transparent`, pas `null`.
+    this.color,
+    this.borderColor,
+    this.shadows,
     this.clipContent = false,
   });
 
   final Widget child;
   final VoidCallback? onTap;
   final EdgeInsetsGeometry padding;
-  final Color color;
+  final Color? color;
   final Color? borderColor;
-  final List<BoxShadow> shadows;
+  final List<BoxShadow>? shadows;
 
   /// Rogne le contenu au rayon de la carte.
   ///
@@ -41,18 +44,18 @@ class AppCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: color,
+        color: color ?? context.couleurs.surface,
         borderRadius: AppRadii.cardRadius,
-        border: borderColor == null ? null : Border.all(color: borderColor!),
-        boxShadow: shadows,
+        border: Border.all(color: borderColor ?? context.couleurs.border),
+        boxShadow: shadows ?? context.ombres.card,
       ),
       child: Material(
         type: MaterialType.transparency,
         child: InkWell(
           onTap: onTap,
           borderRadius: AppRadii.cardRadius,
-          splashColor: AppColors.primarySoft,
-          highlightColor: AppColors.primarySoft,
+          splashColor: context.couleurs.primarySoft,
+          highlightColor: context.couleurs.primarySoft,
           child: clipContent
               ? ClipRRect(
                   borderRadius: AppRadii.cardRadius,

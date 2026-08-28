@@ -73,10 +73,10 @@ class _Bouton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Color couleur = switch (reponse.tone) {
-      StatusTone.success => AppColors.success,
-      StatusTone.warning => AppColors.warning,
-      StatusTone.danger => AppColors.danger,
-      _ => AppColors.textSecondary,
+      StatusTone.success => context.couleurs.success,
+      StatusTone.warning => context.couleurs.warning,
+      StatusTone.danger => context.couleurs.danger,
+      _ => context.couleurs.textSecondary,
     };
 
     return Semantics(
@@ -94,16 +94,18 @@ class _Bouton extends StatelessWidget {
             // voir d'un coup d'œil ce qu'on a déjà répondu.
             color: choisie ? couleur : Colors.transparent,
             borderRadius: AppRadii.buttonRadius,
-            border: Border.all(color: choisie ? couleur : AppColors.border),
+            border: Border.all(
+              color: choisie ? couleur : context.couleurs.border,
+            ),
           ),
           child: Text(
             reponse.label,
             textAlign: TextAlign.center,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: (compact ? AppTypography.caption : AppTypography.body)
+            style: (compact ? context.typo.caption : context.typo.body)
                 .copyWith(
-                  color: choisie ? Colors.white : couleur,
+                  color: choisie ? context.couleurs.onAccent : couleur,
                   fontWeight: AppTypography.semiBold,
                 ),
           ),

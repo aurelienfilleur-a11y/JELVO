@@ -9,6 +9,7 @@ import 'l10n/app_localizations.dart';
 import 'data/app_config.dart';
 import 'data/data_providers.dart';
 import 'data/onboarding_storage.dart';
+import 'data/theme_storage.dart';
 import 'data/session_persistence.dart';
 import 'data/diagnostic_mode.dart';
 import 'features/notifications/providers/push_providers.dart';
@@ -44,6 +45,13 @@ Future<void> main() async {
   final OnboardingStorage accueil = OnboardingStorage();
   await accueil.initialize();
 
+  // L'apparence est lue avant `runApp` pour la même raison : sans cela,
+  // l'application s'ouvrirait en clair puis basculerait en sombre à la
+  // première image. Le clignotement ne se rattrape pas après coup — il faut
+  // connaître le réglage avant le premier rendu.
+  final ThemeStorage apparence = ThemeStorage();
+  await apparence.initialize();
+
   runApp(
     ProviderScope(
       // `Override` n'est pas exporté par Riverpod 3 : inférence, comme dans
@@ -51,6 +59,7 @@ Future<void> main() async {
       overrides: [
         sessionPersistenceProvider.overrideWithValue(persistance),
         onboardingStorageProvider.overrideWithValue(accueil),
+        themeStorageProvider.overrideWithValue(apparence),
       ],
       child: const JelvoApp(),
     ),
@@ -72,8 +81,10 @@ class JelvoApp extends ConsumerWidget {
       onGenerateTitle: (BuildContext context) => AppTexts.of(context).appTitle,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
-      // L'application ne propose qu'un thème clair pour l'instant.
-      themeMode: ThemeMode.light,
+      darkTheme: AppTheme.dark,
+      // Clair, sombre, ou celui du téléphone. Le réglage vit sur l'appareil
+      // — voir `ThemeStorage` — et il est déjà chargé quand on arrive ici.
+      themeMode: ref.watch(themeModeProvider),
       // Une seule langue pour l'instant. Les délégués de Material et de
       // Cupertino sont néanmoins nécessaires : sans eux, les sélecteurs de
       // date et d'heure restent en anglais — quand ils ne lèvent pas.
@@ -101,7 +112,7 @@ class JelvoApp extends ConsumerWidget {
         return Banner(
           message: 'DIAGNOSTIC',
           location: BannerLocation.topStart,
-          color: AppColors.danger,
+          color: context.couleurs.danger,
           child: contenu,
         );
       },

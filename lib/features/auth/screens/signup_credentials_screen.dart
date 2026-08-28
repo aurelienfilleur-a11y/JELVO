@@ -103,7 +103,7 @@ class _SignUpCredentialsScreenState
           'En créant un compte, vous acceptez de recevoir un e-mail de '
           'vérification.',
           textAlign: TextAlign.center,
-          style: AppTypography.caption,
+          style: context.typo.caption,
         ),
       ],
     );

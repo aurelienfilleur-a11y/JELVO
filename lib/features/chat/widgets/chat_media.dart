@@ -36,10 +36,10 @@ class ChatMedia extends ConsumerWidget {
           height: hauteur,
           child: url.when(
             loading: () => const _Cadre(child: CircularProgressIndicator()),
-            error: (Object erreur, _) => const _Cadre(
+            error: (Object erreur, _) => _Cadre(
               child: Icon(
                 Icons.broken_image_outlined,
-                color: AppColors.textSecondary,
+                color: context.couleurs.textSecondary,
               ),
             ),
             data: (String lien) => message.mediaKind == MediaKind.video
@@ -60,7 +60,7 @@ class _Cadre extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: AppColors.background,
+      color: context.couleurs.background,
       alignment: Alignment.center,
       child: SizedBox(width: 24, height: 24, child: child),
     );
@@ -87,10 +87,10 @@ class _Photo extends StatelessWidget {
                 progres == null
                 ? enfant
                 : const _Cadre(child: CircularProgressIndicator()),
-        errorBuilder: (_, _, _) => const _Cadre(
+        errorBuilder: (_, _, _) => _Cadre(
           child: Icon(
             Icons.broken_image_outlined,
-            color: AppColors.textSecondary,
+            color: context.couleurs.textSecondary,
           ),
         ),
       ),
@@ -112,7 +112,7 @@ class _Video extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: AppColors.midnight,
+      color: context.couleurs.encre,
       alignment: Alignment.center,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -125,7 +125,7 @@ class _Video extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             'Vidéo',
-            style: AppTypography.caption.copyWith(color: Colors.white),
+            style: context.typo.caption.copyWith(color: Colors.white),
           ),
         ],
       ),
@@ -138,7 +138,7 @@ void _ouvrirEnGrand(BuildContext context, String url) {
   Navigator.of(context).push(
     PageRouteBuilder<void>(
       opaque: false,
-      barrierColor: Colors.black87,
+      barrierColor: context.couleurs.scrim,
       pageBuilder: (BuildContext pageContext, _, _) => GestureDetector(
         onTap: () => Navigator.of(pageContext).maybePop(),
         child: Stack(

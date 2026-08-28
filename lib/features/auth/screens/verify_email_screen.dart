@@ -107,7 +107,7 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
                   _resending
                       ? 'Envoi en cours…'
                       : 'Nouveau code possible dans $_secondsLeft s',
-                  style: AppTypography.caption,
+                  style: context.typo.caption,
                 ),
         ),
       ],
@@ -195,21 +195,23 @@ class _InfoBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.successSoft,
+        color: context.couleurs.successSoft,
         borderRadius: AppRadii.fieldRadius,
       ),
       child: Row(
         children: <Widget>[
-          const Icon(
+          Icon(
             Icons.mark_email_read_outlined,
             size: 20,
-            color: AppColors.success,
+            color: context.couleurs.success,
           ),
           AppSpacing.hGapMd,
           Expanded(
             child: Text(
               message,
-              style: AppTypography.caption.copyWith(color: AppColors.success),
+              style: context.typo.caption.copyWith(
+                color: context.couleurs.success,
+              ),
             ),
           ),
         ],

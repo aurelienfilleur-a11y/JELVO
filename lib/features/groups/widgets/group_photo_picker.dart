@@ -16,7 +16,7 @@ class GroupPhotoPicker extends StatefulWidget {
     required this.onPicked,
     required this.onRemoved,
     this.imageUrl,
-    this.accentColor = AppColors.primary,
+    this.accentColor,
   });
 
   /// Photo choisie mais pas encore envoyée.
@@ -27,7 +27,9 @@ class GroupPhotoPicker extends StatefulWidget {
 
   final void Function(Uint8List bytes, String extension) onPicked;
   final VoidCallback onRemoved;
-  final Color accentColor;
+
+  /// `null` : le violet du thème, résolu au `build`.
+  final Color? accentColor;
 
   @override
   State<GroupPhotoPicker> createState() => _GroupPhotoPickerState();
@@ -59,7 +61,8 @@ class _GroupPhotoPickerState extends State<GroupPhotoPicker> {
                   height: _taille,
                   width: _taille,
                   decoration: BoxDecoration(
-                    color: widget.accentColor.withValues(alpha: 0.12),
+                    color: (widget.accentColor ?? context.couleurs.primary)
+                        .withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
                   clipBehavior: Clip.antiAlias,
@@ -75,14 +78,17 @@ class _GroupPhotoPickerState extends State<GroupPhotoPicker> {
                     width: 32,
                     height: 32,
                     decoration: BoxDecoration(
-                      color: AppColors.primary,
+                      color: context.couleurs.primary,
                       shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.surface, width: 2),
+                      border: Border.all(
+                        color: context.couleurs.surface,
+                        width: 2,
+                      ),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.add_rounded,
                       size: 18,
-                      color: Colors.white,
+                      color: context.couleurs.onAccent,
                     ),
                   ),
                 ),
@@ -102,14 +108,18 @@ class _GroupPhotoPickerState extends State<GroupPhotoPicker> {
         if (_hasImage)
           TextButton(
             onPressed: widget.onRemoved,
-            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+            style: TextButton.styleFrom(
+              foregroundColor: context.couleurs.danger,
+            ),
             child: const Text('Retirer'),
           ),
         if (_error != null) ...<Widget>[
           AppSpacing.gapXs,
           Text(
             _error!,
-            style: AppTypography.caption.copyWith(color: AppColors.danger),
+            style: context.typo.caption.copyWith(
+              color: context.couleurs.danger,
+            ),
           ),
         ],
       ],
@@ -137,8 +147,11 @@ class _GroupPhotoPickerState extends State<GroupPhotoPicker> {
     return _placeholder;
   }
 
-  Widget get _placeholder =>
-      Icon(Icons.photo_camera_outlined, size: 34, color: widget.accentColor);
+  Widget get _placeholder => Icon(
+    Icons.photo_camera_outlined,
+    size: 34,
+    color: widget.accentColor ?? context.couleurs.primary,
+  );
 
   Future<void> _pick() async {
     setState(() {

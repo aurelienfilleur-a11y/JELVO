@@ -56,7 +56,7 @@ class PeerAvailabilityList extends ConsumerWidget {
           Row(
             children: <Widget>[
               Expanded(
-                child: Text('Qui est disponible ?', style: AppTypography.h3),
+                child: Text('Qui est disponible ?', style: context.typo.h3),
               ),
               if (statuts.isLoading)
                 const SizedBox(
@@ -70,8 +70,8 @@ class PeerAvailabilityList extends ConsumerWidget {
           Text(
             'À l’heure choisie. Vous ne voyez qu’un mot, jamais leurs '
             'créneaux.',
-            style: AppTypography.caption.copyWith(
-              color: AppColors.textSecondary,
+            style: context.typo.caption.copyWith(
+              color: context.couleurs.textSecondary,
             ),
           ),
           AppSpacing.gapMd,
@@ -81,7 +81,9 @@ class PeerAvailabilityList extends ConsumerWidget {
           if (statuts.hasError)
             Text(
               'Disponibilités indisponibles pour l’instant.',
-              style: AppTypography.caption.copyWith(color: AppColors.warning),
+              style: context.typo.caption.copyWith(
+                color: context.couleurs.warning,
+              ),
             )
           else
             for (final PeerCandidate candidat in candidates)
@@ -111,7 +113,7 @@ class _Ligne extends StatelessWidget {
           Expanded(
             child: Text(
               nom,
-              style: AppTypography.body,
+              style: context.typo.body,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),

@@ -83,7 +83,7 @@ class TaskTile extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
               child: EmojiText(
                 task.title,
-                style: AppTypography.h3,
+                style: context.typo.h3,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -92,15 +92,15 @@ class TaskTile extends ConsumerWidget {
             ListTile(
               leading: Icon(
                 task.isDone ? Icons.undo_rounded : Icons.check_circle_outline,
-                color: AppColors.success,
+                color: context.couleurs.success,
               ),
               title: Text(task.isDone ? 'Rouvrir' : 'Terminée'),
               onTap: () => Navigator.of(sheetContext).pop(_ChoixCase.terminer),
             ),
             ListTile(
-              leading: const Icon(
+              leading: Icon(
                 Icons.delete_outline_rounded,
-                color: AppColors.danger,
+                color: context.couleurs.danger,
               ),
               title: const Text('Supprimer'),
               onTap: () => Navigator.of(sheetContext).pop(_ChoixCase.supprimer),
@@ -150,9 +150,18 @@ class _PastillePriorite extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (Color teinte, Color fond) = switch (priority) {
-      TaskPriority.high => (AppColors.danger, AppColors.dangerSoft),
-      TaskPriority.medium => (AppColors.textSecondary, AppColors.background),
-      TaskPriority.low => (AppColors.textSecondary, AppColors.background),
+      TaskPriority.high => (
+        context.couleurs.danger,
+        context.couleurs.dangerSoft,
+      ),
+      TaskPriority.medium => (
+        context.couleurs.textSecondary,
+        context.couleurs.background,
+      ),
+      TaskPriority.low => (
+        context.couleurs.textSecondary,
+        context.couleurs.background,
+      ),
     };
 
     return Container(
@@ -163,7 +172,7 @@ class _PastillePriorite extends StatelessWidget {
       decoration: BoxDecoration(color: fond, borderRadius: AppRadii.pillRadius),
       child: Text(
         '${priority.label} priorité',
-        style: AppTypography.caption.copyWith(
+        style: context.typo.caption.copyWith(
           color: teinte,
           fontWeight: AppTypography.medium,
         ),

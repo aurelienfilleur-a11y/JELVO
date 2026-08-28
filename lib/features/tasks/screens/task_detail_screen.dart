@@ -29,7 +29,7 @@ class TaskDetailScreen extends ConsumerWidget {
     final Task? task = ref.watch(taskByIdProvider(taskId));
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.couleurs.background,
       appBar: AppBar(
         title: const Text('Tâche'),
         leading: IconButton(
@@ -119,7 +119,7 @@ Future<bool> confirmerSuppressionDeTache(
         ),
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(true),
-          style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+          style: TextButton.styleFrom(foregroundColor: context.couleurs.danger),
           child: const Text('Supprimer'),
         ),
       ],
@@ -182,11 +182,11 @@ class _Entete extends StatelessWidget {
               Expanded(
                 child: EmojiText(
                   task.title,
-                  style: AppTypography.h2.copyWith(
+                  style: context.typo.h2.copyWith(
                     decoration: task.isDone ? TextDecoration.lineThrough : null,
                     color: task.isDone
-                        ? AppColors.textSecondary
-                        : AppColors.midnight,
+                        ? context.couleurs.textSecondary
+                        : context.couleurs.encre,
                   ),
                 ),
               ),
@@ -200,7 +200,7 @@ class _Entete extends StatelessWidget {
           ),
           if (task.notes != null && task.notes!.isNotEmpty) ...<Widget>[
             AppSpacing.gapMd,
-            EmojiText(task.notes!, style: AppTypography.bodyMuted),
+            EmojiText(task.notes!, style: context.typo.bodyMuted),
           ],
         ],
       ),
@@ -236,7 +236,7 @@ class _Caracteristiques extends StatelessWidget {
                 ? 'Aucune'
                 : '${AppDates.fullDate(task.dueDate!)} · '
                       '${AppDates.time(task.dueDate!)}',
-            tone: task.isOverdue(now) ? AppColors.danger : null,
+            tone: task.isOverdue(now) ? context.couleurs.danger : null,
           ),
           _Ligne(
             icon: Icons.flag_outlined,
@@ -292,9 +292,9 @@ class _Ligne extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
           child: Row(
             children: <Widget>[
-              Icon(icon, size: 18, color: AppColors.textSecondary),
+              Icon(icon, size: 18, color: context.couleurs.textSecondary),
               AppSpacing.hGapMd,
-              Expanded(child: Text(label, style: AppTypography.body)),
+              Expanded(child: Text(label, style: context.typo.body)),
               AppSpacing.hGapSm,
               Flexible(
                 child: Text(
@@ -302,8 +302,8 @@ class _Ligne extends StatelessWidget {
                   textAlign: TextAlign.end,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTypography.body.copyWith(
-                    color: tone ?? AppColors.primary,
+                  style: context.typo.body.copyWith(
+                    color: tone ?? context.couleurs.primary,
                     fontWeight: AppTypography.semiBold,
                   ),
                 ),
@@ -311,7 +311,7 @@ class _Ligne extends StatelessWidget {
             ],
           ),
         ),
-        if (!dernier) const Divider(height: 1, color: AppColors.border),
+        if (!dernier) Divider(height: 1, color: context.couleurs.border),
       ],
     );
   }
@@ -336,13 +336,13 @@ class _Assignes extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text('Assignée à', style: AppTypography.h3),
+          Text('Assignée à', style: context.typo.h3),
           AppSpacing.gapMd,
           if (libre)
             Text(
               'Personne pour l’instant. N’importe quel membre du groupe peut '
               's’en charger.',
-              style: AppTypography.bodyMuted,
+              style: context.typo.bodyMuted,
             )
           else
             Column(
@@ -367,7 +367,7 @@ class _Assignes extends ConsumerWidget {
                             assigne.userId == moi
                                 ? '${assigne.displayName} (vous)'
                                 : assigne.displayName,
-                            style: AppTypography.body,
+                            style: context.typo.body,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -470,11 +470,11 @@ class _ListeDeCoursesState extends ConsumerState<_ListeDeCourses> {
         children: <Widget>[
           Row(
             children: <Widget>[
-              Expanded(child: Text('Liste', style: AppTypography.h3)),
+              Expanded(child: Text('Liste', style: context.typo.h3)),
               if (liste.isNotEmpty)
                 Text(
                   '$coches sur ${liste.length}',
-                  style: AppTypography.caption,
+                  style: context.typo.caption,
                 ),
             ],
           ),
@@ -488,7 +488,7 @@ class _ListeDeCoursesState extends ConsumerState<_ListeDeCourses> {
             Text(
               'Rien à cocher. Ajoutez ce qu’il faut prendre : chacun verra ce '
               'qui reste.',
-              style: AppTypography.bodyMuted,
+              style: context.typo.bodyMuted,
             )
           else
             for (final TaskListItem article in liste)
@@ -515,7 +515,7 @@ class _ListeDeCoursesState extends ConsumerState<_ListeDeCourses> {
                       )
                     : const Icon(Icons.add_rounded),
                 tooltip: 'Ajouter à la liste',
-                color: AppColors.primary,
+                color: context.couleurs.primary,
                 onPressed: _envoi ? null : _ajouter,
               ),
             ],
@@ -565,7 +565,7 @@ class _ArticleRow extends ConsumerWidget {
       trailing: IconButton(
         icon: const Icon(Icons.close_rounded, size: 18),
         tooltip: 'Retirer de la liste',
-        color: AppColors.textSecondary,
+        color: context.couleurs.textSecondary,
         onPressed: () =>
             ref.read(taskActionsProvider).removeItem(taskId, article.id),
       ),

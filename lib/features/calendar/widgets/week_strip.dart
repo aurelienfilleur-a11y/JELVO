@@ -77,11 +77,11 @@ class _DayCell extends StatelessWidget {
     final bool isToday = AppDates.isSameDay(day, today);
 
     final Color background = isSelected
-        ? AppColors.primary
+        ? context.couleurs.primary
         : Colors.transparent;
     final Color dayColor = isSelected
-        ? Colors.white
-        : (isToday ? AppColors.primary : AppColors.midnight);
+        ? context.couleurs.onAccent
+        : (isToday ? context.couleurs.primary : context.couleurs.encre);
 
     return GestureDetector(
       onTap: () => onTap(day),
@@ -92,8 +92,10 @@ class _DayCell extends StatelessWidget {
           children: <Widget>[
             Text(
               AppDates.weekdayInitial(day),
-              style: AppTypography.caption.copyWith(
-                color: isSelected ? AppColors.primary : AppColors.textSecondary,
+              style: context.typo.caption.copyWith(
+                color: isSelected
+                    ? context.couleurs.primary
+                    : context.couleurs.textSecondary,
                 fontWeight: AppTypography.medium,
               ),
             ),
@@ -107,12 +109,12 @@ class _DayCell extends StatelessWidget {
                 color: background,
                 borderRadius: AppRadii.fieldRadius,
                 border: isToday && !isSelected
-                    ? Border.all(color: AppColors.primary)
+                    ? Border.all(color: context.couleurs.primary)
                     : null,
               ),
               child: Text(
                 '${day.day}',
-                style: AppTypography.body.copyWith(
+                style: context.typo.body.copyWith(
                   color: dayColor,
                   fontWeight: AppTypography.semiBold,
                 ),
@@ -140,7 +142,7 @@ class _DayCell extends StatelessWidget {
                                 width: 5,
                                 height: 5,
                                 decoration: BoxDecoration(
-                                  color: m.color,
+                                  color: m.color(context.couleurs),
                                   shape: BoxShape.circle,
                                 ),
                               ),

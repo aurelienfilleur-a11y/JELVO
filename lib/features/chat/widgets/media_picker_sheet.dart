@@ -47,7 +47,7 @@ class _MediaPickerSheetState extends State<_MediaPickerSheet> {
         children: <Widget>[
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-            child: Text('Joindre', style: AppTypography.h2),
+            child: Text('Joindre', style: context.typo.h2),
           ),
           AppSpacing.gapMd,
 
@@ -62,13 +62,13 @@ class _MediaPickerSheetState extends State<_MediaPickerSheet> {
               child: Container(
                 padding: const EdgeInsets.all(AppSpacing.md),
                 decoration: BoxDecoration(
-                  color: AppColors.dangerSoft,
+                  color: context.couleurs.dangerSoft,
                   borderRadius: AppRadii.fieldRadius,
                 ),
                 child: Text(
                   _erreur!,
-                  style: AppTypography.caption.copyWith(
-                    color: AppColors.danger,
+                  style: context.typo.caption.copyWith(
+                    color: context.couleurs.danger,
                   ),
                 ),
               ),
@@ -178,14 +178,14 @@ class _Choix extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: Icon(icone, color: AppColors.primary),
-      title: Text(titre, style: AppTypography.body),
+      leading: Icon(icone, color: context.couleurs.primary),
+      title: Text(titre, style: context.typo.body),
       subtitle: sousTitre == null
           ? null
           : Text(
               sousTitre!,
-              style: AppTypography.caption.copyWith(
-                color: AppColors.textSecondary,
+              style: context.typo.caption.copyWith(
+                color: context.couleurs.textSecondary,
               ),
             ),
       onTap: onTap,

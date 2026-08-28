@@ -57,7 +57,7 @@ class MemberTile extends StatelessWidget {
               children: <Widget>[
                 EmojiText(
                   isMe ? '${member.displayName} (vous)' : member.displayName,
-                  style: AppTypography.body.copyWith(
+                  style: context.typo.body.copyWith(
                     fontWeight: AppTypography.semiBold,
                   ),
                   maxLines: 1,
@@ -67,7 +67,7 @@ class MemberTile extends StatelessWidget {
                   const SizedBox(height: 2),
                   EmojiText(
                     '@${member.pseudo}',
-                    style: AppTypography.caption,
+                    style: context.typo.caption,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -78,17 +78,17 @@ class MemberTile extends StatelessWidget {
                   const SizedBox(height: 2),
                   Row(
                     children: <Widget>[
-                      const Icon(
+                      Icon(
                         Icons.schedule_rounded,
                         size: 13,
-                        color: AppColors.warning,
+                        color: context.couleurs.warning,
                       ),
                       AppSpacing.hGapXs,
                       Flexible(
                         child: Text(
                           'Jusqu’au ${AppDates.shortDate(member.expiresAt!)}',
-                          style: AppTypography.caption.copyWith(
-                            color: AppColors.warning,
+                          style: context.typo.caption.copyWith(
+                            color: context.couleurs.warning,
                             fontWeight: AppTypography.semiBold,
                           ),
                           maxLines: 1,
@@ -115,9 +115,9 @@ class MemberTile extends StatelessWidget {
               // Le trois-points vertical, et non horizontal : c'est celui que
               // Material emploie partout ailleurs pour « d'autres actions »,
               // et l'ancien passait pour un ornement.
-              icon: const Icon(
+              icon: Icon(
                 Icons.more_vert_rounded,
-                color: AppColors.textSecondary,
+                color: context.couleurs.textSecondary,
               ),
               onSelected: (_MemberAction action) => switch (action) {
                 _MemberAction.promote => onPromote?.call(),

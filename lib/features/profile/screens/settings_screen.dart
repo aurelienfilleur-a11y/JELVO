@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/core.dart';
 import '../../../data/app_config.dart';
+import '../../../data/data_providers.dart';
 import '../../../router/app_routes.dart';
 import '../../auth/models/auth_failure.dart';
 import '../../auth/providers/auth_providers.dart';
@@ -12,6 +13,7 @@ import '../../notifications/providers/push_providers.dart';
 import '../../notifications/push/push_service.dart';
 import '../../notifications/repository/push_repository.dart';
 import '../../notifications/widgets/notification_sheets.dart';
+import '../widgets/appearance_sheet.dart';
 import '../widgets/settings_card.dart';
 
 /// Écran Paramètres : trois cartes titrées, puis la déconnexion.
@@ -42,7 +44,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         const <NotificationPreference>[];
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.couleurs.background,
       appBar: AppBar(
         title: const Text('Paramètres'),
         leading: IconButton(
@@ -87,8 +89,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   libelle: 'Notifications push',
                   valeur: libellePush(statutPush),
                   couleurValeur: statutPush == PushStatus.actif
-                      ? AppColors.primary
-                      : AppColors.textSecondary,
+                      ? context.couleurs.primary
+                      : context.couleurs.textSecondary,
                   onTap: () => PushPermissionSheet.ouvrir(context),
                 ),
                 for (final NotificationCategory categorie
@@ -101,6 +103,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             SettingsCard(
               titre: 'Autre',
               lignes: <Widget>[
+                SettingsRow(
+                  icone: Icons.contrast_rounded,
+                  libelle: 'Apparence',
+                  valeur: Apparence.depuis(
+                    ref.watch(themeModeProvider),
+                  ).libelle,
+                  onTap: () => AppearanceSheet.ouvrir(context),
+                ),
                 SettingsRow(
                   icone: Icons.info_outline_rounded,
                   libelle: 'À propos de Jelvo',
@@ -151,7 +161,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       icone: categorie.icon,
       libelle: categorie.label,
       valeur: etat.label,
-      couleurValeur: etat.color,
+      couleurValeur: etat.color(context.couleurs),
       onTap: () => NotificationCategorySheet.ouvrir(context, categorie),
     );
   }
@@ -172,7 +182,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
               TextButton(
                 onPressed: () => Navigator.of(dialogue).pop(true),
-                style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+                style: TextButton.styleFrom(
+                  foregroundColor: context.couleurs.danger,
+                ),
                 child: const Text('Se déconnecter'),
               ),
             ],

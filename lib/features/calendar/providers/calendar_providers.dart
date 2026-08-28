@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Color;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/jelvo_colors.dart';
 import '../../../core/widgets/avatar_stack.dart';
 import '../../../core/widgets/status_dot.dart';
 import '../../../core/utils/date_formatting.dart';
@@ -183,13 +183,15 @@ weekMarkersProvider = Provider<Map<DateTime, Set<DayMarker>>>((Ref ref) {
 /// indisponibilité déclarée. Toutes trois se calculent sur des données déjà
 /// chargées — aucune n'est inventée.
 enum DayMarker {
-  evenement(AppColors.primary),
-  tache(AppColors.success),
-  indisponible(AppColors.danger);
+  evenement,
+  tache,
+  indisponible;
 
-  const DayMarker(this.color);
-
-  final Color color;
+  Color color(JelvoColors c) => switch (this) {
+    DayMarker.evenement => c.primary,
+    DayMarker.tache => c.success,
+    DayMarker.indisponible => c.danger,
+  };
 }
 
 /// Faut-il montrer les créneaux de disponibilité dans la chronologie ?
@@ -283,7 +285,8 @@ final dayAgendaProvider = Provider.family<List<AgendaEntry>, DateTime>((
         title: event.title,
         start: event.start,
         end: event.end,
-        accent: groupe?.accent.color ?? AppColors.primary,
+        accent: AgendaAccent.evenement,
+        groupAccent: groupe?.accent,
         subtitle: <String?>[
           groupe?.name ?? (event.isPersonal ? 'Personnel' : null),
           event.location,
@@ -318,7 +321,7 @@ final dayAgendaProvider = Provider.family<List<AgendaEntry>, DateTime>((
         title: task.title,
         start: echeance,
         end: echeance,
-        accent: AppColors.success,
+        accent: AgendaAccent.tache,
         subtitle: groupe?.name ?? 'Personnel',
         timeLabel: AppDates.time(echeance),
         statusTone: task.isDone ? null : _tonDePriorite(task.priority),
@@ -348,8 +351,8 @@ final dayAgendaProvider = Provider.family<List<AgendaEntry>, DateTime>((
         start: debut,
         end: debut.add(Duration(minutes: creneau.end - creneau.start)),
         accent: creneau.status == AvailabilityStatus.available
-            ? AppColors.success
-            : AppColors.danger,
+            ? AgendaAccent.tache
+            : AgendaAccent.indisponible,
         subtitle: creneau.plage,
         timeLabel: AvailabilitySlot.formaterHeure(creneau.start),
         statusTone: creneau.status.tone,

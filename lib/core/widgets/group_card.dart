@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_colors.dart';
+import '../theme/jelvo_colors.dart';
 import '../theme/app_radii.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
@@ -19,7 +19,7 @@ class GroupCard extends StatelessWidget {
     super.key,
     required this.name,
     this.icon = Icons.groups_rounded,
-    this.accentColor = AppColors.primary,
+    this.accentColor,
     this.photoUrl,
     this.members = const <AvatarData>[],
     this.hiddenMembers = 0,
@@ -33,7 +33,8 @@ class GroupCard extends StatelessWidget {
   final IconData icon;
 
   /// Couleur d'identité du groupe, appliquée au repli du bandeau.
-  final Color accentColor;
+  /// `null` : le violet du thème, résolu au `build`.
+  final Color? accentColor;
 
   /// Photo de couverture. Absente, `CoverBanner` retombe sur le dégradé
   /// d'accent — le même repli que partout ailleurs.
@@ -81,7 +82,7 @@ class GroupCard extends StatelessWidget {
         children: <Widget>[
           CoverBanner(
             name: '',
-            accentColor: accentColor,
+            accentColor: accentColor ?? context.couleurs.primary,
             icon: icon,
             photoUrl: photoUrl,
             height: _bandeau,
@@ -100,7 +101,7 @@ class GroupCard extends StatelessWidget {
                         children: <Widget>[
                           EmojiText(
                             name,
-                            style: AppTypography.h3,
+                            style: context.typo.h3,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -108,7 +109,7 @@ class GroupCard extends StatelessWidget {
                             const SizedBox(height: 2),
                             Text(
                               memberLabel!,
-                              style: AppTypography.caption,
+                              style: context.typo.caption,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -137,8 +138,8 @@ class GroupCard extends StatelessWidget {
                   AppSpacing.gapSm,
                   Text(
                     activityLabel!,
-                    style: AppTypography.caption.copyWith(
-                      color: AppColors.textSecondary,
+                    style: context.typo.caption.copyWith(
+                      color: context.couleurs.textSecondary,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -176,14 +177,14 @@ class _PastilleNonLus extends StatelessWidget {
         // Pastille et non cercle strict : à un chiffre les deux se
         // confondent, mais un cercle rognerait « 12 ».
         decoration: BoxDecoration(
-          color: AppColors.primary,
+          color: context.couleurs.primary,
           borderRadius: AppRadii.pillRadius,
         ),
         alignment: Alignment.center,
         child: Text(
           count > 99 ? '99+' : '$count',
-          style: AppTypography.caption.copyWith(
-            color: Colors.white,
+          style: context.typo.caption.copyWith(
+            color: context.couleurs.onAccent,
             fontWeight: AppTypography.semiBold,
           ),
         ),

@@ -47,7 +47,7 @@ class TasksScreen extends ConsumerWidget {
         .toList();
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.couleurs.background,
       appBar: AppBar(
         title: EmojiText(groupe?.name ?? 'Tâches'),
         leading: IconButton(

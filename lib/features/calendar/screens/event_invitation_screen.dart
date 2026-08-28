@@ -42,7 +42,7 @@ class _EventInvitationScreenState extends ConsumerState<EventInvitationScreen> {
     );
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.couleurs.background,
       appBar: AppBar(
         title: const Text('Invitation'),
         leading: IconButton(
@@ -93,7 +93,7 @@ class _EventInvitationScreenState extends ConsumerState<EventInvitationScreen> {
             subtitle: AppDates.fullDate(evenement.start),
             accentColor: GroupAccent.forId(
               evenement.groupId ?? evenement.id,
-            ).color,
+            ).color(context.couleurs),
             icon: Icons.event_rounded,
             photoUrl:
                 evenement.imageUrl ??
@@ -126,7 +126,7 @@ class _EventInvitationScreenState extends ConsumerState<EventInvitationScreen> {
               ),
 
               AppSpacing.gapXl,
-              EmojiText(evenement.title, style: AppTypography.h2),
+              EmojiText(evenement.title, style: context.typo.h2),
 
               AppSpacing.gapLg,
               AppCard(
@@ -176,7 +176,7 @@ class _EventInvitationScreenState extends ConsumerState<EventInvitationScreen> {
                 AppSpacing.gapXl,
                 const SectionHeader(title: 'À propos'),
                 AppSpacing.gapSm,
-                Text(evenement.notes!, style: AppTypography.bodyMuted),
+                Text(evenement.notes!, style: context.typo.bodyMuted),
               ],
 
               if (evenement.participants.isNotEmpty) ...<Widget>[
@@ -195,7 +195,7 @@ class _EventInvitationScreenState extends ConsumerState<EventInvitationScreen> {
                         evenement.participants
                             .map((EventParticipant p) => p.displayName)
                             .join(', '),
-                        style: AppTypography.caption,
+                        style: context.typo.caption,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -211,8 +211,8 @@ class _EventInvitationScreenState extends ConsumerState<EventInvitationScreen> {
                 AppSpacing.gapXl,
                 _Bandeau(
                   icone: Icons.history_rounded,
-                  couleur: AppColors.textSecondary,
-                  fond: AppColors.border,
+                  couleur: context.couleurs.textSecondary,
+                  fond: context.couleurs.border,
                   texte: 'Cet événement a déjà eu lieu.',
                 ),
               ],
@@ -221,8 +221,8 @@ class _EventInvitationScreenState extends ConsumerState<EventInvitationScreen> {
                 AppSpacing.gapXl,
                 _Bandeau(
                   icone: Icons.how_to_reg_rounded,
-                  couleur: AppColors.success,
-                  fond: AppColors.successSoft,
+                  couleur: context.couleurs.success,
+                  fond: context.couleurs.successSoft,
                   texte:
                       'Vous avez répondu : ${evenement.myResponse.label}. '
                       'Vous pouvez encore changer d’avis.',
@@ -230,7 +230,7 @@ class _EventInvitationScreenState extends ConsumerState<EventInvitationScreen> {
               ],
 
               AppSpacing.gapXl,
-              Text('Serez-vous là ?', style: AppTypography.h3),
+              Text('Serez-vous là ?', style: context.typo.h3),
               AppSpacing.gapMd,
               ResponseButtons(
                 courante: evenement.myResponse,
@@ -310,7 +310,9 @@ class _Bandeau extends StatelessWidget {
           Expanded(
             child: Text(
               texte,
-              style: AppTypography.caption.copyWith(color: AppColors.midnight),
+              style: context.typo.caption.copyWith(
+                color: context.couleurs.encre,
+              ),
             ),
           ),
         ],

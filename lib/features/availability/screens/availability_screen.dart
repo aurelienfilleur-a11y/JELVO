@@ -31,7 +31,7 @@ class AvailabilityScreen extends ConsumerWidget {
     final List<AvailabilitySlot> exceptions = ref.watch(exceptionSlotsProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.couleurs.background,
       appBar: AppBar(
         title: const Text('Mes disponibilités'),
         leading: IconButton(
@@ -81,7 +81,7 @@ class AvailabilityScreen extends ConsumerWidget {
                     Text(
                       'Aucun créneau récurrent. Sans rien de déclaré, les '
                       'autres vous voient « Inconnu ».',
-                      style: AppTypography.bodyMuted,
+                      style: context.typo.bodyMuted,
                     )
                   else
                     for (int jour = 1; jour <= 7; jour++)
@@ -101,7 +101,7 @@ class AvailabilityScreen extends ConsumerWidget {
                     Text(
                       'Aucune exception. Un jour de congé ou un déplacement se '
                       'pose ici.',
-                      style: AppTypography.bodyMuted,
+                      style: context.typo.bodyMuted,
                     )
                   else
                     _BlocJour(titre: null, creneaux: exceptions),
@@ -127,20 +127,24 @@ class _BandeauConfidentialite extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      color: AppColors.primarySoft,
-      borderColor: null,
+      color: context.couleurs.primarySoft,
+      // Le pavé teinté se passe de contour : `null` voudrait dire « celui du
+      // thème », comme partout ailleurs.
+      borderColor: Colors.transparent,
       shadows: const <BoxShadow>[],
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          const Icon(Icons.lock_outline_rounded, color: AppColors.primary),
+          Icon(Icons.lock_outline_rounded, color: context.couleurs.primary),
           AppSpacing.hGapMd,
           Expanded(
             child: Text(
               'Vos contacts et les membres de vos groupes voient seulement '
               '« Disponible », « Indisponible » ou « Inconnu ». Jamais vos '
               'horaires, jamais la raison.',
-              style: AppTypography.caption.copyWith(color: AppColors.midnight),
+              style: context.typo.caption.copyWith(
+                color: context.couleurs.encre,
+              ),
             ),
           ),
         ],
@@ -169,7 +173,7 @@ class _BlocJour extends StatelessWidget {
           children: <Widget>[
             if (titre != null) ...<Widget>[
               AppSpacing.gapSm,
-              Text(titre!, style: AppTypography.h3),
+              Text(titre!, style: context.typo.h3),
             ],
             for (final AvailabilitySlot creneau in creneaux)
               _LigneCreneau(creneau: creneau),
@@ -204,7 +208,7 @@ class _LigneCreneau extends ConsumerWidget {
               date == null
                   ? creneau.plage
                   : '${AppDates.shortDate(date)} · ${creneau.plage}',
-              style: AppTypography.body,
+              style: context.typo.body,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -212,14 +216,14 @@ class _LigneCreneau extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.edit_outlined, size: 18),
             tooltip: 'Modifier le créneau',
-            color: AppColors.textSecondary,
+            color: context.couleurs.textSecondary,
             onPressed: () =>
                 ouvrirFormulaireDeCreneau(context, creneau: creneau),
           ),
           IconButton(
             icon: const Icon(Icons.delete_outline_rounded, size: 18),
             tooltip: 'Supprimer le créneau',
-            color: AppColors.textSecondary,
+            color: context.couleurs.textSecondary,
             onPressed: () => _supprimer(context, ref),
           ),
         ],

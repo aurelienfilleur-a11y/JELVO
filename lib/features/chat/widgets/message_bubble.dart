@@ -58,8 +58,16 @@ class MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color fond = isMine ? AppColors.primary : AppColors.surface;
-    final Color texte = isMine ? Colors.white : AppColors.midnight;
+    // Les bulles ont leurs propres jetons : en sombre, `primary` est clair et
+    // du texte blanc dessus tomberait à 2,9:1. La bulle de l'utilisateur reste
+    // donc un violet profond dans les deux thèmes — c'est la seule pièce de
+    // l'interface où l'on tient à ce que la couleur ne bouge pas.
+    final Color fond = isMine
+        ? context.couleurs.bubbleMine
+        : context.couleurs.bubbleOther;
+    final Color texte = isMine
+        ? context.couleurs.onBubbleMine
+        : context.couleurs.onBubbleOther;
 
     final Widget contenu = Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -73,11 +81,14 @@ class MessageBubble extends StatelessWidget {
               padding: const EdgeInsets.only(left: AppSpacing.xs, bottom: 2),
               child: EmojiText(
                 message.senderName ?? 'Membre',
-                style: AppTypography.caption.copyWith(
+                style: context.typo.caption.copyWith(
                   // Une couleur par personne, dérivée de son identifiant :
                   // dans un groupe de huit, le gris uniforme obligeait à lire
                   // le nom pour savoir qui parle.
-                  color: SpeakerAccent.colorFor(message.senderId),
+                  color: SpeakerAccent.colorFor(
+                    message.senderId,
+                    context.couleurs,
+                  ),
                   fontWeight: AppTypography.semiBold,
                 ),
               ),
@@ -98,7 +109,7 @@ class MessageBubble extends StatelessWidget {
                   vertical: AppSpacing.sm,
                 ),
                 decoration: BoxDecoration(
-                  color: message.isDeleted ? AppColors.background : fond,
+                  color: message.isDeleted ? context.couleurs.background : fond,
                   borderRadius: BorderRadius.only(
                     topLeft: const Radius.circular(AppRadii.card),
                     topRight: const Radius.circular(AppRadii.card),
@@ -106,11 +117,11 @@ class MessageBubble extends StatelessWidget {
                     bottomRight: Radius.circular(isMine ? 4 : AppRadii.card),
                   ),
                   border: message.isDeleted
-                      ? Border.all(color: AppColors.border)
+                      ? Border.all(color: context.couleurs.border)
                       : null,
                 ),
                 child: message.isDeleted
-                    ? _supprime()
+                    ? _supprime(context)
                     : Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
@@ -124,17 +135,17 @@ class MessageBubble extends StatelessWidget {
                               message.content!.isNotEmpty)
                             EmojiText(
                               message.content!,
-                              style: AppTypography.body.copyWith(color: texte),
+                              style: context.typo.body.copyWith(color: texte),
                             ),
                           const SizedBox(height: 2),
-                          _pied(texte),
+                          _pied(context, texte),
                         ],
                       ),
               ),
             ),
           ),
 
-          if (message.reactions.isNotEmpty) _reactions(),
+          if (message.reactions.isNotEmpty) _reactions(context),
 
           if (message.failed)
             Padding(
@@ -144,8 +155,8 @@ class MessageBubble extends StatelessWidget {
                 icon: const Icon(Icons.refresh_rounded, size: 14),
                 label: const Text('Non envoyé — réessayer'),
                 style: TextButton.styleFrom(
-                  foregroundColor: AppColors.danger,
-                  textStyle: AppTypography.caption,
+                  foregroundColor: context.couleurs.danger,
+                  textStyle: context.typo.caption,
                   padding: EdgeInsets.zero,
                   minimumSize: const Size(0, 24),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -187,20 +198,20 @@ class MessageBubble extends StatelessWidget {
 
   /// Un message supprimé ne montre plus rien de son contenu — et n'en reçoit
   /// plus non plus : la fonction SQL ne le renvoie pas.
-  Widget _supprime() {
+  Widget _supprime(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
-        const Icon(
+        Icon(
           Icons.block_rounded,
           size: 14,
-          color: AppColors.textSecondary,
+          color: context.couleurs.textSecondary,
         ),
         AppSpacing.hGapSm,
         Text(
           'Message supprimé',
-          style: AppTypography.caption.copyWith(
-            color: AppColors.textSecondary,
+          style: context.typo.caption.copyWith(
+            color: context.couleurs.textSecondary,
             fontStyle: FontStyle.italic,
           ),
         ),
@@ -212,7 +223,7 @@ class MessageBubble extends StatelessWidget {
   ///
   /// L'accusé n'a de sens que sur ce qu'on a envoyé : afficher « lu » sur le
   /// message de quelqu'un d'autre ne dirait rien à personne.
-  Widget _pied(Color couleur) {
+  Widget _pied(BuildContext context, Color couleur) {
     final Color discret = couleur.withValues(alpha: 0.7);
 
     return Row(
@@ -221,22 +232,25 @@ class MessageBubble extends StatelessWidget {
       children: <Widget>[
         Text(
           timeLabel,
-          style: AppTypography.caption.copyWith(color: discret, fontSize: 11),
+          style: context.typo.caption.copyWith(color: discret, fontSize: 11),
         ),
-        if (isMine) ...<Widget>[const SizedBox(width: 4), _accuse(discret)],
+        if (isMine) ...<Widget>[
+          const SizedBox(width: 4),
+          _accuse(context, discret),
+        ],
       ],
     );
   }
 
-  Widget _accuse(Color discret) {
+  Widget _accuse(BuildContext context, Color discret) {
     if (message.pending) {
       return Icon(Icons.schedule_rounded, size: 13, color: discret);
     }
     if (message.failed) {
-      return const Icon(
+      return Icon(
         Icons.error_outline_rounded,
         size: 13,
-        color: AppColors.danger,
+        color: context.couleurs.danger,
       );
     }
     return Icon(
@@ -244,11 +258,11 @@ class MessageBubble extends StatelessWidget {
       size: 14,
       // Le « lu » se voit à la couleur, pas seulement à la forme : deux coches
       // grises et deux coches vives se distinguent mal en un coup d'œil.
-      color: message.isRead ? Colors.white : discret,
+      color: message.isRead ? context.couleurs.onBubbleMine : discret,
     );
   }
 
-  Widget _reactions() {
+  Widget _reactions(BuildContext context) {
     final Map<String, List<String>> parEmoji = message.reactionsByEmoji;
 
     return Padding(
@@ -266,15 +280,15 @@ class MessageBubble extends StatelessWidget {
                   vertical: 2,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: context.couleurs.surface,
                   borderRadius: BorderRadius.circular(AppRadii.pill),
-                  border: Border.all(color: AppColors.border),
+                  border: Border.all(color: context.couleurs.border),
                 ),
                 child: EmojiText(
                   entree.value.length > 1
                       ? '${entree.key} ${entree.value.length}'
                       : entree.key,
-                  style: AppTypography.caption,
+                  style: context.typo.caption,
                 ),
               ),
             ),

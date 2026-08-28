@@ -193,9 +193,9 @@ class _MessageComposerState extends State<MessageComposer> {
     final bool peutEnvoyer = widget.enabled && aDuTexte && restants >= 0;
 
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.border)),
+      decoration: BoxDecoration(
+        color: context.couleurs.surface,
+        border: Border(top: BorderSide(color: context.couleurs.border)),
       ),
       child: SafeArea(
         top: false,
@@ -217,10 +217,10 @@ class _MessageComposerState extends State<MessageComposer> {
                       alignment: Alignment.centerRight,
                       child: Text(
                         '$restants',
-                        style: AppTypography.caption.copyWith(
+                        style: context.typo.caption.copyWith(
                           color: restants < 0
-                              ? AppColors.danger
-                              : AppColors.textSecondary,
+                              ? context.couleurs.danger
+                              : context.couleurs.textSecondary,
                         ),
                       ),
                     ),
@@ -254,7 +254,7 @@ class _MessageComposerState extends State<MessageComposer> {
           IconButton(
             icon: const Icon(Icons.add_rounded),
             tooltip: 'Ajouter à la conversation',
-            color: AppColors.textSecondary,
+            color: context.couleurs.textSecondary,
             onPressed: widget.enabled ? _ouvrirActions : null,
           ),
         Expanded(
@@ -268,13 +268,13 @@ class _MessageComposerState extends State<MessageComposer> {
             textCapitalization: TextCapitalization.sentences,
             textInputAction: TextInputAction.newline,
             onChanged: _surSaisie,
-            style: AppTypography.body,
+            style: context.typo.body,
             decoration: InputDecoration(
               hintText: 'Votre message',
-              hintStyle: AppTypography.bodyMuted,
+              hintStyle: context.typo.bodyMuted,
               counterText: '',
               filled: true,
-              fillColor: AppColors.background,
+              fillColor: context.couleurs.background,
               isDense: true,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.md,
@@ -287,7 +287,7 @@ class _MessageComposerState extends State<MessageComposer> {
                       : Icons.emoji_emotions_outlined,
                 ),
                 tooltip: _emojisOuverts ? 'Fermer les emojis' : 'Emojis',
-                color: AppColors.textSecondary,
+                color: context.couleurs.textSecondary,
                 onPressed: widget.enabled
                     ? () {
                         // Refermer le clavier système : les deux panneaux
@@ -313,9 +313,9 @@ class _MessageComposerState extends State<MessageComposer> {
               ? (widget.enabled ? _demarrerEnregistrement : null)
               : (peutEnvoyer ? _envoyer : null),
           style: IconButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-            disabledBackgroundColor: AppColors.border,
+            backgroundColor: context.couleurs.primary,
+            foregroundColor: context.couleurs.onAccent,
+            disabledBackgroundColor: context.couleurs.border,
           ),
         ),
       ],
@@ -330,7 +330,7 @@ class _MessageComposerState extends State<MessageComposer> {
         IconButton(
           icon: const Icon(Icons.delete_outline_rounded),
           tooltip: 'Annuler l’enregistrement',
-          color: AppColors.danger,
+          color: context.couleurs.danger,
           onPressed: _annulerEnregistrement,
         ),
         Expanded(
@@ -339,15 +339,15 @@ class _MessageComposerState extends State<MessageComposer> {
               Container(
                 width: 8,
                 height: 8,
-                decoration: const BoxDecoration(
-                  color: AppColors.danger,
+                decoration: BoxDecoration(
+                  color: context.couleurs.danger,
                   shape: BoxShape.circle,
                 ),
               ),
               AppSpacing.hGapSm,
               Text(
                 _minutage(_ecoule),
-                style: AppTypography.body.copyWith(
+                style: context.typo.body.copyWith(
                   fontWeight: AppTypography.semiBold,
                 ),
               ),
@@ -355,7 +355,7 @@ class _MessageComposerState extends State<MessageComposer> {
               Expanded(
                 child: Text(
                   'Enregistrement…',
-                  style: AppTypography.caption,
+                  style: context.typo.caption,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -368,8 +368,8 @@ class _MessageComposerState extends State<MessageComposer> {
           tooltip: 'Envoyer le message vocal',
           onPressed: _terminerEnregistrement,
           style: IconButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
+            backgroundColor: context.couleurs.primary,
+            foregroundColor: context.couleurs.onAccent,
           ),
         ),
       ],
@@ -403,8 +403,8 @@ class TypingIndicator extends StatelessWidget {
               ),
               child: EmojiText(
                 _libelle(),
-                style: AppTypography.caption.copyWith(
-                  color: AppColors.textSecondary,
+                style: context.typo.caption.copyWith(
+                  color: context.couleurs.textSecondary,
                   fontStyle: FontStyle.italic,
                 ),
                 maxLines: 1,

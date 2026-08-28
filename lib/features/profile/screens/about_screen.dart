@@ -15,7 +15,7 @@ class AboutScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.couleurs.background,
       appBar: AppBar(
         title: const Text('À propos de Jelvo'),
         leading: IconButton(
@@ -42,24 +42,24 @@ class AboutScreen extends StatelessWidget {
                   width: 88,
                   height: 88,
                   decoration: BoxDecoration(
-                    color: AppColors.primarySoft,
+                    color: context.couleurs.primarySoft,
                     borderRadius: AppRadii.cardRadius,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.calendar_month_rounded,
                     size: 40,
-                    color: AppColors.primary,
+                    color: context.couleurs.primary,
                   ),
                 ),
               ),
             ),
             AppSpacing.gapLg,
-            Center(child: Text('Jelvo', style: AppTypography.h2)),
+            Center(child: Text('Jelvo', style: context.typo.h2)),
             const SizedBox(height: 2),
             Center(
               child: Text(
                 'Version ${AppConfig.version}',
-                style: AppTypography.caption,
+                style: context.typo.caption,
               ),
             ),
 
@@ -69,7 +69,7 @@ class AboutScreen extends StatelessWidget {
                 'Jelvo réunit vos groupes, vos événements, vos tâches et vos '
                 'disponibilités au même endroit — pour la famille, les amis, '
                 'la colocation.',
-                style: AppTypography.bodyMuted,
+                style: context.typo.bodyMuted,
               ),
             ),
 
@@ -78,14 +78,14 @@ class AboutScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  Text('Bon à savoir', style: AppTypography.h3),
+                  Text('Bon à savoir', style: context.typo.h3),
                   AppSpacing.gapSm,
                   Text(
                     'Jelvo est une application web installable. Sur iPhone, '
                     'les notifications ne fonctionnent qu’une fois l’icône '
                     'ajoutée à l’écran d’accueil, et l’application installée '
                     'a sa propre session : il faut s’y reconnecter.',
-                    style: AppTypography.bodyMuted,
+                    style: context.typo.bodyMuted,
                   ),
                 ],
               ),

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../theme/jelvo_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 import 'emoji_text.dart';

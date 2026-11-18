@@ -15,6 +15,9 @@ flutter analyze                  # analyse statique — doit rester vide
 dart format .                    # formatage — vérifié en CI
 flutter build web --release --base-href /jelvo/
 
+tool/verifier.sh                 # les quatre commandes de la CI, codes de sortie lus
+tool/verifier.sh --sans-build    # idem sans la compilation web
+
 supabase/verification/rejouer.sh # compile et appelle le SQL — voir plus bas
 supabase/verification/appliquer.sh --essai   # ce qui serait appliqué en base
 supabase/verification/essai_connexion.sh     # éprouve le nettoyage de l'URL
@@ -35,6 +38,25 @@ passer avant tout push sur `main`.
 celui de `tail`, jamais celui de la commande : un `dart format` en échec y
 paraît vert. C'est arrivé — le formatage a été annoncé comme passé, et la CI
 l'a démenti trente secondes plus tard. Capturer le code avant de filtrer.
+
+C'est arrivé **une seconde fois**, sur l'analyse, et c'est pourquoi
+`tool/verifier.sh` existe : il rejoue les quatre commandes dans l'ordre du
+workflow et relève le `$?` de chacune, sans tube. Un filtre n'est pas un
+verdict.
+
+Le second passage ajoute deux pièges propres à `flutter analyze`, qu'aucune
+lecture du workflow ne révèle :
+
+- **il sort en échec sur un simple avertissement**, pas seulement sur une
+  erreur. Un import devenu mort suffit à mettre l'étape au rouge, et donc à
+  annuler tests, compilation et déploiement ;
+- **sans option, il n'écrit pas ses lignes en retrait.** Le filtre employé
+  attendait une indentation (`^ +(error|warning|info)`) : il ne pouvait rien
+  trouver, quelle que soit la gravité. Un motif trop précis sur un format de
+  sortie non contractuel ment dans le sens le plus coûteux — celui du vert.
+
+Le prix payé : la PR #66 a échoué sur **un** import mort, et le thème sombre
+est resté hors ligne le temps de le voir.
 
 ### Les migrations s'appliquent toutes seules
 

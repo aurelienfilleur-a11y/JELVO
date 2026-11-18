@@ -84,7 +84,7 @@ class VoiceMessage extends ConsumerWidget {
                   _minutage(
                     actif && position > Duration.zero ? position : totale,
                   ),
-                  style: AppTypography.caption.copyWith(
+                  style: context.typo.caption.copyWith(
                     color: couleur.withValues(alpha: 0.8),
                     fontSize: 11,
                   ),

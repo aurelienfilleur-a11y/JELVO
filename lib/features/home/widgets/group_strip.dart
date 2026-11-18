@@ -81,7 +81,7 @@ class _Carte extends StatelessWidget {
                   children: <Widget>[
                     Text(
                       group.name,
-                      style: AppTypography.body.copyWith(
+                      style: context.typo.body.copyWith(
                         fontWeight: AppTypography.semiBold,
                       ),
                       maxLines: 1,
@@ -90,7 +90,7 @@ class _Carte extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       group.memberLabel,
-                      style: AppTypography.caption,
+                      style: context.typo.caption,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -144,7 +144,7 @@ class _Repli extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color accent = group.accent.color;
+    final Color accent = group.accent.color(context.couleurs);
     return DecoratedBox(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -159,7 +159,7 @@ class _Repli extends StatelessWidget {
       child: Center(
         child: Text(
           _initiale(group.name),
-          style: AppTypography.h1.copyWith(color: accent),
+          style: context.typo.h1.copyWith(color: accent),
         ),
       ),
     );

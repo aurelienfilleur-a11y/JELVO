@@ -1,17 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import 'app_colors.dart';
+import 'jelvo_colors.dart';
 
 /// Échelle typographique Jelvo, basée sur la police Inter.
 ///
 /// H1 28 bold · H2 22 bold · H3 17 semibold · body 15 · caption 13 ·
 /// bouton 16 semibold.
 ///
-/// Ces styles sont branchés sur le [TextTheme] Material 3 dans
-/// `AppTheme.light`, ce qui permet d'écrire `context.textStyles.h1` ou
-/// `Theme.of(context).textTheme.headlineLarge` de façon interchangeable.
-abstract final class AppTypography {
+/// **Les styles portent leur couleur, et elle dépend du thème** : `caption`
+/// est en `textSecondary`, les autres en `encre`. Ils se prennent donc au
+/// contexte — `context.typo.caption` —, jamais en statique. La seule
+/// exception est [textTheme], qui reçoit la palette explicitement puisqu'elle
+/// est construite *avec* le thème et ne peut pas le lire.
+class AppTypography {
+  const AppTypography(this._couleurs);
+
+  final JelvoColors _couleurs;
+
   /// Famille de la police d'emojis embarquée.
   static const String emojiFamily = 'NotoColorEmoji';
 
@@ -28,9 +34,6 @@ abstract final class AppTypography {
   /// noir. Le texte saisi par quelqu'un passe pour cette raison par
   /// `EmojiText`, qui donne la police d'emojis en police *principale* aux
   /// suites concernées. Voir `core/theme/emoji_runs.dart`.
-  ///
-  /// Ce repli reste utile pour tout le reste : un emoji hors du répertoire
-  /// d'Inter s'affiche correctement même dans un `Text` ordinaire.
   static const List<String> emojiFallback = <String>[emojiFamily];
 
   /// Style d'une suite d'emojis : la police d'emojis en **principale**.
@@ -49,59 +52,58 @@ abstract final class AppTypography {
   static const FontWeight semiBold = FontWeight.w600;
   static const FontWeight bold = FontWeight.w700;
 
-  static TextStyle get h1 => _avecEmojis(
+  TextStyle get h1 => _avecEmojis(
     GoogleFonts.inter(
       fontSize: 28,
       fontWeight: bold,
       height: 1.2,
       letterSpacing: -0.4,
-      color: AppColors.midnight,
+      color: _couleurs.encre,
     ),
   );
 
-  static TextStyle get h2 => _avecEmojis(
+  TextStyle get h2 => _avecEmojis(
     GoogleFonts.inter(
       fontSize: 22,
       fontWeight: bold,
       height: 1.25,
       letterSpacing: -0.3,
-      color: AppColors.midnight,
+      color: _couleurs.encre,
     ),
   );
 
-  static TextStyle get h3 => _avecEmojis(
+  TextStyle get h3 => _avecEmojis(
     GoogleFonts.inter(
       fontSize: 17,
       fontWeight: semiBold,
       height: 1.3,
       letterSpacing: -0.1,
-      color: AppColors.midnight,
+      color: _couleurs.encre,
     ),
   );
 
-  static TextStyle get body => _avecEmojis(
+  TextStyle get body => _avecEmojis(
     GoogleFonts.inter(
       fontSize: 15,
       fontWeight: regular,
       height: 1.45,
-      color: AppColors.midnight,
+      color: _couleurs.encre,
     ),
   );
 
   /// Variante de [body] pour le texte de second plan.
-  static TextStyle get bodyMuted =>
-      body.copyWith(color: AppColors.textSecondary);
+  TextStyle get bodyMuted => body.copyWith(color: _couleurs.textSecondary);
 
-  static TextStyle get caption => _avecEmojis(
+  TextStyle get caption => _avecEmojis(
     GoogleFonts.inter(
       fontSize: 13,
       fontWeight: regular,
       height: 1.35,
-      color: AppColors.textSecondary,
+      color: _couleurs.textSecondary,
     ),
   );
 
-  static TextStyle get button => _avecEmojis(
+  TextStyle get button => _avecEmojis(
     GoogleFonts.inter(
       fontSize: 16,
       fontWeight: semiBold,
@@ -122,7 +124,7 @@ abstract final class AppTypography {
   /// Correspondances retenues :
   /// `headlineLarge` → H1, `headlineMedium` → H2, `titleMedium` → H3,
   /// `bodyMedium` → body, `bodySmall` → caption, `labelLarge` → bouton.
-  static TextTheme get textTheme => TextTheme(
+  TextTheme get textTheme => TextTheme(
     headlineLarge: h1,
     headlineMedium: h2,
     headlineSmall: h2,
@@ -136,4 +138,9 @@ abstract final class AppTypography {
     labelMedium: caption.copyWith(fontWeight: medium),
     labelSmall: caption,
   );
+}
+
+/// `context.typo.body` — l'accès unique à l'échelle typographique.
+extension TypographieDuContexte on BuildContext {
+  AppTypography get typo => AppTypography(couleurs);
 }

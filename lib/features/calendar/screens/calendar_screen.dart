@@ -124,14 +124,14 @@ class CalendarScreen extends ConsumerWidget {
                       children: <InlineSpan>[
                         TextSpan(
                           text: AppDates.relativeDay(selectedDay, now: now),
-                          style: AppTypography.h3.copyWith(
-                            color: AppColors.primary,
+                          style: context.typo.h3.copyWith(
+                            color: context.couleurs.primary,
                           ),
                         ),
                         TextSpan(
                           text: ' • ${AppDates.fullDate(selectedDay)}',
-                          style: AppTypography.h3.copyWith(
-                            color: AppColors.midnight,
+                          style: context.typo.h3.copyWith(
+                            color: context.couleurs.encre,
                           ),
                         ),
                       ],
@@ -277,10 +277,10 @@ class _ArrowButton extends StatelessWidget {
           width: 32,
           height: 32,
           decoration: BoxDecoration(
-            color: AppColors.background,
+            color: context.couleurs.background,
             borderRadius: BorderRadius.circular(AppSpacing.sm),
           ),
-          child: Icon(icon, size: 20, color: AppColors.midnight),
+          child: Icon(icon, size: 20, color: context.couleurs.encre),
         ),
       ),
     );

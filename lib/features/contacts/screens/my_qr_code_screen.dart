@@ -17,7 +17,7 @@ class MyQrCodeScreen extends ConsumerWidget {
     final Profile? profile = ref.watch(currentProfileProvider).value;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.couleurs.background,
       appBar: AppBar(
         title: const Text('Mon QR code'),
         leading: IconButton(
@@ -55,18 +55,18 @@ class MyQrCodeScreen extends ConsumerWidget {
                   data: payload,
                   version: QrVersions.auto,
                   size: 220,
-                  eyeStyle: const QrEyeStyle(
+                  eyeStyle: QrEyeStyle(
                     eyeShape: QrEyeShape.square,
-                    color: AppColors.midnight,
+                    color: context.couleurs.encre,
                   ),
-                  dataModuleStyle: const QrDataModuleStyle(
+                  dataModuleStyle: QrDataModuleStyle(
                     dataModuleShape: QrDataModuleShape.square,
-                    color: AppColors.midnight,
+                    color: context.couleurs.encre,
                   ),
                 ),
                 AppSpacing.gapLg,
-                Text(profile.displayName, style: AppTypography.h3),
-                Text(profile.pseudoHandle, style: AppTypography.bodyMuted),
+                Text(profile.displayName, style: context.typo.h3),
+                Text(profile.pseudoHandle, style: context.typo.bodyMuted),
               ],
             ),
           ),
@@ -77,7 +77,7 @@ class MyQrCodeScreen extends ConsumerWidget {
           'Faites scanner ce code pour être ajouté en contact. Il ne contient '
           'que votre pseudo — ni adresse e-mail, ni agenda.',
           textAlign: TextAlign.center,
-          style: AppTypography.caption,
+          style: context.typo.caption,
         ),
 
         AppSpacing.gapXl,

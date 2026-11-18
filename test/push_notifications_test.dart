@@ -355,7 +355,6 @@ void main() {
       for (final String absente in const <String>[
         'Sécurité et confidentialité',
         'Sessions actives',
-        'Apparence',
         'Langue',
         'Fuseau horaire',
         'Aide et support',
@@ -363,6 +362,9 @@ void main() {
       ]) {
         expect(find.text(absente), findsNothing, reason: absente);
       }
+
+      // « Apparence » a quitté cette liste : elle mène désormais quelque part.
+      expect(find.text('Apparence'), findsOneWidget);
     });
 
     testWidgets('changer de mot de passe est enfin atteignable', (

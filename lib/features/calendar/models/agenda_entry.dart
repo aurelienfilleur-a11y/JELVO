@@ -1,7 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Color;
 
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/jelvo_colors.dart';
+import '../../groups/models/group.dart' show GroupAccent;
 import '../../../core/widgets/avatar_stack.dart';
 import '../../../core/widgets/status_dot.dart';
 
@@ -24,6 +25,13 @@ enum AgendaEntryKind {
   availability,
 }
 
+/// Ce que la couleur d'une ligne **veut dire**.
+///
+/// Le provider dit la nature de la ligne, le widget en tire la teinte. C'est
+/// nécessaire depuis le thème sombre : une `Color` figée dans le modèle serait
+/// choisie hors de tout `BuildContext`, donc dans une seule des deux palettes.
+enum AgendaAccent { evenement, tache, indisponible }
+
 /// Une ligne de la timeline du jour.
 @immutable
 class AgendaEntry {
@@ -34,6 +42,7 @@ class AgendaEntry {
     required this.start,
     required this.end,
     required this.accent,
+    this.groupAccent,
     this.subtitle,
     this.timeLabel,
     this.statusTone,
@@ -51,7 +60,20 @@ class AgendaEntry {
   final DateTime start;
   final DateTime end;
 
-  final Color accent;
+  final AgendaAccent accent;
+
+  /// L'accent du groupe, quand la ligne en vient un. Il l'emporte : c'est
+  /// déjà la règle ailleurs, et perdre l'identité du groupe ferait se
+  /// ressembler tous les groupes entre eux.
+  final GroupAccent? groupAccent;
+
+  Color accentColor(JelvoColors c) =>
+      groupAccent?.color(c) ??
+      switch (accent) {
+        AgendaAccent.evenement => c.primary,
+        AgendaAccent.tache => c.success,
+        AgendaAccent.indisponible => c.danger,
+      };
 
   /// Groupe, lieu, ou ce qui situe la ligne. Jamais obligatoire.
   final String? subtitle;
@@ -78,9 +100,9 @@ class AgendaEntry {
   bool get isOpenable => kind != AgendaEntryKind.availability;
 
   /// Fond teinté des créneaux, qui doivent rester en retrait des événements.
-  Color get background => switch (kind) {
-    AgendaEntryKind.availability => AppColors.background,
-    _ => AppColors.surface,
+  Color background(JelvoColors c) => switch (kind) {
+    AgendaEntryKind.availability => c.background,
+    _ => c.surface,
   };
 
   @override

@@ -67,7 +67,7 @@ class TasksCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
             decoration: BoxDecoration(
-              color: AppColors.background,
+              color: context.couleurs.background,
               borderRadius: AppRadii.fieldRadius,
             ),
             child: Row(
@@ -79,7 +79,7 @@ class TasksCard extends StatelessWidget {
                     detail: counts.open == 1
                         ? '1 tâche'
                         : '${counts.open} tâches',
-                    couleur: AppColors.primary,
+                    couleur: context.couleurs.primary,
                     // L'anneau montre la part **restante** de la semaine :
                     // plein quand tout est à faire, presque vide quand tout
                     // est terminé. Un anneau sans proportion ne serait qu'un
@@ -95,7 +95,7 @@ class TasksCard extends StatelessWidget {
                     valeur: counts.doneThisWeek,
                     libelle: 'Terminées',
                     detail: 'cette semaine',
-                    couleur: AppColors.success,
+                    couleur: context.couleurs.success,
                     icone: Icons.check_rounded,
                   ),
                 ),
@@ -105,7 +105,7 @@ class TasksCard extends StatelessWidget {
                     valeur: counts.overdue,
                     libelle: 'En retard',
                     detail: 'à traiter',
-                    couleur: AppColors.warning,
+                    couleur: context.couleurs.warning,
                     icone: Icons.schedule_rounded,
                   ),
                 ),
@@ -153,9 +153,13 @@ class _Separateur extends StatelessWidget {
   const _Separateur();
 
   @override
-  Widget build(BuildContext context) => const SizedBox(
+  Widget build(BuildContext context) => SizedBox(
     height: 36,
-    child: VerticalDivider(width: 1, thickness: 1, color: AppColors.border),
+    child: VerticalDivider(
+      width: 1,
+      thickness: 1,
+      color: context.couleurs.border,
+    ),
   );
 }
 
@@ -209,7 +213,7 @@ class _Compteur extends StatelessWidget {
                 if (_chiffreDansLAnneau)
                   Text(
                     '$valeur',
-                    style: AppTypography.caption.copyWith(
+                    style: context.typo.caption.copyWith(
                       fontWeight: AppTypography.semiBold,
                       color: couleur,
                     ),
@@ -227,16 +231,16 @@ class _Compteur extends StatelessWidget {
               children: <Widget>[
                 Text(
                   _chiffreDansLAnneau ? libelle : '$valeur $libelle',
-                  style: AppTypography.caption.copyWith(
+                  style: context.typo.caption.copyWith(
                     fontWeight: AppTypography.semiBold,
-                    color: AppColors.midnight,
+                    color: context.couleurs.encre,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
                   detail,
-                  style: AppTypography.caption,
+                  style: context.typo.caption,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),

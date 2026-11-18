@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_colors.dart';
+import '../theme/jelvo_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 import 'emoji_text.dart';
@@ -56,14 +56,14 @@ class InvitationHeader extends StatelessWidget {
             children: <Widget>[
               EmojiText(
                 author.name,
-                style: AppTypography.h3,
+                style: context.typo.h3,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 2),
               EmojiText(
                 action,
-                style: AppTypography.bodyMuted,
+                style: context.typo.bodyMuted,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -71,8 +71,8 @@ class InvitationHeader extends StatelessWidget {
                 AppSpacing.gapXs,
                 Text(
                   AppDates.timeAgo(since!, now: now),
-                  style: AppTypography.caption.copyWith(
-                    color: AppColors.textSecondary,
+                  style: context.typo.caption.copyWith(
+                    color: context.couleurs.textSecondary,
                   ),
                 ),
               ],
@@ -118,10 +118,10 @@ class InvitationDetailRow extends StatelessWidget {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: AppColors.primarySoft,
+                  color: context.couleurs.primarySoft,
                   borderRadius: BorderRadius.circular(AppSpacing.md),
                 ),
-                child: Icon(icon, size: 18, color: AppColors.primary),
+                child: Icon(icon, size: 18, color: context.couleurs.primary),
               ),
               AppSpacing.hGapMd,
               Expanded(
@@ -130,14 +130,14 @@ class InvitationDetailRow extends StatelessWidget {
                   children: <Widget>[
                     Text(
                       label,
-                      style: AppTypography.caption.copyWith(
-                        color: AppColors.textSecondary,
+                      style: context.typo.caption.copyWith(
+                        color: context.couleurs.textSecondary,
                       ),
                     ),
                     const SizedBox(height: 2),
                     EmojiText(
                       value,
-                      style: AppTypography.body.copyWith(
+                      style: context.typo.body.copyWith(
                         fontWeight: AppTypography.semiBold,
                       ),
                       maxLines: 3,
@@ -150,7 +150,7 @@ class InvitationDetailRow extends StatelessWidget {
           ),
         ),
         if (!dernier)
-          const Divider(height: 1, indent: 52, color: AppColors.border),
+          Divider(height: 1, indent: 52, color: context.couleurs.border),
       ],
     );
   }

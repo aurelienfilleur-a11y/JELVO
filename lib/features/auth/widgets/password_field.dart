@@ -51,7 +51,7 @@ class _PasswordFieldState extends State<PasswordField> {
         icon: Icon(
           _obscured ? Icons.visibility_outlined : Icons.visibility_off_outlined,
           size: 20,
-          color: AppColors.textSecondary,
+          color: context.couleurs.textSecondary,
         ),
       ),
     );
@@ -99,7 +99,9 @@ class _Rule extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color color = satisfied ? AppColors.success : AppColors.textSecondary;
+    final Color color = satisfied
+        ? context.couleurs.success
+        : context.couleurs.textSecondary;
 
     return Row(
       children: <Widget>[
@@ -114,7 +116,7 @@ class _Rule extends StatelessWidget {
         Expanded(
           child: Text(
             label,
-            style: AppTypography.caption.copyWith(color: color),
+            style: context.typo.caption.copyWith(color: color),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),

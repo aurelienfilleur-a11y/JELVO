@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/jelvo_colors.dart';
 import '../repository/push_repository.dart';
 
 /// Les huit types de notification, rangés en trois familles.
@@ -72,14 +72,20 @@ enum NotificationCategory {
 
 /// L'état d'une famille, tel que la ligne l'annonce.
 enum CategoryState {
-  toutes('Activées', AppColors.primary),
-  partielles('Partielles', AppColors.warning),
-  aucune('Désactivées', AppColors.textSecondary);
+  toutes('Activées'),
+  partielles('Partielles'),
+  aucune('Désactivées');
 
-  const CategoryState(this.label, this.color);
+  const CategoryState(this.label);
 
   final String label;
-  final Color color;
+
+  /// Un mot d'état, donc du **texte** : c'est la variante encrée qui le porte.
+  Color color(JelvoColors c) => switch (this) {
+    CategoryState.toutes => c.primaryInk,
+    CategoryState.partielles => c.warningInk,
+    CategoryState.aucune => c.textSecondary,
+  };
 
   static CategoryState depuis(List<NotificationPreference> preferences) {
     if (preferences.isEmpty) return CategoryState.aucune;

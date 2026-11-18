@@ -22,7 +22,7 @@ class WelcomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.couleurs.background,
       body: SafeArea(
         child: Column(
           children: <Widget>[
@@ -46,14 +46,14 @@ class WelcomeScreen extends ConsumerWidget {
                         children: <Widget>[
                           Text(
                             'Bienvenue sur Jelvo',
-                            style: AppTypography.h1,
+                            style: context.typo.h1,
                             textAlign: TextAlign.center,
                           ),
                           AppSpacing.gapSm,
                           Text(
                             'L’app qui rassemble vos groupes, vos projets et '
                             'vos proches.',
-                            style: AppTypography.bodyMuted,
+                            style: context.typo.bodyMuted,
                             textAlign: TextAlign.center,
                           ),
                         ],
@@ -145,14 +145,14 @@ class _IllustrationAbsente extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.primarySoft,
+        color: context.couleurs.primarySoft,
         borderRadius: AppRadii.cardRadius,
       ),
       alignment: Alignment.center,
       child: Icon(
         Icons.groups_2_rounded,
         size: 64,
-        color: AppColors.primary.withValues(alpha: 0.35),
+        color: context.couleurs.primary.withValues(alpha: 0.35),
       ),
     );
   }
@@ -165,26 +165,26 @@ class _ArgumentsCard extends StatelessWidget {
   /// Les trois teintes viennent du design system — `primary`, `success`,
   /// `warning` — et non des couleurs de la maquette : violet, vert et orange
   /// y tombent exactement. Aucune couleur nouvelle n'a été introduite.
-  static const List<_Argument> arguments = <_Argument>[
+  static List<_Argument> arguments(JelvoColors c) => <_Argument>[
     _Argument(
       icon: Icons.groups_2_rounded,
-      color: AppColors.primary,
-      background: AppColors.primarySoft,
+      color: c.primary,
+      background: c.primarySoft,
       // La maquette écrit « Tout vos groupes » ; c'est une faute d'accord.
       titre: 'Tous vos groupes au même endroit',
       texte: 'Organisez vos projets, activités et échanges facilement.',
     ),
     _Argument(
       icon: Icons.calendar_month_rounded,
-      color: AppColors.success,
-      background: AppColors.successSoft,
+      color: c.success,
+      background: c.successSoft,
       titre: 'Un agenda partagé et synchronisé',
       texte: 'Ne manquez plus aucun événement important.',
     ),
     _Argument(
       icon: Icons.task_alt_rounded,
-      color: AppColors.warning,
-      background: AppColors.warningSoft,
+      color: c.warning,
+      background: c.warningSoft,
       titre: 'Des tâches claires et efficaces',
       texte: 'Attribuez, suivez et accomplissez ensemble vos objectifs.',
     ),
@@ -196,8 +196,10 @@ class _ArgumentsCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
       child: Column(
         children: <Widget>[
-          for (final (int index, _Argument argument) in arguments.indexed) ...[
-            if (index > 0) const Divider(height: 1, color: AppColors.border),
+          for (final (int index, _Argument argument) in arguments(
+            context.couleurs,
+          ).indexed) ...[
+            if (index > 0) Divider(height: 1, color: context.couleurs.border),
             _ArgumentRow(argument: argument),
           ],
         ],
@@ -250,9 +252,9 @@ class _ArgumentRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(argument.titre, style: AppTypography.h3),
+                Text(argument.titre, style: context.typo.h3),
                 const SizedBox(height: 2),
-                Text(argument.texte, style: AppTypography.caption),
+                Text(argument.texte, style: context.typo.caption),
               ],
             ),
           ),

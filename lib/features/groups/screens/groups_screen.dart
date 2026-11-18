@@ -64,7 +64,7 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen> {
                     ? null
                     : IconButton(
                         icon: const Icon(Icons.cancel_rounded, size: 20),
-                        color: AppColors.textSecondary,
+                        color: context.couleurs.textSecondary,
                         tooltip: 'Effacer la recherche',
                         onPressed: () {
                           _recherche.clear();
@@ -148,7 +148,7 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen> {
                 return GroupCard(
                   name: group.name,
                   icon: group.icon,
-                  accentColor: group.accent.color,
+                  accentColor: group.accent.color(context.couleurs),
                   photoUrl: group.photoUrl,
                   members: group.memberPreviews,
                   hiddenMembers: group.hiddenMemberCount,
@@ -186,13 +186,13 @@ class _InvitationsBanner extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: AppColors.primarySoft,
+              color: context.couleurs.primarySoft,
               borderRadius: BorderRadius.circular(AppSpacing.md),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.mark_email_unread_outlined,
               size: 20,
-              color: AppColors.primary,
+              color: context.couleurs.primary,
             ),
           ),
           AppSpacing.hGapMd,
@@ -202,7 +202,7 @@ class _InvitationsBanner extends StatelessWidget {
               children: <Widget>[
                 Text(
                   '$count invitation${count > 1 ? 's' : ''} en attente',
-                  style: AppTypography.body.copyWith(
+                  style: context.typo.body.copyWith(
                     fontWeight: AppTypography.semiBold,
                   ),
                   maxLines: 1,
@@ -211,17 +211,17 @@ class _InvitationsBanner extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   'On vous a invité à rejoindre un groupe.',
-                  style: AppTypography.caption,
+                  style: context.typo.caption,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
-          const Icon(
+          Icon(
             Icons.chevron_right_rounded,
             size: 20,
-            color: AppColors.textSecondary,
+            color: context.couleurs.textSecondary,
           ),
         ],
       ),

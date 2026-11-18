@@ -35,13 +35,13 @@ class FavoritesStrip extends StatelessWidget {
           padding: AppSpacing.screenHorizontal,
           child: Row(
             children: <Widget>[
-              const Icon(
+              Icon(
                 Icons.star_rounded,
                 size: 18,
-                color: AppColors.primary,
+                color: context.couleurs.primary,
               ),
               AppSpacing.hGapSm,
-              Expanded(child: Text('Favoris', style: AppTypography.h3)),
+              Expanded(child: Text('Favoris', style: context.typo.h3)),
               TextButton(onPressed: onGerer, child: const Text('Gérer')),
             ],
           ),
@@ -61,16 +61,16 @@ class FavoritesStrip extends StatelessWidget {
               padding: const EdgeInsets.all(AppSpacing.md),
               child: Row(
                 children: <Widget>[
-                  const Icon(
+                  Icon(
                     Icons.star_border_rounded,
                     size: 20,
-                    color: AppColors.textSecondary,
+                    color: context.couleurs.textSecondary,
                   ),
                   AppSpacing.hGapMd,
                   Expanded(
                     child: Text(
                       'Épinglez vos proches pour les retrouver ici.',
-                      style: AppTypography.caption,
+                      style: context.typo.caption,
                     ),
                   ),
                 ],
@@ -124,8 +124,8 @@ class _Vignette extends StatelessWidget {
             AppSpacing.gapSm,
             Text(
               contact.shortName,
-              style: AppTypography.caption.copyWith(
-                color: AppColors.midnight,
+              style: context.typo.caption.copyWith(
+                color: context.couleurs.encre,
                 fontWeight: AppTypography.semiBold,
               ),
               maxLines: 1,

@@ -50,7 +50,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.couleurs.background,
       appBar: AppBar(
         title: const Text('Créer'),
         leading: IconButton(
@@ -68,11 +68,11 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
             AppSpacing.xxl,
           ),
           children: <Widget>[
-            Text('Que voulez-vous créer ?', style: AppTypography.h1),
+            Text('Que voulez-vous créer ?', style: context.typo.h1),
             AppSpacing.gapSm,
             Text(
               'Choisissez un type : le formulaire s’ouvre juste en dessous.',
-              style: AppTypography.bodyMuted,
+              style: context.typo.bodyMuted,
             ),
             AppSpacing.gapXl,
             CreationKindSelector(

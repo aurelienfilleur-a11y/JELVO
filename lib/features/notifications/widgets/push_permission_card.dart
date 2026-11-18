@@ -30,9 +30,9 @@ class PushPermissionCard extends ConsumerWidget {
         children: <Widget>[
           Row(
             children: <Widget>[
-              Icon(_icone(statut), color: _teinte(statut)),
+              Icon(_icone(statut), color: _teinte(context, statut)),
               AppSpacing.hGapMd,
-              Expanded(child: Text(_titre(statut), style: AppTypography.h3)),
+              Expanded(child: Text(_titre(statut), style: context.typo.h3)),
               if (statut == PushStatus.actif)
                 StatusDot(
                   tone: StatusTone.success,
@@ -44,8 +44,8 @@ class PushPermissionCard extends ConsumerWidget {
           AppSpacing.gapSm,
           Text(
             _explication(statut),
-            style: AppTypography.caption.copyWith(
-              color: AppColors.textSecondary,
+            style: context.typo.caption.copyWith(
+              color: context.couleurs.textSecondary,
             ),
           ),
 
@@ -82,12 +82,13 @@ class PushPermissionCard extends ConsumerWidget {
     _ => Icons.notifications_none_rounded,
   };
 
-  static Color _teinte(PushStatus statut) => switch (statut) {
-    PushStatus.actif => AppColors.success,
-    PushStatus.refuse => AppColors.danger,
-    PushStatus.installationRequise => AppColors.warning,
-    _ => AppColors.primary,
-  };
+  static Color _teinte(BuildContext context, PushStatus statut) =>
+      switch (statut) {
+        PushStatus.actif => context.couleurs.success,
+        PushStatus.refuse => context.couleurs.danger,
+        PushStatus.installationRequise => context.couleurs.warning,
+        _ => context.couleurs.primary,
+      };
 
   static String _titre(PushStatus statut) => switch (statut) {
     PushStatus.actif => 'Notifications actives',
@@ -160,7 +161,7 @@ class _ConsigneInstallation extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.warningSoft,
+        color: context.couleurs.warningSoft,
         borderRadius: AppRadii.fieldRadius,
       ),
       child: Column(
@@ -175,8 +176,8 @@ class _ConsigneInstallation extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 2),
               child: Text(
                 etape,
-                style: AppTypography.caption.copyWith(
-                  color: AppColors.midnight,
+                style: context.typo.caption.copyWith(
+                  color: context.couleurs.encre,
                 ),
               ),
             ),
@@ -184,8 +185,8 @@ class _ConsigneInstallation extends StatelessWidget {
           Text(
             'La reconnexion n’est pas une erreur : l’application installée a '
             'son propre stockage, distinct de Safari.',
-            style: AppTypography.caption.copyWith(
-              color: AppColors.textSecondary,
+            style: context.typo.caption.copyWith(
+              color: context.couleurs.textSecondary,
             ),
           ),
         ],

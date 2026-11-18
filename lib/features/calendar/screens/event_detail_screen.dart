@@ -34,7 +34,7 @@ class EventDetailScreen extends ConsumerWidget {
         event != null && (event.ownerId == moi || (group?.isAdmin ?? false));
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.couleurs.background,
       appBar: AppBar(
         title: const Text('Événement'),
         leading: IconButton(
@@ -98,7 +98,9 @@ class EventDetailScreen extends ConsumerWidget {
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+            style: TextButton.styleFrom(
+              foregroundColor: context.couleurs.danger,
+            ),
             child: const Text('Supprimer'),
           ),
         ],
@@ -141,16 +143,16 @@ class _Corps extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              EmojiText(event.title, style: AppTypography.h2),
+              EmojiText(event.title, style: context.typo.h2),
               AppSpacing.gapSm,
               Text(
                 '${AppDates.fullDate(event.start)} · '
                 '${AppDates.timeRange(event.start, event.end)}',
-                style: AppTypography.bodyMuted,
+                style: context.typo.bodyMuted,
               ),
               if (event.notes != null && event.notes!.isNotEmpty) ...<Widget>[
                 AppSpacing.gapMd,
-                EmojiText(event.notes!, style: AppTypography.bodyMuted),
+                EmojiText(event.notes!, style: context.typo.bodyMuted),
               ],
             ],
           ),
@@ -201,7 +203,7 @@ class _Corps extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text('Votre réponse', style: AppTypography.h3),
+                Text('Votre réponse', style: context.typo.h3),
                 AppSpacing.gapMd,
                 ResponseButtons(
                   courante: event.myResponse,
@@ -220,16 +222,16 @@ class _Corps extends ConsumerWidget {
                 Row(
                   children: <Widget>[
                     Expanded(
-                      child: Text('Participants', style: AppTypography.h3),
+                      child: Text('Participants', style: context.typo.h3),
                     ),
-                    Text('${event.yesCount} oui', style: AppTypography.caption),
+                    Text('${event.yesCount} oui', style: context.typo.caption),
                   ],
                 ),
                 AppSpacing.gapMd,
                 if (event.participants.isEmpty)
                   Text(
                     'Personne n’a encore été convié.',
-                    style: AppTypography.bodyMuted,
+                    style: context.typo.bodyMuted,
                   )
                 else
                   for (final EventParticipant p in event.participants)
@@ -252,7 +254,7 @@ class _Corps extends ConsumerWidget {
                               p.userId == moi
                                   ? '${p.displayName} (vous)'
                                   : p.displayName,
-                              style: AppTypography.body,
+                              style: context.typo.body,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -310,9 +312,9 @@ class _Ligne extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
           child: Row(
             children: <Widget>[
-              Icon(icon, size: 18, color: AppColors.textSecondary),
+              Icon(icon, size: 18, color: context.couleurs.textSecondary),
               AppSpacing.hGapMd,
-              Expanded(child: Text(label, style: AppTypography.body)),
+              Expanded(child: Text(label, style: context.typo.body)),
               AppSpacing.hGapSm,
               Flexible(
                 child: EmojiText(
@@ -320,8 +322,8 @@ class _Ligne extends StatelessWidget {
                   textAlign: TextAlign.end,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTypography.body.copyWith(
-                    color: AppColors.primary,
+                  style: context.typo.body.copyWith(
+                    color: context.couleurs.primary,
                     fontWeight: AppTypography.semiBold,
                   ),
                 ),
@@ -329,7 +331,7 @@ class _Ligne extends StatelessWidget {
             ],
           ),
         ),
-        if (!dernier) const Divider(height: 1, color: AppColors.border),
+        if (!dernier) Divider(height: 1, color: context.couleurs.border),
       ],
     );
   }

@@ -103,7 +103,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             Flexible(
               child: Text(
                 'Pas encore de compte ?',
-                style: AppTypography.bodyMuted,
+                style: context.typo.bodyMuted,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -145,7 +145,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             setState(() => _seSouvenir = coche ?? true),
                 ),
                 Flexible(
-                  child: Text('Se souvenir de moi', style: AppTypography.body),
+                  child: Text('Se souvenir de moi', style: context.typo.body),
                 ),
               ],
             ),
@@ -158,8 +158,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             _seSouvenir
                 ? 'Vous resterez connecté jusqu’à la déconnexion.'
                 : 'Vous serez déconnecté à la fermeture de l’application.',
-            style: AppTypography.caption.copyWith(
-              color: AppColors.textSecondary,
+            style: context.typo.caption.copyWith(
+              color: context.couleurs.textSecondary,
             ),
           ),
         ),
@@ -169,16 +169,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           Container(
             padding: const EdgeInsets.all(AppSpacing.md),
             decoration: BoxDecoration(
-              color: AppColors.primarySoft,
+              color: context.couleurs.primarySoft,
               borderRadius: AppRadii.fieldRadius,
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                const Icon(
+                Icon(
                   Icons.info_outline_rounded,
                   size: 18,
-                  color: AppColors.primary,
+                  color: context.couleurs.primary,
                 ),
                 AppSpacing.hGapSm,
                 Expanded(
@@ -186,8 +186,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     'Jelvo installé sur l’écran d’accueil a sa propre '
                     'session : s’y connecter est une étape distincte de '
                     'Safari, même avec cette case cochée.',
-                    style: AppTypography.caption.copyWith(
-                      color: AppColors.midnight,
+                    style: context.typo.caption.copyWith(
+                      color: context.couleurs.encre,
                     ),
                   ),
                 ),

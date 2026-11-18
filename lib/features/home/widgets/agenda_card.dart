@@ -70,7 +70,7 @@ class AgendaCard extends StatelessWidget {
           // Le pied n'apparaît que s'il reste quelque chose à voir : proposer
           // « voir tout » sur une liste déjà complète est une promesse vide.
           if (reste > 0) ...<Widget>[
-            const Divider(height: 1, color: AppColors.border),
+            Divider(height: 1, color: context.couleurs.border),
             TextButton.icon(
               onPressed: onOpenCalendar,
               icon: const Icon(Icons.expand_more_rounded, size: 18),

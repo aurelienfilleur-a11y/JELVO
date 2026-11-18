@@ -50,7 +50,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     final int unread = ref.watch(unreadCountProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.couleurs.background,
       appBar: AppBar(
         title: const Text('Notifications'),
         leading: IconButton(
@@ -258,10 +258,14 @@ class _NotificationTile extends StatelessWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: type.accent.withValues(alpha: 0.12),
+                  color: type.accent(context.couleurs).withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(AppSpacing.md),
                 ),
-                child: Icon(type.icon, size: 20, color: type.accent),
+                child: Icon(
+                  type.icon,
+                  size: 20,
+                  color: type.accent(context.couleurs),
+                ),
               ),
               AppSpacing.hGapMd,
               Expanded(
@@ -270,7 +274,7 @@ class _NotificationTile extends StatelessWidget {
                   children: <Widget>[
                     EmojiText(
                       notification.title,
-                      style: AppTypography.body.copyWith(
+                      style: context.typo.body.copyWith(
                         fontWeight: notification.isUnread
                             ? AppTypography.semiBold
                             : AppTypography.medium,
@@ -281,7 +285,7 @@ class _NotificationTile extends StatelessWidget {
                     const SizedBox(height: 2),
                     EmojiText(
                       notification.message,
-                      style: AppTypography.caption,
+                      style: context.typo.caption,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -289,8 +293,8 @@ class _NotificationTile extends StatelessWidget {
                       AppSpacing.gapXs,
                       Text(
                         AppDates.relativeDay(notification.createdAt!, now: now),
-                        style: AppTypography.caption.copyWith(
-                          color: AppColors.textSecondary,
+                        style: context.typo.caption.copyWith(
+                          color: context.couleurs.textSecondary,
                         ),
                       ),
                     ],
@@ -303,8 +307,8 @@ class _NotificationTile extends StatelessWidget {
                   width: 10,
                   height: 10,
                   margin: const EdgeInsets.only(top: AppSpacing.xs),
-                  decoration: const BoxDecoration(
-                    color: AppColors.primary,
+                  decoration: BoxDecoration(
+                    color: context.couleurs.primary,
                     shape: BoxShape.circle,
                   ),
                 ),

@@ -28,7 +28,7 @@ class ProfileScreen extends ConsumerWidget {
     final AsyncValue<Profile?> profilAsync = ref.watch(currentProfileProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.couleurs.background,
       appBar: AppBar(
         title: const Text('Mon profil'),
         leading: IconButton(
@@ -161,13 +161,13 @@ class _LigneDisponibilites extends StatelessWidget {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: AppColors.primarySoft,
+                  color: context.couleurs.primarySoft,
                   borderRadius: AppRadii.fieldRadius,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.event_available_outlined,
                   size: 18,
-                  color: AppColors.primary,
+                  color: context.couleurs.primary,
                 ),
               ),
               AppSpacing.hGapMd,
@@ -177,7 +177,7 @@ class _LigneDisponibilites extends StatelessWidget {
                   children: <Widget>[
                     Text(
                       'Mes disponibilités',
-                      style: AppTypography.body.copyWith(
+                      style: context.typo.body.copyWith(
                         fontWeight: AppTypography.semiBold,
                       ),
                     ),
@@ -185,16 +185,16 @@ class _LigneDisponibilites extends StatelessWidget {
                     Text(
                       'Les autres n’y voient qu’un mot : disponible, '
                       'indisponible ou inconnu.',
-                      style: AppTypography.caption,
+                      style: context.typo.caption,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
-              const Icon(
+              Icon(
                 Icons.chevron_right_rounded,
-                color: AppColors.textSecondary,
+                color: context.couleurs.textSecondary,
               ),
             ],
           ),

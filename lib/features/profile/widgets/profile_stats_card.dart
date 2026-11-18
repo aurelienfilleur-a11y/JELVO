@@ -38,7 +38,7 @@ class ProfileStatsCard extends StatelessWidget {
         children: <Widget>[
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-            child: Text('Mes statistiques', style: AppTypography.h3),
+            child: Text('Mes statistiques', style: context.typo.h3),
           ),
           AppSpacing.gapMd,
           Row(
@@ -46,8 +46,8 @@ class ProfileStatsCard extends StatelessWidget {
               Expanded(
                 child: _Compteur(
                   icon: Icons.groups_2_rounded,
-                  couleur: AppColors.primary,
-                  fond: AppColors.primarySoft,
+                  couleur: context.couleurs.primary,
+                  fond: context.couleurs.primarySoft,
                   valeur: stats.groups,
                   libelle: 'Groupes',
                   onTap: onOpenGroups,
@@ -57,8 +57,8 @@ class ProfileStatsCard extends StatelessWidget {
               Expanded(
                 child: _Compteur(
                   icon: Icons.event_rounded,
-                  couleur: AppColors.success,
-                  fond: AppColors.successSoft,
+                  couleur: context.couleurs.success,
+                  fond: context.couleurs.successSoft,
                   valeur: stats.events,
                   libelle: 'Événements',
                   onTap: onOpenCalendar,
@@ -68,8 +68,8 @@ class ProfileStatsCard extends StatelessWidget {
               Expanded(
                 child: _Compteur(
                   icon: Icons.task_alt_rounded,
-                  couleur: AppColors.warning,
-                  fond: AppColors.warningSoft,
+                  couleur: context.couleurs.warning,
+                  fond: context.couleurs.warningSoft,
                   valeur: stats.completedTasks,
                   libelle: 'Tâches terminées',
                   onTap: onOpenTasks,
@@ -87,9 +87,13 @@ class _Trait extends StatelessWidget {
   const _Trait();
 
   @override
-  Widget build(BuildContext context) => const SizedBox(
+  Widget build(BuildContext context) => SizedBox(
     height: 72,
-    child: VerticalDivider(width: 1, thickness: 1, color: AppColors.border),
+    child: VerticalDivider(
+      width: 1,
+      thickness: 1,
+      color: context.couleurs.border,
+    ),
   );
 }
 
@@ -135,11 +139,11 @@ class _Compteur extends StatelessWidget {
                 child: Icon(icon, size: 19, color: couleur),
               ),
               AppSpacing.gapSm,
-              Text('$valeur', style: AppTypography.h2),
+              Text('$valeur', style: context.typo.h2),
               const SizedBox(height: 2),
               Text(
                 libelle,
-                style: AppTypography.caption,
+                style: context.typo.caption,
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,

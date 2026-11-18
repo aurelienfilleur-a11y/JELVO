@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/jelvo_colors.dart';
 
 /// Nature d'une notification.
 ///
@@ -51,13 +51,13 @@ enum NotificationType {
     NotificationType.autre => Icons.notifications_none_rounded,
   };
 
-  Color get accent => switch (this) {
-    NotificationType.groupInvitation => AppColors.primary,
-    NotificationType.contactRequest => AppColors.success,
-    NotificationType.eventInvitation => AppColors.warning,
-    NotificationType.taskAssigned => AppColors.primaryDark,
-    NotificationType.taskResponse => AppColors.success,
-    NotificationType.autre => AppColors.textSecondary,
+  Color accent(JelvoColors c) => switch (this) {
+    NotificationType.groupInvitation => c.primary,
+    NotificationType.contactRequest => c.success,
+    NotificationType.eventInvitation => c.warning,
+    NotificationType.taskAssigned => c.primaryDark,
+    NotificationType.taskResponse => c.success,
+    NotificationType.autre => c.textSecondary,
   };
 }
 

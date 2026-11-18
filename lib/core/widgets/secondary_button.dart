@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_colors.dart';
+import '../theme/jelvo_colors.dart';
 import '../theme/app_radii.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
@@ -32,21 +32,23 @@ class SecondaryButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Color foreground = isDestructive
-        ? AppColors.danger
-        : AppColors.primary;
+        ? context.couleurs.danger
+        : context.couleurs.primary;
 
     final Widget button = OutlinedButton(
       onPressed: onPressed,
       style: OutlinedButton.styleFrom(
-        backgroundColor: AppColors.surface,
+        backgroundColor: context.couleurs.surface,
         foregroundColor: foreground,
-        disabledForegroundColor: AppColors.textSecondary,
+        disabledForegroundColor: context.couleurs.textSecondary,
         side: BorderSide(
-          color: isDestructive ? AppColors.dangerSoft : AppColors.border,
+          color: isDestructive
+              ? context.couleurs.dangerSoft
+              : context.couleurs.border,
         ),
         minimumSize: Size(expanded ? double.infinity : 0, _height),
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
-        textStyle: AppTypography.button,
+        textStyle: context.typo.button,
         shape: const RoundedRectangleBorder(
           borderRadius: AppRadii.buttonRadius,
         ),

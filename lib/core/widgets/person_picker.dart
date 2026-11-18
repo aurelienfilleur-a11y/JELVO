@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_colors.dart';
+import '../theme/jelvo_colors.dart';
 import '../theme/app_radii.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
@@ -121,7 +121,7 @@ class _Pastille extends StatelessWidget {
                     size: 56,
                     index: index,
                     border: choisi
-                        ? Border.all(color: AppColors.primary, width: 3)
+                        ? Border.all(color: context.couleurs.primary, width: 3)
                         : null,
                   ),
                   if (choisi)
@@ -130,14 +130,14 @@ class _Pastille extends StatelessWidget {
                       bottom: -2,
                       child: Container(
                         padding: const EdgeInsets.all(2),
-                        decoration: const BoxDecoration(
-                          color: AppColors.surface,
+                        decoration: BoxDecoration(
+                          color: context.couleurs.surface,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.check_circle_rounded,
                           size: 18,
-                          color: AppColors.primary,
+                          color: context.couleurs.primary,
                         ),
                       ),
                     ),
@@ -149,8 +149,10 @@ class _Pastille extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
-                style: AppTypography.caption.copyWith(
-                  color: choisi ? AppColors.primary : AppColors.textSecondary,
+                style: context.typo.caption.copyWith(
+                  color: choisi
+                      ? context.couleurs.primary
+                      : context.couleurs.textSecondary,
                   fontWeight: choisi ? AppTypography.semiBold : null,
                 ),
               ),
@@ -184,14 +186,14 @@ class _Autre extends StatelessWidget {
               Container(
                 width: 56,
                 height: 56,
-                decoration: const BoxDecoration(
-                  color: AppColors.primarySoft,
+                decoration: BoxDecoration(
+                  color: context.couleurs.primarySoft,
                   shape: BoxShape.circle,
                 ),
                 alignment: Alignment.center,
-                child: const Icon(
+                child: Icon(
                   Icons.more_horiz_rounded,
-                  color: AppColors.primary,
+                  color: context.couleurs.primary,
                 ),
               ),
               AppSpacing.gapXs,
@@ -200,8 +202,8 @@ class _Autre extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
-                style: AppTypography.caption.copyWith(
-                  color: AppColors.textSecondary,
+                style: context.typo.caption.copyWith(
+                  color: context.couleurs.textSecondary,
                 ),
               ),
             ],
@@ -299,10 +301,10 @@ class _PersonPickerSheetState extends State<PersonPickerSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  Text(widget.titre, style: AppTypography.h2),
+                  Text(widget.titre, style: context.typo.h2),
                   if (widget.aide != null) ...<Widget>[
                     AppSpacing.gapXs,
-                    Text(widget.aide!, style: AppTypography.bodyMuted),
+                    Text(widget.aide!, style: context.typo.bodyMuted),
                   ],
                   AppSpacing.gapMd,
                   AppTextField(
@@ -321,7 +323,7 @@ class _PersonPickerSheetState extends State<PersonPickerSheet> {
                       padding: const EdgeInsets.all(AppSpacing.lg),
                       child: Text(
                         'Personne à ce nom.',
-                        style: AppTypography.bodyMuted,
+                        style: context.typo.bodyMuted,
                       ),
                     )
                   : ListView.builder(
@@ -334,7 +336,7 @@ class _PersonPickerSheetState extends State<PersonPickerSheet> {
                           controlAffinity: ListTileControlAffinity.trailing,
                           title: EmojiText(
                             personne.name,
-                            style: AppTypography.body,
+                            style: context.typo.body,
                           ),
                           secondary: AvatarImage(
                             data: personne.avatar,

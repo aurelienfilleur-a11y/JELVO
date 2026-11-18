@@ -36,24 +36,24 @@ class ChatActionsSheet extends StatelessWidget {
         children: <Widget>[
           _Ligne(
             icon: Icons.check_circle_outline_rounded,
-            teinte: AppColors.success,
-            fond: AppColors.successSoft,
+            teinte: context.couleurs.success,
+            fond: context.couleurs.successSoft,
             titre: 'Nouvelle tâche',
             sousTitre: 'Créer une tâche à faire',
             action: ChatAction.tache,
           ),
           _Ligne(
             icon: Icons.calendar_month_rounded,
-            teinte: AppColors.primary,
-            fond: AppColors.primarySoft,
+            teinte: context.couleurs.primary,
+            fond: context.couleurs.primarySoft,
             titre: 'Nouvel événement',
             sousTitre: 'Planifier un événement',
             action: ChatAction.evenement,
           ),
           _Ligne(
             icon: Icons.photo_library_outlined,
-            teinte: AppColors.warning,
-            fond: AppColors.warningSoft,
+            teinte: context.couleurs.warning,
+            fond: context.couleurs.warningSoft,
             titre: 'Photo ou vidéo',
             sousTitre: 'Envoyer un média',
             action: ChatAction.media,
@@ -97,9 +97,9 @@ class _Ligne extends StatelessWidget {
       ),
       title: Text(
         titre,
-        style: AppTypography.body.copyWith(fontWeight: AppTypography.medium),
+        style: context.typo.body.copyWith(fontWeight: AppTypography.medium),
       ),
-      subtitle: Text(sousTitre, style: AppTypography.caption),
+      subtitle: Text(sousTitre, style: context.typo.caption),
       onTap: () => Navigator.of(context).pop(action),
     );
   }

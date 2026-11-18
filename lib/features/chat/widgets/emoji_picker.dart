@@ -36,9 +36,9 @@ class _EmojiPickerState extends State<EmojiPicker> {
 
     return Container(
       height: EmojiPicker.hauteur,
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.border)),
+      decoration: BoxDecoration(
+        color: context.couleurs.surface,
+        border: Border(top: BorderSide(color: context.couleurs.border)),
       ),
       child: Column(
         children: <Widget>[
@@ -58,7 +58,7 @@ class _EmojiPickerState extends State<EmojiPicker> {
                       minimumSize: const Size(44, 36),
                       padding: EdgeInsets.zero,
                       backgroundColor: actif
-                          ? AppColors.primarySoft
+                          ? context.couleurs.primarySoft
                           : Colors.transparent,
                     ),
                     child: EmojiText(
@@ -70,7 +70,7 @@ class _EmojiPickerState extends State<EmojiPicker> {
               },
             ),
           ),
-          const Divider(height: 1, color: AppColors.border),
+          Divider(height: 1, color: context.couleurs.border),
           Expanded(
             child: GridView.builder(
               padding: const EdgeInsets.all(AppSpacing.sm),

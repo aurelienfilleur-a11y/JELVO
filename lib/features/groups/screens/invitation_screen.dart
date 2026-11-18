@@ -23,7 +23,7 @@ class InvitationsScreen extends ConsumerWidget {
         invitationsAsync.value ?? const <GroupInvitation>[];
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.couleurs.background,
       appBar: AppBar(
         title: const Text('Invitations'),
         leading: IconButton(
@@ -114,7 +114,7 @@ class _InvitationScreenState extends ConsumerState<InvitationScreen> {
     );
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.couleurs.background,
       appBar: AppBar(
         title: const Text('Invitation'),
         leading: IconButton(
@@ -164,8 +164,8 @@ class _InvitationScreenState extends ConsumerState<InvitationScreen> {
     }
 
     final Color accent = invitation.groupId == null
-        ? AppColors.primary
-        : GroupAccent.forId(invitation.groupId!).color;
+        ? context.couleurs.primary
+        : GroupAccent.forId(invitation.groupId!).color(context.couleurs);
 
     return ListView(
       padding: const EdgeInsets.only(bottom: AppSpacing.xxl),
@@ -260,7 +260,7 @@ class _InvitationScreenState extends ConsumerState<InvitationScreen> {
                         invitation.members
                             .map((InvitationMember m) => m.name)
                             .join(', '),
-                        style: AppTypography.caption,
+                        style: context.typo.caption,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -275,8 +275,8 @@ class _InvitationScreenState extends ConsumerState<InvitationScreen> {
                 AppSpacing.gapXl,
                 _Bandeau(
                   icone: Icons.schedule_rounded,
-                  couleur: AppColors.warning,
-                  fond: AppColors.warningSoft,
+                  couleur: context.couleurs.warning,
+                  fond: context.couleurs.warningSoft,
                   texte:
                       'Adhésion temporaire : jusqu’au '
                       '${AppDates.fullDate(invitation.membershipExpiresAt!)}.',
@@ -388,8 +388,10 @@ class _Denouement extends StatelessWidget {
       children: <Widget>[
         _Bandeau(
           icone: statut.icone,
-          couleur: membre ? AppColors.success : AppColors.textSecondary,
-          fond: membre ? AppColors.successSoft : AppColors.border,
+          couleur: membre
+              ? context.couleurs.success
+              : context.couleurs.textSecondary,
+          fond: membre ? context.couleurs.successSoft : context.couleurs.border,
           titre: statut.titre,
           texte: statut.message,
         ),
@@ -438,7 +440,7 @@ class _Bandeau extends StatelessWidget {
                 if (titre != null) ...<Widget>[
                   Text(
                     titre!,
-                    style: AppTypography.body.copyWith(
+                    style: context.typo.body.copyWith(
                       fontWeight: AppTypography.semiBold,
                     ),
                   ),
@@ -446,8 +448,8 @@ class _Bandeau extends StatelessWidget {
                 ],
                 Text(
                   texte,
-                  style: AppTypography.caption.copyWith(
-                    color: AppColors.midnight,
+                  style: context.typo.caption.copyWith(
+                    color: context.couleurs.encre,
                   ),
                 ),
               ],

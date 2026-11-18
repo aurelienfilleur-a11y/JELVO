@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_colors.dart';
+import '../theme/jelvo_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 import 'primary_button.dart';
@@ -41,20 +41,20 @@ class EmptyState extends StatelessWidget {
             Container(
               width: 72,
               height: 72,
-              decoration: const BoxDecoration(
-                color: AppColors.primarySoft,
+              decoration: BoxDecoration(
+                color: context.couleurs.primarySoft,
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 30, color: AppColors.primary),
+              child: Icon(icon, size: 30, color: context.couleurs.primary),
             ),
             AppSpacing.gapLg,
-            Text(title, textAlign: TextAlign.center, style: AppTypography.h3),
+            Text(title, textAlign: TextAlign.center, style: context.typo.h3),
             if (message != null) ...<Widget>[
               AppSpacing.gapSm,
               Text(
                 message!,
                 textAlign: TextAlign.center,
-                style: AppTypography.bodyMuted,
+                style: context.typo.bodyMuted,
               ),
             ],
             if (showAction) ...<Widget>[

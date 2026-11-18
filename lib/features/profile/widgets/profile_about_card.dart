@@ -82,7 +82,7 @@ class _ProfileAboutCardState extends ConsumerState<ProfileAboutCard> {
         children: <Widget>[
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-            child: Text('À propos', style: AppTypography.h3),
+            child: Text('À propos', style: context.typo.h3),
           ),
           AppSpacing.gapSm,
 
@@ -96,7 +96,7 @@ class _ProfileAboutCardState extends ConsumerState<ProfileAboutCard> {
             onOuvrir: _ouvrir,
             onValider: () => _focus.unfocus(),
           ),
-          const Divider(height: 1, indent: 52, color: AppColors.border),
+          Divider(height: 1, indent: 52, color: context.couleurs.border),
           _LigneLecture(
             icon: Icons.mail_outline_rounded,
             label: 'Email',
@@ -198,13 +198,13 @@ class _LigneBio extends StatelessWidget {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: AppColors.primarySoft,
+                    color: context.couleurs.primarySoft,
                     borderRadius: AppRadii.fieldRadius,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.article_outlined,
                     size: 18,
-                    color: AppColors.primary,
+                    color: context.couleurs.primary,
                   ),
                 ),
                 AppSpacing.hGapMd,
@@ -214,7 +214,7 @@ class _LigneBio extends StatelessWidget {
                     children: <Widget>[
                       Text(
                         'Bio',
-                        style: AppTypography.body.copyWith(
+                        style: context.typo.body.copyWith(
                           fontWeight: AppTypography.semiBold,
                         ),
                       ),
@@ -239,8 +239,8 @@ class _LigneBio extends StatelessWidget {
                                 required bool isFocused,
                                 required int? maxLength,
                               }) => null,
-                          style: AppTypography.caption.copyWith(
-                            color: AppColors.midnight,
+                          style: context.typo.caption.copyWith(
+                            color: context.couleurs.encre,
                           ),
                           textInputAction: TextInputAction.done,
                           textCapitalization: TextCapitalization.sentences,
@@ -253,7 +253,7 @@ class _LigneBio extends StatelessWidget {
                             contentPadding: EdgeInsets.zero,
                             border: InputBorder.none,
                             hintText: 'Quelques mots sur vous',
-                            hintStyle: AppTypography.caption,
+                            hintStyle: context.typo.caption,
                           ),
                         )
                       else
@@ -263,10 +263,10 @@ class _LigneBio extends StatelessWidget {
                           vide
                               ? 'Ajoutez quelques mots sur vous'
                               : texteAffiche,
-                          style: AppTypography.caption.copyWith(
+                          style: context.typo.caption.copyWith(
                             color: vide
-                                ? AppColors.textSecondary
-                                : AppColors.midnight,
+                                ? context.couleurs.textSecondary
+                                : context.couleurs.encre,
                             fontStyle: vide ? FontStyle.italic : null,
                           ),
                         ),
@@ -289,13 +289,13 @@ class _LigneBio extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(AppSpacing.sm),
                   decoration: BoxDecoration(
-                    color: AppColors.dangerSoft,
+                    color: context.couleurs.dangerSoft,
                     borderRadius: AppRadii.fieldRadius,
                   ),
                   child: Text(
                     erreur!,
-                    style: AppTypography.caption.copyWith(
-                      color: AppColors.danger,
+                    style: context.typo.caption.copyWith(
+                      color: context.couleurs.danger,
                     ),
                   ),
                 ),
@@ -345,19 +345,19 @@ class _Affordance extends StatelessWidget {
         onPressed: onValider,
         tooltip: 'Enregistrer la bio',
         visualDensity: VisualDensity.compact,
-        icon: const Icon(
+        icon: Icon(
           Icons.check_rounded,
           size: 20,
-          color: AppColors.primary,
+          color: context.couleurs.primary,
         ),
       );
     }
-    return const Tooltip(
+    return Tooltip(
       message: 'Modifier la bio',
       child: Icon(
         Icons.edit_outlined,
         size: 18,
-        color: AppColors.textSecondary,
+        color: context.couleurs.textSecondary,
       ),
     );
   }
@@ -394,10 +394,10 @@ class _LigneLecture extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: AppColors.primarySoft,
+              color: context.couleurs.primarySoft,
               borderRadius: AppRadii.fieldRadius,
             ),
-            child: Icon(icon, size: 18, color: AppColors.primary),
+            child: Icon(icon, size: 18, color: context.couleurs.primary),
           ),
           AppSpacing.hGapMd,
           Expanded(
@@ -406,17 +406,17 @@ class _LigneLecture extends StatelessWidget {
               children: <Widget>[
                 Text(
                   label,
-                  style: AppTypography.body.copyWith(
+                  style: context.typo.body.copyWith(
                     fontWeight: AppTypography.semiBold,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   value,
-                  style: AppTypography.caption.copyWith(
+                  style: context.typo.caption.copyWith(
                     color: attenue
-                        ? AppColors.textSecondary
-                        : AppColors.midnight,
+                        ? context.couleurs.textSecondary
+                        : context.couleurs.encre,
                     fontStyle: attenue ? FontStyle.italic : null,
                   ),
                   maxLines: 3,

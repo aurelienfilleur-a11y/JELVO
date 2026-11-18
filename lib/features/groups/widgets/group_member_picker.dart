@@ -62,9 +62,9 @@ class _GroupMemberPickerState extends ConsumerState<GroupMemberPicker> {
       children: <Widget>[
         Text(
           'Ajouter des membres',
-          style: AppTypography.caption.copyWith(
+          style: context.typo.caption.copyWith(
             fontWeight: AppTypography.medium,
-            color: AppColors.midnight,
+            color: context.couleurs.encre,
           ),
         ),
         AppSpacing.gapSm,
@@ -112,7 +112,7 @@ class _GroupMemberPickerState extends ConsumerState<GroupMemberPicker> {
               ],
             ),
             AppSpacing.gapLg,
-            Text('Suggestions', style: AppTypography.caption),
+            Text('Suggestions', style: context.typo.caption),
             AppSpacing.gapSm,
             _Rangee(
               contacts: contacts.take(_suggestions).toList(),
@@ -220,7 +220,7 @@ class _ActionCard extends StatelessWidget {
     return AppCard(
       onTap: onTap,
       padding: const EdgeInsets.all(AppSpacing.md),
-      borderColor: actif ? AppColors.primary : AppColors.border,
+      borderColor: actif ? context.couleurs.primary : context.couleurs.border,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
@@ -233,24 +233,26 @@ class _ActionCard extends StatelessWidget {
                     ? Icons.check_circle_rounded
                     : Icons.chevron_right_rounded,
                 size: 20,
-                color: actif ? AppColors.primary : AppColors.textSecondary,
+                color: actif
+                    ? context.couleurs.primary
+                    : context.couleurs.textSecondary,
               ),
             ],
           ),
           AppSpacing.gapSm,
           Text(
             titre,
-            style: AppTypography.body.copyWith(
-              fontWeight: AppTypography.medium,
-            ),
+            style: context.typo.body.copyWith(fontWeight: AppTypography.medium),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 2),
           Text(
             sousTitre,
-            style: AppTypography.caption.copyWith(
-              color: actif ? AppColors.primary : AppColors.textSecondary,
+            style: context.typo.caption.copyWith(
+              color: actif
+                  ? context.couleurs.primary
+                  : context.couleurs.textSecondary,
             ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -342,7 +344,7 @@ class _Pastille extends StatelessWidget {
                     size: _taille,
                     index: index,
                     border: choisi
-                        ? Border.all(color: AppColors.primary, width: 3)
+                        ? Border.all(color: context.couleurs.primary, width: 3)
                         : null,
                   ),
                   // Le « + » dit que l'avatar s'ajoute — sans lui, une rangée
@@ -352,8 +354,8 @@ class _Pastille extends StatelessWidget {
                     bottom: -2,
                     child: Container(
                       padding: const EdgeInsets.all(2),
-                      decoration: const BoxDecoration(
-                        color: AppColors.surface,
+                      decoration: BoxDecoration(
+                        color: context.couleurs.surface,
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -362,8 +364,8 @@ class _Pastille extends StatelessWidget {
                             : Icons.add_circle_rounded,
                         size: 18,
                         color: choisi
-                            ? AppColors.primary
-                            : AppColors.textSecondary,
+                            ? context.couleurs.primary
+                            : context.couleurs.textSecondary,
                       ),
                     ),
                   ),
@@ -375,8 +377,10 @@ class _Pastille extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
-                style: AppTypography.caption.copyWith(
-                  color: choisi ? AppColors.primary : AppColors.textSecondary,
+                style: context.typo.caption.copyWith(
+                  color: choisi
+                      ? context.couleurs.primary
+                      : context.couleurs.textSecondary,
                   fontWeight: choisi ? AppTypography.semiBold : null,
                 ),
               ),
@@ -408,7 +412,7 @@ class _Resultats extends StatelessWidget {
     if (contacts.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-        child: Text('Aucun contact à ce nom.', style: AppTypography.bodyMuted),
+        child: Text('Aucun contact à ce nom.', style: context.typo.bodyMuted),
       );
     }
 
@@ -421,10 +425,10 @@ class _Resultats extends StatelessWidget {
               value: selected.contains(contact.id),
               onChanged: enabled ? (_) => onToggle(contact.id) : null,
               controlAffinity: ListTileControlAffinity.trailing,
-              title: EmojiText(contact.fullName, style: AppTypography.body),
+              title: EmojiText(contact.fullName, style: context.typo.body),
               subtitle: contact.pseudo == null
                   ? null
-                  : Text(contact.pseudoHandle, style: AppTypography.caption),
+                  : Text(contact.pseudoHandle, style: context.typo.caption),
               secondary: _MiniAvatar(contact: contact, index: index),
             ),
         ],
@@ -466,8 +470,10 @@ class _Compteur extends StatelessWidget {
               1 => '1 personne sera invitée.',
               _ => '$nombre personnes seront invitées.',
             },
-            style: AppTypography.caption.copyWith(
-              color: nombre == 0 ? AppColors.textSecondary : AppColors.primary,
+            style: context.typo.caption.copyWith(
+              color: nombre == 0
+                  ? context.couleurs.textSecondary
+                  : context.couleurs.primary,
               fontWeight: nombre == 0 ? null : AppTypography.semiBold,
             ),
           ),
@@ -487,13 +493,13 @@ class _SansContact extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.primarySoft,
+        color: context.couleurs.primarySoft,
         borderRadius: AppRadii.fieldRadius,
       ),
       child: Text(
         'Votre carnet est vide pour l’instant. Vous pourrez inviter depuis '
         'l’écran du groupe, par lien de partage ou par pseudo.',
-        style: AppTypography.caption.copyWith(color: AppColors.midnight),
+        style: context.typo.caption.copyWith(color: context.couleurs.encre),
       ),
     );
   }

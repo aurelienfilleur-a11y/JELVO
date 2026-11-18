@@ -60,7 +60,7 @@ class GroupHeader extends StatelessWidget {
           // que l'image et son dégradé.
           CoverBanner(
             name: '',
-            accentColor: group.accent.color,
+            accentColor: group.accent.color(context.couleurs),
             icon: group.icon,
             photoUrl: group.photoUrl,
             height: hauteur,
@@ -112,7 +112,7 @@ class GroupHeader extends StatelessWidget {
                         children: <Widget>[
                           Text(
                             group.name,
-                            style: AppTypography.h1.copyWith(
+                            style: context.typo.h1.copyWith(
                               color: Colors.white,
                             ),
                             maxLines: 1,
@@ -120,7 +120,7 @@ class GroupHeader extends StatelessWidget {
                           ),
                           Text(
                             group.memberLabel,
-                            style: AppTypography.body.copyWith(
+                            style: context.typo.body.copyWith(
                               color: Colors.white.withValues(alpha: 0.9),
                             ),
                             maxLines: 1,
@@ -163,7 +163,7 @@ class _Vignette extends StatelessWidget {
       width: 72,
       height: 72,
       decoration: BoxDecoration(
-        color: group.accent.color,
+        color: group.accent.color(context.couleurs),
         shape: BoxShape.circle,
         border: Border.all(color: Colors.white, width: 3),
       ),
@@ -192,7 +192,7 @@ class _Pastille extends StatelessWidget {
     return _PastilleEnveloppe(
       child: IconButton(
         icon: NavBadge(count: badge, child: Icon(icon)),
-        color: AppColors.midnight,
+        color: _encre,
         tooltip: tooltip,
         onPressed: onPressed,
       ),
@@ -201,6 +201,12 @@ class _Pastille extends StatelessWidget {
 }
 
 /// Le disque blanc lui-même, pour envelopper aussi le menu de l'écran.
+///
+/// **Blanc dans les deux apparences, et c'est délibéré.** Le disque est posé
+/// sur une **photographie**, qui n'a pas d'apparence : ce qu'il faut, c'est
+/// qu'il tranche aussi bien sur un ciel d'été que sur une photo de nuit.
+/// Le suivre du thème l'aurait rendu sombre en mode sombre — invisible sur
+/// une photo sombre, exactement le défaut qu'il existe pour éviter.
 class _PastilleEnveloppe extends StatelessWidget {
   const _PastilleEnveloppe({required this.child});
 
@@ -211,15 +217,19 @@ class _PastilleEnveloppe extends StatelessWidget {
     return Container(
       width: 44,
       height: 44,
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
+      decoration: BoxDecoration(
+        color: _fond,
         shape: BoxShape.circle,
-        boxShadow: AppShadows.card,
+        boxShadow: context.ombres.card,
       ),
       child: IconTheme(
-        data: const IconThemeData(color: AppColors.midnight, size: 22),
+        data: const IconThemeData(color: _encre, size: 22),
         child: Center(child: child),
       ),
     );
   }
 }
+
+/// Le blanc du disque et l'encre de son icône, tous deux fixes.
+const Color _fond = Colors.white;
+const Color _encre = Color(0xFF12122B);

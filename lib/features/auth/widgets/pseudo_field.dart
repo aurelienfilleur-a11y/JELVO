@@ -72,15 +72,17 @@ class PseudoField extends ConsumerWidget {
           AppSpacing.gapXs,
           Row(
             children: <Widget>[
-              const Icon(
+              Icon(
                 Icons.check_circle_rounded,
                 size: 14,
-                color: AppColors.success,
+                color: context.couleurs.success,
               ),
               AppSpacing.hGapXs,
               Text(
                 'Ce pseudo est disponible.',
-                style: AppTypography.caption.copyWith(color: AppColors.success),
+                style: context.typo.caption.copyWith(
+                  color: context.couleurs.success,
+                ),
               ),
             ],
           ),
@@ -109,15 +111,15 @@ class _AvailabilityIndicator extends StatelessWidget {
     }
 
     return switch (state.value) {
-      PseudoAvailability.available => const Icon(
+      PseudoAvailability.available => Icon(
         Icons.check_circle_rounded,
         size: 20,
-        color: AppColors.success,
+        color: context.couleurs.success,
       ),
-      PseudoAvailability.taken => const Icon(
+      PseudoAvailability.taken => Icon(
         Icons.cancel_rounded,
         size: 20,
-        color: AppColors.danger,
+        color: context.couleurs.danger,
       ),
       _ => const SizedBox.shrink(),
     };

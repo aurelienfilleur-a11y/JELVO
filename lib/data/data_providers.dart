@@ -1,8 +1,10 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'clock.dart';
 import 'onboarding_storage.dart';
+import 'theme_storage.dart';
 import 'session_persistence.dart';
 
 /// Vrai si l'on tourne dans un navigateur.
@@ -32,6 +34,35 @@ final Provider<SessionPersistence> sessionPersistenceProvider =
 /// de façon synchrone dès le premier `build`.
 final Provider<OnboardingStorage> onboardingStorageProvider =
     Provider<OnboardingStorage>((Ref ref) => EphemeralOnboardingStorage());
+
+/// Mémoire de l'apparence choisie, et le choix lui-même.
+///
+/// Surchargé dans `main()` par l'instance déjà chargée : `MaterialApp` lit le
+/// mode dès le premier `build`, et l'ignorer ferait s'ouvrir l'application en
+/// clair avant de basculer.
+final Provider<ThemeStorage> themeStorageProvider = Provider<ThemeStorage>(
+  (Ref ref) => EphemeralThemeStorage(),
+);
+
+/// L'apparence courante — c'est ce que lit `MaterialApp.themeMode`.
+///
+/// Un `Notifier` et non un simple provider : le réglage se change en cours de
+/// route, et changer `ThemeData` est ce qui reconstruit les écrans.
+final NotifierProvider<ThemeModeNotifier, ThemeMode> themeModeProvider =
+    NotifierProvider<ThemeModeNotifier, ThemeMode>(ThemeModeNotifier.new);
+
+class ThemeModeNotifier extends Notifier<ThemeMode> {
+  @override
+  ThemeMode build() => ref.watch(themeStorageProvider).mode;
+
+  /// L'état change **avant** l'écriture : l'écran suit le doigt, et un
+  /// stockage lent ne doit pas retarder l'apparence.
+  Future<void> choisir(ThemeMode mode) async {
+    if (state == mode) return;
+    state = mode;
+    await ref.read(themeStorageProvider).enregistrer(mode);
+  }
+}
 
 /// Horloge de l'application.
 ///

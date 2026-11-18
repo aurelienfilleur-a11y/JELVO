@@ -39,9 +39,9 @@ class GroupSelector extends ConsumerWidget {
       children: <Widget>[
         Text(
           label,
-          style: AppTypography.caption.copyWith(
+          style: context.typo.caption.copyWith(
             fontWeight: AppTypography.medium,
-            color: AppColors.midnight,
+            color: context.couleurs.encre,
           ),
         ),
         AppSpacing.gapSm,
@@ -61,7 +61,7 @@ class GroupSelector extends ConsumerWidget {
                   children: <Widget>[
                     EmojiText(
                       choisi?.name ?? 'Personnel',
-                      style: AppTypography.body.copyWith(
+                      style: context.typo.body.copyWith(
                         fontWeight: AppTypography.semiBold,
                       ),
                       maxLines: 1,
@@ -70,16 +70,16 @@ class GroupSelector extends ConsumerWidget {
                     const SizedBox(height: 2),
                     Text(
                       choisi?.memberLabel ?? 'Vous seul le verrez',
-                      style: AppTypography.caption,
+                      style: context.typo.caption,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
-              const Icon(
+              Icon(
                 Icons.expand_more_rounded,
-                color: AppColors.textSecondary,
+                color: context.couleurs.textSecondary,
               ),
             ],
           ),
@@ -101,7 +101,7 @@ class GroupSelector extends ConsumerWidget {
           children: <Widget>[
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-              child: Text('Dans quel groupe ?', style: AppTypography.h2),
+              child: Text('Dans quel groupe ?', style: context.typo.h2),
             ),
             AppSpacing.gapMd,
             Flexible(
@@ -147,19 +147,19 @@ class _Vignette extends StatelessWidget {
       return Container(
         width: 44,
         height: 44,
-        decoration: const BoxDecoration(
-          color: AppColors.primarySoft,
+        decoration: BoxDecoration(
+          color: context.couleurs.primarySoft,
           shape: BoxShape.circle,
         ),
         alignment: Alignment.center,
-        child: const Icon(
+        child: Icon(
           Icons.person_outline_rounded,
-          color: AppColors.primary,
+          color: context.couleurs.primary,
         ),
       );
     }
 
-    final Color accent = g.accent.color;
+    final Color accent = g.accent.color(context.couleurs);
     final Widget repli = Container(
       width: 44,
       height: 44,
@@ -167,7 +167,7 @@ class _Vignette extends StatelessWidget {
       alignment: Alignment.center,
       child: Text(
         g.name.isEmpty ? '?' : g.name.characters.first.toUpperCase(),
-        style: AppTypography.h3.copyWith(color: accent),
+        style: context.typo.h3.copyWith(color: accent),
       ),
     );
 
@@ -203,13 +203,13 @@ class _Ligne extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       leading: _Vignette(groupe: groupe),
-      title: EmojiText(groupe?.name ?? 'Personnel', style: AppTypography.body),
+      title: EmojiText(groupe?.name ?? 'Personnel', style: context.typo.body),
       subtitle: Text(
         groupe?.memberLabel ?? 'Vous seul le verrez',
-        style: AppTypography.caption,
+        style: context.typo.caption,
       ),
       trailing: choisi
-          ? const Icon(Icons.check_rounded, color: AppColors.primary)
+          ? Icon(Icons.check_rounded, color: context.couleurs.primary)
           : null,
       onTap: onTap,
     );

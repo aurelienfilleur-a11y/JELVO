@@ -114,7 +114,7 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
           children: <Widget>[
             Text(
               _modification ? 'Modifier l’événement' : 'Nouvel événement',
-              style: AppTypography.h2,
+              style: context.typo.h2,
             ),
             AppSpacing.gapLg,
 
@@ -125,9 +125,9 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
               errorText: _erreurTitre,
               autofocus: !_modification,
               textInputAction: TextInputAction.next,
-              suffixIcon: const Icon(
+              suffixIcon: Icon(
                 Icons.event_outlined,
-                color: AppColors.primary,
+                color: context.couleurs.primary,
               ),
               onChanged: (_) {
                 if (_erreurTitre != null) setState(() => _erreurTitre = null);
@@ -166,7 +166,7 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
                   ? null
                   : IconButton(
                       icon: const Icon(Icons.cancel_rounded, size: 20),
-                      color: AppColors.textSecondary,
+                      color: context.couleurs.textSecondary,
                       tooltip: 'Effacer le lieu',
                       onPressed: () => setState(_lieu.clear),
                     ),
@@ -197,7 +197,7 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
                       value: _libelleParticipants(membres),
                       onTap: () => _choisirParticipants(membres),
                     ),
-                    const Divider(height: 1, color: AppColors.border),
+                    Divider(height: 1, color: context.couleurs.border),
                   ],
                   OptionRow(
                     icon: Icons.notifications_none_rounded,
@@ -206,7 +206,7 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
                     value: _rappel.label,
                     onTap: _choisirRappel,
                   ),
-                  const Divider(height: 1, color: AppColors.border),
+                  Divider(height: 1, color: context.couleurs.border),
                   OptionRow(
                     icon: Icons.repeat_rounded,
                     label: 'Répéter',
@@ -223,13 +223,13 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
               Container(
                 padding: const EdgeInsets.all(AppSpacing.md),
                 decoration: BoxDecoration(
-                  color: AppColors.dangerSoft,
+                  color: context.couleurs.dangerSoft,
                   borderRadius: AppRadii.fieldRadius,
                 ),
                 child: Text(
                   _erreur!,
-                  style: AppTypography.caption.copyWith(
-                    color: AppColors.danger,
+                  style: context.typo.caption.copyWith(
+                    color: context.couleurs.danger,
                   ),
                 ),
               ),
@@ -402,14 +402,14 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
           children: <Widget>[
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-              child: Text(titre, style: AppTypography.h2),
+              child: Text(titre, style: context.typo.h2),
             ),
             AppSpacing.gapMd,
             for (final T valeur in valeurs)
               ListTile(
                 title: Text(libelle(valeur)),
                 trailing: valeur == courant
-                    ? const Icon(Icons.check_rounded, color: AppColors.primary)
+                    ? Icon(Icons.check_rounded, color: context.couleurs.primary)
                     : null,
                 onTap: () => Navigator.of(sheetContext).pop(valeur),
               ),
@@ -584,9 +584,9 @@ class _Champ extends StatelessWidget {
       children: <Widget>[
         Text(
           label,
-          style: AppTypography.caption.copyWith(
+          style: context.typo.caption.copyWith(
             fontWeight: AppTypography.medium,
-            color: AppColors.midnight,
+            color: context.couleurs.encre,
           ),
         ),
         AppSpacing.gapSm,
@@ -597,23 +597,23 @@ class _Champ extends StatelessWidget {
             height: 52,
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: context.couleurs.surface,
               borderRadius: AppRadii.fieldRadius,
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: context.couleurs.border),
             ),
             child: Row(
               children: <Widget>[
-                Icon(icon, size: 18, color: AppColors.primary),
+                Icon(icon, size: 18, color: context.couleurs.primary),
                 AppSpacing.hGapSm,
                 Expanded(
                   child: Text(
                     valeur ?? placeholder,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTypography.body.copyWith(
+                    style: context.typo.body.copyWith(
                       color: rempli
-                          ? AppColors.midnight
-                          : AppColors.textSecondary,
+                          ? context.couleurs.encre
+                          : context.couleurs.textSecondary,
                       fontWeight: rempli ? AppTypography.medium : null,
                     ),
                   ),

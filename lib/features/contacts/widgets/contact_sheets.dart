@@ -42,12 +42,12 @@ class AddContactSheet extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text('Ajouter un contact', style: AppTypography.h2),
+            Text('Ajouter un contact', style: context.typo.h2),
             AppSpacing.gapLg,
 
             _Choix(
               icone: Icons.qr_code_scanner_rounded,
-              couleur: AppColors.primary,
+              couleur: context.couleurs.primary,
               titre: 'Scanner un QR Code',
               aide: 'Ajouter un contact avec son QR Code',
               onTap: () {
@@ -55,10 +55,10 @@ class AddContactSheet extends ConsumerWidget {
                 context.pushNamed(AppRoutes.scanContact);
               },
             ),
-            const Divider(height: 1, indent: 64, color: AppColors.border),
+            Divider(height: 1, indent: 64, color: context.couleurs.border),
             _Choix(
               icone: Icons.search_rounded,
-              couleur: AppColors.success,
+              couleur: context.couleurs.success,
               titre: 'Rechercher un pseudo',
               aide: 'Trouver un utilisateur Jelvo',
               onTap: () {
@@ -66,10 +66,10 @@ class AddContactSheet extends ConsumerWidget {
                 context.pushNamed(AppRoutes.addContact);
               },
             ),
-            const Divider(height: 1, indent: 64, color: AppColors.border),
+            Divider(height: 1, indent: 64, color: context.couleurs.border),
             _Choix(
               icone: Icons.mail_outline_rounded,
-              couleur: AppColors.warning,
+              couleur: context.couleurs.warning,
               titre: 'Inviter un ami',
               aide: 'Envoyer une invitation Jelvo',
               onTap: () => _inviter(context, ref),
@@ -153,13 +153,13 @@ class ContactActionsSheet extends ConsumerWidget {
                     children: <Widget>[
                       Text(
                         contact.fullName,
-                        style: AppTypography.h3,
+                        style: context.typo.h3,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
                         contact.sharedGroupsLabel,
-                        style: AppTypography.caption,
+                        style: context.typo.caption,
                       ),
                     ],
                   ),
@@ -172,7 +172,7 @@ class ContactActionsSheet extends ConsumerWidget {
               icone: contact.isFavorite
                   ? Icons.star_rounded
                   : Icons.star_border_rounded,
-              couleur: AppColors.primary,
+              couleur: context.couleurs.primary,
               titre: contact.isFavorite
                   ? 'Retirer des favoris'
                   : 'Ajouter aux favoris',
@@ -183,10 +183,10 @@ class ContactActionsSheet extends ConsumerWidget {
                 navigateur.pop();
               },
             ),
-            const Divider(height: 1, indent: 64, color: AppColors.border),
+            Divider(height: 1, indent: 64, color: context.couleurs.border),
             _Choix(
               icone: Icons.person_remove_outlined,
-              couleur: AppColors.danger,
+              couleur: context.couleurs.danger,
               titre: 'Retirer de mes contacts',
               aide: 'La relation est supprimée des deux côtés',
               onTap: () => _retirer(context, ref),
@@ -215,7 +215,9 @@ class ContactActionsSheet extends ConsumerWidget {
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogue).pop(true),
-            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+            style: TextButton.styleFrom(
+              foregroundColor: context.couleurs.danger,
+            ),
             child: const Text('Retirer'),
           ),
         ],
@@ -265,11 +267,11 @@ class ManageFavoritesSheet extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text('Gérer les favoris', style: AppTypography.h2),
+            Text('Gérer les favoris', style: context.typo.h2),
             const SizedBox(height: 2),
             Text(
               'Le favori est personnel : l’autre n’en sait rien.',
-              style: AppTypography.caption,
+              style: context.typo.caption,
             ),
             AppSpacing.gapLg,
 
@@ -305,7 +307,7 @@ class ManageFavoritesSheet extends ConsumerWidget {
                       ),
                       title: Text(
                         contact.fullName,
-                        style: AppTypography.body,
+                        style: context.typo.body,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -313,7 +315,7 @@ class ManageFavoritesSheet extends ConsumerWidget {
                           ? null
                           : Text(
                               contact.pseudoHandle,
-                              style: AppTypography.caption,
+                              style: context.typo.caption,
                             ),
                     );
                   },
@@ -367,18 +369,18 @@ class _Choix extends StatelessWidget {
                 children: <Widget>[
                   Text(
                     titre,
-                    style: AppTypography.body.copyWith(
+                    style: context.typo.body.copyWith(
                       fontWeight: AppTypography.semiBold,
                     ),
                   ),
                   const SizedBox(height: 2),
-                  Text(aide, style: AppTypography.caption),
+                  Text(aide, style: context.typo.caption),
                 ],
               ),
             ),
-            const Icon(
+            Icon(
               Icons.chevron_right_rounded,
-              color: AppColors.textSecondary,
+              color: context.couleurs.textSecondary,
             ),
           ],
         ),

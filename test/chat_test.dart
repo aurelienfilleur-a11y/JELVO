@@ -1373,12 +1373,16 @@ void main() {
       Color couleurDe(String nom) =>
           tester.widget<Text>(find.text(nom)).style!.color!;
 
-      expect(couleurDe('Léa Marchand'), SpeakerAccent.colorFor('u2'));
-      expect(couleurDe('Thomas Bernard'), SpeakerAccent.colorFor('u9'));
+      const JelvoColors palette = JelvoColors.clair;
+      expect(couleurDe('Léa Marchand'), SpeakerAccent.colorFor('u2', palette));
+      expect(
+        couleurDe('Thomas Bernard'),
+        SpeakerAccent.colorFor('u9', palette),
+      );
       // Deux personnes, deux couleurs : c'est tout l'objet du dispositif.
       expect(couleurDe('Léa Marchand'), isNot(couleurDe('Thomas Bernard')));
       // Et jamais le gris de légende, qui ne distinguait personne.
-      expect(couleurDe('Léa Marchand'), isNot(AppColors.textSecondary));
+      expect(couleurDe('Léa Marchand'), isNot(palette.textSecondary));
     });
   });
 

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_colors.dart';
+import '../theme/jelvo_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 
@@ -40,10 +40,10 @@ class SectionHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(title, style: AppTypography.h3),
+                Text(title, style: context.typo.h3),
                 if (subtitle != null) ...<Widget>[
                   const SizedBox(height: 2),
-                  Text(subtitle!, style: AppTypography.caption),
+                  Text(subtitle!, style: context.typo.caption),
                 ],
               ],
             ),
@@ -53,14 +53,14 @@ class SectionHeader extends StatelessWidget {
             TextButton(
               onPressed: onActionPressed,
               style: TextButton.styleFrom(
-                foregroundColor: AppColors.primary,
+                foregroundColor: context.couleurs.primary,
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppSpacing.sm,
                   vertical: AppSpacing.xs,
                 ),
                 minimumSize: Size.zero,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                textStyle: AppTypography.caption.copyWith(
+                textStyle: context.typo.caption.copyWith(
                   fontWeight: AppTypography.semiBold,
                 ),
               ),

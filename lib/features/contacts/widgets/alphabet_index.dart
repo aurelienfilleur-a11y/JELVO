@@ -44,8 +44,8 @@ class AlphabetIndex extends StatelessWidget {
                   child: Center(
                     child: Text(
                       lettre,
-                      style: AppTypography.caption.copyWith(
-                        color: AppColors.primary,
+                      style: context.typo.caption.copyWith(
+                        color: context.couleurs.primary,
                         fontWeight: AppTypography.semiBold,
                       ),
                     ),

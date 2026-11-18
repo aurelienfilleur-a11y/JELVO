@@ -18,18 +18,18 @@ class ChatDayDivider extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
       child: Row(
         children: <Widget>[
-          const Expanded(child: Divider(color: AppColors.border, height: 1)),
+          Expanded(child: Divider(color: context.couleurs.border, height: 1)),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
             child: Text(
               label,
-              style: AppTypography.caption.copyWith(
-                color: AppColors.textSecondary,
+              style: context.typo.caption.copyWith(
+                color: context.couleurs.textSecondary,
                 fontWeight: AppTypography.medium,
               ),
             ),
           ),
-          const Expanded(child: Divider(color: AppColors.border, height: 1)),
+          Expanded(child: Divider(color: context.couleurs.border, height: 1)),
         ],
       ),
     );

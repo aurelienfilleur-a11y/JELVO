@@ -73,10 +73,10 @@ class AppBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.border)),
-        boxShadow: AppShadows.overlay,
+      decoration: BoxDecoration(
+        color: context.couleurs.surface,
+        border: Border(top: BorderSide(color: context.couleurs.border)),
+        boxShadow: context.ombres.overlay,
       ),
       child: SafeArea(
         top: false,
@@ -128,7 +128,9 @@ class _NavTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color color = selected ? AppColors.primary : AppColors.textSecondary;
+    final Color color = selected
+        ? context.couleurs.primary
+        : context.couleurs.textSecondary;
 
     return Semantics(
       selected: selected,
@@ -155,7 +157,7 @@ class _NavTab extends StatelessWidget {
               destination.label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: AppTypography.caption.copyWith(
+              style: context.typo.caption.copyWith(
                 fontSize: 11,
                 color: color,
                 fontWeight: selected
@@ -188,15 +190,22 @@ class _CreateButton extends StatelessWidget {
             width: 52,
             height: 52,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
+              gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: <Color>[AppColors.primary, AppColors.primaryDark],
+                colors: <Color>[
+                  context.couleurs.primary,
+                  context.couleurs.primaryDark,
+                ],
               ),
               borderRadius: BorderRadius.circular(AppRadii.button + 2),
-              boxShadow: AppShadows.accent,
+              boxShadow: context.ombres.accent,
             ),
-            child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
+            child: Icon(
+              Icons.add_rounded,
+              color: context.couleurs.onAccent,
+              size: 28,
+            ),
           ),
         ),
       ),

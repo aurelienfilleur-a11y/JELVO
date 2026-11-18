@@ -71,13 +71,13 @@ class GroupCreationSheet extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text('Ajouter au groupe', style: AppTypography.h2),
+            Text('Ajouter au groupe', style: context.typo.h2),
             AppSpacing.gapSm,
             Text(
               group == null
                   ? 'Ce que vous créez ici sera partagé avec le groupe.'
                   : 'Ce que vous créez ici sera partagé avec « ${group.name} ».',
-              style: AppTypography.bodyMuted,
+              style: context.typo.bodyMuted,
             ),
             AppSpacing.gapXl,
             _Choix(
@@ -140,10 +140,10 @@ class _Choix extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: kind.color.withValues(alpha: 0.12),
+              color: kind.color(context.couleurs).withValues(alpha: 0.12),
               borderRadius: AppRadii.fieldRadius,
             ),
-            child: Icon(kind.icon, color: kind.color),
+            child: Icon(kind.icon, color: kind.color(context.couleurs)),
           ),
           AppSpacing.hGapMd,
           Expanded(
@@ -152,22 +152,22 @@ class _Choix extends StatelessWidget {
               children: <Widget>[
                 Text(
                   title,
-                  style: AppTypography.h3,
+                  style: context.typo.h3,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
                   subtitle,
-                  style: AppTypography.caption,
+                  style: context.typo.caption,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
-          const Icon(
+          Icon(
             Icons.chevron_right_rounded,
-            color: AppColors.textSecondary,
+            color: context.couleurs.textSecondary,
           ),
         ],
       ),

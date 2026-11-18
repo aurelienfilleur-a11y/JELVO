@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_colors.dart';
+import '../theme/jelvo_colors.dart';
 import '../theme/app_radii.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
@@ -51,13 +51,13 @@ class OptionRow extends StatelessWidget {
                 children: <Widget>[
                   Text(
                     label,
-                    style: AppTypography.body.copyWith(
+                    style: context.typo.body.copyWith(
                       fontWeight: AppTypography.medium,
                     ),
                   ),
                   if (hint != null) ...<Widget>[
                     const SizedBox(height: 2),
-                    Text(hint!, style: AppTypography.caption),
+                    Text(hint!, style: context.typo.caption),
                   ],
                 ],
               ),
@@ -69,15 +69,15 @@ class OptionRow extends StatelessWidget {
                 textAlign: TextAlign.end,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: AppTypography.body.copyWith(
-                  color: AppColors.primary,
+                style: context.typo.body.copyWith(
+                  color: context.couleurs.primary,
                   fontWeight: AppTypography.semiBold,
                 ),
               ),
             ),
-            const Icon(
+            Icon(
               Icons.chevron_right_rounded,
-              color: AppColors.textSecondary,
+              color: context.couleurs.textSecondary,
             ),
           ],
         ),
@@ -98,11 +98,11 @@ class OptionIcon extends StatelessWidget {
       width: 36,
       height: 36,
       decoration: BoxDecoration(
-        color: AppColors.primarySoft,
+        color: context.couleurs.primarySoft,
         borderRadius: AppRadii.fieldRadius,
       ),
       alignment: Alignment.center,
-      child: Icon(icon, size: 20, color: AppColors.primary),
+      child: Icon(icon, size: 20, color: context.couleurs.primary),
     );
   }
 }
@@ -150,13 +150,13 @@ class ExpandableOptions extends StatelessWidget {
                       children: <Widget>[
                         Text(
                           title,
-                          style: AppTypography.body.copyWith(
+                          style: context.typo.body.copyWith(
                             fontWeight: AppTypography.medium,
                           ),
                         ),
                         if (hint != null) ...<Widget>[
                           const SizedBox(height: 2),
-                          Text(hint!, style: AppTypography.caption),
+                          Text(hint!, style: context.typo.caption),
                         ],
                       ],
                     ),
@@ -165,14 +165,14 @@ class ExpandableOptions extends StatelessWidget {
                     expanded
                         ? Icons.expand_less_rounded
                         : Icons.expand_more_rounded,
-                    color: AppColors.textSecondary,
+                    color: context.couleurs.textSecondary,
                   ),
                 ],
               ),
             ),
           ),
           if (expanded) ...<Widget>[
-            const Divider(height: 1, color: AppColors.border),
+            Divider(height: 1, color: context.couleurs.border),
             AppSpacing.gapMd,
             ...children,
             AppSpacing.gapMd,

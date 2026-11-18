@@ -90,7 +90,7 @@ class _VerificationCodeFieldState extends State<VerificationCodeField> {
                 maxLength: VerificationCodeField.length,
                 showCursor: false,
                 enableInteractiveSelection: false,
-                style: AppTypography.h2,
+                style: context.typo.h2,
                 decoration: const InputDecoration(
                   counterText: '',
                   border: InputBorder.none,
@@ -128,22 +128,22 @@ class _CodeBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Color borderColor = hasError
-        ? AppColors.danger
-        : (focused ? AppColors.primary : AppColors.border);
+        ? context.couleurs.danger
+        : (focused ? context.couleurs.primary : context.couleurs.border);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 150),
       height: 60,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.couleurs.surface,
         borderRadius: AppRadii.fieldRadius,
         border: Border.all(color: borderColor, width: focused ? 1.5 : 1),
       ),
       child: Text(
         character ?? '',
-        style: AppTypography.h2.copyWith(
-          color: hasError ? AppColors.danger : AppColors.midnight,
+        style: context.typo.h2.copyWith(
+          color: hasError ? context.couleurs.danger : context.couleurs.encre,
         ),
       ),
     );

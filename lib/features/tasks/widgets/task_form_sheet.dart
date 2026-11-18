@@ -123,7 +123,7 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
           children: <Widget>[
             Text(
               _modification ? 'Modifier la tâche' : 'Nouvelle tâche',
-              style: AppTypography.h2,
+              style: context.typo.h2,
             ),
             AppSpacing.gapLg,
 
@@ -134,9 +134,9 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
               errorText: _erreurTitre,
               autofocus: !_modification,
               textInputAction: TextInputAction.next,
-              suffixIcon: const Icon(
+              suffixIcon: Icon(
                 Icons.assignment_outlined,
-                color: AppColors.primary,
+                color: context.couleurs.primary,
               ),
               onChanged: (_) {
                 if (_erreurTitre != null) setState(() => _erreurTitre = null);
@@ -168,7 +168,7 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
                     value: _rappel.label,
                     onTap: _choisirRappel,
                   ),
-                  const Divider(height: 1, color: AppColors.border),
+                  Divider(height: 1, color: context.couleurs.border),
                   OptionRow(
                     icon: Icons.repeat_rounded,
                     label: 'Répéter',
@@ -188,13 +188,13 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
               Container(
                 padding: const EdgeInsets.all(AppSpacing.md),
                 decoration: BoxDecoration(
-                  color: AppColors.dangerSoft,
+                  color: context.couleurs.dangerSoft,
                   borderRadius: AppRadii.fieldRadius,
                 ),
                 child: Text(
                   _erreur!,
-                  style: AppTypography.caption.copyWith(
-                    color: AppColors.danger,
+                  style: context.typo.caption.copyWith(
+                    color: context.couleurs.danger,
                   ),
                 ),
               ),
@@ -337,14 +337,14 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
           children: <Widget>[
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-              child: Text(titre, style: AppTypography.h2),
+              child: Text(titre, style: context.typo.h2),
             ),
             AppSpacing.gapMd,
             for (final T valeur in valeurs)
               ListTile(
                 title: Text(libelle(valeur)),
                 trailing: valeur == courant
-                    ? const Icon(Icons.check_rounded, color: AppColors.primary)
+                    ? Icon(Icons.check_rounded, color: context.couleurs.primary)
                     : null,
                 onTap: () => Navigator.of(sheetContext).pop(valeur),
               ),

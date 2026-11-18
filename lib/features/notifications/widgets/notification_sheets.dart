@@ -50,24 +50,26 @@ class NotificationCategorySheet extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text(categorie.label, style: AppTypography.h2),
+            Text(categorie.label, style: context.typo.h2),
 
             if (async.hasError) ...<Widget>[
               AppSpacing.gapLg,
               Text(
                 AuthFailure.from(async.error!).message,
-                style: AppTypography.caption.copyWith(color: AppColors.danger),
+                style: context.typo.caption.copyWith(
+                  color: context.couleurs.danger,
+                ),
               ),
             ],
 
             for (final NotificationPreference p in preferences)
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: Text(p.label, style: AppTypography.body),
+                title: Text(p.label, style: context.typo.body),
                 subtitle: Text(
                   p.description,
-                  style: AppTypography.caption.copyWith(
-                    color: AppColors.textSecondary,
+                  style: context.typo.caption.copyWith(
+                    color: context.couleurs.textSecondary,
                   ),
                 ),
                 value: p.enabled,
@@ -129,7 +131,7 @@ class PushPermissionSheet extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text('Notifications push', style: AppTypography.h2),
+            Text('Notifications push', style: context.typo.h2),
             AppSpacing.gapLg,
             const PushPermissionCard(),
           ],

@@ -44,7 +44,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     if (profil != null) _synchroniser(profil);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.couleurs.background,
       appBar: AppBar(
         title: const Text('Modifier le profil'),
         leading: IconButton(
@@ -68,13 +68,13 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                     Container(
                       padding: const EdgeInsets.all(AppSpacing.md),
                       decoration: BoxDecoration(
-                        color: AppColors.dangerSoft,
+                        color: context.couleurs.dangerSoft,
                         borderRadius: AppRadii.fieldRadius,
                       ),
                       child: Text(
                         _erreur!,
-                        style: AppTypography.caption.copyWith(
-                          color: AppColors.danger,
+                        style: context.typo.caption.copyWith(
+                          color: context.couleurs.danger,
                         ),
                       ),
                     ),

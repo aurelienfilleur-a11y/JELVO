@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_colors.dart';
+import '../theme/jelvo_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 
@@ -35,7 +35,7 @@ class AppScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.couleurs.background,
       body: SafeArea(
         bottom: false,
         child: CustomScrollView(
@@ -59,10 +59,10 @@ class AppScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
-                          Text(title, style: AppTypography.h1),
+                          Text(title, style: context.typo.h1),
                           if (subtitle != null) ...<Widget>[
                             AppSpacing.gapXs,
-                            Text(subtitle!, style: AppTypography.bodyMuted),
+                            Text(subtitle!, style: context.typo.bodyMuted),
                           ],
                         ],
                       ),
@@ -119,10 +119,14 @@ class AppScreenAction extends StatelessWidget {
           width: 44,
           height: 44,
           decoration: BoxDecoration(
-            color: accented ? AppColors.primarySoft : AppColors.surface,
+            color: accented
+                ? context.couleurs.primarySoft
+                : context.couleurs.surface,
             borderRadius: BorderRadius.circular(AppSpacing.md),
             border: Border.all(
-              color: accented ? AppColors.primarySoft : AppColors.border,
+              color: accented
+                  ? context.couleurs.primarySoft
+                  : context.couleurs.border,
             ),
           ),
           child: Stack(
@@ -131,7 +135,9 @@ class AppScreenAction extends StatelessWidget {
               Icon(
                 icon,
                 size: 20,
-                color: accented ? AppColors.primary : AppColors.midnight,
+                color: accented
+                    ? context.couleurs.primary
+                    : context.couleurs.encre,
               ),
               if (badged)
                 Positioned(
@@ -141,9 +147,12 @@ class AppScreenAction extends StatelessWidget {
                     width: 8,
                     height: 8,
                     decoration: BoxDecoration(
-                      color: AppColors.primary,
+                      color: context.couleurs.primary,
                       shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.surface, width: 1.5),
+                      border: Border.all(
+                        color: context.couleurs.surface,
+                        width: 1.5,
+                      ),
                     ),
                   ),
                 ),

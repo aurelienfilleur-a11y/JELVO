@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/jelvo_colors.dart';
 import '../../../core/widgets/avatar_stack.dart';
 import 'group_member.dart';
 
@@ -9,17 +9,20 @@ import 'group_member.dart';
 /// `groups` ne porte ni couleur ni icône : l'accent est dérivé de l'identifiant
 /// plutôt que stocké. Deux appareils affichent ainsi le même groupe de la même
 /// couleur, sans colonne supplémentaire ni tirage aléatoire.
+/// L'accent porte une **icône blanche**, ce qui lui fixe deux bornes à la
+/// fois : assez foncé pour que le blanc s'y lise, assez clair pour se détacher
+/// du fond. Les six valeurs vivent dans `JelvoColors.groupAccents`, et la
+/// sixième change de teinte d'un thème à l'autre — `midnight` sur fond sombre
+/// aurait donné une tuile invisible, elle devient une ardoise.
 enum GroupAccent {
-  violet(AppColors.primary),
-  indigo(AppColors.primaryDark),
-  green(AppColors.success),
-  amber(AppColors.warning),
-  red(AppColors.danger),
-  midnight(AppColors.midnight);
+  violet,
+  indigo,
+  green,
+  amber,
+  red,
+  midnight;
 
-  const GroupAccent(this.color);
-
-  final Color color;
+  Color color(JelvoColors couleurs) => couleurs.groupAccents[index];
 
   static GroupAccent forId(String id) =>
       GroupAccent.values[_stableHash(id) % GroupAccent.values.length];

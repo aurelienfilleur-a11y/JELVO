@@ -430,7 +430,7 @@ class _RouteErrorScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.couleurs.background,
       body: SafeArea(
         child: EmptyState(
           icon: Icons.explore_off_rounded,

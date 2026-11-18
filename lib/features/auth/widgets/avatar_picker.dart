@@ -80,9 +80,12 @@ class _AvatarPickerState extends State<AvatarPicker> {
                   width: 104,
                   height: 104,
                   decoration: BoxDecoration(
-                    color: AppColors.primarySoft,
+                    color: context.couleurs.primarySoft,
                     shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.border, width: 2),
+                    border: Border.all(
+                      color: context.couleurs.border,
+                      width: 2,
+                    ),
                   ),
                   clipBehavior: Clip.antiAlias,
                   alignment: Alignment.center,
@@ -92,14 +95,17 @@ class _AvatarPickerState extends State<AvatarPicker> {
                   width: 34,
                   height: 34,
                   decoration: BoxDecoration(
-                    color: AppColors.primary,
+                    color: context.couleurs.primary,
                     shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.surface, width: 2),
+                    border: Border.all(
+                      color: context.couleurs.surface,
+                      width: 2,
+                    ),
                   ),
                   child: Icon(
                     _hasImage ? Icons.edit_rounded : Icons.photo_camera_rounded,
                     size: 16,
-                    color: Colors.white,
+                    color: context.couleurs.onAccent,
                   ),
                 ),
               ],
@@ -108,11 +114,13 @@ class _AvatarPickerState extends State<AvatarPicker> {
         ),
         AppSpacing.gapMd,
         if (_picking)
-          Text('Ouverture de la galerie…', style: AppTypography.caption)
+          Text('Ouverture de la galerie…', style: context.typo.caption)
         else if (_hasImage)
           TextButton(
             onPressed: widget.onRemoved,
-            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+            style: TextButton.styleFrom(
+              foregroundColor: context.couleurs.danger,
+            ),
             child: Text(
               AvatarData.assetPourAvatar(widget.imageUrl) != null
                   ? 'Retirer l’avatar'
@@ -120,13 +128,15 @@ class _AvatarPickerState extends State<AvatarPicker> {
             ),
           )
         else
-          Text('Ajouter une photo (facultatif)', style: AppTypography.caption),
+          Text('Ajouter une photo (facultatif)', style: context.typo.caption),
         if (_error != null) ...<Widget>[
           AppSpacing.gapXs,
           Text(
             _error!,
             textAlign: TextAlign.center,
-            style: AppTypography.caption.copyWith(color: AppColors.danger),
+            style: context.typo.caption.copyWith(
+              color: context.couleurs.danger,
+            ),
           ),
         ],
       ],
@@ -168,7 +178,7 @@ class _AvatarPickerState extends State<AvatarPicker> {
 
   Widget get _initialsLabel => Text(
     widget.initials.isEmpty ? '?' : widget.initials,
-    style: AppTypography.h2.copyWith(color: AppColors.primary),
+    style: context.typo.h2.copyWith(color: context.couleurs.primary),
   );
 
   Future<void> _pick() async {

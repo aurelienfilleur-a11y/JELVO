@@ -73,20 +73,20 @@ class _Bouton extends StatelessWidget {
                 width: 46,
                 height: 46,
                 decoration: BoxDecoration(
-                  color: AppColors.primarySoft,
+                  color: context.couleurs.primarySoft,
                   borderRadius: AppRadii.cardRadius,
                 ),
                 alignment: Alignment.center,
                 child: NavBadge(
                   count: action.badge,
-                  child: Icon(action.icon, color: AppColors.primary),
+                  child: Icon(action.icon, color: context.couleurs.primary),
                 ),
               ),
               AppSpacing.gapSm,
               Text(
                 action.label,
-                style: AppTypography.caption.copyWith(
-                  color: AppColors.midnight,
+                style: context.typo.caption.copyWith(
+                  color: context.couleurs.encre,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,

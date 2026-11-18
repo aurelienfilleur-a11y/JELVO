@@ -36,7 +36,7 @@ class CalendarCountersRow extends StatelessWidget {
               icon: Icons.event_rounded,
               value: '${counters.events}',
               label: 'Événements',
-              tint: AppColors.primary,
+              tint: context.couleurs.primary,
             ),
           ),
           AppSpacing.hGapSm,
@@ -45,7 +45,7 @@ class CalendarCountersRow extends StatelessWidget {
               icon: Icons.task_alt_rounded,
               value: '${counters.tasks}',
               label: 'Tâches',
-              tint: AppColors.success,
+              tint: context.couleurs.success,
               onPressed: onTasksPressed,
             ),
           ),
@@ -55,7 +55,7 @@ class CalendarCountersRow extends StatelessWidget {
               icon: Icons.hourglass_bottom_rounded,
               value: counters.freeLabel,
               label: 'Disponible',
-              tint: AppColors.warning,
+              tint: context.couleurs.warning,
               onPressed: onAvailabilityPressed,
             ),
           ),
@@ -65,7 +65,7 @@ class CalendarCountersRow extends StatelessWidget {
               icon: Icons.mark_email_unread_outlined,
               value: '${counters.pendingInvitations}',
               label: 'Invitations',
-              tint: AppColors.danger,
+              tint: context.couleurs.danger,
               onPressed: onInvitationsPressed,
             ),
           ),
@@ -105,14 +105,14 @@ class _Compteur extends StatelessWidget {
           FittedBox(
             child: Text(
               value,
-              style: AppTypography.h3.copyWith(color: AppColors.midnight),
+              style: context.typo.h3.copyWith(color: context.couleurs.encre),
             ),
           ),
           const SizedBox(height: 2),
           Text(
             label,
-            style: AppTypography.caption.copyWith(
-              color: AppColors.textSecondary,
+            style: context.typo.caption.copyWith(
+              color: context.couleurs.textSecondary,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

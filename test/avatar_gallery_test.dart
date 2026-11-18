@@ -172,7 +172,7 @@ void main() {
                   )
                   .decoration
               as BoxDecoration;
-      expect(decor.border!.top.color, AppColors.primary);
+      expect(decor.border!.top.color, JelvoColors.clair.primary);
       expect(decor.border!.top.width, 3);
     });
   });

@@ -56,12 +56,12 @@ class AssigneePicker extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text(titre, style: AppTypography.h3),
+          Text(titre, style: context.typo.h3),
           AppSpacing.gapMd,
           if (personnes.isEmpty)
             Text(
               'Les membres du groupe n’ont pas encore été chargés.',
-              style: AppTypography.bodyMuted,
+              style: context.typo.bodyMuted,
             )
           else ...<Widget>[
             PersonAvatarRow(
@@ -108,14 +108,18 @@ class _Mention extends StatelessWidget {
         Icon(
           libre ? Icons.campaign_outlined : Icons.person_outline_rounded,
           size: 16,
-          color: libre ? AppColors.textSecondary : AppColors.primary,
+          color: libre
+              ? context.couleurs.textSecondary
+              : context.couleurs.primary,
         ),
         AppSpacing.hGapXs,
         Expanded(
           child: Text(
             texte,
-            style: AppTypography.caption.copyWith(
-              color: libre ? AppColors.textSecondary : AppColors.primary,
+            style: context.typo.caption.copyWith(
+              color: libre
+                  ? context.couleurs.textSecondary
+                  : context.couleurs.primary,
               fontWeight: libre ? null : AppTypography.medium,
             ),
           ),

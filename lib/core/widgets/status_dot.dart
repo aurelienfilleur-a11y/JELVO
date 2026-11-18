@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_colors.dart';
+import '../theme/jelvo_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 
@@ -21,20 +21,33 @@ enum StatusTone {
   /// Inactif, brouillon, archivé.
   neutral;
 
-  Color get color => switch (this) {
-    StatusTone.info => AppColors.primary,
-    StatusTone.success => AppColors.success,
-    StatusTone.warning => AppColors.warning,
-    StatusTone.danger => AppColors.danger,
-    StatusTone.neutral => AppColors.textSecondary,
+  /// La pastille : un aplat de 8 px, donc un objet graphique.
+  Color color(JelvoColors c) => switch (this) {
+    StatusTone.info => c.primary,
+    StatusTone.success => c.success,
+    StatusTone.warning => c.warning,
+    StatusTone.danger => c.danger,
+    StatusTone.neutral => c.textSecondary,
   };
 
-  Color get softColor => switch (this) {
-    StatusTone.info => AppColors.primarySoft,
-    StatusTone.success => AppColors.successSoft,
-    StatusTone.warning => AppColors.warningSoft,
-    StatusTone.danger => AppColors.dangerSoft,
-    StatusTone.neutral => AppColors.background,
+  /// La même teinte **en texte**, sur le fond teinté de la puce pleine.
+  ///
+  /// `warning` sur `warningSoft` ne donnait que 1,81:1 : c'est la variante
+  /// assombrie qui porte le libellé, jamais la teinte vive.
+  Color ink(JelvoColors c) => switch (this) {
+    StatusTone.info => c.primaryInk,
+    StatusTone.success => c.successInk,
+    StatusTone.warning => c.warningInk,
+    StatusTone.danger => c.dangerInk,
+    StatusTone.neutral => c.textSecondary,
+  };
+
+  Color softColor(JelvoColors c) => switch (this) {
+    StatusTone.info => c.primarySoft,
+    StatusTone.success => c.successSoft,
+    StatusTone.warning => c.warningSoft,
+    StatusTone.danger => c.dangerSoft,
+    StatusTone.neutral => c.background,
   };
 }
 
@@ -63,7 +76,10 @@ class StatusDot extends StatelessWidget {
     final Widget dot = Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(color: tone.color, shape: BoxShape.circle),
+      decoration: BoxDecoration(
+        color: tone.color(context.couleurs),
+        shape: BoxShape.circle,
+      ),
     );
 
     if (label == null) {
@@ -77,8 +93,10 @@ class StatusDot extends StatelessWidget {
         AppSpacing.hGapSm,
         Text(
           label!,
-          style: AppTypography.caption.copyWith(
-            color: filled ? tone.color : AppColors.textSecondary,
+          style: context.typo.caption.copyWith(
+            color: filled
+                ? tone.ink(context.couleurs)
+                : context.couleurs.textSecondary,
             fontWeight: AppTypography.medium,
           ),
         ),
@@ -95,7 +113,7 @@ class StatusDot extends StatelessWidget {
         vertical: AppSpacing.xs,
       ),
       decoration: BoxDecoration(
-        color: tone.softColor,
+        color: tone.softColor(context.couleurs),
         borderRadius: BorderRadius.circular(AppSpacing.md),
       ),
       child: content,

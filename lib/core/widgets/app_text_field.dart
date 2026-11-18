@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../theme/app_colors.dart';
+import '../theme/jelvo_colors.dart';
 import '../theme/app_radii.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
@@ -90,9 +90,9 @@ class AppTextField extends StatelessWidget {
         if (label != null) ...<Widget>[
           Text(
             label!,
-            style: AppTypography.caption.copyWith(
+            style: context.typo.caption.copyWith(
               fontWeight: AppTypography.medium,
-              color: AppColors.midnight,
+              color: context.couleurs.encre,
             ),
           ),
           AppSpacing.gapSm,
@@ -115,23 +115,31 @@ class AppTextField extends StatelessWidget {
           inputFormatters: inputFormatters,
           autofillHints: autofillHints,
           textCapitalization: textCapitalization,
-          cursorColor: AppColors.primary,
-          style: AppTypography.body.copyWith(
-            color: enabled ? AppColors.midnight : AppColors.textSecondary,
+          cursorColor: context.couleurs.primary,
+          style: context.typo.body.copyWith(
+            color: enabled
+                ? context.couleurs.encre
+                : context.couleurs.textSecondary,
           ),
           decoration: InputDecoration(
             hintText: hint,
             counterText: '',
-            fillColor: enabled ? AppColors.surface : AppColors.background,
+            fillColor: enabled
+                ? context.couleurs.surface
+                : context.couleurs.background,
             prefixIcon: prefixIcon == null
                 ? null
-                : Icon(prefixIcon, size: 20, color: AppColors.textSecondary),
+                : Icon(
+                    prefixIcon,
+                    size: 20,
+                    color: context.couleurs.textSecondary,
+                  ),
             suffixIcon: suffixIcon,
             // Le message d'erreur est rendu sous le champ (voir plus bas) pour
             // rester sur la grille d'espacement ; ici on ne reprend que le
             // contour rouge, en écrasant les bordures issues du thème.
-            enabledBorder: hasError ? _errorBorder() : null,
-            focusedBorder: hasError ? _errorBorder(width: 1.5) : null,
+            enabledBorder: hasError ? _errorBorder(context) : null,
+            focusedBorder: hasError ? _errorBorder(context, width: 1.5) : null,
           ),
         ),
         if (hasError) ...<Widget>[
@@ -139,17 +147,17 @@ class AppTextField extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              const Icon(
+              Icon(
                 Icons.error_outline_rounded,
                 size: 14,
-                color: AppColors.danger,
+                color: context.couleurs.danger,
               ),
               AppSpacing.hGapXs,
               Expanded(
                 child: Text(
                   errorText!,
-                  style: AppTypography.caption.copyWith(
-                    color: AppColors.danger,
+                  style: context.typo.caption.copyWith(
+                    color: context.couleurs.danger,
                   ),
                 ),
               ),
@@ -157,7 +165,7 @@ class AppTextField extends StatelessWidget {
           ),
         ] else if (helperText != null) ...<Widget>[
           AppSpacing.gapXs,
-          Text(helperText!, style: AppTypography.caption),
+          Text(helperText!, style: context.typo.caption),
         ],
         if (showCounter && maxLength != null && controller != null) ...<Widget>[
           AppSpacing.gapXs,
@@ -167,10 +175,13 @@ class AppTextField extends StatelessWidget {
     );
   }
 
-  static OutlineInputBorder _errorBorder({double width = 1}) {
+  static OutlineInputBorder _errorBorder(
+    BuildContext context, {
+    double width = 1,
+  }) {
     return OutlineInputBorder(
       borderRadius: AppRadii.fieldRadius,
-      borderSide: BorderSide(color: AppColors.danger, width: width),
+      borderSide: BorderSide(color: context.couleurs.danger, width: width),
     );
   }
 }
@@ -195,12 +206,12 @@ class _Counter extends StatelessWidget {
           alignment: Alignment.centerRight,
           child: Text(
             '$longueur/$maxLength',
-            style: AppTypography.caption.copyWith(
+            style: context.typo.caption.copyWith(
               // La limite atteinte se signale : la frappe suivante ne
               // s'inscrira pas, et rien d'autre ne le dirait.
               color: longueur >= maxLength
-                  ? AppColors.warning
-                  : AppColors.textSecondary,
+                  ? context.couleurs.warning
+                  : context.couleurs.textSecondary,
             ),
           ),
         );

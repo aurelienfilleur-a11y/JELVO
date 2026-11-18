@@ -28,7 +28,7 @@ class AuthScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.couleurs.background,
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -49,7 +49,7 @@ class AuthScaffold extends StatelessWidget {
                       tooltip: 'Retour',
                       icon: const Icon(Icons.arrow_back_rounded),
                       style: IconButton.styleFrom(
-                        foregroundColor: AppColors.midnight,
+                        foregroundColor: context.couleurs.encre,
                       ),
                     ),
                   )
@@ -60,17 +60,17 @@ class AuthScaffold extends StatelessWidget {
                 if (stepLabel != null) ...<Widget>[
                   Text(
                     stepLabel!,
-                    style: AppTypography.caption.copyWith(
-                      color: AppColors.primary,
+                    style: context.typo.caption.copyWith(
+                      color: context.couleurs.primary,
                       fontWeight: AppTypography.semiBold,
                     ),
                   ),
                   AppSpacing.gapXs,
                 ],
-                Text(title, style: AppTypography.h1),
+                Text(title, style: context.typo.h1),
                 if (subtitle != null) ...<Widget>[
                   AppSpacing.gapSm,
-                  Text(subtitle!, style: AppTypography.bodyMuted),
+                  Text(subtitle!, style: context.typo.bodyMuted),
                 ],
                 AppSpacing.gapXl,
                 ...children,
@@ -95,22 +95,25 @@ class _JelvoMark extends StatelessWidget {
           width: 44,
           height: 44,
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
+            gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: <Color>[AppColors.primary, AppColors.primaryDark],
+              colors: <Color>[
+                context.couleurs.primary,
+                context.couleurs.primaryDark,
+              ],
             ),
             borderRadius: BorderRadius.circular(AppRadii.button),
-            boxShadow: AppShadows.accent,
+            boxShadow: context.ombres.accent,
           ),
           alignment: Alignment.center,
           child: Text(
             'J',
-            style: AppTypography.h2.copyWith(color: Colors.white),
+            style: context.typo.h2.copyWith(color: context.couleurs.onAccent),
           ),
         ),
         AppSpacing.hGapMd,
-        Text('Jelvo', style: AppTypography.h3),
+        Text('Jelvo', style: context.typo.h3),
       ],
     );
   }
@@ -127,22 +130,24 @@ class AuthErrorBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.dangerSoft,
+        color: context.couleurs.dangerSoft,
         borderRadius: AppRadii.fieldRadius,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          const Icon(
+          Icon(
             Icons.error_outline_rounded,
             size: 20,
-            color: AppColors.danger,
+            color: context.couleurs.danger,
           ),
           AppSpacing.hGapMd,
           Expanded(
             child: Text(
               message,
-              style: AppTypography.caption.copyWith(color: AppColors.danger),
+              style: context.typo.caption.copyWith(
+                color: context.couleurs.danger,
+              ),
             ),
           ),
         ],

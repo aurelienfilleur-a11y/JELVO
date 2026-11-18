@@ -47,11 +47,11 @@ class GroupStatsRow extends StatelessWidget {
               // Rouge seulement s'il y a du retard : une pastille rouge sur un
               // zéro annoncerait un problème qui n'existe pas.
               couleur: tachesEnRetard > 0
-                  ? AppColors.danger
-                  : AppColors.textSecondary,
+                  ? context.couleurs.danger
+                  : context.couleurs.textSecondary,
               fond: tachesEnRetard > 0
-                  ? AppColors.dangerSoft
-                  : AppColors.background,
+                  ? context.couleurs.dangerSoft
+                  : context.couleurs.background,
               onPressed: onTachesPressed,
             ),
           ),
@@ -61,8 +61,8 @@ class GroupStatsRow extends StatelessWidget {
               valeur: evenementsAVenir,
               libelle: 'événements\nà venir',
               icon: Icons.calendar_month_rounded,
-              couleur: AppColors.primary,
-              fond: AppColors.primarySoft,
+              couleur: context.couleurs.primary,
+              fond: context.couleurs.primarySoft,
               onPressed: onEvenementsPressed,
             ),
           ),
@@ -101,11 +101,11 @@ class _Compteur extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text('$valeur', style: AppTypography.h1),
+                Text('$valeur', style: context.typo.h1),
                 const SizedBox(height: 2),
                 Text(
                   libelle,
-                  style: AppTypography.caption,
+                  style: context.typo.caption,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),

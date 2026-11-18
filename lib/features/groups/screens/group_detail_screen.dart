@@ -88,7 +88,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
     }
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.couleurs.background,
       body: groupAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (Object error, _) => SafeArea(
@@ -378,7 +378,7 @@ class _GroupView extends ConsumerWidget {
                     '${AppDates.relativeDay(event.start, now: now)} · '
                     '${AppDates.timeRange(event.start, event.end)}',
                 location: event.location,
-                accentColor: group.accent.color,
+                accentColor: group.accent.color(context.couleurs),
                 participants: event.avatars,
                 statusTone: event.myResponse == EventResponse.yes
                     ? null
@@ -671,7 +671,9 @@ class _GroupView extends ConsumerWidget {
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+            style: TextButton.styleFrom(
+              foregroundColor: context.couleurs.danger,
+            ),
             child: Text(confirmLabel),
           ),
         ],
@@ -718,16 +720,16 @@ class _AjouterSliver extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
-                  const Icon(
+                  Icon(
                     Icons.add_rounded,
                     size: 18,
-                    color: AppColors.primary,
+                    color: context.couleurs.primary,
                   ),
                   AppSpacing.hGapXs,
                   Text(
                     'Ajouter',
-                    style: AppTypography.caption.copyWith(
-                      color: AppColors.primary,
+                    style: context.typo.caption.copyWith(
+                      color: context.couleurs.primary,
                       fontWeight: AppTypography.semiBold,
                     ),
                   ),
@@ -769,15 +771,15 @@ class _Description extends StatelessWidget {
           child: EmojiText(
             vide ? 'Décrivez ce groupe en une phrase.' : texte,
             style: vide
-                ? AppTypography.bodyMuted.copyWith(fontStyle: FontStyle.italic)
-                : AppTypography.bodyMuted,
+                ? context.typo.bodyMuted.copyWith(fontStyle: FontStyle.italic)
+                : context.typo.bodyMuted,
           ),
         ),
         if (group.isAdmin) ...<Widget>[
           AppSpacing.hGapSm,
           IconButton(
             icon: const Icon(Icons.edit_outlined, size: 18),
-            color: AppColors.primary,
+            color: context.couleurs.primary,
             tooltip: 'Modifier le groupe',
             visualDensity: VisualDensity.compact,
             onPressed: () => context.pushNamed(
@@ -828,12 +830,12 @@ class _InviteMemberSheetState extends ConsumerState<_InviteMemberSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text('Inviter un membre', style: AppTypography.h2),
+          Text('Inviter un membre', style: context.typo.h2),
           AppSpacing.gapSm,
           Text(
             'Cherchez la personne par son pseudo. Elle recevra une invitation '
             'à accepter.',
-            style: AppTypography.bodyMuted,
+            style: context.typo.bodyMuted,
           ),
 
           // Fixer une durée relève de l'administration du groupe, et la base
@@ -866,7 +868,9 @@ class _InviteMemberSheetState extends ConsumerState<_InviteMemberSheet> {
           if (_message != null)
             Text(
               _message!,
-              style: AppTypography.caption.copyWith(color: AppColors.primary),
+              style: context.typo.caption.copyWith(
+                color: context.couleurs.primary,
+              ),
             ),
           _Results(term: _term, onPick: _invite),
         ],
@@ -917,7 +921,7 @@ class _Results extends ConsumerWidget {
     if (term.trim().length < 2) {
       return Text(
         'Saisissez au moins deux caractères.',
-        style: AppTypography.caption,
+        style: context.typo.caption,
       );
     }
 
@@ -932,13 +936,13 @@ class _Results extends ConsumerWidget {
       ),
       error: (Object error, _) => Text(
         AuthFailure.from(error).message,
-        style: AppTypography.caption.copyWith(color: AppColors.danger),
+        style: context.typo.caption.copyWith(color: context.couleurs.danger),
       ),
       data: (List<ProfileSummary> profiles) {
         if (profiles.isEmpty) {
           return Text(
             'Aucun pseudo ne commence par « $term ».',
-            style: AppTypography.caption,
+            style: context.typo.caption,
           );
         }
         return Column(
@@ -967,13 +971,13 @@ class _Results extends ConsumerWidget {
                         children: <Widget>[
                           Text(
                             profile.fullName,
-                            style: AppTypography.body,
+                            style: context.typo.body,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                           Text(
                             profile.pseudoHandle,
-                            style: AppTypography.caption,
+                            style: context.typo.caption,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),

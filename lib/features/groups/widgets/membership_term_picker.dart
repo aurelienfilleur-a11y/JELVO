@@ -47,9 +47,9 @@ class MembershipTermPicker extends StatelessWidget {
       children: <Widget>[
         Text(
           label,
-          style: AppTypography.caption.copyWith(
+          style: context.typo.caption.copyWith(
             fontWeight: AppTypography.semiBold,
-            color: AppColors.midnight,
+            color: context.couleurs.encre,
           ),
         ),
         AppSpacing.gapSm,
@@ -85,7 +85,7 @@ class MembershipTermPicker extends StatelessWidget {
           Text(
             'Adhésion jusqu’au ${AppDates.fullDate(choisi)}, puis le groupe '
             'disparaîtra de son application.',
-            style: AppTypography.caption,
+            style: context.typo.caption,
           ),
         ],
       ],
@@ -157,10 +157,14 @@ class _Choix extends StatelessWidget {
             vertical: AppSpacing.sm,
           ),
           decoration: BoxDecoration(
-            color: selected ? AppColors.primarySoft : AppColors.surface,
+            color: selected
+                ? context.couleurs.primarySoft
+                : context.couleurs.surface,
             borderRadius: AppRadii.pillRadius,
             border: Border.all(
-              color: selected ? AppColors.primary : AppColors.border,
+              color: selected
+                  ? context.couleurs.primary
+                  : context.couleurs.border,
               width: selected ? 1.5 : 1,
             ),
           ),
@@ -171,14 +175,18 @@ class _Choix extends StatelessWidget {
                 Icon(
                   icon,
                   size: 16,
-                  color: selected ? AppColors.primary : AppColors.textSecondary,
+                  color: selected
+                      ? context.couleurs.primary
+                      : context.couleurs.textSecondary,
                 ),
                 AppSpacing.hGapXs,
               ],
               Text(
                 label,
-                style: AppTypography.caption.copyWith(
-                  color: selected ? AppColors.primary : AppColors.midnight,
+                style: context.typo.caption.copyWith(
+                  color: selected
+                      ? context.couleurs.primary
+                      : context.couleurs.encre,
                   fontWeight: selected
                       ? AppTypography.semiBold
                       : AppTypography.regular,

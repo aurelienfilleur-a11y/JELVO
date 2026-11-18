@@ -27,11 +27,11 @@ class SettingsCard extends StatelessWidget {
         children: <Widget>[
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-            child: Text(titre, style: AppTypography.h3),
+            child: Text(titre, style: context.typo.h3),
           ),
           for (int i = 0; i < lignes.length; i++) ...<Widget>[
             if (i > 0)
-              const Divider(height: 1, indent: 44, color: AppColors.border),
+              Divider(height: 1, indent: 44, color: context.couleurs.border),
             lignes[i],
           ],
         ],
@@ -71,7 +71,9 @@ class SettingsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color teinte = destructif ? AppColors.danger : AppColors.midnight;
+    final Color teinte = destructif
+        ? context.couleurs.danger
+        : context.couleurs.encre;
 
     return InkWell(
       onTap: onTap,
@@ -86,13 +88,15 @@ class SettingsRow extends StatelessWidget {
             Icon(
               icone,
               size: 20,
-              color: destructif ? AppColors.danger : AppColors.primary,
+              color: destructif
+                  ? context.couleurs.danger
+                  : context.couleurs.primary,
             ),
             AppSpacing.hGapMd,
             Expanded(
               child: Text(
                 libelle,
-                style: AppTypography.body.copyWith(color: teinte),
+                style: context.typo.body.copyWith(color: teinte),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -105,8 +109,8 @@ class SettingsRow extends StatelessWidget {
                   textAlign: TextAlign.end,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTypography.caption.copyWith(
-                    color: couleurValeur ?? AppColors.primary,
+                  style: context.typo.caption.copyWith(
+                    color: couleurValeur ?? context.couleurs.primary,
                     fontWeight: AppTypography.semiBold,
                   ),
                 ),
@@ -114,10 +118,10 @@ class SettingsRow extends StatelessWidget {
             ],
             if (!destructif) ...<Widget>[
               AppSpacing.hGapSm,
-              const Icon(
+              Icon(
                 Icons.chevron_right_rounded,
                 size: 20,
-                color: AppColors.textSecondary,
+                color: context.couleurs.textSecondary,
               ),
             ],
           ],

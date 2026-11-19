@@ -4,7 +4,7 @@
     "start_url": ".",
     "display": "standalone",
     "background_color": "#F7F7FB",
-    "theme_color": "#5B2EFF",
+    "theme_color": "#F7F7FB",
     "description": "Jelvo - gestion d'emploi du temps personnel et de groupe",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,

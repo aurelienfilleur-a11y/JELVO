@@ -803,6 +803,88 @@ apparence qu'il n'a jamais choisie.
 de bienvenue. Sans cela, l'application s'ouvrirait en clair puis basculerait à
 la première image — et un clignotement ne se rattrape pas après coup.
 
+### Sur le web, « avant `runApp` » est déjà trop tard
+
+Deux choses sont décidées par le navigateur **avant qu'une ligne de Dart ne
+tourne** : le fond de la page, et la couleur du bandeau de la barre d'état.
+D'où un flash blanc à l'ouverture et un bandeau resté blanc sous une
+application sombre. Aucun code Dart, si tôt soit-il, ne peut les corriger : il
+arriverait après.
+
+`web/index.html` les règle donc lui-même, en lisant le réglage enregistré sur
+l'appareil **avant le premier pixel**.
+
+#### Il lit la même clé, et il n'y a pas de mémoire parallèle
+
+Sur le web, `SharedPreferencesLocalStorage` n'emprunte pas
+`shared_preferences` : il écrit directement dans `localStorage`, sous la clé
+telle quelle (`jelvo-apparence`) et avec le mot tel quel. La page lit donc
+exactement ce que `ThemeStorage` écrit — pas une copie tenue à jour en
+parallèle, qui aurait fini par diverger.
+
+Un repli lit `flutter.jelvo-apparence` en retirant les guillemets, au cas où ce
+stockage repasserait un jour par `shared_preferences`, qui préfixe et encode en
+JSON. Sans lui, le défaut serait **muet** : le réglage ignoré au démarrage,
+donc le clignotement de retour, et rien pour le relier à sa cause.
+
+#### Une seule implémentation de la règle, et elle est en JavaScript
+
+La page expose `window.jelvoAppliquerApparence(mot)`. Elle l'appelle au
+démarrage avec la valeur lue ; l'application l'appelle ensuite à chaque
+changement de réglage, par `lib/data/apparence_navigateur.dart` — import
+conditionnel, talon hors du web, même mécanique que `push_service`. **Dart ne
+fait que passer le mot** : réécrire la règle de son côté, ce serait deux
+implémentations à tenir d'accord, et l'écart se verrait en clignotement.
+
+Les trois mots — `clair`, `sombre`, `systeme` — sont donc un **contrat**, et
+`ThemeStorage.jeton` en est la source. Tout autre mot est ramené à `systeme` :
+un stockage abîmé ne doit pas décider d'une apparence.
+
+Trois recopies subsistent dans la page, inévitables puisqu'elle est servie
+avant tout Dart : la clé, les trois mots, et les deux fonds. Aucune ne
+protesterait en devenant fausse — d'où `test/launch_screen_test.dart`, qui les
+confronte à `ThemeStorage` et à `JelvoColors`.
+
+#### Le bandeau prend le fond, pas le violet de la marque
+
+`theme-color` valait `#5B2EFF`. Le bandeau **continue l'écran** : il prend donc
+`background`, et le violet ne prolongeait aucun écran, dans aucune des deux
+apparences.
+
+Deux déclarations avec `media` couvrent le mode Automatique **sans script**, et
+continuent de suivre le téléphone si son réglage change en cours de route. Un
+choix explicite les remplace par une seule — et repasser en Automatique doit
+les **rendre**, ce pour quoi elles sont rebâties de zéro à chaque appel.
+
+**`theme-color` n'est pas lu par l'application iOS ajoutée à l'écran
+d'accueil.** C'est `apple-mobile-web-app-status-bar-style` qui décide là-bas, et
+sa valeur par défaut `default` donne précisément un bandeau blanc à texte
+sombre. Elle n'accepte aucune requête de média : en Automatique, le script
+résout lui-même et pose `black` ou `default`.
+
+#### L'écran de lancement s'efface sur la première image
+
+Un voile plein écran, le logo fourni au centre, le fond du thème. Il part sur
+l'événement `flutter-first-frame` — le seul instant où le relais est sans
+couture — en fondu de 240 ms, puis il est **retiré du document** : laissé en
+place, un voile transparent avalerait les touches.
+
+Une minuterie de dix secondes le retire aussi, et c'est un **filet, pas le
+mécanisme** : si le signal n'arrivait pas, le voile resterait posé sur une
+application pourtant chargée — bien pire que le clignotement qu'il corrige.
+
+Éprouvé dans un vrai navigateur, pas seulement par les tests de fichier : cinq
+cas — rien d'enregistré sous les deux réglages du système, un choix explicite
+contraire au système dans les deux sens, une valeur abîmée —, et
+`flutter-first-frame` a servi dans les cinq.
+
+#### Ce qui ne suit toujours pas le réglage
+
+| Surface | Pourquoi |
+| --- | --- |
+| splash de la PWA installée sur Android | `manifest.json` ne porte ni requête de média ni variante sombre. `background_color` et `theme_color` valent le fond clair, et la page reprend la main dès qu'elle est chargée |
+| écrans de lancement **natifs** Android et iOS | ils vivent dans `android/` et `ios/`, hors de la chaîne web, et ces deux cibles ne sont pas compilables ici |
+
 ### La palette
 
 Elle vit dans `core/theme/jelvo_colors.dart`, en deux exemplaires bâtis par la
@@ -3978,6 +4060,17 @@ sécurité.
   « Sombre » bascule l'écran **et** s'enregistre, et une apparence déjà
   enregistrée s'applique dès le premier rendu. Enfin le contrôle négatif : un
   widget sans notre thème se rend en clair plutôt que de lever.
+- `test/launch_screen_test.dart` tient le contrat entre `web/index.html` et le
+  Dart, sans widget : la clé de stockage lue est celle de `ThemeStorage`, les
+  trois mots d'apparence sont parcourus depuis `ThemeMode.values` — une valeur
+  ajoutée à l'énumération fait donc échouer le test —, les deux fonds de la
+  page sont ceux de `JelvoColors`, et le violet de la marque n'est plus la
+  couleur du bandeau. Côté écran de lancement : le voile et le logo fourni,
+  qui doit exister au dépôt, le relais sur `flutter-first-frame` plutôt que
+  sur une minuterie, et le retrait du document plutôt qu'une simple
+  transparence. Côté bandeau : la requête de média qui couvre le mode
+  Automatique sans script, et la déclaration propre à l'iOS installé, que
+  `theme-color` ne couvre pas.
 - `test/app_version_test.dart` confronte `AppConfig.version` au `pubspec.yaml`,
   sans widget : la version est recopiée à la main, et une version fausse est
   pire qu'une version absente.
@@ -4212,6 +4305,14 @@ sûr d'éprouver son caractère contextuel.
   test de fumée prouve que la file se remplit à la bonne heure et une seule
   fois ; que le navigateur affiche bien la notification dépend de la
   planification, des clés VAPID et d'un vrai appareil.
+- **L'écran de lancement et le bandeau de la barre d'état sont corrigés sur le
+  web**, et éprouvés dans un vrai navigateur. Deux surfaces ne suivent
+  toujours pas le réglage, et aucune ne le peut en l'état : le splash de la
+  PWA **installée sur Android**, que `manifest.json` ne sait pas faire varier,
+  et les écrans de lancement **natifs** Android et iOS, qui vivent hors de la
+  chaîne web et dont les cibles ne sont pas compilables ici. Le premier se
+  rattrape dès que la page est chargée ; le second resterait blanc à
+  l'ouverture le jour où l'application serait livrée en natif.
 - **Le thème sombre est livré**, avec son réglage. Deux réserves : les
   captures ont été relues écran par écran mais **sur un rendu de test**, pas
   sur un vrai appareil ; et une photo de couverture très sombre, fournie par

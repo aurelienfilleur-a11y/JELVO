@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/core.dart';
 import 'l10n/app_localizations.dart';
 import 'data/app_config.dart';
+import 'data/apparence_navigateur.dart';
 import 'data/data_providers.dart';
 import 'data/onboarding_storage.dart';
 import 'data/theme_storage.dart';
@@ -76,6 +77,18 @@ class JelvoApp extends ConsumerWidget {
     // Repose l'abonnement aux notifications à chaque ouverture de session : un
     // abonnement révoqué ne prévient personne.
     ref.watch(pushRegistrationProvider);
+
+    // Sur le web, le fond de la page et la couleur du bandeau de la barre
+    // d'état sont posés par `web/index.html` **avant** que Flutter démarre :
+    // c'est ce qui évite le flash blanc, et aucun code Dart ne peut arriver
+    // assez tôt pour le faire. Ils sont donc déjà justes en arrivant ici.
+    //
+    // Ce qui reste à dire au navigateur, c'est qu'on vient de **changer** de
+    // réglage. `ref.listen` et non `ref.watch` : c'est un effet de bord sur la
+    // page, pas une valeur dont dépend cet arbre de widgets.
+    ref.listen<ThemeMode>(themeModeProvider, (ThemeMode? _, ThemeMode mode) {
+      appliquerApparenceAuNavigateur(mode);
+    });
 
     return MaterialApp.router(
       onGenerateTitle: (BuildContext context) => AppTexts.of(context).appTitle,

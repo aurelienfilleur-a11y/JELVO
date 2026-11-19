@@ -22,8 +22,30 @@
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="theme-color" content="#5B2EFF">
+
+  <!-- Le bandeau de la barre d'état **continue l'écran** : il prend donc le
+       fond de l'application (`JelvoColors.background`) et non le violet de la
+       marque, qui ne prolongeait aucun écran.
+
+       Les deux déclarations suivent le réglage du téléphone, ce qui couvre le
+       mode « Automatique » sans une ligne de script. Un choix explicite les
+       remplace par une seule, au démarrage — voir `jelvoAppliquerApparence`.
+
+       Les couleurs sont recopiées de `JelvoColors` : cette page est servie
+       avant que le moindre Dart ne tourne, elle ne peut donc pas les lui
+       demander. `test/launch_screen_test.dart` les confronte à la palette —
+       une teinte changée d'un seul côté fait échouer les tests. -->
+  <meta name="theme-color" content="#F7F7FB" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0E0E1A" media="(prefers-color-scheme: dark)">
+
+  <!-- Sur iOS, l'application ajoutée à l'écran d'accueil **ne lit pas**
+       `theme-color` : c'est cette ligne, et elle seule, qui décide de son
+       bandeau. `default` donne un bandeau blanc à texte sombre, `black` un
+       bandeau noir à texte clair — d'où le bandeau resté blanc sous un
+       écran sombre. Elle n'accepte aucune requête de média : en
+       « Automatique », c'est le script qui résout. -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" id="jelvo-bandeau-ios">
+
   <meta name="apple-mobile-web-app-title" content="Jelvo">
   <!-- iOS retient le 180×180 quand il existe, et retombe sur la seconde
        déclaration sinon : les deux lignes sont donc utiles tant que
@@ -40,8 +62,184 @@
 
   <title>Jelvo</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    /* Le fond est posé **ici**, et non par Flutter : ce qu'il faut couvrir,
+       c'est précisément l'instant où Flutter n'a pas encore démarré. Une
+       couleur choisie côté Dart arriverait après le flash qu'elle corrige. */
+    :root {
+      color-scheme: light dark;
+      --jelvo-fond: #F7F7FB;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --jelvo-fond: #0E0E1A; }
+    }
+    /* Un choix explicite l'emporte sur le réglage du téléphone, et l'ordre des
+       règles n'y est pour rien : un sélecteur d'attribut est plus spécifique
+       que `:root`. */
+    html[data-apparence="clair"] { --jelvo-fond: #F7F7FB; color-scheme: light; }
+    html[data-apparence="sombre"] { --jelvo-fond: #0E0E1A; color-scheme: dark; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background-color: var(--jelvo-fond);
+    }
+
+    #jelvo-amorce {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: var(--jelvo-fond);
+      z-index: 2147483647;
+      /* Le relais se fait en fondu : l'écran de lancement s'efface, il ne
+         disparaît pas d'un coup sur une application déjà peinte. */
+      transition: opacity 240ms ease-out;
+    }
+    #jelvo-amorce.jelvo-amorce--partie {
+      opacity: 0;
+      pointer-events: none;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #jelvo-amorce { transition: none; }
+    }
+
+    #jelvo-amorce img {
+      width: 96px;
+      height: 96px;
+      /* Le logo est **le fichier fourni**, affiché tel quel : seuls ses coins
+         sont adoucis, comme le font déjà iOS et Android de cette même image.
+         Rien n'est redessiné ici. */
+      border-radius: 24px;
+    }
+  </style>
+
+  <script>
+    (function () {
+      // **Une seule implémentation** de la règle « quel mot donne quelle
+      // apparence ». Elle est appelée ici au démarrage, puis par
+      // l'application à chaque changement de réglage, via
+      // `lib/data/apparence_navigateur_web.dart`. Deux implémentations — une
+      // en JavaScript, une en Dart — auraient fini par diverger, et la
+      // divergence se serait vue en clignotement.
+      var FONDS = { clair: '#F7F7FB', sombre: '#0E0E1A' };
+
+      window.jelvoAppliquerApparence = function (mot) {
+        // Le vocabulaire est celui de `ThemeStorage` : 'clair', 'sombre',
+        // 'systeme'. Un mot absent ou inconnu — stockage vide, navigation
+        // privée, valeur abîmée — est ramené à 'systeme' : suivre le
+        // téléphone est déjà le défaut côté Dart, et un stockage douteux ne
+        // doit pas décider d'une apparence.
+        if (mot !== 'clair' && mot !== 'sombre') mot = 'systeme';
+
+        var explicite = mot !== 'systeme';
+        var racine = document.documentElement;
+
+        if (explicite) {
+          racine.setAttribute('data-apparence', mot);
+        } else {
+          racine.removeAttribute('data-apparence');
+        }
+
+        // Les métas sont rebâties de zéro à chaque appel : repasser de
+        // « Sombre » à « Automatique » doit **rendre** les requêtes de média,
+        // et non seulement changer une couleur figée.
+        var anciennes = document.querySelectorAll('meta[name="theme-color"]');
+        for (var i = 0; i < anciennes.length; i++) {
+          anciennes[i].parentNode.removeChild(anciennes[i]);
+        }
+
+        var poser = function (couleur, media) {
+          var meta = document.createElement('meta');
+          meta.setAttribute('name', 'theme-color');
+          meta.setAttribute('content', couleur);
+          if (media) meta.setAttribute('media', media);
+          document.head.appendChild(meta);
+        };
+
+        if (explicite) {
+          poser(FONDS[mot]);
+        } else {
+          poser(FONDS.clair, '(prefers-color-scheme: light)');
+          poser(FONDS.sombre, '(prefers-color-scheme: dark)');
+        }
+
+        var sombre = mot === 'sombre' || (!explicite && window.matchMedia &&
+          window.matchMedia('(prefers-color-scheme: dark)').matches);
+        var bandeau = document.getElementById('jelvo-bandeau-ios');
+        if (bandeau) {
+          bandeau.setAttribute('content', sombre ? 'black' : 'default');
+        }
+      };
+
+      // **Lu avant le premier pixel**, et c'est tout l'enjeu : le réglage vit
+      // sur l'appareil, et une couleur posée après le chargement de Flutter
+      // arriverait après le flash.
+      //
+      // C'est la même clé et les mêmes trois mots que `ThemeStorage`. Sur le
+      // web, le stockage de gotrue n'emprunte pas `shared_preferences` : il
+      // écrit directement dans `localStorage`, sans préfixe et sans encodage.
+      // Un test confronte cette clé et ces mots au code Dart.
+      var mot = null;
+      try {
+        mot = window.localStorage.getItem('jelvo-apparence');
+        // Repli au cas où ce stockage repasserait un jour par
+        // `shared_preferences`, qui préfixe ses clés et encode ses valeurs en
+        // JSON. Sans lui, le réglage serait ignoré au démarrage — donc un
+        // clignotement, pas une panne, et d'autant plus difficile à relier à
+        // sa cause.
+        if (mot === null) {
+          var brut = window.localStorage.getItem('flutter.jelvo-apparence');
+          if (brut) mot = brut.replace(/^"|"$/g, '');
+        }
+      } catch (e) {
+        // Navigation privée, stockage bloqué : on suit le téléphone, qui est
+        // déjà le défaut de `ThemeStorage`.
+      }
+      window.jelvoAppliquerApparence(mot);
+    })();
+  </script>
 </head>
 <body>
+  <!-- L'écran de lancement vit dans la page, et non dans Flutter, pour la
+       raison qui vaut aussi pour le fond : ce qu'il recouvre, c'est le temps
+       où Flutter n'a pas encore démarré. Un équivalent écrit en Dart
+       s'afficherait trop tard, après le flash. -->
+  <div id="jelvo-amorce" aria-hidden="true">
+    <img src="icons/Icon-192.png" width="96" height="96" alt="">
+  </div>
+
+  <script>
+    (function () {
+      var amorce = document.getElementById('jelvo-amorce');
+      if (!amorce) return;
+
+      var fait = false;
+      var effacer = function () {
+        if (fait) return;
+        fait = true;
+        amorce.classList.add('jelvo-amorce--partie');
+        // Retiré après le fondu : laissé en place, il garderait un calque
+        // transparent au-dessus de l'application, qui avalerait les touches.
+        window.setTimeout(function () {
+          if (amorce.parentNode) amorce.parentNode.removeChild(amorce);
+        }, 300);
+      };
+
+      // Le signal : Flutter émet cet événement quand la première image est
+      // peinte. C'est le seul instant où le relais est vraiment sans couture.
+      window.addEventListener('flutter-first-frame', effacer);
+
+      // Filet, et non mécanisme. Si l'événement n'arrivait pas, l'écran de
+      // lancement resterait posé **sur** une application pourtant chargée —
+      // bien pire que le clignotement qu'il corrige. Dix secondes, c'est long
+      // pour un démarrage et court pour un blocage.
+      window.setTimeout(effacer, 10000);
+    })();
+  </script>
+
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader

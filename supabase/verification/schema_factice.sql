@@ -217,7 +217,13 @@ create table public.availabilities (
 
 -- Réduite à sa signature : la vraie porte la règle de visibilité — contacts et
 -- co-membres seulement —, que ce décor n'a pas à rejouer.
-create function public.get_availability_status(at_ts timestamptz, target uuid)
+--
+-- **L'ordre des arguments est celui de `schema_actuel.sql`**, et il l'a
+-- longtemps été à l'envers ici. Cela n'a rien cassé parce que les deux
+-- appelants nomment leurs arguments (`target =>`, `at_ts =>`) — mais un
+-- appel positionnel aurait passé le rejeu et échoué en production, ce qui est
+-- exactement le défaut qu'un décor fidèle existe pour empêcher.
+create function public.get_availability_status(target uuid, at_ts timestamptz)
 returns text language sql stable as $$ select 'unknown'::text $$;
 
 -- Chat (tranche 5a) : les trois tables viennent du schéma initial. Leurs

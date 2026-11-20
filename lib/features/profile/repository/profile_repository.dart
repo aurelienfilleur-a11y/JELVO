@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../data/app_config.dart';
 import '../../auth/models/auth_failure.dart';
 import '../models/anniversaire.dart';
+import '../models/profil_consultable.dart';
 import '../models/profile.dart';
 
 abstract interface class ProfileRepository {
@@ -29,6 +30,17 @@ abstract interface class ProfileRepository {
     required String userId,
     required Anniversaire? anniversaire,
   });
+
+  /// Le profil de quelqu'un d'autre, ou `null` si l'identifiant est inconnu.
+  ///
+  /// **Passe par `profil_consultable` et jamais par `profiles`.** Depuis la
+  /// tranche 7, `profiles_select` vaut `id = auth.uid() or
+  /// has_social_link(id)` : une lecture directe ne rendrait rien pour une
+  /// personne hors de ses contacts et de ses groupes, et l'écran se
+  /// présenterait vide. C'est la fonction, et non cet appel, qui décide de ce
+  /// qui sort — les statistiques et la disponibilité arrivent à `null` dès
+  /// qu'on n'est pas un contact accepté.
+  Future<ProfilConsultable?> fetchProfilConsultable(String userId);
 
   /// Remplace la photo de profil et renvoie le profil à jour.
   /// Choisit un avatar prédéfini, et **efface la photo** dans la même
@@ -67,6 +79,23 @@ class SupabaseProfileRepository implements ProfileRepository {
           .eq('id', userId)
           .maybeSingle();
       return row == null ? null : Profile.fromMap(row);
+    } catch (error) {
+      throw AuthFailure.from(error);
+    }
+  }
+
+  @override
+  Future<ProfilConsultable?> fetchProfilConsultable(String userId) async {
+    try {
+      final List<dynamic> rows = await _client.rpc(
+        'profil_consultable',
+        params: <String, dynamic>{'p_user_id': userId},
+      );
+      // Zéro ligne signifie « cet identifiant n'existe pas », et c'est le seul
+      // état dégradé d'un profil. `invitation_par_id` rend au contraire
+      // toujours une ligne, parce qu'une invitation en a quatre à distinguer.
+      if (rows.isEmpty) return null;
+      return ProfilConsultable.depuisLigne(rows.first as Map<String, dynamic>);
     } catch (error) {
       throw AuthFailure.from(error);
     }

@@ -34,6 +34,7 @@ import '../features/profile/screens/avatar_gallery_screen.dart';
 import '../features/profile/screens/about_screen.dart';
 import '../features/profile/screens/change_password_screen.dart';
 import '../features/profile/screens/profile_edit_screen.dart';
+import '../features/profile/screens/public_profile_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
 import '../features/profile/screens/settings_screen.dart';
 import '../features/tasks/screens/task_assignment_screen.dart';
@@ -286,6 +287,17 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
         parentNavigatorKey: _rootNavigatorKey,
         builder: (BuildContext context, GoRouterState state) =>
             const AvatarGalleryScreen(),
+      ),
+      // Le profil de quelqu'un d'autre. Empilé sur le navigateur racine, donc
+      // par-dessus la barre de navigation : on y arrive depuis une
+      // conversation, un groupe, un événement, une tâche ou le carnet, et
+      // revenir doit ramener là d'où l'on vient — pas dans un onglet.
+      GoRoute(
+        path: '${AppRoutes.publicProfilePath}/:id',
+        name: AppRoutes.publicProfile,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (BuildContext context, GoRouterState state) =>
+            PublicProfileScreen(userId: state.pathParameters['id'] ?? ''),
       ),
       GoRoute(
         path: AppRoutes.availabilityPath,

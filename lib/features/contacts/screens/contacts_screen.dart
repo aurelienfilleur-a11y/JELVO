@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/core.dart';
+import '../../../router/ouvrir_profil.dart';
 import '../../auth/models/auth_failure.dart';
 import '../models/contact.dart';
 import '../providers/contact_providers.dart';
@@ -228,6 +229,8 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
                             showChevron: true,
                             onTap: () =>
                                 ContactActionsSheet.ouvrir(context, contact),
+                            onTapPerson: () =>
+                                context.ouvrirProfilDe(contact.id),
                             onFavoriteToggled: () => _toggleFavorite(contact),
                           ),
                         ),

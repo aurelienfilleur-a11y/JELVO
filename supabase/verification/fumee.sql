@@ -1622,7 +1622,14 @@ do $anniv$
 declare
   camille    uuid := '11111111-1111-1111-1111-111111111111'::uuid;
   lea        uuid := '33333333-3333-3333-3333-333333333333'::uuid;
-  inconnu    uuid := '44444444-4444-4444-4444-444444444444'::uuid;
+  -- **Un identifiant à lui**, et non celui du passager de la tranche 6.
+  -- Les deux blocs partageaient `4444…` : l'insertion ci-dessous retombait
+  -- sur son `on conflict do update`, ne posait que la date, et laissait le
+  -- profil de Noé Berger. Les contrôles négatifs tenaient — Noé n'est pas
+  -- plus un contact que ne l'aurait été Hugo — mais pour une raison que le
+  -- fichier ne disait pas, et un décor qui se trompe de personne finit par
+  -- faire passer un test pour la mauvaise raison.
+  inconnu    uuid := '12121212-1212-1212-1212-121212121212'::uuid;
   aujourdhui date := (now() at time zone 'Europe/Paris')::date;
   jour       smallint := extract(day from aujourdhui)::smallint;
   mois       smallint := extract(month from aujourdhui)::smallint;
@@ -1794,5 +1801,168 @@ begin
   raise notice 'Fumée : les anniversaires de la tranche 12 répondent.';
 end;
 $anniv$;
+
+-- Tranche 13 — le profil consultable de quelqu'un d'autre.
+--
+-- Ce qui compte ici : que les champs réservés aux contacts soient `null` pour
+-- un étranger, et qu'ils le soient **dans la fonction**, pas dans l'écran.
+--
+-- **Le décor est posé explicitement**, et non hérité de ce que les blocs
+-- précédents laissent. La première version s'appuyait sur l'adhésion de Léa
+-- que la tranche 12 trouve en place — elle ne l'est plus à ce stade, les
+-- blocs 6 à 10 éprouvant précisément les départs, les adhésions échues et la
+-- suppression douce d'un groupe. Un décor hérité fait échouer le bloc qui
+-- hérite, et c'est le meilleur des cas : il aurait pu le faire **passer**
+-- pour la mauvaise raison.
+do $profil$
+declare
+  camille uuid := '11111111-1111-1111-1111-111111111111'::uuid;
+  lea     uuid := '33333333-3333-3333-3333-333333333333'::uuid;
+  hugo    uuid := '14141414-1414-1414-1414-141414141414'::uuid;
+  fantome uuid := '15151515-1515-1515-1515-151515151515'::uuid;
+  groupe  uuid := '13131313-1313-1313-1313-131313131313'::uuid;
+  ligne   record;
+  lignes  integer;
+begin
+  set local role postgres;
+
+  -- Un étranger : ni contact, ni co-membre. Il porte une date, pour que
+  -- l'assertion « l'anniversaire est public » éprouve quelque chose.
+  insert into auth.users (id, email) values (hugo, 'hugo@exemple.test')
+  on conflict (id) do nothing;
+  insert into public.profiles (id, pseudo, first_name, last_name,
+                               anniversaire_jour, anniversaire_mois)
+  values (hugo, 'hugo', 'Hugo', 'Lemoine', 4::smallint, 7::smallint)
+  on conflict (id) do update
+    set first_name = excluded.first_name,
+        anniversaire_jour = excluded.anniversaire_jour,
+        anniversaire_mois = excluded.anniversaire_mois;
+
+  insert into public.groups (id, name, created_by)
+  values (groupe, 'Voyage en Corse', camille)
+  on conflict (id) do update set deleted_at = null;
+
+  insert into public.group_members (group_id, user_id, role)
+  values (groupe, camille, 'admin'), (groupe, lea, 'member')
+  on conflict (group_id, user_id) do update set expires_at = null;
+
+  -- Camille et Léa sont contacts acceptées depuis le bloc précédent ; on le
+  -- repose pour que ce bloc ne dépende de rien.
+  delete from public.contacts
+   where camille in (requester_id, addressee_id)
+     and (lea in (requester_id, addressee_id)
+       or hugo in (requester_id, addressee_id));
+  insert into public.contacts (requester_id, addressee_id, status)
+  values (camille, lea, 'accepted');
+
+  perform set_config('request.jwt.claims',
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}',
+    true);
+  set local role authenticated;
+
+  -- 1. Une contact : tout est ouvert ------------------------------------------
+  select * into ligne from public.profil_consultable(lea);
+  assert ligne.id = lea, 'la ligne ne porte pas l''identifiant demandé';
+  assert ligne.pseudo = 'lea', 'le pseudo manque';
+  assert ligne.first_name = 'Léa', 'le prénom manque';
+  assert not ligne.cest_moi, 'le profil d''autrui se croit le sien';
+  assert ligne.statut = 'accepted',
+         format('relation attendue acceptée, reçue %s', ligne.statut);
+  assert ligne.sens = 'sortant',
+         'Camille a envoyé la demande : le sens doit être sortant';
+  assert ligne.groupes_communs = 1,
+         format('un groupe commun attendu, reçu %s', ligne.groupes_communs);
+  assert ligne.groupes_partages -> 0 ->> 'nom' = 'Voyage en Corse',
+         'le détail des groupes communs ne porte pas le nom du groupe';
+  assert ligne.statistiques is not null,
+         'une contact doit voir les statistiques';
+  assert (ligne.statistiques ->> 'groupes')::integer = 1,
+         format('un groupe attendu dans les statistiques, reçu %s',
+                ligne.statistiques ->> 'groupes');
+  assert ligne.disponibilite is not null,
+         'une contact doit voir la disponibilité';
+
+  -- 2. **Les deux contrôles négatifs qui portent la consigne** ----------------
+  -- Hugo n'est pas un contact. Ses cinq champs publics sortent — c'est la
+  -- consigne —, mais rien de plus. Un appel direct à PostgREST avec son
+  -- identifiant obtient donc les mêmes `null` : la réserve est dans la
+  -- fonction, et un écran ne peut rien réserver.
+  select * into ligne from public.profil_consultable(hugo);
+  assert ligne.first_name = 'Hugo',
+         'les champs publics d''un étranger doivent sortir';
+  assert ligne.anniversaire_mois is not null,
+         'l''anniversaire est public : il doit sortir pour un étranger';
+  assert ligne.statut is null,
+         format('aucune relation attendue, reçue %s', ligne.statut);
+  assert ligne.groupes_communs = 0,
+         format('aucun groupe commun attendu, reçu %s', ligne.groupes_communs);
+  assert ligne.statistiques is null,
+         'les statistiques d''un non-contact ne doivent pas sortir';
+  assert ligne.disponibilite is null,
+         'la disponibilité d''un non-contact ne doit pas sortir';
+
+  -- 3. Contrôle négatif : être *sollicité* n'est pas être contact -------------
+  -- La nuance est la plus facile à manquer : `contacts` porte une ligne dès
+  -- la demande, et un `exists` sans `status = 'accepted'` ouvrirait les
+  -- statistiques à qui se contente de demander.
+  set local role postgres;
+  insert into public.contacts (requester_id, addressee_id, status)
+  values (camille, hugo, 'pending');
+  set local role authenticated;
+
+  select * into ligne from public.profil_consultable(hugo);
+  assert ligne.statut = 'pending',
+         format('relation attendue en attente, reçue %s', ligne.statut);
+  assert ligne.statistiques is null,
+         'une demande en attente a ouvert les statistiques';
+  assert ligne.disponibilite is null,
+         'une demande en attente a ouvert la disponibilité';
+
+  -- 4. Contrôle négatif : une adhésion échue ne compte plus -------------------
+  -- Même règle qu'au carnet (tranche 10) et que partout depuis la tranche 6.
+  set local role postgres;
+  update public.group_members set expires_at = now() - interval '1 day'
+   where user_id = lea and group_id = groupe;
+  set local role authenticated;
+
+  select * into ligne from public.profil_consultable(lea);
+  assert ligne.groupes_communs = 0,
+         format('une adhésion échue compte encore, reçu %s',
+                ligne.groupes_communs);
+  assert ligne.groupes_partages = '[]'::jsonb,
+         'une adhésion échue figure encore dans le détail';
+
+  set local role postgres;
+  update public.group_members set expires_at = null
+   where user_id = lea and group_id = groupe;
+  set local role authenticated;
+
+  -- 5. Son propre profil ------------------------------------------------------
+  select * into ligne from public.profil_consultable(camille);
+  assert ligne.cest_moi, 'son propre profil doit se reconnaître';
+  assert ligne.statistiques is not null,
+         'ses propres statistiques doivent sortir';
+
+  -- 6. Un identifiant inconnu rend zéro ligne ---------------------------------
+  -- Contrairement à `invitation_par_id`, qui rend toujours une ligne avec un
+  -- mot d'état : une invitation a quatre états dégradés à distinguer, un
+  -- profil n'en a qu'un — il n'existe pas.
+  select count(*) into lignes from public.profil_consultable(fantome);
+  assert lignes = 0,
+         format('un identifiant inconnu doit rendre zéro ligne, reçu %s',
+                lignes);
+
+  -- 7. **Contrôle négatif : aucune adresse e-mail ne peut sortir** ------------
+  -- Elle vit dans `auth.users`, que cette fonction ne lit pas. Ce contrôle
+  -- porte sur la *signature* : il échouerait le jour où quelqu'un ajouterait
+  -- une colonne de sortie qui en porte une, ce qu'aucun appel ne révélerait.
+  reset role;
+  assert pg_get_function_result(
+           'public.profil_consultable(uuid)'::regprocedure) not ilike '%mail%',
+         'la signature expose une colonne d''adresse e-mail';
+
+  raise notice 'Fumée : le profil consultable de la tranche 13 répond.';
+end;
+$profil$;
 
 rollback;

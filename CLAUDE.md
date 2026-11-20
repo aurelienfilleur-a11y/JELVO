@@ -1488,7 +1488,7 @@ diagnostic à l'écart.
 **L'ordre du fichier n'est pas celui des numéros**, et ne peut pas l'être :
 `tranche7_durcissement.sql` referme l'exécution de toute fonction absente de sa
 liste et **lève si un nom de sa liste n'existe pas en base**. Il reste donc le
-dernier passage, et les tranches 8 à 12 s'insèrent avant lui.
+dernier passage, et les tranches 8 à 13 s'insèrent avant lui.
 
 Deux fichiers **précèdent** au contraire tout le reste, et pour la même
 raison : ils ajoutent une colonne ou une valeur d'énumération que des fonctions
@@ -3377,11 +3377,11 @@ dans un sens ou dans l'autre. Un co-membre de groupe qui n'est pas un contact
 ne reçoit rien et ne voit rien au calendrier. Le test de fumée en fait un
 contrôle négatif.
 
-**Il n'existe pas d'écran de profil d'autrui dans Jelvo**, et c'est la limite
-réelle de l'affichage : la date se lit sur son propre profil, et sur la fiche
-d'un contact (`ContactActionsSheet`), qui est la seule fiche d'autrui que
-l'application possède. Rien côté base ne s'opposerait à ce qu'un futur écran
-l'affiche.
+**Il existe désormais un écran de profil d'autrui** — voir « Le profil de
+quelqu'un d'autre » —, et la date s'y lit : c'est l'un des cinq champs que
+`profil_consultable` rend à tout compte authentifié, ce que rien côté base ne
+restreignait déjà. Elle se lit donc sur son propre profil, sur celui de
+n'importe qui, et sur la fiche d'un contact (`ContactActionsSheet`).
 
 ### Une personne sans date ne coûte rien
 
@@ -3427,9 +3427,12 @@ fonctionnel que le calendrier n'employait pas.
 
 Deux choix à connaître :
 
-- **elle n'ouvre rien** (`isOpenable` est faux, comme pour un créneau), faute
-  d'écran de profil d'autrui. Mener ailleurs serait un chemin qui ne tient pas
-  sa promesse ;
+- **elle n'ouvre rien** (`isOpenable` est faux, comme pour un créneau). C'était
+  faute d'écran de profil d'autrui ; celui-ci existe depuis la tranche 13, et
+  l'y brancher se ferait sans SQL de plus — mais une ligne d'agenda annonce
+  quelque chose qui *arrive*, et ouvrir un profil depuis une date n'est pas ce
+  qu'elle promet. Les anniversaires s'ouvrent depuis leur notification, qui
+  mène au calendrier ;
 - **elle passe par le filtre de groupe**, sous la clé du personnel, comme un
   rendez-vous personnel. Les créneaux de disponibilité y échappent, mais eux
   décrivent le fond de la journée ; un anniversaire est quelque chose qui
@@ -3728,6 +3731,214 @@ en face de quelqu'un.
 n'a pas d'adresse publique de profil, et inventer un lien qui n'ouvrirait rien
 serait pire que de partager le pseudo, avec lequel on se retrouve par la
 recherche.
+
+---
+
+## Le profil de quelqu'un d'autre
+
+`/personnes/:id`, `PublicProfileScreen`, `supabase/tranche13_profil_consultable.sql`.
+
+Jelvo n'en avait aucun : on ne voyait qu'une **fiche de contact** — épingler,
+retirer —, et rien du tout d'une personne absente du carnet. C'est pourtant
+l'écran qu'on cherche en touchant un avatar dans une conversation.
+
+### Une seule fonction décide de tout, et ce n'est pas l'écran
+
+C'est le point central de cette tranche. La consigne — « les statistiques et
+les disponibilités sont réservées à ses contacts » — **ne peut pas être tenue
+par un écran** : PostgREST est atteignable sans lui. Elle est donc tenue par
+`profil_consultable`, qui rend ces champs à `null` dès que l'appelant n'est
+pas un contact accepté. Un appel direct avec un identifiant arbitraire obtient
+les mêmes `null`.
+
+| Ce que la fonction rend | À qui |
+| --- | --- |
+| avatar, nom, pseudo, bio, anniversaire | tout compte authentifié |
+| la relation, le favori, les groupes en commun | tout compte authentifié |
+| les trois statistiques | **contacts acceptés** (et soi-même) |
+| la disponibilité | **contacts acceptés** (et soi-même) |
+| l'adresse e-mail | **personne, jamais** |
+
+**`profiles_select` n'est pas desserré.** La tranche 7 l'a resserré à
+`id = auth.uid() or has_social_link(id)`, et il le reste : la lecture directe
+de la table demeure fermée aux étrangers, et cette fonction est la seule porte.
+
+**La conséquence doit être dite** : les cinq champs publics deviennent
+lisibles par tout compte authentifié **qui connaît l'identifiant**. C'est la
+consigne — « visible par tout le monde » —, et comme
+`chercher_profils_par_pseudo` permet déjà d'énumérer les comptes par préfixe,
+ces cinq champs sont en pratique publics entre porteurs d'un compte. Rien
+d'autre ne l'est, et le périmètre exact du changement se lit en une ligne : ce
+`returns table`.
+
+### L'adresse e-mail est hors de portée par construction
+
+Elle vit dans `auth.users`, pas dans `profiles` : la fonction ne lit pas la
+table qui la contient. Ce n'est pas une colonne qu'on s'abstient de
+sélectionner, c'est une colonne qui n'existe nulle part dans cette lecture —
+et c'est pour cela que le contrôle du test de fumée porte sur la **signature**
+(`pg_get_function_result`) plutôt que sur une valeur : il échouerait le jour
+où quelqu'un ajouterait un champ de sortie qui en porte une, ce qu'aucun appel
+ne révélerait.
+
+### La disponibilité délègue, et la porte posée est plus étroite
+
+`get_availability_status` (schéma initial) reste seule juge de ce qu'elle
+révèle, exactement comme `statuts_de_disponibilite` depuis la tranche 4. La
+fonction y ajoute une condition **plus stricte** — un contact accepté, là où
+la sienne accepte aussi les co-membres de groupe — parce que c'est la consigne.
+Réimplémenter sa règle donnerait deux endroits où elle peut diverger, et l'un
+des deux finirait par être le plus permissif.
+
+**L'appel se fait par noms d'arguments**, et ce n'est pas du style :
+`schema_actuel.sql` donne `(target uuid, at_ts timestamptz)`, tandis que
+l'en-tête de la tranche 4 **et** le décor de `verification/` l'écrivaient dans
+l'autre sens. Les deux appelants nommant leurs arguments, rien n'avait cassé —
+mais un appel positionnel aurait passé le rejeu et échoué en production. Le
+décor porte désormais l'ordre réel.
+
+### `null` dit « pas votre affaire », et ce n'est pas « inconnu »
+
+`PeerAvailability.unknown` est une information : rien n'est déclaré. L'absence
+de valeur en est une autre. Le modèle garde donc `PeerAvailability?` et non un
+`unknown` par défaut, et l'écran n'affiche **aucune pastille** quand la valeur
+manque — ni quand elle vaut `unknown`, qui ferait passer un vide pour une
+donnée, comme « Non précisé » sur un lieu d'événement.
+
+### La ligne est lisible par les deux parseurs qui existent déjà
+
+Les champs du profil portent les noms de colonnes de `profiles`, ceux de la
+relation ceux de `mes_contacts` — `autre_id`, `statut`, `sens`, `favori`,
+`groupes_communs`. `Profile.fromMap` et `Contact.fromRow` lisent donc la même
+ligne sans une ligne de parsing de plus, et le `Contact` obtenu se donne tel
+quel à `ContactActions`, qui sait déjà de quel bout de la relation on se
+trouve — donc quelle colonne de favori écrire.
+
+`avatar_url` arrive **composé** (`coalesce('preset:' || avatar_preset,
+avatar_url)`), comme dans les onze autres lectures.
+
+**`statut` nul signifie qu'aucune ligne `contacts` ne lie les deux
+personnes.** `Contact` n'a pas de valeur pour « aucune relation » et n'a pas à
+en avoir : c'est l'absence d'objet qui le dit.
+
+### Un identifiant inconnu rend zéro ligne
+
+Contrairement à `invitation_par_id`, qui rend **toujours** une ligne avec un
+mot d'état. La règle de la tranche 8 ne se transpose pas : une invitation a
+quatre états dégradés qui se confondaient tous en « introuvable », un profil
+n'en a qu'un — il n'existe pas.
+
+### `/personnes/:id` et non `/profil/:id`
+
+`/profil` porte déjà trois enfants littéraux — `modifier`, `avatar`, `qr` —, et
+un segment variable déclaré au même niveau les avalerait s'il venait avant.
+C'est le piège documenté de `/groupes/nouveau`, qui doit précéder
+`/groupes/:id` ; ici il faudrait le tenir pour trois chemins, et pour chacun de
+ceux qu'on ajouterait ensuite. Un préfixe à part le rend impossible, et nomme
+mieux ce qu'il désigne : une personne, pas « mon profil ».
+
+La route est empilée sur le **navigateur racine**, et l'ouverture passe par
+`context.ouvrirProfilDe` (`router/ouvrir_profil.dart`) : cinq endroits y
+mènent, et un sixième s'ajoutera.
+
+### Cinq points d'entrée, et toujours la même cible : l'avatar ou le nom
+
+| D'où | Ce qui ouvre le profil |
+| --- | --- |
+| une conversation | le nom au-dessus de la série, et l'avatar sous la dernière bulle |
+| les membres d'un groupe | l'avatar et le nom — pas le menu d'administration |
+| les convives d'un événement | l'avatar et le nom — pas la pastille de réponse |
+| les assignés d'une tâche | l'avatar et le nom — pas la pastille de statut |
+| le carnet | l'avatar et le nom — **pas le chevron** |
+
+**Le carnet garde donc deux cibles, et c'est délibéré.** La fiche
+(`ContactActionsSheet`) agit sur le **lien** qu'on a avec quelqu'un, le profil
+montre **quelqu'un**. Les confondre obligerait à choisir laquelle disparaît,
+alors que « Gérer » de la bande des favoris ouvre déjà la première depuis un
+autre endroit. Le test du carnet a changé de cible en conséquence — il touche
+le chevron là où il touchait le nom.
+
+### L'allure est celle de « Mon profil », sans ce qui n'a pas de sens ici
+
+| Repris | Écarté, et pourquoi |
+| --- | --- |
+| la carte d'identité, la carte « À propos », la carte des statistiques | **la pastille d'appareil photo** : elle changerait la photo de quelqu'un d'autre |
+| la rangée d'actions, montée dans `ProfileActionRow` | **Modifier, QR code, Partager** : les trois parlent de son propre profil |
+| | **l'adresse e-mail**, qui n'est lisible nulle part |
+
+`ProfileActionRow` existe parce que les **deux** cartes la portent, avec des
+actions différentes : une seule copie de l'allure, qui est ce qui fait
+reconnaître l'écran.
+
+**Les trois compteurs n'ouvrent rien** sur le profil d'un autre.
+`ProfileStatsCard` reçoit des rappels `null`, et le compteur n'est alors pas
+touchable : les listes de l'application sont les **miennes**, et « ses
+groupes » ouvert depuis le profil de Léa montrerait les miens. Une destination
+qui ne tient pas sa promesse est pire qu'une absence de destination.
+
+**La carte « À propos » disparaît** quand la bio et l'anniversaire sont tous
+deux vides. Sur son propre profil une bio vide invite à la remplir ; ici il n'y
+a ni texte à lire ni geste à proposer — même règle que le crayon de
+description d'un groupe, absent pour un membre simple.
+
+**L'absence des statistiques est expliquée**, par une phrase sous la carte
+d'identité. Sans elle, le trou serait indiscernable d'un chargement raté — le
+même défaut qu'une liste vide pendant une lecture en vol.
+
+### Les actions suivent la relation, et aucune n'est inerte
+
+| Relation | Actions |
+| --- | --- |
+| aucune | Ajouter en contact |
+| demande reçue | Accepter · Refuser |
+| demande envoyée | Annuler la demande |
+| contact | Épingler / Épinglé · Retirer |
+| soi-même | Mon profil |
+
+« Annuler la demande » passe par `remove`, qui **supprime la ligne** :
+`contact_status` ne connaît pas de `declined`, et c'est la suppression qui
+tient le refus comme l'annulation. Un bouton grisé « Demande envoyée »
+annoncerait une capacité que la base refuse.
+
+**Retirer se confirme**, et c'est la seule action de cet écran qui défait
+quelque chose sans moyen de le refaire d'un geste. **Toute action relit le
+profil** : la relation vient de la base, et sans relecture l'écran continuerait
+d'offrir « Ajouter en contact » à quelqu'un qu'on vient d'ajouter.
+
+**Son propre profil ouvert par ce chemin** — en touchant son avatar dans une
+conversation — n'offre aucune action de relation et mène à « Mon profil ». Ses
+propres statistiques sortent : ce sont les siennes.
+
+### Les groupes en commun se montrent à tout le monde
+
+Sans règle d'accès à poser : ce sont **nos** groupes, dont on peut déjà lire la
+liste des membres. Ce que la carte apprend, c'est l'intersection — pas
+l'existence d'un groupe qu'on ne connaîtrait pas.
+
+Les trois filtres de la tranche 10 s'appliquent, et aucun n'est décoratif : le
+groupe doit être vivant, et **les deux** adhésions actives. Une adhésion
+temporaire échue ne compte plus, d'un côté comme de l'autre — c'est la règle de
+la tranche 6, et ce profil ne fait pas exception. Le compte (pour
+`Contact.fromRow`) et le détail (pour la carte) sortent de la **même** jointure
+et ne peuvent donc pas se contredire.
+
+**Zéro se dit**, comme la pastille du carnet : « on se connaît sans rien
+organiser ensemble » est une information, là où une carte absente se lirait
+comme un chargement qui a échoué.
+
+### Ce que les statistiques comptent, et où elles s'écartent des siennes
+
+| Compteur | Ce qui est compté |
+| --- | --- |
+| Groupes | ses adhésions actives dans des groupes vivants |
+| Événements | les événements qu'elle possède **ou** auxquels elle est conviée |
+| Tâches terminées | les tâches qui lui sont assignées et dont `completed_at` est renseigné |
+
+Le deuxième n'est pas tout à fait le compteur de son propre profil, qui part de
+`mon_agenda` — donc de tout ce qu'elle peut voir. Un événement d'un de ses
+groupes auquel elle n'est pas conviée compte chez elle et pas ici. L'écart est
+assumé et borné : un événement de groupe convie par défaut tous ses membres
+actifs.
 
 ---
 
@@ -4269,6 +4480,27 @@ sécurité.
   actif, l'enregistrement à la sortie du champ comme par la coche, l'échec qui
   reste en saisie avec son message, le texte intact qui n'écrit rien, le
   crayon à la place du chevron, et le nom modifié qui ne perd pas la bio.
+- `test/profil_consultable_test.dart` couvre le profil de quelqu'un d'autre.
+  Sans widget : les cinq champs publics lus sous les noms de colonnes de la
+  fonction SQL — c'est là que se verrait un changement de vocabulaire, les
+  deux parseurs réutilisés cessant de la lire —, l'avatar prédéfini qui arrive
+  déjà composé, l'absence de relation qui n'est pas une relation vide, une
+  demande reçue distinguée d'une envoyée, et **le contrôle qui porte la
+  consigne** : `statistiques` et `disponibilite` nuls restent nuls, et non
+  « inconnu », qui dirait « rien de déclaré » là où l'absence dit « pas votre
+  affaire ». Côté écran : les cinq champs, **aucune adresse e-mail** — le seul
+  « @ » de l'écran est celui du pseudo —, l'absence des trois boutons de son
+  propre profil, les statistiques et la pastille de disponibilité pour une
+  contact, les compteurs qui **n'ouvrent rien**, le non-contact qui ne les voit
+  pas et la phrase qui dit pourquoi, « Inconnu » qui ne s'affiche pas comme une
+  donnée, l'identifiant inconnu et la lecture qui échoue. Côté groupes
+  communs : la liste, le singulier, et **zéro qui se dit**. Côté actions : les
+  cinq relations et leur écriture, le retrait qui se confirme — avec le
+  contrôle négatif d'un « Annuler » qui n'écrit rien —, et son propre profil
+  qui n'offre aucune action de relation. Côté points d'entrée : le nom dans le
+  carnet, le nom d'un membre dans un groupe, et le chevron du carnet qui, lui,
+  ouvre toujours la fiche. Celui de la conversation vit dans
+  `test/chat_test.dart`, avec ses messages.
 - `test/avatar_gallery_test.dart` couvre la galerie : les deux voies
   cohabitant dans la feuille de choix du profil, la sélection qui n'enregistre pas seule, la
   confirmation qui enregistre, l'inertie sans choix, l'anneau sur l'avatar
@@ -4570,7 +4802,7 @@ sûr d'éprouver son caractère contextuel.
   appelle les fonctions, mais son décor est recopié de cette documentation, et
   ne dit donc rien des colonnes réelles. C'est `supabase/schema_actuel.sql`,
   relevé après coup, qui fait foi.
-- Le test de fumée couvre les tranches 3, 3b, 4, 5a, 5b, 5c, 5d, 6 et 8 — plus
+- Le test de fumée couvre les tranches 3, 3b, 4, 5a, 5b, 5c, 5d, 6, 8 et 13 — plus
   de trente fonctions réellement appelées, contrôles négatifs de l'accès au
   bucket, de la mémoire des rappels, du rangement des adhésions, de la portée
   d'`invitation_par_id` et de l'auto-attribution qui ne notifie pas. Le retour
@@ -4596,10 +4828,20 @@ sûr d'éprouver son caractère contextuel.
   demanderait une colonne de plus sur ces deux tables — un `alter table add
   column if not exists`, donc rien d'insurmontable, mais une écriture du
   schéma initial que rien d'autre ne réclame aujourd'hui.
-- **Les disponibilités n'ont pas encore de lecture en dehors de la création
-  d'événement.** Le statut d'un contact n'apparaît ni sur sa fiche, ni dans la
-  liste des contacts ; c'est la suite naturelle, et elle ne demande aucun SQL
-  de plus — `statuts_de_disponibilite` accepte déjà une liste.
+- **Les disponibilités se lisent à la création d'un événement et sur le profil
+  d'un contact** — voir « Le profil de quelqu'un d'autre ». Ce qui reste : le
+  statut n'apparaît ni sur la fiche d'un contact, ni dans la liste du carnet.
+  C'est la suite naturelle, et elle ne demande aucun SQL de plus —
+  `statuts_de_disponibilite` accepte déjà une liste.
+- **Le profil de quelqu'un d'autre est livré**, avec sa règle d'accès tenue
+  par la base. Trois réserves. D'abord, les cinq champs publics sont lisibles
+  par **tout compte authentifié qui connaît l'identifiant** : c'est la consigne
+  produit, et `chercher_profils_par_pseudo` les rendait déjà énumérables, mais
+  cela se dit. Ensuite, le compteur d'événements ne compte pas tout à fait la
+  même chose que celui de son propre profil — participation d'un côté, tout ce
+  qu'on peut voir de l'autre. Enfin l'écran n'a été éprouvé que par les tests :
+  les sept contrôles du rejeu portent sur la fonction SQL, et la **vraie** base
+  ne la voit qu'après fusion, comme toute migration ici.
 - Le calendrier agrège une **journée** à la fois. Une vue mois, et le rendu des
   événements à cheval sur deux jours, restent hors périmètre : la timeline
   place chaque élément à son heure de début.
@@ -4675,9 +4917,8 @@ sûr d'éprouver son caractère contextuel.
   fonction Edge échouait depuis le 23 août, si bien que `empiler_anniversaires`
   n'aurait jamais été appelée. Voir « Le déploiement de la fonction a échoué en
   silence pendant trois mois ». Quatre réserves :
-  il n'existe **pas d'écran de profil d'autrui**, si bien que la date ne se lit
-  que sur son propre profil et sur la fiche d'un contact, alors que rien côté
-  base ne la restreint ; la carte d'agenda de l'accueil et les pastilles de la
+  ~~il n'existe pas d'écran de profil d'autrui~~ — **la tranche 13 l'a
+  apporté**, et la date y figure ; la carte d'agenda de l'accueil et les pastilles de la
   semaine ne les montrent pas ; l'envoi du jour se fait en **Europe/Paris** en
   dur, comme les rappels, si bien que quelqu'un à l'autre bout du monde est
   prévenu à l'heure de Paris ; et la règle du jour fêté vit **des deux côtés**,

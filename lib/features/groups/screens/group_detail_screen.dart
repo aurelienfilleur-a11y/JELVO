@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/core.dart';
+import '../../../router/ouvrir_profil.dart';
 import '../../../data/data_providers.dart';
 import '../../../router/app_routes.dart';
 import '../../auth/models/auth_failure.dart';
@@ -286,6 +287,7 @@ class _GroupView extends ConsumerWidget {
               itemBuilder: (BuildContext context, int index) {
                 final GroupMember member = members[index];
                 return MemberTile(
+                  onTapPerson: () => context.ouvrirProfilDe(member.userId),
                   member: member,
                   isMe: member.userId == myId,
                   canManage: group.isAdmin,

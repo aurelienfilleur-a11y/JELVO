@@ -54,11 +54,6 @@ Map<String, dynamic> _ligne({
   String? sens = 'sortant',
   bool favori = false,
   List<Map<String, dynamic>> groupes = const <Map<String, dynamic>>[],
-  Map<String, dynamic>? statistiques = const <String, dynamic>{
-    'groupes': 3,
-    'evenements': 12,
-    'taches_terminees': 7,
-  },
   String? disponibilite = 'available',
 }) => <String, dynamic>{
   'id': id,
@@ -76,7 +71,6 @@ Map<String, dynamic> _ligne({
   'favori': favori,
   'groupes_communs': groupes.length,
   'groupes_partages': groupes,
-  'statistiques': statistiques,
   'disponibilite': disponibilite,
 };
 
@@ -200,20 +194,14 @@ void main() {
       );
     });
 
-    // **Le contrôle qui porte la consigne.** Les deux champs réservés aux
-    // contacts arrivent à `null`, et c'est la fonction SQL qui en décide : un
-    // appel direct à PostgREST obtient les mêmes `null`.
+    // **Le contrôle qui porte la consigne.** Le champ réservé aux contacts
+    // arrive à `null`, et c'est la fonction SQL qui en décide : un appel
+    // direct à PostgREST obtient le même `null`.
     test('réservé aux contacts : null reste null, et non « inconnu »', () {
       final ProfilConsultable p = ProfilConsultable.depuisLigne(
-        _ligne(
-          statut: null,
-          sens: null,
-          statistiques: null,
-          disponibilite: null,
-        ),
+        _ligne(statut: null, sens: null, disponibilite: null),
       );
 
-      expect(p.statistiques, isNull);
       // La nuance compte : `PeerAvailability.unknown` dirait « rien de
       // déclaré », ce qui est une information. L'absence dit « ce n'est pas
       // votre affaire », et l'écran n'affiche alors aucune pastille.
@@ -268,57 +256,49 @@ void main() {
       expect(find.text('Partager profil'), findsNothing);
     });
 
-    testWidgets('une contact voit les statistiques et la disponibilité', (
+    testWidgets('une contact voit sa disponibilité', (
       WidgetTester tester,
     ) async {
       await _ouvrir(tester, ligne: _ligne());
 
-      expect(find.text('Ses statistiques'), findsOneWidget);
-      expect(find.text('3'), findsOneWidget);
-      expect(find.text('12'), findsOneWidget);
-      expect(find.text('7'), findsOneWidget);
       expect(find.text('Disponible'), findsOneWidget);
     });
 
-    // Les compteurs résument **ses** listes, et l'application n'a que les
-    // miennes : les ouvrir montrerait mes groupes depuis son profil.
-    testWidgets('les compteurs n’ouvrent rien', (WidgetTester tester) async {
+    // **Le contrôle négatif du retrait.** Les compteurs ne sont pas rendus
+    // inertes, ils ne sont plus là — et pas davantage pour une contact, qui
+    // voit pourtant tout le reste. Un chiffre qu'on ne peut pas ouvrir
+    // n'apprend rien de plus que lui-même, et les listes de l'application sont
+    // celles de l'utilisateur connecté.
+    testWidgets('aucune statistique, même pour une contact', (
+      WidgetTester tester,
+    ) async {
       await _ouvrir(tester, ligne: _ligne());
 
-      final ProfileStatsCard carte = tester.widget<ProfileStatsCard>(
-        find.byType(ProfileStatsCard),
-      );
-      expect(carte.onOpenGroups, isNull);
-      expect(carte.onOpenCalendar, isNull);
-      expect(carte.onOpenTasks, isNull);
-
-      await tester.tap(find.text('Groupes'));
-      await tester.pumpAndSettle();
-      expect(find.text('Ses statistiques'), findsOneWidget);
+      expect(find.byType(ProfileStatsCard), findsNothing);
+      expect(find.textContaining('statistiques'), findsNothing);
+      expect(find.text('Groupes'), findsNothing);
+      expect(find.text('Tâches terminées'), findsNothing);
     });
 
-    testWidgets('un non-contact ne les voit pas, et l’écran dit pourquoi', (
+    testWidgets('un non-contact garde les champs publics', (
       WidgetTester tester,
     ) async {
       await _ouvrir(
         tester,
-        ligne: _ligne(
-          statut: null,
-          sens: null,
-          statistiques: null,
-          disponibilite: null,
-        ),
+        ligne: _ligne(statut: null, sens: null, disponibilite: null),
       );
 
       // Les champs publics restent là : c'est la consigne.
       expect(find.text('Léa Marchand'), findsOneWidget);
       expect(find.text('14 juillet'), findsOneWidget);
 
-      expect(find.byType(ProfileStatsCard), findsNothing);
+      // Ce qui lui manque est la seule pastille, et **rien ne l'annonce** : la
+      // phrase qui expliquait l'absence de la carte est partie avec elle.
+      // Annoncer qu'une donnée est retenue en dirait plus sur la personne
+      // consultée que son absence — et un contact qui n'a rien déclaré n'a pas
+      // de pastille non plus.
       expect(find.text('Disponible'), findsNothing);
-      // Dire pourquoi la carte manque : l'absence serait sinon indiscernable
-      // d'un chargement raté.
-      expect(find.textContaining('réservées à ses contacts'), findsOneWidget);
+      expect(find.textContaining('réservé'), findsNothing);
     });
 
     testWidgets('« Inconnu » ne s’affiche pas comme une donnée', (
@@ -327,8 +307,9 @@ void main() {
       await _ouvrir(tester, ligne: _ligne(disponibilite: 'unknown'));
 
       expect(find.text('Inconnu'), findsNothing);
-      // La carte des statistiques reste, elle : on est bien contact.
-      expect(find.byType(ProfileStatsCard), findsOneWidget);
+      // Et c'est bien le profil d'une contact qui est à l'écran : ce n'est pas
+      // la relation qui manque, c'est la valeur.
+      expect(find.text('Épingler'), findsOneWidget);
     });
 
     testWidgets('un identifiant inconnu le dit', (WidgetTester tester) async {
@@ -393,12 +374,7 @@ void main() {
     testWidgets('un étranger : on peut l’ajouter', (WidgetTester tester) async {
       final _Decor decor = await _ouvrir(
         tester,
-        ligne: _ligne(
-          statut: null,
-          sens: null,
-          statistiques: null,
-          disponibilite: null,
-        ),
+        ligne: _ligne(statut: null, sens: null, disponibilite: null),
       );
 
       expect(find.text('Retirer'), findsNothing);
@@ -413,12 +389,7 @@ void main() {
     ) async {
       final _Decor decor = await _ouvrir(
         tester,
-        ligne: _ligne(
-          statut: 'pending',
-          sens: 'entrant',
-          statistiques: null,
-          disponibilite: null,
-        ),
+        ligne: _ligne(statut: 'pending', sens: 'entrant', disponibilite: null),
       );
 
       expect(find.text('Refuser'), findsOneWidget);
@@ -433,12 +404,7 @@ void main() {
     ) async {
       final _Decor decor = await _ouvrir(
         tester,
-        ligne: _ligne(
-          statut: 'pending',
-          sens: 'sortant',
-          statistiques: null,
-          disponibilite: null,
-        ),
+        ligne: _ligne(statut: 'pending', sens: 'sortant', disponibilite: null),
       );
 
       expect(find.text('Accepter'), findsNothing);
@@ -498,12 +464,16 @@ void main() {
 
       expect(find.text('Ajouter en contact'), findsNothing);
       expect(find.text('Retirer'), findsNothing);
-      // Ses propres statistiques sortent — ce sont les siennes.
-      expect(find.text('Mes statistiques'), findsOneWidget);
+      // **Pas de statistiques ici non plus**, pas même sur son propre profil
+      // ouvert par ce chemin : elles vivent sur « Mon profil », où chaque
+      // chiffre ouvre la liste qu'il résume.
+      expect(find.text('Mes statistiques'), findsNothing);
 
       await tester.tap(find.text('Mon profil'));
       await tester.pumpAndSettle();
       expect(find.text('Modifier'), findsOneWidget);
+      // Et elles y sont, elles.
+      expect(find.text('Mes statistiques'), findsOneWidget);
     });
   });
 
@@ -541,7 +511,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('@lea.marchand'), findsOneWidget);
-      expect(find.text('Ses statistiques'), findsOneWidget);
+      expect(find.text('Toujours partante pour une rando.'), findsOneWidget);
     });
 
     testWidgets('le chevron du carnet, lui, ouvre toujours la fiche', (

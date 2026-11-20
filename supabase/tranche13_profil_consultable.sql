@@ -28,12 +28,23 @@
 --   * **l'adresse e-mail.** Elle vit dans `auth.users`, pas dans `profiles` :
 --     cette fonction ne lit pas la table qui la contient. Il n'y a donc pas
 --     une colonne à ne pas sélectionner, il n'y a pas de colonne du tout ;
---   * **les statistiques et la disponibilité.** Elles sont renvoyées à
---     `null` dès que l'appelant n'est pas un contact accepté. Le filtre est
---     **dans la fonction**, pas dans l'écran : un appel direct à PostgREST
---     avec un identifiant arbitraire obtient les mêmes `null`. C'est la seule
---     façon de tenir « réservé aux contacts » — un écran ne peut rien
---     réserver.
+--   * **la disponibilité.** Elle est renvoyée à `null` dès que l'appelant
+--     n'est pas un contact accepté. Le filtre est **dans la fonction**, pas
+--     dans l'écran : un appel direct à PostgREST avec un identifiant
+--     arbitraire obtient le même `null`. C'est la seule façon de tenir
+--     « réservé aux contacts » — un écran ne peut rien réserver ;
+--   * **les trois statistiques** — groupes, événements, tâches terminées.
+--     Elles **ne sont plus calculées du tout**, et c'est un retrait et non un
+--     masquage : l'écran ne les montrait à personne, et un compteur que
+--     personne ne lit est trois sous-requêtes par ouverture de profil, dont
+--     une sur `events` et une sur `tasks` jointe à `task_assignees`.
+--
+--     Les chiffres gardent tout leur sens sur « Mon profil », où chacun
+--     **ouvre la liste qu'il résume** — et c'est précisément ce qui ne se
+--     transpose pas ici : les listes de l'application sont celles de
+--     l'utilisateur connecté, et « ses groupes » ouvert depuis le profil de
+--     quelqu'un d'autre montrerait les siens. Un chiffre qu'on ne peut pas
+--     ouvrir n'apprend rien de plus que lui-même.
 --
 -- La disponibilité **délègue** à `get_availability_status`, du schéma initial,
 -- exactement comme `statuts_de_disponibilite` le fait depuis la tranche 4.
@@ -57,6 +68,19 @@
 -- lecture : `coalesce('preset:' || avatar_preset, avatar_url)`. La colonne de
 -- la table ne contient toujours que des URL ; c'est le champ de sortie du
 -- même nom qui devient « l'avatar à afficher ».
+
+-- **Le `drop` est nécessaire, et il est la raison de son propre commentaire.**
+-- Retirer une colonne de sortie d'un `returns table` est refusé par `create or
+-- replace` : PostgreSQL y voit un changement de type de retour. C'est le même
+-- prix qu'ont payé `mon_agenda` et `mes_taches` en tranche 6 puis en tranche 8
+-- pour en *gagner* une — ici la fonction en perd une, et la règle ne fait pas
+-- de différence.
+--
+-- `if exists` parce que ce fichier est aussi le premier passage sur une base
+-- neuve, et `cascade` est volontairement **omis** : rien d'autre en base ne
+-- dépend de cette fonction, et un `cascade` qui emporterait silencieusement un
+-- objet futur serait pire que l'erreur qui le signale.
+drop function if exists public.profil_consultable(uuid);
 
 create or replace function public.profil_consultable(p_user_id uuid)
 returns table (
@@ -87,8 +111,7 @@ returns table (
   groupes_communs    integer,
   groupes_partages   jsonb,
 
-  -- Réservés aux contacts acceptés — `null` sinon.
-  statistiques       jsonb,
+  -- **Le seul champ réservé aux contacts acceptés** — `null` sinon.
   disponibilite      text
 )
 language plpgsql
@@ -168,43 +191,9 @@ begin
       '[]'::jsonb),
 
     -- **Le filtre des contacts est ici, et nulle part ailleurs.** Son propre
-    -- profil y passe aussi : `cest_moi` ouvre les mêmes champs, puisque ce
-    -- sont les siens.
-    case when est_contact or p.id = moi then
-      jsonb_build_object(
-        'groupes', (
-          select count(*)::integer
-            from public.group_members m
-            join public.groups g
-              on g.id = m.group_id and g.deleted_at is null
-           where m.user_id = p.id
-             and (m.expires_at is null or m.expires_at > now())),
-        'evenements', (
-          -- Les événements où la personne est pour quelque chose : les siens,
-          -- et ceux où elle est conviée. Ce n'est pas tout à fait le compteur
-          -- de son propre profil, qui part de `mon_agenda` — donc de tout ce
-          -- qu'elle peut voir. Un événement d'un de ses groupes auquel elle
-          -- n'est pas conviée compte chez elle et pas ici. L'écart est assumé
-          -- et borné : un événement de groupe convie par défaut tous ses
-          -- membres actifs.
-          select count(*)::integer
-            from public.events e
-           where e.deleted_at is null
-             and (e.owner_id = p.id
-               or exists (select 1
-                            from public.event_participants ep
-                           where ep.event_id = e.id
-                             and ep.user_id = p.id))),
-        'taches_terminees', (
-          select count(*)::integer
-            from public.tasks t
-            join public.task_assignees a on a.task_id = t.id
-           where t.deleted_at is null
-             and t.completed_at is not null
-             and a.user_id = p.id)
-      )
-    end,
-
+    -- profil y passe aussi : `cest_moi` ouvre le même champ, puisqu'il est le
+    -- sien.
+    --
     -- **Appel par noms d'arguments**, comme `statuts_de_disponibilite`. Ce
     -- n'est pas du style : `schema_actuel.sql` donne la signature
     -- `(target uuid, at_ts timestamptz)`, et l'en-tête de la tranche 4 comme

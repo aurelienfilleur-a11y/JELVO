@@ -3747,17 +3747,17 @@ l'écran qu'on cherche en touchant un avatar dans une conversation.
 C'est le point central de cette tranche. La consigne — « les statistiques et
 les disponibilités sont réservées à ses contacts » — **ne peut pas être tenue
 par un écran** : PostgREST est atteignable sans lui. Elle est donc tenue par
-`profil_consultable`, qui rend ces champs à `null` dès que l'appelant n'est
-pas un contact accepté. Un appel direct avec un identifiant arbitraire obtient
-les mêmes `null`.
+`profil_consultable`, qui rend la disponibilité à `null` dès que l'appelant
+n'est pas un contact accepté. Un appel direct avec un identifiant arbitraire
+obtient le même `null`.
 
 | Ce que la fonction rend | À qui |
 | --- | --- |
 | avatar, nom, pseudo, bio, anniversaire | tout compte authentifié |
 | la relation, le favori, les groupes en commun | tout compte authentifié |
-| les trois statistiques | **contacts acceptés** (et soi-même) |
 | la disponibilité | **contacts acceptés** (et soi-même) |
 | l'adresse e-mail | **personne, jamais** |
+| les trois statistiques | **plus calculées du tout** — voir ci-dessous |
 
 **`profiles_select` n'est pas desserré.** La tranche 7 l'a resserré à
 `id = auth.uid() or has_social_link(id)`, et il le reste : la lecture directe
@@ -3862,28 +3862,19 @@ le chevron là où il touchait le nom.
 
 | Repris | Écarté, et pourquoi |
 | --- | --- |
-| la carte d'identité, la carte « À propos », la carte des statistiques | **la pastille d'appareil photo** : elle changerait la photo de quelqu'un d'autre |
+| la carte d'identité et la carte « À propos » | **la pastille d'appareil photo** : elle changerait la photo de quelqu'un d'autre |
 | la rangée d'actions, montée dans `ProfileActionRow` | **Modifier, QR code, Partager** : les trois parlent de son propre profil |
+| | **la carte des statistiques** — voir la section suivante |
 | | **l'adresse e-mail**, qui n'est lisible nulle part |
 
 `ProfileActionRow` existe parce que les **deux** cartes la portent, avec des
 actions différentes : une seule copie de l'allure, qui est ce qui fait
 reconnaître l'écran.
 
-**Les trois compteurs n'ouvrent rien** sur le profil d'un autre.
-`ProfileStatsCard` reçoit des rappels `null`, et le compteur n'est alors pas
-touchable : les listes de l'application sont les **miennes**, et « ses
-groupes » ouvert depuis le profil de Léa montrerait les miens. Une destination
-qui ne tient pas sa promesse est pire qu'une absence de destination.
-
 **La carte « À propos » disparaît** quand la bio et l'anniversaire sont tous
 deux vides. Sur son propre profil une bio vide invite à la remplir ; ici il n'y
 a ni texte à lire ni geste à proposer — même règle que le crayon de
 description d'un groupe, absent pour un membre simple.
-
-**L'absence des statistiques est expliquée**, par une phrase sous la carte
-d'identité. Sans elle, le trou serait indiscernable d'un chargement raté — le
-même défaut qu'une liste vide pendant une lecture en vol.
 
 ### Les actions suivent la relation, et aucune n'est inerte
 
@@ -3906,8 +3897,8 @@ profil** : la relation vient de la base, et sans relecture l'écran continuerait
 d'offrir « Ajouter en contact » à quelqu'un qu'on vient d'ajouter.
 
 **Son propre profil ouvert par ce chemin** — en touchant son avatar dans une
-conversation — n'offre aucune action de relation et mène à « Mon profil ». Ses
-propres statistiques sortent : ce sont les siennes.
+conversation — n'offre aucune action de relation et mène à « Mon profil », qui
+est le seul endroit où les statistiques vivent.
 
 ### Les groupes en commun se montrent à tout le monde
 
@@ -3926,19 +3917,62 @@ et ne peuvent donc pas se contredire.
 organiser ensemble » est une information, là où une carte absente se lirait
 comme un chargement qui a échoué.
 
-### Ce que les statistiques comptent, et où elles s'écartent des siennes
+### Les trois statistiques ont été retirées, et de la base aussi
 
-| Compteur | Ce qui est compté |
-| --- | --- |
-| Groupes | ses adhésions actives dans des groupes vivants |
-| Événements | les événements qu'elle possède **ou** auxquels elle est conviée |
-| Tâches terminées | les tâches qui lui sont assignées et dont `completed_at` est renseigné |
+Elles ont existé une version : groupes, événements, tâches terminées, réservées
+aux contacts. **Elles n'apprenaient rien sur quelqu'un d'autre.**
 
-Le deuxième n'est pas tout à fait le compteur de son propre profil, qui part de
-`mon_agenda` — donc de tout ce qu'elle peut voir. Un événement d'un de ses
-groupes auquel elle n'est pas conviée compte chez elle et pas ici. L'écart est
-assumé et borné : un événement de groupe convie par défaut tous ses membres
-actifs.
+Le retrait va jusqu'au SQL : la fonction ne les *calcule plus*, et la colonne
+`statistiques` a quitté sa signature. Ce n'est pas un masquage d'écran — c'étaient
+trois sous-requêtes par ouverture de profil, dont une sur `events` et une sur
+`tasks` jointe à `task_assignees`, pour un chiffre que plus personne ne lisait.
+
+**C'est leur promesse qui ne se transposait pas.** Sur « Mon profil », chaque
+chiffre **ouvre la liste qu'il résume** — un chiffre qu'on ne peut pas ouvrir
+n'apprend rien de plus que lui-même. Or les listes de l'application sont celles
+de l'utilisateur connecté : « ses groupes » ouvert depuis le profil de Léa
+montrerait les miens. La première version l'avait réglé en rendant les
+compteurs **inertes** ; les retirer est la conclusion que cela appelait.
+
+`ProfileStatsCard` est donc revenue à sa forme d'avant — trois rappels
+**obligatoires**, titre fixe, un seul appelant. Le paramètre `titre` et les
+rappels nullables n'avaient plus de second lecteur, et une souplesse sans
+lecteur est du code mort qui a l'air d'une intention.
+
+#### Le retrait a coûté un `drop function`
+
+`create or replace` **refuse** de retirer une colonne de sortie : il y voit un
+changement de type de retour, et répond `cannot change return type of existing
+function`. C'est le prix qu'ont payé `mon_agenda` et `mes_taches` pour en
+*gagner* une, en tranche 6 puis en tranche 8 ; la règle ne fait pas de
+différence dans l'autre sens.
+
+Le fichier porte donc un `drop function if exists public.profil_consultable(uuid)`
+avant son `create`, et **repose son `grant execute` après** — sans quoi la
+tranche 7, qui ne se rejoue que si elle change, laisserait la fonction fermée.
+`cascade` est volontairement omis : rien ne dépend de cette fonction, et un
+`cascade` qui emporterait silencieusement un objet futur serait pire que
+l'erreur qui le signale.
+
+**Le rejeu sur base jetable n'éprouve pas ce `drop`** : il part d'une base
+neuve, où il ne fait rien. Ce qu'il éprouve, c'est que la signature ne porte
+plus `statistiques` — le même genre de contrôle que celui de l'adresse e-mail,
+et pour la même raison : aucun appel ne révélerait une colonne de trop. Le
+remplacement d'une fonction déjà en place a été vérifié à part, sur un cluster
+monté pour l'occasion.
+
+#### L'absence ne s'explique plus, parce qu'il n'y a plus de trou
+
+La version précédente posait une phrase — « ses statistiques et ses
+disponibilités sont réservées à ses contacts » — pour qu'un non-contact ne lise
+pas la carte manquante comme un chargement raté. **Elle est partie avec la
+carte**, et c'est cohérent : sans carte pour personne, il n'y a plus de trou à
+expliquer.
+
+Ne reste comme champ réservé que la pastille de disponibilité, et son absence
+est **muette par construction** : un contact qui n'a rien déclaré n'en a pas
+non plus. Annoncer qu'une donnée est retenue en dirait plus sur la personne
+consultée que son absence.
 
 ---
 
@@ -4490,14 +4524,16 @@ sécurité.
   « inconnu », qui dirait « rien de déclaré » là où l'absence dit « pas votre
   affaire ». Côté écran : les cinq champs, **aucune adresse e-mail** — le seul
   « @ » de l'écran est celui du pseudo —, l'absence des trois boutons de son
-  propre profil, les statistiques et la pastille de disponibilité pour une
-  contact, les compteurs qui **n'ouvrent rien**, le non-contact qui ne les voit
-  pas et la phrase qui dit pourquoi, « Inconnu » qui ne s'affiche pas comme une
-  donnée, l'identifiant inconnu et la lecture qui échoue. Côté groupes
+  propre profil, la pastille de disponibilité pour une contact, **aucune
+  statistique même pour une contact** — le contrôle négatif du retrait —, le
+  non-contact qui garde les champs publics **sans qu'une phrase annonce ce
+  qu'on lui retient**, « Inconnu » qui ne s'affiche pas comme une donnée,
+  l'identifiant inconnu et la lecture qui échoue. Côté groupes
   communs : la liste, le singulier, et **zéro qui se dit**. Côté actions : les
   cinq relations et leur écriture, le retrait qui se confirme — avec le
   contrôle négatif d'un « Annuler » qui n'écrit rien —, et son propre profil
-  qui n'offre aucune action de relation. Côté points d'entrée : le nom dans le
+  qui n'offre aucune action de relation et **n'y montre pas non plus les
+  statistiques**, qui apparaissent une fois sur « Mon profil ». Côté points d'entrée : le nom dans le
   carnet, le nom d'un membre dans un groupe, et le chevron du carnet qui, lui,
   ouvre toujours la fiche. Celui de la conversation vit dans
   `test/chat_test.dart`, avec ses messages.
@@ -4802,7 +4838,11 @@ sûr d'éprouver son caractère contextuel.
   appelle les fonctions, mais son décor est recopié de cette documentation, et
   ne dit donc rien des colonnes réelles. C'est `supabase/schema_actuel.sql`,
   relevé après coup, qui fait foi.
-- Le test de fumée couvre les tranches 3, 3b, 4, 5a, 5b, 5c, 5d, 6, 8 et 13 — plus
+- Le test de fumée couvre les tranches 3, 3b, 4, 5a, 5b, 5c, 5d, 6, 8 et 13 —
+  dont, pour la dernière, deux contrôles qui portent sur la **signature** de
+  `profil_consultable` plutôt que sur une valeur : aucun appel ne révélerait
+  une colonne de trop, qu'elle porte une adresse e-mail ou des compteurs
+  retirés. Plus
   de trente fonctions réellement appelées, contrôles négatifs de l'accès au
   bucket, de la mémoire des rappels, du rangement des adhésions, de la portée
   d'`invitation_par_id` et de l'auto-attribution qui ne notifie pas. Le retour
@@ -4834,14 +4874,17 @@ sûr d'éprouver son caractère contextuel.
   C'est la suite naturelle, et elle ne demande aucun SQL de plus —
   `statuts_de_disponibilite` accepte déjà une liste.
 - **Le profil de quelqu'un d'autre est livré**, avec sa règle d'accès tenue
-  par la base. Trois réserves. D'abord, les cinq champs publics sont lisibles
+  par la base. Deux réserves. D'abord, les cinq champs publics sont lisibles
   par **tout compte authentifié qui connaît l'identifiant** : c'est la consigne
   produit, et `chercher_profils_par_pseudo` les rendait déjà énumérables, mais
-  cela se dit. Ensuite, le compteur d'événements ne compte pas tout à fait la
-  même chose que celui de son propre profil — participation d'un côté, tout ce
-  qu'on peut voir de l'autre. Enfin l'écran n'a été éprouvé que par les tests :
-  les sept contrôles du rejeu portent sur la fonction SQL, et la **vraie** base
-  ne la voit qu'après fusion, comme toute migration ici.
+  cela se dit. Ensuite l'écran n'a été éprouvé que par les tests : les huit
+  contrôles du rejeu portent sur la fonction SQL, et la **vraie** base ne la
+  voit qu'après fusion, comme toute migration ici.
+
+  Les trois statistiques ont été retirées de cet écran **et de la base** après
+  une version : elles n'apprenaient rien sur quelqu'un d'autre, et leur
+  promesse — ouvrir la liste qu'elles résument — ne se transposait pas. Elles
+  restent sur « Mon profil ».
 - Le calendrier agrège une **journée** à la fois. Une vue mois, et le rendu des
   événements à cheval sur deux jours, restent hors périmètre : la timeline
   place chaque élément à son heure de début.

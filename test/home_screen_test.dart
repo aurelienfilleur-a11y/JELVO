@@ -107,15 +107,20 @@ void main() {
       expect(find.text('Camille Rousseau'), findsOneWidget);
     });
 
-    testWidgets('le bouton calendrier de l’en-tête ouvre le calendrier', (
+    testWidgets('le bouton de l’en-tête ouvre les paramètres', (
       WidgetTester tester,
     ) async {
       await _pumpApp(tester);
 
-      await tester.tap(find.byTooltip('Calendrier').first);
+      // **Ce n'est plus le calendrier.** Il a son onglet dans la barre du
+      // bas, et cette place en doublait l'accès ; les paramètres, eux,
+      // n'étaient atteignables de nulle part depuis l'accueil.
+      expect(find.byTooltip('Calendrier'), findsNothing);
+
+      await tester.tap(find.byTooltip('Paramètres'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Événements'), findsWidgets);
+      expect(find.text('Paramètres'), findsWidgets);
     });
   });
 

@@ -219,6 +219,13 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             pathParameters: <String, String>{'id': taskId},
           );
         }
+      case NotificationType.birthday:
+        // **Rien à ouvrir, et c'est le bon comportement.** Jelvo n'a pas
+        // d'écran de profil d'autrui : y mener demanderait cet écran, et
+        // mener ailleurs serait un chemin qui ne tient pas sa promesse.
+        // `actionLabel` est donc nul, et aucun bouton n'apparaît — la ligne
+        // du calendrier porte la même information, là où on la cherche.
+        break;
       case NotificationType.autre:
         break;
     }

@@ -5,6 +5,7 @@ import '../../../core/widgets/avatar_stack.dart';
 import '../../../data/supabase_providers.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../models/contact.dart';
+import '../models/contact_birthday.dart';
 import '../repository/contact_repository.dart';
 
 /// Dépôt des contacts. À surcharger dans les tests avec un faux dépôt.
@@ -32,6 +33,53 @@ class ContactsNotifier extends AsyncNotifier<List<Contact>> {
     );
   }
 }
+
+/// Anniversaires des contacts, lus **une fois** et sans borne de dates.
+///
+/// Un anniversaire est annuel : la fenêtre que le calendrier affiche change à
+/// chaque jour qu'on fait défiler, et une lecture par jour affiché serait une
+/// requête par balayage. C'est le même parti que `mes_taches` et `mon_agenda`,
+/// chargées entières puis filtrées en mémoire.
+///
+/// `AsyncNotifier` plutôt que `FutureProvider` pour la même raison que le
+/// carnet : la lecture doit repartir à l'ouverture d'une session, et pouvoir
+/// être rafraîchie après une mise en relation.
+final AsyncNotifierProvider<ContactBirthdaysNotifier, List<ContactBirthday>>
+contactBirthdaysProvider =
+    AsyncNotifierProvider<ContactBirthdaysNotifier, List<ContactBirthday>>(
+      ContactBirthdaysNotifier.new,
+    );
+
+class ContactBirthdaysNotifier extends AsyncNotifier<List<ContactBirthday>> {
+  @override
+  Future<List<ContactBirthday>> build() {
+    ref.watch(authStatusProvider);
+    return ref.watch(contactRepositoryProvider).fetchBirthdays();
+  }
+
+  Future<void> refresh() async {
+    state = await AsyncValue.guard(
+      () => ref.read(contactRepositoryProvider).fetchBirthdays(),
+    );
+  }
+}
+
+/// L'anniversaire d'un contact donné, ou `null` — pour sa fiche.
+///
+/// `null` couvre « pas renseigné » comme « pas un contact » : les distinguer
+/// n'apprendrait rien à l'écran, qui n'affiche la ligne que s'il y a une date.
+final Provider<ContactBirthday? Function(String)> contactBirthdayProvider =
+    Provider<ContactBirthday? Function(String)>((Ref ref) {
+      final List<ContactBirthday> tous =
+          ref.watch(contactBirthdaysProvider).value ??
+          const <ContactBirthday>[];
+      return (String contactId) {
+        for (final ContactBirthday b in tous) {
+          if (b.contactId == contactId) return b;
+        }
+        return null;
+      };
+    });
 
 List<Contact> _all(Ref ref) =>
     ref.watch(contactsProvider).value ?? const <Contact>[];

@@ -1414,6 +1414,7 @@ d'énumération ci-dessous, qui ne sont pas négociables côté application.
 
 | Table | Colonnes |
 | --- | --- |
+| `profiles` | …, **`anniversaire_jour`**, **`anniversaire_mois`** — jour et mois sans année, renseignés ensemble ou pas du tout |
 | `groups` | `id`, `name`, `description`, `photo_url`, `is_private`, `created_by`, `created_at`, `deleted_at` |
 | `group_members` | `group_id`, `user_id`, `role`, `joined_at`, `expires_at` — **pas de colonne `id`** |
 | `contacts` | `requester_id`, `addressee_id`, `status`, `favorite_requester`, `favorite_addressee`, `created_at` — **pas de colonne `id`** |
@@ -1487,7 +1488,7 @@ diagnostic à l'écart.
 **L'ordre du fichier n'est pas celui des numéros**, et ne peut pas l'être :
 `tranche7_durcissement.sql` referme l'exécution de toute fonction absente de sa
 liste et **lève si un nom de sa liste n'existe pas en base**. Il reste donc le
-dernier passage, et les tranches 8, 9, 10 et 11 s'insèrent avant lui.
+dernier passage, et les tranches 8 à 12 s'insèrent avant lui.
 
 Deux fichiers **précèdent** au contraire tout le reste, et pour la même
 raison : ils ajoutent une colonne ou une valeur d'énumération que des fonctions
@@ -2030,7 +2031,9 @@ Trois refus tenus par le déclencheur :
 
 **Le type entre dans `types_de_notification()`**, sans quoi il ne serait pas
 désactivable depuis les réglages — et un envoi qu'on ne peut pas couper est un
-défaut. Ils sont donc **huit**, et le test de fumée le vérifie.
+défaut. Ils sont donc **neuf** depuis la tranche 12, et le test de fumée le
+vérifie — avec un nombre écrit à la main, pour qu'ajouter un type oblige à
+passer par là et à se demander dans quelle famille il va.
 
 ### Les trois réponses à un événement ont changé d'ordre
 
@@ -3003,11 +3006,19 @@ notification ; le corps, à savoir quoi.
 | `reminder` (tâche) | Famille | `Rappel — Réserver le restaurant` |
 | `task_response` | Famille | `Léa Marchand accepte : Réserver le restaurant` |
 | `reminder` (événement) | Amis | `Rappel — Randonnée du lac Blanc à 09:00` |
+| `birthday` | Julie Martin | `fête son anniversaire aujourd'hui` |
 
 Trois conventions cohabitaient avant : le nom du groupe pour les messages, le
 titre de l'événement pour les réponses et les changements de date, un mot de
 catégorie — « Invitation », « Nouvelle tâche », « Rappel » — pour le reste.
 L'empilement se lisait mal et ne se triait pas d'un coup d'œil.
+
+**`birthday` est la seule exception, et elle ne contredit pas la règle.** Un
+anniversaire n'appartient à aucun groupe : son titre porte donc le **nom de la
+personne**. Ce que la règle demande, c'est que le titre dise de quel coin de sa
+vie vient la notification — et pour un anniversaire, ce coin *est* la personne.
+Ce qu'elle interdit reste interdit : « Anniversaire » comme titre serait un mot
+de catégorie, et c'est précisément ce qui a été écarté.
 
 **Conséquence à tenir pour tout nouveau type** : le corps doit **nommer
 l'élément**, puisque le titre ne le fait plus. Le test de fumée éprouve les
@@ -3254,6 +3265,140 @@ reste la seule source du statut.
 
 ---
 
+---
+
+## Anniversaires
+
+Jour et mois sur le profil, visibles de qui peut lire le profil ; une
+notification le jour même et une ligne de calendrier annuelle, **réservées aux
+contacts**. `supabase/tranche12_anniversaires.sql`.
+
+### L'année n'est pas collectée, et la forme l'empêche
+
+Deux colonnes `smallint` — `anniversaire_jour`, `anniversaire_mois` — et non
+une `date`. Une `date` exige une année, et **toute année sentinelle est une
+valeur que quelqu'un finira par lire comme une année de naissance**, puis par
+afficher. Deux entiers rendent l'absence d'année structurelle : il n'y a pas
+d'année à ignorer, il n'y en a pas du tout.
+
+C'est aussi pourquoi la saisie n'est pas un `showDatePicker` : il demande une
+année et il n'y a aucun moyen de la lui retirer. Deux listes déroulantes
+suffisent, et elles ne peuvent pas demander ce qu'on ne veut pas savoir.
+
+Une date de naissance complète associée à un nom sert couramment de question
+de sécurité ailleurs. Jelvo n'en a aucun besoin : il lui faut savoir **quand
+souhaiter**, pas quel âge.
+
+### Le 29 février n'est pas un cas particulier
+
+Une seule règle couvre tout : **le jour fêté est ramené au dernier jour du
+mois**. Un anniversaire du 29 février tombe donc le dernier jour de février —
+le 29 les années bissextiles, le 28 sinon.
+
+Le reporter au 1er mars était l'autre option, et c'est celle du droit français
+pour la majorité. Elle est écartée ici : elle ferait **changer de mois**, et
+« mon anniversaire est en février » cesserait d'être vrai. Un anniversaire
+n'est pas un seuil juridique, c'est une date qu'on fête.
+
+La règle vit **à deux endroits**, et ne peut pas vivre à un seul :
+
+| Où | Pourquoi |
+| --- | --- |
+| `public.jour_anniversaire` | l'envoi du jour, côté base |
+| `Anniversaire.jourFete` | le calendrier, qui la calcule pour l'année affichée |
+
+Demander la date à la base pour chaque année qu'on fait défiler voudrait dire
+une requête par balayage. Ce qui protège de la divergence, c'est que les deux
+soient éprouvées sur **les mêmes dates** — 2024 et 2025, plus 1900 et 2000 côté
+Dart —, et un test confronte les deux tables de cas pour que la coïncidence ne
+se défasse pas en silence.
+
+### Qui voit quoi, et ce que « tout le monde » veut dire
+
+| Surface | Portée |
+| --- | --- |
+| la date sur un profil | **aucune restriction propre** : elle est aussi visible que la ligne `profiles` qui la porte, donc soi-même et `has_social_link` |
+| la notification du jour | **contacts acceptés seulement** |
+| la ligne de calendrier | **contacts acceptés seulement** |
+
+La nuance a son importance. La consigne disait « visible par tout le monde »,
+et c'est bien ce que fait le SQL : la colonne n'a pas de politique à elle. Mais
+`profiles_select` vaut `id = auth.uid() or has_social_link(id)` depuis la
+tranche 7 — **Jelvo n'a ni annuaire ni page publique de profil**, et « tout le
+monde » y signifie donc « ses contacts et ses co-membres de groupe ».
+
+Les deux autres surfaces sont, elles, volontairement **plus étroites** que
+cela : `anniversaires_de_mes_contacts()` exige une ligne `contacts` acceptée,
+dans un sens ou dans l'autre. Un co-membre de groupe qui n'est pas un contact
+ne reçoit rien et ne voit rien au calendrier. Le test de fumée en fait un
+contrôle négatif.
+
+**Il n'existe pas d'écran de profil d'autrui dans Jelvo**, et c'est la limite
+réelle de l'affichage : la date se lit sur son propre profil, et sur la fiche
+d'un contact (`ContactActionsSheet`), qui est la seule fiche d'autrui que
+l'application possède. Rien côté base ne s'opposerait à ce qu'un futur écran
+l'affiche.
+
+### Une personne sans date ne coûte rien
+
+`anniversaires_de_mes_contacts()` **ne renvoie que les contacts qui ont une
+date**. L'appelant n'a donc rien à écarter, le calendrier n'a rien à
+synthétiser, et c'est le cas par défaut — personne n'a renseigné quoi que ce
+soit au départ.
+
+Côté écran, la ligne du profil **invite** au lieu d'afficher un vide. C'est la
+différence avec les lignes Téléphone et Localisation, écartées faute de
+donnée : ici la donnée existe, elle n'est simplement pas remplie.
+
+### Le battement est celui qui existe déjà
+
+`empiler_anniversaires()` est appelée par `envoyer-push`, dans le **même**
+passage que `empiler_rappels()` et `appliquer_adhesions_echues()`. Une seconde
+planification serait une seconde cadence à tenir d'accord — le reproche déjà
+fait, et retenu, deux fois.
+
+**La mémoire est la clé primaire de `push_reminders_sent`**, dont le `kind`
+s'élargit à `birthday` comme `push_tokens.platform` s'était élargi à `web`. Pas
+de table de plus : le besoin est identique — « ceci a déjà été envoyé pour
+cette occurrence » —, et une contrainte d'unicité le tient sans test préalable,
+donc sans course entre deux battements. Le contrôle négatif est fait : en
+retirant le `continue when not found`, le second passage redépose, et le test
+de fumée échoue.
+
+L'insertion de la mémoire est **hors** du bloc qui attrape les erreurs, et
+c'est voulu : une notification qui échoue reste comptée comme envoyée. Un
+anniversaire manqué vaut mieux qu'un anniversaire annoncé mille quatre cent
+quarante fois dans la journée.
+
+La date du jour est prise en **Europe/Paris**, comme les rappels.
+`profiles.timezone` existe et n'est lu par personne ; le lire ici seulement
+donnerait deux conventions dans le même envoyeur.
+
+### Au calendrier : une journée entière, et rien à ouvrir
+
+La ligne porte `AgendaEntryKind.birthday`, va de 00:00 à 23:59, et sa gouttière
+annonce « Journée » plutôt qu'une heure qui serait fausse. Sa teinte est
+`warning` — **aucune couleur n'a été ajoutée** : c'était le seul jeton
+fonctionnel que le calendrier n'employait pas.
+
+Deux choix à connaître :
+
+- **elle n'ouvre rien** (`isOpenable` est faux, comme pour un créneau), faute
+  d'écran de profil d'autrui. Mener ailleurs serait un chemin qui ne tient pas
+  sa promesse ;
+- **elle passe par le filtre de groupe**, sous la clé du personnel, comme un
+  rendez-vous personnel. Les créneaux de disponibilité y échappent, mais eux
+  décrivent le fond de la journée ; un anniversaire est quelque chose qui
+  arrive.
+
+Rien n'est lu de plus pour l'afficher : la lecture est chargée **une fois, sans
+borne de dates**, et filtrée en mémoire — même parti que `mes_taches` et
+`mon_agenda`.
+
+**Ce qui n'a pas été étendu** : la carte d'agenda de l'accueil et les pastilles
+de la semaine. Elles ne montrent pas les anniversaires, la consigne portant sur
+le calendrier ; les y ajouter se ferait sans SQL de plus.
+
 ## Calendrier personnel et semaine d'accueil
 
 ### L'en-tête porte quatre choses, et deux n'existaient pas
@@ -3283,6 +3428,7 @@ existants : `success`, `danger`, `primary`. Aucune couleur n'a été ajoutée.
 | Couleur | Jeton | Ce qu'elle dit |
 | --- | --- | --- |
 | vert | `success` | créneau déclaré disponible, et tâche |
+| ambre | `warning` | anniversaire d'un contact *(tranche 12)* |
 | rouge | `danger` | créneau déclaré **indisponible** |
 | violet | `primary` | événement — ou l'accent du groupe, quand il en a un |
 
@@ -3700,9 +3846,13 @@ indéfiniment.
 
 `NotificationType.navIndex` associe chaque type à **un seul** onglet :
 `group_invitation` → Groupes, `contact_request` → Contacts,
-`event_invitation` → Calendrier, `task_assigned` et `task_response` →
-Accueil, comme le reste : les tâches n'ont pas d'onglet, et c'est de l'accueil
-que leur liste s'ouvre.
+`event_invitation` et `birthday` → Calendrier, `task_assigned` et
+`task_response` → Accueil, comme le reste : les tâches n'ont pas d'onglet, et
+c'est de l'accueil que leur liste s'ouvre.
+
+`birthday` va au **calendrier** et non aux contacts, parce que c'est là que
+l'anniversaire se regarde : le carnet n'en montre pas la liste, et y envoyer
+donnerait un chemin qui ne mène pas à ce qu'il annonce.
 Un élément n'est donc jamais compté deux fois, et le total de la cloche reste
 exactement la somme des pastilles. Ajouter un type impose de lui choisir un
 onglet — c'est voulu.
@@ -3831,7 +3981,7 @@ encore, les colonnes modifiables sont donc bornées par un `grant` :
 | `notifications` | `read_at` |
 | `group_invite_links` | `revoked_at` |
 | `groups` | `name`, `description`, `photo_url`, `is_private`, `deleted_at` |
-| `profiles` | tout sauf `id` |
+| `profiles` | tout sauf `id` — `anniversaire_jour` et `anniversaire_mois` compris, ajoutés en tranche 12 |
 
 Sans borne sur `contacts`, on pouvait réécrire `requester_id` d'une ligne où
 l'on figure — donc **fabriquer un lien social avec n'importe qui**, ce que
@@ -3905,7 +4055,7 @@ Les deux dernières se rejoignent : ce ne sont pas des chantiers techniques,
 ce sont des décisions produit — quelle adresse, quel contenu — qui ne se
 devinent pas.
 
-### Les huit types, rangés en trois familles
+### Les neuf types, rangés en trois familles
 
 La ligne du haut **coupe tout** : sans autorisation, aucun type ne part, quel
 que soit son interrupteur. Les trois suivantes détaillent.
@@ -3913,11 +4063,11 @@ que soit son interrupteur. Les trois suivantes détaillent.
 | Famille | Types |
 | --- | --- |
 | Groupes et discussions | `chat_message`, `group_invitation` |
-| Événements | `event_invitation`, `event_response`, `event_changed` |
+| Événements | `event_invitation`, `event_response`, `event_changed`, `birthday` |
 | Tâches et rappels | `task_assigned`, `task_response`, `reminder` |
 
 **Aucun type n'est fusionné en base.** `types_de_notification()` reste la
-seule source ; une famille n'est qu'une liste de ses noms, et les huit
+seule source ; une famille n'est qu'une liste de ses noms, et les neuf
 interrupteurs vivent dans la feuille qu'ouvre la ligne. Ce que la ligne
 annonce — **Activées**, **Partielles**, **Désactivées** — se déduit des types
 qu'elle couvre.
@@ -3988,7 +4138,9 @@ sécurité.
   filtrage des contacts.
 - `test/home_screen_test.dart` couvre l'accueil refondu : la salutation avec
   le prénom et la date sans année, la photo qui ouvre le profil, le bouton
-  calendrier de l'en-tête, la bande des groupes — nom, nombre de membres,
+  de l'en-tête qui ouvre les **paramètres** — et l'absence de celui du
+  calendrier, qui doublait l'onglet de la barre du bas —, la bande des
+  groupes — nom, nombre de membres,
   initiale de repli quand il n'y a pas de photo, image demandée quand il y en
   a une —, la carte d'agenda avec sa plage horaire, la chronologie qui mêle
   événements et tâches sans laisser entrer les créneaux, la ligne de tâche non
@@ -4186,6 +4338,28 @@ sécurité.
   contrôle négatif qui compte — **avec** session, elle ne l'est pas avant que
   les quatre lectures aient répondu, ce qui est exactement l'instant où
   l'accueil s'affichait vide.
+- `test/anniversaires_test.dart` couvre les anniversaires. Sans widget : la
+  règle du jour fêté sur une table de cas — 29 février bissextile et ordinaire,
+  **1900 et 2000**, décembre qui franchit l'année —, ce qui est une date et ce
+  qui n'en est pas (30 février refusé, 29 accepté), une **moitié de date** qui
+  vaut une absence, le libellé sans année qui ne glisse pas au 1er mars, et
+  **la confrontation des deux tables de cas** : la règle vit en SQL et en Dart,
+  et le test vérifie que `fumee.sql` éprouve les mêmes dates — faute de quoi la
+  coïncidence se déferait sans que rien ne proteste. Côté notification :
+  l'onglet Calendrier, l'absence de bouton d'action, un type voisin qui ne
+  devient pas un anniversaire, et la famille « Événements » qui le porte sans
+  qu'il tombe dans « Autres ». Côté saisie : la ligne vide qui **invite** au
+  lieu d'afficher une fausse date, la date affichée sans aucune année à
+  l'écran, la feuille qui annonce ne pas demander l'année et **ne porte aucun
+  sélecteur de date**, l'enregistrement de la paire, le contrôle négatif d'une
+  moitié de date qui n'écrit rien, « Retirer » absent sans valeur puis qui
+  efface **vraiment** — un drapeau distingue « appelé avec null » d'une
+  inertie —, l'échec qui reste dans la feuille avec son message, le 29 février
+  qui annonce ce qu'il fera les autres années, et un jour devenu impossible
+  ramené plutôt que vidé en changeant de mois. Côté calendrier : la ligne au
+  bon jour et sur toute la journée, son absence les autres jours, le 29 février
+  fêté le 28 en 2026 et le 29 en 2028, **personne sans date qui ne produit
+  aucune ligne**, et l'ambre de la palette plutôt qu'une teinte nouvelle.
 - `test/app_version_test.dart` confronte `AppConfig.version` au `pubspec.yaml`,
   sans widget : la version est recopiée à la main, et une version fausse est
   pire qu'une version absente.
@@ -4446,6 +4620,19 @@ sûr d'éprouver son caractère contextuel.
   rendus en Europe/Paris en dur, côté SQL. Offrir un sélecteur de fuseau
   demanderait de le lire dans `empiler_rappels` **et** de formater les dates
   côté client dans cette zone — deux chantiers, pas un réglage.
+- **Les anniversaires sont livrés** — voir leur section. Quatre réserves :
+  il n'existe **pas d'écran de profil d'autrui**, si bien que la date ne se lit
+  que sur son propre profil et sur la fiche d'un contact, alors que rien côté
+  base ne la restreint ; la carte d'agenda de l'accueil et les pastilles de la
+  semaine ne les montrent pas ; l'envoi du jour se fait en **Europe/Paris** en
+  dur, comme les rappels, si bien que quelqu'un à l'autre bout du monde est
+  prévenu à l'heure de Paris ; et la règle du jour fêté vit **des deux côtés**,
+  en SQL pour l'envoi et en Dart pour le calendrier, faute de pouvoir demander
+  une date par année affichée — ce sont les tables de cas, confrontées par un
+  test, qui tiennent les deux d'accord.
+- **Rien ne prévient que l'anniversaire d'un contact approche.** La
+  notification part le jour même et pas la veille : ajouter une avance
+  demanderait de choisir laquelle, et ce n'est pas une décision technique.
 - **Les sessions actives ne sont pas listables depuis le client** : gotrue ne
   les expose qu'à la clé `service_role`. Il faudrait une fonction Edge.
 - `google_fonts` télécharge Inter au premier lancement. Pour un fonctionnement

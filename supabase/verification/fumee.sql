@@ -501,10 +501,23 @@ begin
            where user_id = '11111111-1111-1111-1111-111111111111'::uuid) = 1,
          'un réenregistrement a dupliqué la ligne';
 
-  -- Les huit types sont proposés, tous activés par défaut : le modèle est un
+  -- Les neuf types sont proposés, tous activés par défaut : le modèle est un
   -- opt-out, personne n'a de ligne au départ et tout arrive.
-  assert (select count(*) from public.mes_preferences_notification()) = 8,
-         'mes_preferences_notification';
+  --
+  -- **Deux assertions, et elles ne font pas double emploi.** La première est
+  -- un nombre écrit à la main : il oblige à passer ici en ajoutant un type,
+  -- ce qui est le seul moment où l'on se demande dans quelle famille il va
+  -- et quel onglet comptera sa pastille. La seconde nomme le dernier arrivé,
+  -- parce qu'un compte juste ne dit pas *lequel* est proposé.
+  assert (select count(*) from public.mes_preferences_notification()) = 9,
+         'neuf types attendus (le neuvième est birthday, tranche 12)';
+  assert exists (select 1 from public.mes_preferences_notification()
+                  where type = 'birthday'),
+         'le type birthday n''atteint pas l''écran de réglages';
+  -- `types_de_notification()` n'est **pas** appelable ici : la tranche 7 ne
+  -- la rouvre pas à `authenticated`, et c'est voulu — l'application lit
+  -- `mes_preferences_notification`, qui l'appelle sous son propriétaire. Le
+  -- bloc de la tranche 12 l'éprouve directement, sous `postgres`.
   assert (select bool_and(enabled) from public.mes_preferences_notification()),
          'tout devrait être activé sans aucune ligne de préférence';
 
@@ -1590,5 +1603,196 @@ begin
   raise notice 'Fumée : l''aperçu des groupes de la tranche 11 répond.';
 end;
 $apercu$;
+
+-- ---------------------------------------------------------------------------
+-- Les anniversaires (tranche 12).
+--
+-- Ce qui est éprouvé ici, et que `create function` ne dit pas :
+--   - la règle du jour fêté sur une **table de cas**, le 29 février compris,
+--     des deux côtés d'une année bissextile ;
+--   - la contrainte, par deux contrôles négatifs — une date impossible et une
+--     moitié de date ;
+--   - la lecture réservée aux **contacts**, et muette sans date ;
+--   - le dépôt du jour, et surtout qu'un **second passage ne redépose rien** :
+--     le battement tourne chaque minute, et c'est la clé primaire de
+--     `push_reminders_sent` qui tient seule cette garantie.
+-- ---------------------------------------------------------------------------
+
+do $anniv$
+declare
+  camille    uuid := '11111111-1111-1111-1111-111111111111'::uuid;
+  lea        uuid := '33333333-3333-3333-3333-333333333333'::uuid;
+  inconnu    uuid := '44444444-4444-4444-4444-444444444444'::uuid;
+  aujourdhui date := (now() at time zone 'Europe/Paris')::date;
+  jour       smallint := extract(day from aujourdhui)::smallint;
+  mois       smallint := extract(month from aujourdhui)::smallint;
+  lignes     integer;
+  compte     integer;
+  refuse     boolean;
+begin
+  set local role postgres;
+
+  -- 1. La règle du jour fêté --------------------------------------------------
+  -- Une seule règle : le jour est ramené au dernier jour du mois. Le 29
+  -- février n'est donc pas un cas particulier, il en est la **conséquence**.
+  assert public.jour_anniversaire(29::smallint, 2::smallint, 2024)
+         = date '2024-02-29',
+         'le 29 février d''une année bissextile doit tomber le 29';
+  assert public.jour_anniversaire(29::smallint, 2::smallint, 2025)
+         = date '2025-02-28',
+         'le 29 février d''une année ordinaire doit tomber le 28, dernier '
+         'jour de février — et non le 1er mars, qui change de mois';
+  assert public.jour_anniversaire(31::smallint, 1::smallint, 2025)
+         = date '2025-01-31',
+         'un 31 dans un mois de 31 jours ne doit pas être ramené';
+  assert public.jour_anniversaire(30::smallint, 4::smallint, 2025)
+         = date '2025-04-30',
+         'un 30 dans un mois de 30 jours ne doit pas être ramené';
+  -- Sans date, pas de date approchée.
+  assert public.jour_anniversaire(null, null, 2025) is null,
+         'une personne sans date ne doit pas produire de jour fêté';
+
+  -- 2. Contrôle négatif : une date impossible est refusée ---------------------
+  refuse := false;
+  begin
+    update public.profiles
+       set anniversaire_jour = 30, anniversaire_mois = 2
+     where id = camille;
+  exception
+    when check_violation then refuse := true;
+  end;
+  assert refuse, 'le 30 février a été accepté : la contrainte ne tient pas';
+
+  -- 3. Contrôle négatif : une moitié de date est refusée ----------------------
+  -- Un jour sans mois ne veut rien dire, et laisserait un affichage à deviner.
+  refuse := false;
+  begin
+    update public.profiles
+       set anniversaire_jour = 12, anniversaire_mois = null
+     where id = camille;
+  exception
+    when check_violation then refuse := true;
+  end;
+  assert refuse, 'une moitié de date a été acceptée';
+
+  -- 4. Le décor : Camille fête aujourd'hui, Léa est sa contact ---------------
+  update public.profiles
+     set anniversaire_jour = jour, anniversaire_mois = mois
+   where id = camille;
+  -- Léa n'a **pas** de date : c'est le contrôle négatif du cas « personne
+  -- sans anniversaire », qui doit rendre zéro ligne et non une ligne vide.
+  update public.profiles
+     set anniversaire_jour = null, anniversaire_mois = null
+   where id = lea;
+
+  -- Quelqu'un qui fête aussi aujourd'hui, mais qui n'est le contact de
+  -- personne : le contrôle négatif de la visibilité.
+  insert into public.profiles (id, pseudo, first_name, last_name,
+                               anniversaire_jour, anniversaire_mois)
+  values (inconnu, 'inconnu', 'Hugo', 'Lemoine', jour, mois)
+  on conflict (id) do update
+    set anniversaire_jour = excluded.anniversaire_jour,
+        anniversaire_mois = excluded.anniversaire_mois;
+
+  delete from public.contacts
+   where (requester_id = camille and addressee_id = lea)
+      or (requester_id = lea and addressee_id = camille);
+  insert into public.contacts (requester_id, addressee_id, status)
+  values (camille, lea, 'accepted');
+
+  -- 5. La lecture est réservée aux contacts ----------------------------------
+  perform set_config('request.jwt.claims',
+    '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}',
+    true);
+  set local role authenticated;
+
+  select count(*) into lignes
+    from public.anniversaires_de_mes_contacts() where contact_id = camille;
+  assert lignes = 1,
+         format('Léa devrait voir l''anniversaire de sa contact, reçu %s',
+                lignes);
+
+  -- **Contrôle négatif : un non-contact n'y figure pas**, quand bien même il
+  -- fêterait le même jour. C'est plus étroit que `has_social_link`, qui ouvre
+  -- la lecture du profil, et c'est la consigne.
+  select count(*) into lignes
+    from public.anniversaires_de_mes_contacts() where contact_id = inconnu;
+  assert lignes = 0,
+         format('un non-contact ressort de la lecture, reçu %s', lignes);
+
+  -- **Contrôle négatif : sans date, aucune ligne.** Camille lit son carnet :
+  -- Léa n'a rien renseigné, il ne doit y avoir aucune ligne pour elle.
+  reset role;
+  perform set_config('request.jwt.claims',
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}',
+    true);
+  set local role authenticated;
+  select count(*) into lignes
+    from public.anniversaires_de_mes_contacts() where contact_id = lea;
+  assert lignes = 0,
+         format('une personne sans date rend une ligne, reçu %s', lignes);
+
+  -- 6. Le dépôt du jour ------------------------------------------------------
+  -- Sous `postgres` : `push_outbox` ne montre que ses propres lignes, et
+  -- compter sous le mauvais jeton donnerait zéro alors qu'elles existent —
+  -- le piège déjà rencontré en tranche 5c.
+  reset role;
+  set local role postgres;
+
+  delete from public.push_reminders_sent where kind = 'birthday';
+  delete from public.notifications where type = 'birthday';
+  delete from public.push_outbox where type = 'birthday';
+
+  perform public.empiler_anniversaires();
+
+  select count(*) into compte
+    from public.notifications
+   where user_id = lea and type = 'birthday';
+  assert compte = 1,
+         format('un anniversaire attendu dans la boîte de Léa, reçu %s',
+                compte);
+  assert exists (
+           select 1 from public.notifications
+            where user_id = lea and type = 'birthday'
+              and payload ->> 'name' is not null
+         ),
+         'la notification ne porte pas le nom de la personne qui fête';
+
+  select count(*) into compte
+    from public.push_outbox where user_id = lea and type = 'birthday';
+  assert compte = 1,
+         format('un envoi attendu pour Léa, reçu %s', compte);
+
+  -- **Contrôle négatif : personne ne reçoit l'anniversaire d'un
+  -- non-contact.** Hugo fête aujourd'hui et n'a aucun contact.
+  select count(*) into compte
+    from public.notifications
+   where type = 'birthday' and payload ->> 'person_id' = inconnu::text;
+  assert compte = 0,
+         format('l''anniversaire d''un non-contact a été envoyé, reçu %s',
+                compte);
+
+  -- **Le contrôle qui compte : un second passage ne redépose rien.** Le
+  -- battement tourne chaque minute ; sans la clé primaire de
+  -- `push_reminders_sent`, Léa recevrait 1 440 notifications dans la journée.
+  perform public.empiler_anniversaires();
+  select count(*) into compte
+    from public.notifications where user_id = lea and type = 'birthday';
+  assert compte = 1,
+         format('un second passage a redéposé l''anniversaire, reçu %s',
+                compte);
+
+  -- 7. Le type est réglable --------------------------------------------------
+  -- Sans cette ligne, l'envoi existerait sans pouvoir être coupé — et un
+  -- envoi qu'on ne peut pas couper est un défaut.
+  assert exists (
+           select 1 from public.types_de_notification() where type = 'birthday'
+         ),
+         'le type birthday n''est pas réglable depuis les paramètres';
+
+  reset role;
+  raise notice 'Fumée : les anniversaires de la tranche 12 répondent.';
+end;
+$anniv$;
 
 rollback;

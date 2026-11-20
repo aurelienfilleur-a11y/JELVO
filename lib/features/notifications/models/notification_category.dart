@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/jelvo_colors.dart';
 import '../repository/push_repository.dart';
 
-/// Les huit types de notification, rangés en trois familles.
+/// Les neuf types de notification, rangés en trois familles.
 ///
 /// La maquette montre une ligne par famille, pas une par type : huit
 /// interrupteurs d'affilée se lisent mal, et trois lignes qui annoncent leur
@@ -23,6 +23,11 @@ enum NotificationCategory {
     'event_invitation',
     'event_response',
     'event_changed',
+    // L'anniversaire tient sa place ici parce que les familles suivent
+    // **l'endroit où la chose se regarde**, et un anniversaire est une ligne
+    // du calendrier. Une famille « Contacts » à un seul type aurait dit le
+    // contraire : le carnet n'en montre pas la liste, et ne l'annonce pas.
+    'birthday',
   ]),
   taches('Tâches et rappels', Icons.check_circle_outline_rounded, <String>[
     'task_assigned',

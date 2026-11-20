@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../auth/models/auth_failure.dart';
 import '../models/contact.dart';
+import '../models/contact_birthday.dart';
 
 /// Résultat d'une demande de mise en relation.
 enum ContactRequestOutcome {
@@ -24,6 +25,12 @@ enum ContactRequestOutcome {
 abstract interface class ContactRepository {
   /// Relations de l'utilisateur, acceptées comme en attente.
   Future<List<Contact>> fetchContacts();
+
+  /// Anniversaires des contacts **acceptés** qui en ont renseigné un.
+  ///
+  /// Réservée aux contacts par la fonction SQL, et non par l'écran : un
+  /// co-membre de groupe qui n'est pas un contact n'y figure pas.
+  Future<List<ContactBirthday>> fetchBirthdays();
 
   /// Recherche de profils par début de pseudo, à partir de deux caractères.
   Future<List<ProfileSummary>> searchByPseudo(String term);
@@ -67,6 +74,21 @@ class SupabaseContactRepository implements ContactRepository {
         return a.sortKey.compareTo(b.sortKey);
       });
       return contacts;
+    } catch (error) {
+      throw AuthFailure.from(error);
+    }
+  }
+
+  @override
+  Future<List<ContactBirthday>> fetchBirthdays() async {
+    if (_userId == null) return const <ContactBirthday>[];
+    try {
+      final Object? result = await _client.rpc<Object?>(
+        'anniversaires_de_mes_contacts',
+      );
+      return _asRows(
+        result,
+      ).map(ContactBirthday.fromRow).whereType<ContactBirthday>().toList();
     } catch (error) {
       throw AuthFailure.from(error);
     }

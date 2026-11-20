@@ -3,19 +3,31 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/core.dart';
 import '../../auth/models/auth_failure.dart';
+import '../models/anniversaire.dart';
 import '../providers/profile_providers.dart';
+import 'anniversaire_sheet.dart';
 
 /// Carte « À propos » : une ligne par information, icône à gauche, libellé,
 /// valeur dessous.
 ///
-/// **Deux lignes seulement**, contrairement à la maquette : Jelvo ne collecte
-/// ni numéro de téléphone ni localisation. Les afficher vides aurait suggéré
-/// qu'il manque quelque chose à remplir.
+/// **Trois lignes**, contrairement à la maquette : Jelvo ne collecte ni
+/// numéro de téléphone ni localisation, et les afficher vides aurait suggéré
+/// qu'il manque quelque chose à remplir. L'anniversaire, lui, est une donnée
+/// que l'application a — d'où une ligne qui invite quand elle est vide, au
+/// lieu d'une ligne qui ne mène nulle part.
 class ProfileAboutCard extends ConsumerStatefulWidget {
-  const ProfileAboutCard({super.key, required this.bio, required this.email});
+  const ProfileAboutCard({
+    super.key,
+    required this.bio,
+    required this.email,
+    this.anniversaire,
+  });
 
   final String? bio;
   final String? email;
+
+  /// `null` quand rien n'est renseigné, ce qui est le cas par défaut.
+  final Anniversaire? anniversaire;
 
   @override
   ConsumerState<ProfileAboutCard> createState() => _ProfileAboutCardState();
@@ -95,6 +107,20 @@ class _ProfileAboutCardState extends ConsumerState<ProfileAboutCard> {
             texteAffiche: widget.bio?.trim() ?? '',
             onOuvrir: _ouvrir,
             onValider: () => _focus.unfocus(),
+          ),
+          Divider(height: 1, indent: 52, color: context.couleurs.border),
+          // Sous la bio, et facultatif. La valeur absente **invite** au lieu
+          // d'afficher un vide : contrairement au téléphone et à la
+          // localisation, écartés faute de donnée, celle-ci existe et ne
+          // demande qu'à être remplie.
+          _LigneLecture(
+            icon: Icons.cake_outlined,
+            label: 'Anniversaire',
+            value:
+                widget.anniversaire?.libelle ??
+                'Ajoutez le jour et le mois, sans l’année',
+            attenue: widget.anniversaire == null,
+            onTap: () => AnniversaireSheet.ouvrir(context, widget.anniversaire),
           ),
           Divider(height: 1, indent: 52, color: context.couleurs.border),
           _LigneLecture(
@@ -370,6 +396,7 @@ class _LigneLecture extends StatelessWidget {
     required this.label,
     required this.value,
     this.attenue = false,
+    this.onTap,
   });
 
   final IconData icon;
@@ -380,8 +407,26 @@ class _LigneLecture extends StatelessWidget {
   /// pour une donnée réelle.
   final bool attenue;
 
+  /// Ouvre une feuille, et fait donc apparaître un chevron.
+  ///
+  /// L'e-mail n'en a pas, et c'est une règle de l'écran : il vient de la
+  /// session, et le changer relèverait d'un parcours d'authentification que
+  /// l'application n'a pas. Un chevron qui n'ouvre rien est pire qu'une ligne
+  /// inerte — d'où ce paramètre plutôt qu'un chevron pour tout le monde.
+  final VoidCallback? onTap;
+
   @override
   Widget build(BuildContext context) {
+    final Widget ligne = _ligne(context);
+    if (onTap == null) return ligne;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: AppRadii.fieldRadius,
+      child: ligne,
+    );
+  }
+
+  Widget _ligne(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.xs,
@@ -425,6 +470,11 @@ class _LigneLecture extends StatelessWidget {
               ],
             ),
           ),
+          if (onTap != null)
+            Icon(
+              Icons.chevron_right_rounded,
+              color: context.couleurs.textSecondary,
+            ),
         ],
       ),
     );

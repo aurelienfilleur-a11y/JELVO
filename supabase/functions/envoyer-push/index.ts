@@ -231,6 +231,17 @@ async function passage(
     console.error('appliquer_adhesions_echues :', erreurAdhesions.message);
   }
 
+  // Les anniversaires du jour, dans le **même** passage que les deux
+  // ci-dessus, et pour la même raison : ce battement existe déjà. La mémoire
+  // est la clé primaire de `push_reminders_sent`, si bien qu'un passage par
+  // minute ne dépose chaque anniversaire qu'une fois — c'est l'insertion qui
+  // décide, pas un test de date côté appelant.
+  const { data: anniversaires, error: erreurAnniversaires } = await supabase
+    .rpc('empiler_anniversaires');
+  if (erreurAnniversaires) {
+    console.error('empiler_anniversaires :', erreurAnniversaires.message);
+  }
+
   const { data, error } = await supabase.rpc('push_a_envoyer', {
     p_limite: LOT,
   });
@@ -267,6 +278,7 @@ async function passage(
   console.log(JSON.stringify({
     rappels: erreurRappels ? null : (rappels ?? 0),
     adhesions_echues: erreurAdhesions ? null : (adhesions ?? 0),
+    anniversaires: erreurAnniversaires ? null : (anniversaires ?? 0),
     lues: lignes.length,
     envoyes,
     echecs,

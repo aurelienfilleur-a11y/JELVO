@@ -219,7 +219,13 @@ class CalendarScreen extends ConsumerWidget {
           AppRoutes.taskDetail,
           pathParameters: <String, String>{'id': entry.id},
         );
+      // Ni l'un ni l'autre n'ouvre quoi que ce soit : un créneau n'a pas
+      // d'écran de détail, et Jelvo n'a pas d'écran de profil d'autrui.
+      // `AgendaEntry.isOpenable` dit déjà non, ces cas ne sont donc jamais
+      // atteints — ils sont ici pour que l'exhaustivité du `switch` reste
+      // le garde-fou qui force à se poser la question.
       case AgendaEntryKind.availability:
+      case AgendaEntryKind.birthday:
         break;
     }
   }

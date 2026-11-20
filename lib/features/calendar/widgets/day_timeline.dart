@@ -302,6 +302,7 @@ class _Carte extends StatelessWidget {
     AgendaEntryKind.personalEvent => Icons.person_outline_rounded,
     AgendaEntryKind.task => Icons.task_alt_rounded,
     AgendaEntryKind.availability => Icons.schedule_rounded,
+    AgendaEntryKind.birthday => Icons.cake_outlined,
   };
 }
 

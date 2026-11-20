@@ -51,6 +51,10 @@ create table public.profiles (
   timezone     text not null default 'Europe/Paris',
   last_seen_at timestamptz,
   created_at   timestamptz not null default now()
+  -- `anniversaire_jour` et `anniversaire_mois` sont **volontairement
+  -- absentes** : c'est `tranche12_anniversaires.sql` qui les ajoute, et les
+  -- poser ici empêcherait d'éprouver cet ajout — ainsi que la contrainte qui
+  -- l'accompagne, dont `fumee.sql` fait un contrôle négatif.
 );
 
 create table public.groups (

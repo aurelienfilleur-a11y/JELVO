@@ -103,7 +103,14 @@ as $$
     ('task_response',    'Réponses aux tâches',
      'Quand quelqu''un accepte ou décline une tâche que vous avez confiée'),
     ('event_changed',    'Changements de date',
-     'Quand un événement auquel vous participez est déplacé');
+     'Quand un événement auquel vous participez est déplacé'),
+    -- Ajouté en tranche 12. Le type est déclaré **ici** et nulle part
+    -- ailleurs : cette fonction est la source unique des types réglables, et
+    -- la redéclarer dans le fichier de la tranche 12 donnerait deux listes
+    -- dont la dernière appliquée gagnerait — exactement la divergence que
+    -- `migrations.txt` existe pour empêcher.
+    ('birthday',         'Anniversaires',
+     'Le jour de l''anniversaire d''un de vos contacts');
 $$;
 
 grant execute on function public.types_de_notification() to authenticated, anon;

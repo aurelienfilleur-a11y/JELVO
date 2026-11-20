@@ -23,6 +23,13 @@ enum AgendaEntryKind {
 
   /// Créneau de disponibilité déclaré, en fond de journée.
   availability,
+
+  /// Anniversaire d'un contact : annuel, sur toute la journée.
+  ///
+  /// Placé en dernier à dessein — l'ordre de cette énumération sert de
+  /// départage à heure égale, et déplacer une valeur existante changerait
+  /// l'ordre d'affichage de lignes qui n'ont rien à voir avec ce chantier.
+  birthday,
 }
 
 /// Ce que la couleur d'une ligne **veut dire**.
@@ -30,7 +37,13 @@ enum AgendaEntryKind {
 /// Le provider dit la nature de la ligne, le widget en tire la teinte. C'est
 /// nécessaire depuis le thème sombre : une `Color` figée dans le modèle serait
 /// choisie hors de tout `BuildContext`, donc dans une seule des deux palettes.
-enum AgendaAccent { evenement, tache, indisponible }
+/// `anniversaire` **n'ajoute aucune couleur à la palette** : elle prend
+/// `warning`, l'ambre déjà défini, qui était le seul jeton fonctionnel que le
+/// calendrier n'employait pas. Le code couleur de l'écran gagne donc une
+/// quatrième entrée sans qu'une teinte ait été inventée — c'était déjà la
+/// règle quand le vert, le rouge et le violet de la maquette sont tombés sur
+/// `success`, `danger` et `primary`.
+enum AgendaAccent { evenement, tache, indisponible, anniversaire }
 
 /// Une ligne de la timeline du jour.
 @immutable
@@ -73,6 +86,7 @@ class AgendaEntry {
         AgendaAccent.evenement => c.primary,
         AgendaAccent.tache => c.success,
         AgendaAccent.indisponible => c.danger,
+        AgendaAccent.anniversaire => c.warning,
       };
 
   /// Groupe, lieu, ou ce qui situe la ligne. Jamais obligatoire.
@@ -97,7 +111,13 @@ class AgendaEntry {
 
   /// Un créneau de disponibilité n'ouvre rien : il n'a pas d'écran de détail,
   /// et le toucher ne doit donc pas laisser croire le contraire.
-  bool get isOpenable => kind != AgendaEntryKind.availability;
+  ///
+  /// Un anniversaire non plus, et pour une raison précise : **Jelvo n'a pas
+  /// d'écran de profil d'autrui.** Le faire ouvrir la fiche du contact
+  /// demanderait cet écran, qui n'existe nulle part aujourd'hui ; le faire
+  /// ouvrir autre chose serait un chemin qui ne mène pas où il annonce.
+  bool get isOpenable =>
+      kind != AgendaEntryKind.availability && kind != AgendaEntryKind.birthday;
 
   /// Fond teinté des créneaux, qui doivent rester en retrait des événements.
   Color background(JelvoColors c) => switch (kind) {

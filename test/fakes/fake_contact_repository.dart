@@ -1,4 +1,5 @@
 import 'package:jelvo/features/contacts/models/contact.dart';
+import 'package:jelvo/features/contacts/models/contact_birthday.dart';
 import 'package:jelvo/features/contacts/repository/contact_repository.dart';
 
 /// Carnet de contacts en mémoire, pour les tests de widget.
@@ -53,6 +54,15 @@ class FakeContactRepository implements ContactRepository {
       lastName: 'Nguyen',
     ),
   ];
+
+  /// Anniversaires rendus par le faux dépôt. **Vide par défaut** : la
+  /// plupart des écrans n'en ont pas besoin, et un décor qui en porterait
+  /// ferait apparaître des lignes d'anniversaire dans des tests qui ne les
+  /// attendent pas — y compris au calendrier et à l'accueil.
+  List<ContactBirthday> anniversaires = const <ContactBirthday>[];
+
+  @override
+  Future<List<ContactBirthday>> fetchBirthdays() async => anniversaires;
 
   @override
   Future<List<Contact>> fetchContacts() async {

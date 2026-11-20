@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../data/app_config.dart';
 import '../../auth/models/auth_failure.dart';
+import '../models/anniversaire.dart';
 import '../models/profile.dart';
 
 abstract interface class ProfileRepository {
@@ -16,6 +17,17 @@ abstract interface class ProfileRepository {
     required String firstName,
     required String lastName,
     required String bio,
+  });
+
+  /// Pose ou efface l'anniversaire — `null` pour l'effacer.
+  ///
+  /// Une écriture à part, et non un paramètre d'[updateProfile], pour la
+  /// raison qui vaut déjà pour la bio : les deux se modifient à des endroits
+  /// différents, et une écriture conjointe obligerait chaque appelant à
+  /// relire ce qu'il ne touche pas.
+  Future<Profile> definirAnniversaire({
+    required String userId,
+    required Anniversaire? anniversaire,
   });
 
   /// Remplace la photo de profil et renvoie le profil à jour.
@@ -77,6 +89,30 @@ class SupabaseProfileRepository implements ProfileRepository {
             'bio': bio.isEmpty ? null : bio,
           })
           .eq('id', userId)
+          .select()
+          .single();
+      return Profile.fromMap(row);
+    } catch (error) {
+      throw AuthFailure.from(error);
+    }
+  }
+
+  @override
+  Future<Profile> definirAnniversaire({
+    required String userId,
+    required Anniversaire? anniversaire,
+  }) async {
+    try {
+      final Map<String, dynamic> row = await _client
+          .from('profiles')
+          // Les deux colonnes dans la **même** écriture : la contrainte de la
+          // base refuse une moitié de date, et c'est elle qui garantit qu'on
+          // ne puisse pas afficher un « 12 » sans mois.
+          .update(anniversaire?.versLigne ?? Anniversaire.versLigneVide)
+          .eq('id', userId)
+          // Le `select()` relit la ligne : l'écriture passe par un `grant` de
+          // colonnes, et une colonne oubliée côté SQL ne toucherait aucune
+          // ligne sans lever — PostgREST répondrait 200.
           .select()
           .single();
       return Profile.fromMap(row);

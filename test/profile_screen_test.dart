@@ -322,12 +322,17 @@ void main() {
       // Le chevron annonçait un écran qui s'ouvre ; la bio se modifie sur
       // place, et c'est un crayon qui dit « on écrit ici ».
       expect(find.byTooltip('Modifier la bio'), findsOneWidget);
+      // La carte porte désormais **un** chevron, et un seul : celui de la
+      // ligne « Anniversaire », qui ouvre bel et bien une feuille. La ligne
+      // Bio n'en a pas, et l'e-mail non plus — il vient de la session, et le
+      // changer relèverait d'un parcours que l'application n'a pas.
+      // `test/anniversaires_test.dart` épingle à qui ce chevron appartient.
       expect(
         find.descendant(
           of: find.byType(ProfileAboutCard),
           matching: find.byIcon(Icons.chevron_right_rounded),
         ),
-        findsNothing,
+        findsOneWidget,
       );
     });
 

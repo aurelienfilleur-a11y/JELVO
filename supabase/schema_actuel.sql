@@ -487,7 +487,7 @@ END)))))
 -- peut_voir_tache(p_task_id uuid) → boolean   [security definer, postgres]
 -- prendre_tache(p_task_id uuid) → text   [security definer, postgres]
 -- prochaine_occurrence(p_base timestamp with time zone, p_rrule text, p_apres timestamp with time zone) → timestamp with time zone   [security invoker, postgres]
--- profil_consultable(p_user_id uuid) → TABLE(id uuid, pseudo text, first_name text, last_name text, avatar_url text, bio text, anniversaire_jour smallint, anniversaire_mois smallint, cest_moi boolean, autre_id uuid, statut text, sens text, favori boolean, groupes_communs integer, groupes_partages jsonb, statistiques jsonb, disponibilite text)   [security definer, postgres]
+-- profil_consultable(p_user_id uuid) → TABLE(id uuid, pseudo text, first_name text, last_name text, avatar_url text, bio text, anniversaire_jour smallint, anniversaire_mois smallint, cest_moi boolean, autre_id uuid, statut text, sens text, favori boolean, groupes_communs integer, groupes_partages jsonb, disponibilite text)   [security definer, postgres]
 -- promouvoir_membre(p_group_id uuid, p_user_id uuid) → text   [security definer, postgres]
 -- pseudo_disponible(p_pseudo text) → boolean   [security definer, postgres]
 -- purger_push(p_token text) → integer   [security definer, postgres]

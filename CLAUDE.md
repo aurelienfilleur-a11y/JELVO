@@ -3128,6 +3128,50 @@ fonction incapable d'envoyer.
 **Rien ne peut être planifié avant que la fonction soit déployée** : l'ordre
 est donc secrets GitHub → déploiement → secrets de la fonction → planification.
 
+#### Le déploiement de la fonction a échoué en silence pendant trois mois
+
+**Constaté le 20 novembre 2026, et c'est le défaut le plus coûteux de cette
+famille.** `fonctions-supabase.yml` échouait à chaque fusion depuis le
+23 août, sur une ligne qui n'a rien à voir avec le code :
+
+```
+Confirmation required: Deploy 1 Function. This run can't ask because
+stdout is not a terminal. Nothing was changed.
+Re-run with --yes to confirm.
+```
+
+La CLI a **ajouté une confirmation interactive** après le 19 août, et le
+workflow installe `version: latest`. Il n'y avait donc rien à changer dans le
+dépôt pour que le déploiement cesse de marcher : il a suffi que la CLI bouge.
+
+Ce que cela a coûté, et qui ne se voyait nulle part :
+
+| Ajouté à la fonction | Depuis | Appelé ? |
+| --- | --- | --- |
+| `empiler_rappels()` | 19 août | **oui** — déjà dans la version 9 |
+| vidange de `push_outbox` | 19 août | **oui** |
+| `appliquer_adhesions_echues()` | 23 août (tranche 6) | **non, jamais** |
+| `empiler_anniversaires()` | 20 novembre (tranche 12) | **non** |
+
+L'adhésion temporaire **révoquait bien l'accès** — ce sont les prédicats SQL
+qui le font, et ils n'ont jamais eu besoin du battement. Ce qui ne s'est
+jamais produit, c'est la seconde moitié : le *rangement* derrière l'adhésion
+échue, décrit sous « Ce qui se passe tout seul, et ce qui demande une
+écriture ». Le premier passage après déploiement rattrapera l'arriéré.
+
+Trois leçons, et la troisième est la seule qui se code :
+
+- **la version de la fonction est une donnée à vérifier**, pas à déduire d'une
+  fusion. `updated_at` et `version` de l'API Supabase la donnent ; ici elles
+  disaient « 19 août, version 9 » alors que six fusions avaient suivi ;
+- **un workflow rouge qui ne bloque rien d'autre ne se remarque pas.** Le
+  déploiement web était vert, l'auto-merge fonctionnait, les migrations
+  passaient : rien ne tirait l'œil vers celui-ci. Le vert d'un workflow ne dit
+  rien d'un autre ;
+- **`version: latest` sur un outil tiers est une rupture à retardement.**
+  `--project-ref` est déjà déprécié au profit de `--remote=<ref>` et sera
+  retiré en v4 : ce sera la prochaine, et elle aura la même tête.
+
 ### Une base ne se réveille pas toute seule
 
 **La tranche 5c a livré une file que rien ne vidait.** `push_outbox` se
@@ -4498,8 +4542,14 @@ sûr d'éprouver son caractère contextuel.
 - **Trois prérequis manuels subsistent, et rien ne les remplace :**
   1. faire émettre `{{ .Token }}` au modèle d'e-mail de confirmation, pour le
      code à 6 chiffres ;
-  2. **planifier `envoyer-push` toutes les minutes** — sans quoi la file ne se
-     vide pas et aucun rappel n'est empilé ;
+  2. ~~planifier `envoyer-push` toutes les minutes~~ — **c'est fait, et
+     constaté le 20 novembre 2026.** La tâche `pg_cron` nº 1 existe,
+     s'appelle `envoyer-push`, est `active`, et tourne `* * * * *` : 120
+     passages en deux heures, dont **117 réponses `202`** portant l'accusé de
+     réception de la fonction, et une file à zéro en attente vidée en sept
+     secondes. Ce prérequis a été annoncé comme manquant pendant des mois
+     alors qu'il était posé depuis le début ; cette ligne est ce qui le
+     faisait répéter. **Ne plus le redemander.**
   3. pour que `schema_actuel.sql` atteigne `main` : le rôle
      **`RepositoryRole` `#5`** dans la Bypass list du ruleset **et** le secret
      **`JETON_POUSSEE_SCHEMA`** — jeton personnel d'un administrateur,
@@ -4620,7 +4670,11 @@ sûr d'éprouver son caractère contextuel.
   rendus en Europe/Paris en dur, côté SQL. Offrir un sélecteur de fuseau
   demanderait de le lire dans `empiler_rappels` **et** de formater les dates
   côté client dans cette zone — deux chantiers, pas un réglage.
-- **Les anniversaires sont livrés** — voir leur section. Quatre réserves :
+- **Les anniversaires sont livrés** — voir leur section. Leur envoi a demandé
+  une correction qui n'était pas dans leur périmètre : le déploiement de la
+  fonction Edge échouait depuis le 23 août, si bien que `empiler_anniversaires`
+  n'aurait jamais été appelée. Voir « Le déploiement de la fonction a échoué en
+  silence pendant trois mois ». Quatre réserves :
   il n'existe **pas d'écran de profil d'autrui**, si bien que la date ne se lit
   que sur son propre profil et sur la fiche d'un contact, alors que rien côté
   base ne la restreint ; la carte d'agenda de l'accueil et les pastilles de la

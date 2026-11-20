@@ -64,9 +64,31 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
+          # `--yes` n'est pas du confort : sans lui, la CLI **demande une
+          # confirmation**, constate que `stdout` n'est pas un terminal, et
+          # s'arrête sur « Nothing was changed » avec un code 1.
+          #
+          # Le piège est qu'il n'a pas toujours été nécessaire : `version:
+          # latest` ci-dessus suit la CLI, qui a ajouté cette confirmation
+          # après le 19 août 2026. Le déploiement a donc échoué en silence à
+          # chaque fusion suivante — trois mois pendant lesquels la fonction
+          # est restée en version 9, celle du 19 août.
+          #
+          # Ce que cela a coûté : `appliquer_adhesions_echues()` (tranche 6)
+          # n'a jamais été appelée, et `empiler_anniversaires()` (tranche 12)
+          # ne l'aurait pas été non plus. Les rappels et la vidange de la
+          # file, eux, marchaient — ils étaient déjà dans la version 9.
+          #
+          # **Le job était rouge, et personne ne l'a vu.** C'est la vraie
+          # leçon : un workflow qui échoue sans rien bloquer d'autre ne se
+          # remarque pas. Le vert du déploiement web ne dit rien de celui-ci.
+          #
+          # `--project-ref` est déprécié au profit de `--remote=<ref>` et sera
+          # retiré en v4 : ce sera la prochaine rupture de la même famille.
           supabase functions deploy envoyer-push \
             --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}" \
-            --no-verify-jwt
+            --no-verify-jwt \
+            --yes
 
       - name: Résumé
         if: steps.secrets.outputs.pret == 'oui'

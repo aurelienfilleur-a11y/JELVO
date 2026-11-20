@@ -17,6 +17,7 @@ flutter build web --release --base-href /jelvo/
 
 tool/verifier.sh                 # les quatre commandes de la CI, codes de sortie lus
 tool/verifier.sh --sans-build    # idem sans la compilation web
+node tool/preparer_ecrans_de_lancement.js   # écrans de lancement iOS — voir web/splash/
 
 supabase/verification/rejouer.sh # compile et appelle le SQL — voir plus bas
 supabase/verification/appliquer.sh --essai   # ce qui serait appliqué en base
@@ -831,9 +832,12 @@ donc le clignotement de retour, et rien pour le relier à sa cause.
 
 La page expose `window.jelvoAppliquerApparence(mot)`. Elle l'appelle au
 démarrage avec la valeur lue ; l'application l'appelle ensuite à chaque
-changement de réglage, par `lib/data/apparence_navigateur.dart` — import
-conditionnel, talon hors du web, même mécanique que `push_service`. **Dart ne
-fait que passer le mot** : réécrire la règle de son côté, ce serait deux
+changement de réglage, par `lib/data/pont_navigateur.dart` — une **interface**
+derrière un import conditionnel, talon hors du web, même mécanique que
+`push_service`. Une interface et non deux fonctions libres, pour la même
+raison que les dépôts : sans elle, rien ne prouverait que le crochet se
+déclenche, et un crochet muet ne se constate que sur l'appareil de quelqu'un.
+**Dart ne fait que passer le mot** : réécrire la règle de son côté, ce serait deux
 implémentations à tenir d'accord, et l'écart se verrait en clignotement.
 
 Les trois mots — `clair`, `sombre`, `systeme` — sont donc un **contrat**, et
@@ -862,28 +866,57 @@ sa valeur par défaut `default` donne précisément un bandeau blanc à texte
 sombre. Elle n'accepte aucune requête de média : en Automatique, le script
 résout lui-même et pose `black` ou `default`.
 
-#### L'écran de lancement s'efface sur la première image
+#### Un seul écran de lancement, et il attend que l'accueil ait son contenu
 
-Un voile plein écran, le logo fourni au centre, le fond du thème. Il part sur
-l'événement `flutter-first-frame` — le seul instant où le relais est sans
-couture — en fondu de 240 ms, puis il est **retiré du document** : laissé en
-place, un voile transparent avalerait les touches.
+Un voile plein écran, le logo fourni au centre, le fond du thème, retiré en
+fondu de 240 ms — puis **retiré du document** : laissé en place, un voile
+transparent avalerait les touches.
 
-Une minuterie de dix secondes le retire aussi, et c'est un **filet, pas le
-mécanisme** : si le signal n'arrivait pas, le voile resterait posé sur une
-application pourtant chargée — bien pire que le clignotement qu'il corrige.
+Deux choses ont demandé plus qu'un voile, et toutes deux se voyaient à
+l'ouverture.
 
-Éprouvé dans un vrai navigateur, pas seulement par les tests de fichier : cinq
-cas — rien d'enregistré sous les deux réglages du système, un choix explicite
-contraire au système dans les deux sens, une valeur abîmée —, et
-`flutter-first-frame` a servi dans les cinq.
+**Il y en avait deux.** Une application ajoutée à l'écran d'accueil affiche
+d'abord celui qu'iOS fabrique — fond du `manifest.json`, icône à la taille
+qu'iOS décide —, puis celui de la page : le logo changeait de taille entre les
+deux. `web/splash/` porte désormais nos propres `apple-touch-startup-image`,
+qui **sont** l'écran de la page photographié à la taille exacte de chaque
+appareil. La coïncidence n'est pas visée, elle est obtenue par construction —
+voir `web/splash/README.md` pour ce que la liste couvre et ce qu'elle ne
+couvre pas.
+
+**Il partait trop tôt.** Il s'effaçait sur `flutter-first-frame`, or à cet
+instant l'accueil est construit mais ses quatre lectures sont en vol. Et comme
+`ref.watch(x).value ?? const []` rend une liste vide pendant le chargement,
+**un écran qui lit est indiscernable d'un écran vide** : l'accueil s'affichait
+avec « Aucun groupe pour le moment » et « Journée libre », puis se remplissait.
+Ce n'était pas une redirection — la redirection de GoRouter est synchrone et
+aucune route par défaut n'est construite en attendant, c'est mesuré — c'était
+l'accueil d'un compte neuf, sur le compte de quelqu'un qui a quatre groupes.
+
+C'est donc **l'application qui dit quand effacer**, par
+`applicationPreteProvider` (`lib/demarrage.dart`) : sans session, tout de
+suite — la bienvenue et la connexion ne lisent rien ; avec session, quand les
+quatre lectures de l'accueil ont **répondu**. Répondu, et non réussi : une
+erreur vaut un contenu, sans quoi quelqu'un hors ligne resterait devant un logo
+sans jamais rien apprendre.
+
+Deux filets, et ce sont des filets, pas le mécanisme : **deux secondes après la
+première image**, puis dix secondes dans l'absolu. Un accueil encore vide vaut
+mieux qu'un logo qui s'éternise, et un voile posé sur une application pourtant
+chargée serait bien pire que le clignotement qu'il corrige.
+
+Mesuré dans un vrai navigateur : première image à ~1,0 s, voile retiré à
+~2,1 s sur le signal ; avec les lectures retardées d'une seconde et demie,
+c'est le filet des deux secondes qui tranche.
 
 #### Ce qui ne suit toujours pas le réglage
 
 | Surface | Pourquoi |
 | --- | --- |
-| splash de la PWA installée sur Android | `manifest.json` ne porte ni requête de média ni variante sombre. `background_color` et `theme_color` valent le fond clair, et la page reprend la main dès qu'elle est chargée |
+| **le bandeau d'un iPhone, à chaud** | une application ajoutée à l'écran d'accueil ne lit pas `theme-color` : c'est `apple-mobile-web-app-status-bar-style`, qu'iOS lit **au lancement** et ne relit pas. Le crochet s'exécute bien — c'est éprouvé — et la valeur est juste à la réouverture suivante, mais iOS ne la réapplique pas en cours de route. Le seul contournement, `black-translucent`, impose un texte de barre d'état **toujours blanc**, illisible sur un fond clair |
+| splash de la PWA installée sur **Android** | `manifest.json` ne porte ni requête de média ni variante sombre, et Chrome n'accepte pas d'image de lancement. La page reprend la main dès qu'elle est chargée |
 | écrans de lancement **natifs** Android et iOS | ils vivent dans `android/` et `ios/`, hors de la chaîne web, et ces deux cibles ne sont pas compilables ici |
+| un **choix explicite** contraire au téléphone | l'image de lancement est choisie par `prefers-color-scheme`, donc par le réglage du téléphone : « Clair » choisi sur un téléphone sombre donne un lancement sombre puis une application claire |
 
 ### La palette
 
@@ -4058,8 +4091,11 @@ sécurité.
   blanche. Côté réglage : « Apparence » annonce le choix courant, la feuille
   propose les trois et dit qu'ils ne valent que sur cet appareil, choisir
   « Sombre » bascule l'écran **et** s'enregistre, et une apparence déjà
-  enregistrée s'applique dès le premier rendu. Enfin le contrôle négatif : un
-  widget sans notre thème se rend en clair plutôt que de lever.
+  enregistrée s'applique dès le premier rendu, et **changer d'apparence le dit
+  à la page** — « Sombre » puis le retour à « Automatique », par un faux pont
+  qui retient ce qu'on lui dit. Le crochet ne se constaterait sinon que sur
+  l'appareil de quelqu'un. Enfin le contrôle négatif : un widget sans notre
+  thème se rend en clair plutôt que de lever.
 - `test/launch_screen_test.dart` tient le contrat entre `web/index.html` et le
   Dart, sans widget : la clé de stockage lue est celle de `ThemeStorage`, les
   trois mots d'apparence sont parcourus depuis `ThemeMode.values` — une valeur
@@ -4070,7 +4106,15 @@ sécurité.
   sur une minuterie, et le retrait du document plutôt qu'une simple
   transparence. Côté bandeau : la requête de média qui couvre le mode
   Automatique sans script, et la déclaration propre à l'iOS installé, que
-  `theme-color` ne couvre pas.
+  `theme-color` ne couvre pas. Côté écrans de lancement d'iOS : chaque fichier
+  de `web/splash/` a sa balise et chaque balise son fichier — les deux listes
+  vivent à deux endroits, et une divergence ferait retomber iOS sur son propre
+  écran **sans rien dire** —, chaque taille a sa variante sombre, et chaque
+  déclaration porte ses dimensions exactes, sa densité et son apparence. Côté
+  préparation : sans session l'application est prête tout de suite, et le
+  contrôle négatif qui compte — **avec** session, elle ne l'est pas avant que
+  les quatre lectures aient répondu, ce qui est exactement l'instant où
+  l'accueil s'affichait vide.
 - `test/app_version_test.dart` confronte `AppConfig.version` au `pubspec.yaml`,
   sans widget : la version est recopiée à la main, et une version fausse est
   pire qu'une version absente.
@@ -4101,8 +4145,8 @@ sécurité.
   du lien après la création, son contrôle négatif, et « Choisir dans mes
   contacts » qui ouvre le carnet entier en noms complets.
 
-Treize faux vivent dans `test/fakes/` — onze dépôts, plus l'enregistreur et le
-lecteur audio (`fake_voice.dart`), sans lesquels ouvrir la conversation
+Quatorze faux vivent dans `test/fakes/` — onze dépôts, l'enregistreur et le
+lecteur audio (`fake_voice.dart`), et le pont vers la page (`fake_pont_navigateur.dart`), sans lesquels ouvrir la conversation
 lèverait une `MissingPluginException` : un test de widget n'a ni micro ni
 haut-parleur. La liste : authentification, profil, groupes,
 contacts, notifications, tâches, agenda, disponibilités, chat, navigateur
@@ -4305,14 +4349,14 @@ sûr d'éprouver son caractère contextuel.
   test de fumée prouve que la file se remplit à la bonne heure et une seule
   fois ; que le navigateur affiche bien la notification dépend de la
   planification, des clés VAPID et d'un vrai appareil.
-- **L'écran de lancement et le bandeau de la barre d'état sont corrigés sur le
-  web**, et éprouvés dans un vrai navigateur. Deux surfaces ne suivent
-  toujours pas le réglage, et aucune ne le peut en l'état : le splash de la
-  PWA **installée sur Android**, que `manifest.json` ne sait pas faire varier,
-  et les écrans de lancement **natifs** Android et iOS, qui vivent hors de la
-  chaîne web et dont les cibles ne sont pas compilables ici. Le premier se
-  rattrape dès que la page est chargée ; le second resterait blanc à
-  l'ouverture le jour où l'application serait livrée en natif.
+- **L'écran de lancement est unique et attend que l'accueil ait son contenu**,
+  et le bandeau suit le thème. Tout est éprouvé dans un vrai navigateur, mais
+  **rien ne l'a été sur un vrai iPhone** : les `apple-touch-startup-image` ne
+  s'observent que là, et une taille absente de la liste retombe en silence sur
+  l'écran fabriqué par iOS. Quatre surfaces ne suivent toujours pas le
+  réglage — voir le tableau sous « Un seul écran de lancement » —, dont une
+  qui compte : **le bandeau d'un iPhone ne change pas à chaud**, iOS ne
+  relisant `apple-mobile-web-app-status-bar-style` qu'au lancement.
 - **Le thème sombre est livré**, avec son réglage. Deux réserves : les
   captures ont été relues écran par écran mais **sur un rendu de test**, pas
   sur un vrai appareil ; et une photo de couverture très sombre, fournie par

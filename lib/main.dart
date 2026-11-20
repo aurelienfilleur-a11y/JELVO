@@ -7,10 +7,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/core.dart';
 import 'l10n/app_localizations.dart';
 import 'data/app_config.dart';
-import 'data/apparence_navigateur.dart';
 import 'data/data_providers.dart';
 import 'data/onboarding_storage.dart';
 import 'data/theme_storage.dart';
+import 'demarrage.dart';
 import 'data/session_persistence.dart';
 import 'data/diagnostic_mode.dart';
 import 'features/notifications/providers/push_providers.dart';
@@ -62,7 +62,10 @@ Future<void> main() async {
         onboardingStorageProvider.overrideWithValue(accueil),
         themeStorageProvider.overrideWithValue(apparence),
       ],
-      child: const JelvoApp(),
+      // L'enfant est **constant** : le signal de démarrage observe les
+      // lectures du premier écran, et n'a donc pas à faire reconstruire
+      // l'application chaque fois que l'une d'elles se termine.
+      child: const SignalDeDemarrage(child: JelvoApp()),
     ),
   );
 }
@@ -87,7 +90,9 @@ class JelvoApp extends ConsumerWidget {
     // réglage. `ref.listen` et non `ref.watch` : c'est un effet de bord sur la
     // page, pas une valeur dont dépend cet arbre de widgets.
     ref.listen<ThemeMode>(themeModeProvider, (ThemeMode? _, ThemeMode mode) {
-      appliquerApparenceAuNavigateur(mode);
+      ref
+          .read(pontNavigateurProvider)
+          .appliquerApparence(ThemeStorage.jeton(mode));
     });
 
     return MaterialApp.router(

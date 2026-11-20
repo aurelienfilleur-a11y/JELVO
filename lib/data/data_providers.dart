@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'clock.dart';
 import 'onboarding_storage.dart';
+import 'pont_navigateur.dart';
 import 'theme_storage.dart';
 import 'session_persistence.dart';
 
@@ -43,6 +44,15 @@ final Provider<OnboardingStorage> onboardingStorageProvider =
 final Provider<ThemeStorage> themeStorageProvider = Provider<ThemeStorage>(
   (Ref ref) => EphemeralThemeStorage(),
 );
+
+/// Ce que l'application dit à la page qui l'héberge : l'apparence a changé,
+/// l'application est prête à être vue.
+///
+/// Surchargeable, et c'est tout l'intérêt : sans cela, rien ne prouverait que
+/// le crochet se déclenche, et un crochet muet ne se constate qu'à l'usage —
+/// sur l'appareil de quelqu'un.
+final Provider<PontNavigateur> pontNavigateurProvider =
+    Provider<PontNavigateur>((Ref ref) => creerPontNavigateur());
 
 /// L'apparence courante — c'est ce que lit `MaterialApp.themeMode`.
 ///

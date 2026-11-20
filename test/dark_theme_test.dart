@@ -7,7 +7,9 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:jelvo/core/core.dart';
 import 'package:jelvo/data/clock.dart';
 import 'package:jelvo/data/data_providers.dart';
+import 'package:jelvo/data/pont_navigateur.dart';
 import 'package:jelvo/data/theme_storage.dart';
+import 'package:jelvo/demarrage.dart';
 import 'package:jelvo/features/auth/providers/auth_providers.dart';
 import 'package:jelvo/features/availability/providers/availability_providers.dart';
 import 'package:jelvo/features/calendar/providers/calendar_providers.dart';
@@ -17,6 +19,7 @@ import 'package:jelvo/features/contacts/providers/contact_providers.dart';
 import 'package:jelvo/features/groups/providers/group_providers.dart';
 import 'package:jelvo/features/notifications/providers/notification_providers.dart';
 import 'package:jelvo/features/notifications/providers/push_providers.dart';
+import 'package:jelvo/features/profile/widgets/appearance_sheet.dart';
 import 'package:jelvo/features/profile/providers/profile_providers.dart';
 import 'package:jelvo/features/tasks/providers/task_providers.dart';
 import 'package:jelvo/main.dart';
@@ -28,6 +31,7 @@ import 'fakes/fake_contact_repository.dart';
 import 'fakes/fake_event_repository.dart';
 import 'fakes/fake_group_repository.dart';
 import 'fakes/fake_notification_repository.dart';
+import 'fakes/fake_pont_navigateur.dart';
 import 'fakes/fake_push.dart';
 import 'fakes/fake_task_repository.dart';
 import 'fakes/fake_voice.dart';
@@ -52,6 +56,7 @@ double _contraste(Color a, Color b) {
 Future<ThemeStorage> _pumpApp(
   WidgetTester tester, {
   ThemeMode mode = ThemeMode.system,
+  PontNavigateur? pont,
 }) async {
   tester.view.physicalSize = const Size(420, 2400);
   tester.view.devicePixelRatio = 1;
@@ -86,8 +91,11 @@ Future<ThemeStorage> _pumpApp(
         notificationRepositoryProvider.overrideWithValue(
           FakeNotificationRepository(),
         ),
+        if (pont != null) pontNavigateurProvider.overrideWithValue(pont),
       ],
-      child: const JelvoApp(),
+      // Monté comme dans `main()` : c'est lui qui dit à la page de retirer
+      // l'écran de lancement.
+      child: const SignalDeDemarrage(child: JelvoApp()),
     ),
   );
   await tester.pumpAndSettle();
@@ -266,6 +274,49 @@ void main() {
       expect(_luminosite(tester), Brightness.dark);
       expect(stockage.mode, ThemeMode.dark);
     });
+
+    testWidgets('changer d’apparence le dit à la page, sans recharger', (
+      WidgetTester tester,
+    ) async {
+      // Le bandeau de la barre d'état et le fond de la page sont posés par
+      // `web/index.html` au démarrage. Qu'ils **suivent** un changement de
+      // réglage ne tient qu'à ce crochet — et un crochet muet ne se
+      // constaterait que sur l'appareil de quelqu'un.
+      final FakePontNavigateur pont = FakePontNavigateur();
+      await _pumpApp(tester, pont: pont);
+      expect(pont.apparences, isEmpty);
+
+      await _ouvrirParametres(tester);
+      await tester.tap(find.text('Apparence'));
+      await tester.pumpAndSettle();
+
+      // La feuille reste ouverte — le choix s'applique sur place —, et son
+      // titre reprend le libellé de la ligne : on vise donc dans la feuille.
+      Finder dansLaFeuille(String libelle) => find.descendant(
+        of: find.byType(AppearanceSheet),
+        matching: find.text(libelle),
+      );
+
+      await tester.tap(dansLaFeuille('Sombre'));
+      await tester.pumpAndSettle();
+      expect(pont.apparences, <String>['sombre']);
+
+      // Et le retour : repasser en « Automatique » doit rendre à la page le
+      // soin de suivre le téléphone, pas la laisser figée sur « sombre ».
+      await tester.tap(dansLaFeuille('Automatique'));
+      await tester.pumpAndSettle();
+
+      expect(pont.apparences, <String>['sombre', 'systeme']);
+    });
+
+    testWidgets(
+      'l’écran de lancement n’est retiré qu’une fois l’accueil prêt',
+      (WidgetTester tester) async {
+        final FakePontNavigateur pont = FakePontNavigateur();
+        await _pumpApp(tester, pont: pont);
+        expect(pont.aAnnonceLaPreparation, isTrue);
+      },
+    );
 
     testWidgets('l’apparence enregistrée s’applique dès le premier rendu', (
       WidgetTester tester,

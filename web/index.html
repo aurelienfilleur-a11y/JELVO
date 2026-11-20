@@ -57,6 +57,66 @@
   <link rel="apple-touch-icon" sizes="180x180" href="icons/Icon-180.png">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
+  <!-- **Les écrans de lancement d'iOS**, et la raison pour laquelle ils
+       existent : sans eux, une application ajoutée à l'écran d'accueil en
+       affiche deux à la suite — celui qu'iOS fabrique, puis celui de la page
+       — et le logo change de taille entre les deux. Ceux-ci **sont** l'écran
+       de la page, photographié à la taille exacte de chaque appareil par
+       `tool/preparer_ecrans_de_lancement.js` : il n'y a donc plus de rupture,
+       par construction.
+
+       iOS n'accepte que des dimensions exactes : une taille absente de cette
+       liste retombe sur l'écran fabriqué par le système. `test/launch_screen_test.dart`
+       confronte ces balises au contenu de `web/splash/`. -->
+  <link rel="apple-touch-startup-image" href="splash/320x568@2x-clair.png"
+        media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait) and (prefers-color-scheme: light)">
+  <link rel="apple-touch-startup-image" href="splash/320x568@2x-sombre.png"
+        media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait) and (prefers-color-scheme: dark)">
+  <link rel="apple-touch-startup-image" href="splash/375x667@2x-clair.png"
+        media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait) and (prefers-color-scheme: light)">
+  <link rel="apple-touch-startup-image" href="splash/375x667@2x-sombre.png"
+        media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait) and (prefers-color-scheme: dark)">
+  <link rel="apple-touch-startup-image" href="splash/375x812@3x-clair.png"
+        media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: light)">
+  <link rel="apple-touch-startup-image" href="splash/375x812@3x-sombre.png"
+        media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)">
+  <link rel="apple-touch-startup-image" href="splash/390x844@3x-clair.png"
+        media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: light)">
+  <link rel="apple-touch-startup-image" href="splash/390x844@3x-sombre.png"
+        media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)">
+  <link rel="apple-touch-startup-image" href="splash/393x852@3x-clair.png"
+        media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: light)">
+  <link rel="apple-touch-startup-image" href="splash/393x852@3x-sombre.png"
+        media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)">
+  <link rel="apple-touch-startup-image" href="splash/402x874@3x-clair.png"
+        media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: light)">
+  <link rel="apple-touch-startup-image" href="splash/402x874@3x-sombre.png"
+        media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)">
+  <link rel="apple-touch-startup-image" href="splash/414x736@3x-clair.png"
+        media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: light)">
+  <link rel="apple-touch-startup-image" href="splash/414x736@3x-sombre.png"
+        media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)">
+  <link rel="apple-touch-startup-image" href="splash/414x896@2x-clair.png"
+        media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait) and (prefers-color-scheme: light)">
+  <link rel="apple-touch-startup-image" href="splash/414x896@2x-sombre.png"
+        media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait) and (prefers-color-scheme: dark)">
+  <link rel="apple-touch-startup-image" href="splash/414x896@3x-clair.png"
+        media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: light)">
+  <link rel="apple-touch-startup-image" href="splash/414x896@3x-sombre.png"
+        media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)">
+  <link rel="apple-touch-startup-image" href="splash/428x926@3x-clair.png"
+        media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: light)">
+  <link rel="apple-touch-startup-image" href="splash/428x926@3x-sombre.png"
+        media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)">
+  <link rel="apple-touch-startup-image" href="splash/430x932@3x-clair.png"
+        media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: light)">
+  <link rel="apple-touch-startup-image" href="splash/430x932@3x-sombre.png"
+        media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)">
+  <link rel="apple-touch-startup-image" href="splash/440x956@3x-clair.png"
+        media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: light)">
+  <link rel="apple-touch-startup-image" href="splash/440x956@3x-sombre.png"
+        media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)">
+
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
@@ -125,6 +185,7 @@
       // en JavaScript, une en Dart — auraient fini par diverger, et la
       // divergence se serait vue en clignotement.
       var FONDS = { clair: '#F7F7FB', sombre: '#0E0E1A' };
+      var motCourant = 'systeme';
 
       window.jelvoAppliquerApparence = function (mot) {
         // Le vocabulaire est celui de `ThemeStorage` : 'clair', 'sombre',
@@ -133,6 +194,7 @@
         // téléphone est déjà le défaut côté Dart, et un stockage douteux ne
         // doit pas décider d'une apparence.
         if (mot !== 'clair' && mot !== 'sombre') mot = 'systeme';
+        motCourant = mot;
 
         var explicite = mot !== 'systeme';
         var racine = document.documentElement;
@@ -199,6 +261,27 @@
         // déjà le défaut de `ThemeStorage`.
       }
       window.jelvoAppliquerApparence(mot);
+
+      // En « Automatique », `theme-color` suit le téléphone tout seul par ses
+      // requêtes de média — mais pas
+      // `apple-mobile-web-app-status-bar-style`, qui n'en accepte aucune et
+      // a donc été résolu une fois pour toutes ci-dessus. Sans cet écouteur,
+      // basculer le téléphone en sombre pendant que l'application est ouverte
+      // laisserait ce réglage-là sur sa valeur de départ.
+      if (window.matchMedia) {
+        var sombreOs = window.matchMedia('(prefers-color-scheme: dark)');
+        var suivre = function () {
+          if (motCourant === 'systeme') {
+            window.jelvoAppliquerApparence('systeme');
+          }
+        };
+        if (sombreOs.addEventListener) {
+          sombreOs.addEventListener('change', suivre);
+        } else if (sombreOs.addListener) {
+          // Safari d'avant 14, qui n'a que l'ancienne forme.
+          sombreOs.addListener(suivre);
+        }
+      }
     })();
   </script>
 </head>
@@ -228,14 +311,30 @@
         }, 300);
       };
 
-      // Le signal : Flutter émet cet événement quand la première image est
-      // peinte. C'est le seul instant où le relais est vraiment sans couture.
-      window.addEventListener('flutter-first-frame', effacer);
+      // **Le signal, c'est l'application qui le donne**, quand son premier
+      // écran a son contenu — voir `lib/demarrage.dart`. La première image de
+      // Flutter ne suffisait pas : à cet instant l'accueil est construit mais
+      // ses lectures sont en vol, et il s'affiche avec ses états vides.
+      // « Aucun groupe pour le moment » sur le compte de quelqu'un qui en a
+      // quatre ne se lit pas comme un chargement : cela se lit comme un autre
+      // écran.
+      //
+      // Appelable plusieurs fois sans dommage : `effacer` ne retire le voile
+      // qu'une fois, et l'application appelle à chaque reconstruction.
+      window.jelvoApplicationPrete = effacer;
 
-      // Filet, et non mécanisme. Si l'événement n'arrivait pas, l'écran de
-      // lancement resterait posé **sur** une application pourtant chargée —
-      // bien pire que le clignotement qu'il corrige. Dix secondes, c'est long
-      // pour un démarrage et court pour un blocage.
+      // Premier filet. Si l'application tardait à se dire prête — une lecture
+      // qui pend, un réseau coupé —, mieux vaut un accueil encore vide qu'un
+      // logo qui s'éternise. Deux secondes après la première image : assez
+      // pour une lecture ordinaire, trop court pour qu'on se demande si
+      // l'application est bloquée.
+      window.addEventListener('flutter-first-frame', function () {
+        window.setTimeout(effacer, 2000);
+      });
+
+      // Second filet, absolu. Si même la première image n'arrivait pas, le
+      // voile resterait posé **sur** une application pourtant chargée — bien
+      // pire que le clignotement qu'il corrige.
       window.setTimeout(effacer, 10000);
     })();
   </script>

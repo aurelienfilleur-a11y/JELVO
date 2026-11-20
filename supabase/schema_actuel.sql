@@ -163,6 +163,8 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 --   last_seen_at         timestamp with time zone     
 --   created_at           timestamp with time zone     NOT NULL, défaut now()
 --   avatar_preset        text                         
+--   anniversaire_jour    smallint                     
+--   anniversaire_mois    smallint                     
 
 -- push_outbox [RLS activée]
 --   id                   uuid                         NOT NULL, défaut gen_random_uuid()
@@ -279,6 +281,15 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 -- notification_preferences notification_preferences_pkey : PRIMARY KEY (user_id, type)
 -- notifications            notifications_user_id_fkey : FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE
 -- notifications            notifications_pkey : PRIMARY KEY (id)
+-- profiles                 profiles_anniversaire_check : CHECK ((((anniversaire_jour IS NULL) = (anniversaire_mois IS NULL)) AND ((anniversaire_mois IS NULL) OR ((anniversaire_mois >= 1) AND (anniversaire_mois <= 12))) AND ((anniversaire_jour IS NULL) OR ((anniversaire_jour >= 1) AND (anniversaire_jour <=
+CASE anniversaire_mois
+    WHEN 2 THEN 29
+    WHEN 4 THEN 30
+    WHEN 6 THEN 30
+    WHEN 9 THEN 30
+    WHEN 11 THEN 30
+    ELSE 31
+END)))))
 -- profiles                 profiles_avatar_preset_check : CHECK (((avatar_preset IS NULL) OR (avatar_preset ~ '^p[0-9]{1,2}_[0-9]{2}$'::text)))
 -- profiles                 profiles_bio_check : CHECK ((char_length(bio) <= 160))
 -- profiles                 profiles_pseudo_check : CHECK ((pseudo ~ '^[a-z0-9.]{3,20}$'::text))
@@ -287,7 +298,7 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 -- profiles                 profiles_pseudo_key : UNIQUE (pseudo)
 -- push_outbox              push_outbox_user_id_fkey : FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE
 -- push_outbox              push_outbox_pkey : PRIMARY KEY (id)
--- push_reminders_sent      push_reminders_sent_kind_check : CHECK ((kind = ANY (ARRAY['task'::text, 'event'::text])))
+-- push_reminders_sent      push_reminders_sent_kind_check : CHECK ((kind = ANY (ARRAY['task'::text, 'event'::text, 'birthday'::text])))
 -- push_reminders_sent      push_reminders_sent_user_id_fkey : FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE
 -- push_reminders_sent      push_reminders_sent_pkey : PRIMARY KEY (kind, source_id, occurrence, user_id)
 -- push_tokens              push_tokens_platform_check : CHECK ((platform = ANY (ARRAY['ios'::text, 'android'::text, 'web'::text])))
@@ -414,6 +425,7 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 -- accepter_invitation(p_invitation_id uuid) → text   [security definer, postgres]
 -- add_creator_as_admin() → trigger   [security definer, postgres]
 -- ajouter_article(p_task_id uuid, p_label text) → uuid   [security definer, postgres]
+-- anniversaires_de_mes_contacts() → TABLE(contact_id uuid, pseudo text, first_name text, last_name text, avatar_url text, jour smallint, mois smallint)   [security definer, postgres]
 -- apercu_groupe_par_jeton(jeton text) → TABLE(statut text, group_id uuid, nom text, description text, photo_url text, nombre_membres integer, membership_expires_at timestamp with time zone)   [security definer, postgres]
 -- appliquer_adhesions_echues() → integer   [security definer, postgres]
 -- articles_de_tache(p_task_id uuid) → TABLE(id uuid, label text, "position" integer, checked_at timestamp with time zone, checked_by uuid, coche_par text)   [security definer, postgres]
@@ -435,6 +447,7 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 -- deposer_carte_evenement() → trigger   [security definer, postgres]
 -- deposer_carte_tache() → trigger   [security definer, postgres]
 -- email_pour_pseudo(pseudo_recherche text) → text   [security definer, postgres]
+-- empiler_anniversaires() → integer   [security definer, postgres]
 -- empiler_push(p_user_id uuid, p_type text, p_title text, p_body text, p_url text DEFAULT NULL::text) → boolean   [security definer, postgres]
 -- empiler_rappels(p_fenetre interval DEFAULT '00:10:00'::interval) → integer   [security definer, postgres]
 -- enregistrer_push(p_token text, p_platform text DEFAULT 'web'::text, p_p256dh text DEFAULT NULL::text, p_auth text DEFAULT NULL::text) → boolean   [security definer, postgres]
@@ -448,6 +461,7 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 -- inviter_dans_groupe(p_group_id uuid, p_invitee uuid, p_membership_expires_at timestamp with time zone DEFAULT NULL::timestamp with time zone) → text   [security definer, postgres]
 -- is_group_admin(gid uuid) → boolean   [security definer, postgres]
 -- is_group_member(gid uuid) → boolean   [security definer, postgres]
+-- jour_anniversaire(p_jour smallint, p_mois smallint, p_annee integer) → date   [security invoker, postgres]
 -- marquer_lu(p_group_id uuid, p_jusqua timestamp with time zone DEFAULT NULL::timestamp with time zone) → timestamp with time zone   [security definer, postgres]
 -- marquer_push_traite(p_id uuid, p_erreur text DEFAULT NULL::text) → void   [security definer, postgres]
 -- membres_du_groupe(p_group_id uuid) → TABLE(user_id uuid, role text, joined_at timestamp with time zone, expires_at timestamp with time zone, pseudo text, first_name text, last_name text, avatar_url text)   [security definer, postgres]

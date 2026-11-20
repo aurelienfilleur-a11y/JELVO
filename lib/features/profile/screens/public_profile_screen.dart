@@ -8,7 +8,6 @@ import '../../contacts/models/contact.dart';
 import '../../contacts/providers/contact_providers.dart';
 import '../models/profil_consultable.dart';
 import '../providers/profile_providers.dart';
-import '../widgets/profile_stats_card.dart';
 import '../widgets/profile_action_row.dart';
 import '../widgets/public_profile_cards.dart';
 
@@ -236,8 +235,6 @@ class _Contenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final StatistiquesPubliques? stats = profil.statistiques;
-
     return ListView(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.screenMargin,
@@ -255,31 +252,17 @@ class _Contenu extends StatelessWidget {
         AppSpacing.gapMd,
         PublicAboutCard(profil: profil),
 
-        if (stats != null) ...<Widget>[
-          AppSpacing.gapMd,
-          ProfileStatsCard(
-            titre: profil.cestMoi ? 'Mes statistiques' : 'Ses statistiques',
-            stats: ProfileStats(
-              groups: stats.groupes,
-              events: stats.evenements,
-              completedTasks: stats.tachesTerminees,
-            ),
-          ),
-        ] else if (!profil.cestMoi) ...<Widget>[
-          // Dire pourquoi la carte manque, plutôt que de laisser un trou.
-          // L'absence serait sinon indiscernable d'un chargement raté — le
-          // même défaut qu'une liste vide pendant une lecture en vol.
-          AppSpacing.gapMd,
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-            child: Text(
-              'Ses statistiques et ses disponibilités sont réservées à ses '
-              'contacts.',
-              style: context.typo.bodyMuted,
-            ),
-          ),
-        ],
-
+        // **Pas de carte de statistiques ici**, et plus de phrase pour
+        // expliquer son absence. Les deux sont partis ensemble, et c'est
+        // cohérent : la phrase existait parce qu'une carte manquait à un
+        // non-contact, ce qui laissait un trou indiscernable d'un chargement
+        // raté. Sans carte pour personne, il n'y a plus de trou à expliquer —
+        // et annoncer qu'une donnée est retenue en dirait plus sur la personne
+        // consultée que son absence.
+        //
+        // Ne subsiste comme champ réservé que la pastille de disponibilité, et
+        // son absence est muette par construction : un contact qui n'a rien
+        // déclaré n'en a pas non plus.
         AppSpacing.gapMd,
         CommonGroupsCard(
           groupes: profil.groupesCommuns,

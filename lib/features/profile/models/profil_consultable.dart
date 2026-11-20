@@ -24,37 +24,11 @@ class GroupeCommun {
   final String? photoUrl;
 }
 
-/// Les trois compteurs, **réservés aux contacts**.
-///
-/// Volontairement distincts de `ProfileStats`, qui agrège les listes déjà
-/// chargées du compte connecté : ceux-ci sont comptés par la base pour
-/// quelqu'un d'autre, dont on ne peut lire aucune liste. Les deux ne peuvent
-/// donc pas se dériver l'un de l'autre.
-@immutable
-class StatistiquesPubliques {
-  const StatistiquesPubliques({
-    required this.groupes,
-    required this.evenements,
-    required this.tachesTerminees,
-  });
-
-  factory StatistiquesPubliques.depuisJson(Map<String, dynamic> json) =>
-      StatistiquesPubliques(
-        groupes: (json['groupes'] as num?)?.toInt() ?? 0,
-        evenements: (json['evenements'] as num?)?.toInt() ?? 0,
-        tachesTerminees: (json['taches_terminees'] as num?)?.toInt() ?? 0,
-      );
-
-  final int groupes;
-  final int evenements;
-  final int tachesTerminees;
-}
-
 /// Le profil de quelqu'un d'autre, tel que `profil_consultable` le rend.
 ///
-/// **La fonction SQL décide de ce qui est lisible, pas cet écran.** Les deux
-/// champs réservés aux contacts arrivent donc à `null` quand on ne l'est pas,
-/// et il n'y a rien à filtrer ici — l'affichage suit la donnée reçue.
+/// **La fonction SQL décide de ce qui est lisible, pas cet écran.** Le champ
+/// réservé aux contacts arrive donc à `null` quand on ne l'est pas, et il n'y
+/// a rien à filtrer ici — l'affichage suit la donnée reçue.
 ///
 /// L'adresse e-mail n'y figure pas : elle vit dans `auth.users`, que la
 /// fonction ne lit pas. Ce n'est pas un champ omis, c'est un champ qui
@@ -66,7 +40,6 @@ class ProfilConsultable {
     required this.cestMoi,
     required this.groupesCommuns,
     this.relation,
-    this.statistiques,
     this.disponibilite,
   });
 
@@ -77,7 +50,6 @@ class ProfilConsultable {
   /// aurait demandé un troisième parseur, donc un troisième endroit où se
   /// tromper.
   factory ProfilConsultable.depuisLigne(Map<String, dynamic> row) {
-    final Object? statistiques = row['statistiques'];
     return ProfilConsultable(
       profil: Profile.fromMap(row),
       cestMoi: (row['cest_moi'] as bool?) ?? false,
@@ -91,9 +63,6 @@ class ProfilConsultable {
             in (row['groupes_partages'] as List<Object?>?) ?? const <Object?>[])
           if (g is Map<String, dynamic>) GroupeCommun.depuisJson(g),
       ],
-      statistiques: statistiques is Map<String, dynamic>
-          ? StatistiquesPubliques.depuisJson(statistiques)
-          : null,
       // `fromDb` ramène tout mot inconnu à `unknown` ; c'est bien l'absence
       // de valeur, et non un mot, qui dit « vous n'êtes pas contact ».
       disponibilite: row['disponibilite'] == null
@@ -118,10 +87,12 @@ class ProfilConsultable {
 
   final List<GroupeCommun> groupesCommuns;
 
-  /// `null` dès que l'on n'est pas un contact accepté.
-  final StatistiquesPubliques? statistiques;
-
-  /// `null` dès que l'on n'est pas un contact accepté.
+  /// **Le seul champ réservé aux contacts acceptés** : `null` sinon.
+  ///
+  /// Les trois compteurs de « Mon profil » ne sont pas renvoyés ici, et ne
+  /// sont pas non plus calculés en base — voir la tranche 13. Un chiffre qu'on
+  /// ne peut pas ouvrir n'apprend rien de plus que lui-même, et les listes de
+  /// l'application sont celles de l'utilisateur connecté.
   final PeerAvailability? disponibilite;
 
   bool get estContact => relation?.status == ContactStatus.accepted;

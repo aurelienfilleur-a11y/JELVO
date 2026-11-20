@@ -1874,11 +1874,6 @@ begin
          format('un groupe commun attendu, reçu %s', ligne.groupes_communs);
   assert ligne.groupes_partages -> 0 ->> 'nom' = 'Voyage en Corse',
          'le détail des groupes communs ne porte pas le nom du groupe';
-  assert ligne.statistiques is not null,
-         'une contact doit voir les statistiques';
-  assert (ligne.statistiques ->> 'groupes')::integer = 1,
-         format('un groupe attendu dans les statistiques, reçu %s',
-                ligne.statistiques ->> 'groupes');
   assert ligne.disponibilite is not null,
          'une contact doit voir la disponibilité';
 
@@ -1896,15 +1891,13 @@ begin
          format('aucune relation attendue, reçue %s', ligne.statut);
   assert ligne.groupes_communs = 0,
          format('aucun groupe commun attendu, reçu %s', ligne.groupes_communs);
-  assert ligne.statistiques is null,
-         'les statistiques d''un non-contact ne doivent pas sortir';
   assert ligne.disponibilite is null,
          'la disponibilité d''un non-contact ne doit pas sortir';
 
   -- 3. Contrôle négatif : être *sollicité* n'est pas être contact -------------
   -- La nuance est la plus facile à manquer : `contacts` porte une ligne dès
   -- la demande, et un `exists` sans `status = 'accepted'` ouvrirait les
-  -- statistiques à qui se contente de demander.
+  -- disponibilité à qui se contente de demander.
   set local role postgres;
   insert into public.contacts (requester_id, addressee_id, status)
   values (camille, hugo, 'pending');
@@ -1913,8 +1906,6 @@ begin
   select * into ligne from public.profil_consultable(hugo);
   assert ligne.statut = 'pending',
          format('relation attendue en attente, reçue %s', ligne.statut);
-  assert ligne.statistiques is null,
-         'une demande en attente a ouvert les statistiques';
   assert ligne.disponibilite is null,
          'une demande en attente a ouvert la disponibilité';
 
@@ -1940,8 +1931,8 @@ begin
   -- 5. Son propre profil ------------------------------------------------------
   select * into ligne from public.profil_consultable(camille);
   assert ligne.cest_moi, 'son propre profil doit se reconnaître';
-  assert ligne.statistiques is not null,
-         'ses propres statistiques doivent sortir';
+  assert ligne.disponibilite is not null,
+         'sa propre disponibilité doit sortir';
 
   -- 6. Un identifiant inconnu rend zéro ligne ---------------------------------
   -- Contrairement à `invitation_par_id`, qui rend toujours une ligne avec un
@@ -1960,6 +1951,18 @@ begin
   assert pg_get_function_result(
            'public.profil_consultable(uuid)'::regprocedure) not ilike '%mail%',
          'la signature expose une colonne d''adresse e-mail';
+
+  -- 8. **Contrôle négatif du retrait des compteurs** ------------------------
+  -- Ils ont quitté la signature, et pas seulement l'écran : trois
+  -- sous-requêtes par ouverture de profil, dont une sur `events` et une sur
+  -- `tasks` jointe à `task_assignees`, pour un chiffre que personne ne lisait.
+  -- Le contrôle porte sur la signature parce qu'un `create or replace` ne
+  -- sait pas retirer une colonne de sortie : sans le `drop` du fichier, la
+  -- migration échouerait — ou, pire, laisserait l'ancienne en place.
+  assert pg_get_function_result(
+           'public.profil_consultable(uuid)'::regprocedure)
+         not ilike '%statistiques%',
+         'la signature porte encore les compteurs retirés';
 
   raise notice 'Fumée : le profil consultable de la tranche 13 répond.';
 end;

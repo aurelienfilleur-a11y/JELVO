@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -119,18 +120,41 @@ void main() {
     });
 
     test('iOS installé a sa propre déclaration, réglable', () {
-      // `theme-color` n'est pas lu par l'application ajoutée à l'écran
-      // d'accueil : sans cette ligne, le bandeau y reste blanc.
+      // Sur iOS 25 et avant, `theme-color` n'est pas lu par l'application
+      // ajoutée à l'écran d'accueil : sans cette ligne, le bandeau y reste
+      // blanc. iOS la lit au lancement et ne la relit pas — d'où le test
+      // suivant, qui porte sur le seul mécanisme réglable à chaud.
       expect(page, contains('apple-mobile-web-app-status-bar-style'));
       expect(page, contains('id="jelvo-bandeau-ios"'));
       expect(page, contains("'black'"));
     });
+
+    test(
+      'le fond est posé en clair sur html et body, pas seulement en méta',
+      () {
+        // **C'est ceci qui fait suivre le bandeau à chaud.** Depuis iOS 26,
+        // WebKit ne lit plus ni `apple-mobile-web-app-status-bar-style` ni
+        // `theme-color` : il échantillonne le fond de la page. Une variable CSS
+        // ne se lit pas de l'extérieur du document, et la toile de Flutter ne
+        // porte aucune couleur : il reste `html` et `body`, qui doivent donc
+        // recevoir la teinte en clair à chaque changement.
+        expect(
+          page,
+          contains('racine.style.backgroundColor = fond'),
+          reason:
+              'sans cette ligne le bandeau garde la couleur du lancement '
+              'jusqu’à ce qu’on quitte et rouvre l’application',
+        );
+        expect(page, contains('document.body.style.backgroundColor = fond'));
+      },
+    );
   });
 
   group("Les écrans de lancement d'iOS", () {
-    // Sans eux, une application ajoutée à l'écran d'accueil en affiche deux à
-    // la suite — celui qu'iOS fabrique, puis celui de la page — et le logo
-    // change de taille entre les deux.
+    // Ils ne portent plus le logo : un seul endroit le dessine, le voile de la
+    // page. C'est ce qui a supprimé le saut de taille, et c'est aussi ce qui a
+    // permis d'abandonner la liste de douze modèles — un aplat n'a pas de
+    // géométrie à faire coïncider.
     final List<String> fichiers =
         (Directory('web/splash').listSync().whereType<File>().toList()
               ..sort((File a, File b) => a.path.compareTo(b.path)))
@@ -138,63 +162,82 @@ void main() {
             .where((String n) => n.endsWith('.png'))
             .toList();
 
-    test('il y en a, et pour les deux apparences', () {
-      expect(fichiers, isNotEmpty);
+    test('il y en a un par apparence, et deux en tout', () {
       expect(
-        fichiers.where((String n) => n.endsWith('-clair.png')),
-        isNotEmpty,
-      );
-      expect(
-        fichiers.where((String n) => n.endsWith('-sombre.png')),
-        hasLength(
-          fichiers.where((String n) => n.endsWith('-clair.png')).length,
-        ),
+        fichiers,
+        <String>['lancement-clair.png', 'lancement-sombre.png'],
         reason:
-            'une taille sans sa variante sombre retomberait sur l’écran '
-            'fabriqué par iOS, donc sur l’ancien défaut',
+            'un fichier de plus est le signe que la liste de modèles revient : '
+            'c’est elle qui était en retard par construction',
       );
+    });
+
+    test('aucune déclaration ne porte de dimension', () {
+      // **Le contrôle négatif qui compte.** Dès qu'une balise cite une taille,
+      // elle ne vaut plus que pour les appareils qui l'ont exactement, et la
+      // liste est de retour — avec les modèles de l'an prochain en moins.
+      final Iterable<RegExpMatch> balises = RegExp(
+        r'<link rel="apple-touch-startup-image"[^>]*>',
+        multiLine: true,
+        dotAll: true,
+      ).allMatches(page);
+      expect(balises, hasLength(2));
+      for (final RegExpMatch m in balises) {
+        final String balise = m.group(0)!;
+        expect(balise, isNot(contains('device-width')));
+        expect(balise, isNot(contains('device-height')));
+        expect(balise, isNot(contains('device-pixel-ratio')));
+        expect(
+          balise,
+          matches(RegExp(r'prefers-color-scheme: (light|dark)')),
+          reason: 'l’apparence reste le seul critère de choix',
+        );
+      }
     });
 
     test('chaque fichier est déclaré, et chaque déclaration a son fichier', () {
-      // Les deux listes vivent à deux endroits — le générateur et la page —
-      // et rien ne protesterait si elles divergeaient : iOS retomberait
-      // simplement sur son propre écran, sans rien dire.
-      for (final String nom in fichiers) {
-        expect(
-          page,
-          contains('href="splash/$nom"'),
-          reason: '$nom est généré mais n’est déclaré nulle part',
-        );
-      }
-      final Iterable<String> declares = RegExp(
+      // Les deux listes vivent à deux endroits — le générateur et la page — et
+      // rien ne protesterait si elles divergeaient : iOS retomberait sur son
+      // propre écran, sans rien dire.
+      final Set<String> declares = RegExp(
         r'href="splash/([^"]+)"',
-      ).allMatches(page).map((RegExpMatch m) => m.group(1)!);
+      ).allMatches(page).map((RegExpMatch m) => m.group(1)!).toSet();
+      expect(declares, fichiers.toSet());
       for (final String nom in declares) {
-        expect(
-          File('web/splash/$nom').existsSync(),
-          isTrue,
-          reason: '$nom est déclaré mais n’existe pas',
-        );
+        expect(File('web/splash/$nom').existsSync(), isTrue, reason: nom);
       }
-      expect(declares.toSet(), fichiers.toSet());
     });
 
-    test('chaque déclaration dit sa taille, sa densité et son apparence', () {
-      // iOS n'accepte que des dimensions exactes, et n'a pas d'autre moyen de
-      // choisir l'apparence.
-      for (final String nom in fichiers) {
-        final RegExpMatch? m = RegExp(
-          r'^(\d+)x(\d+)@(\d)x-(clair|sombre)\.png$',
-        ).firstMatch(nom);
-        expect(m, isNotNull, reason: 'nom de fichier inattendu : $nom');
-        final String schema = m!.group(4) == 'sombre' ? 'dark' : 'light';
-        final int debut = page.indexOf('href="splash/$nom"');
-        final String balise = page.substring(debut, debut + 320);
-        expect(balise, contains('(device-width: ${m.group(1)}px)'));
-        expect(balise, contains('(device-height: ${m.group(2)}px)'));
-        expect(balise, contains('(-webkit-device-pixel-ratio: ${m.group(3)})'));
-        expect(balise, contains('(prefers-color-scheme: $schema)'));
+    test('ce sont des aplats, et de la teinte de la palette', () {
+      // Le logo ne doit **pas** y être : s'il revenait, il faudrait de nouveau
+      // faire coïncider sa taille avec celle du voile, donc de nouveau des
+      // captures par modèle. Un aplat le prouve, et un nom de fichier ne
+      // prouverait rien.
+      for (final MapEntry<String, Color> cas in <String, Color>{
+        'lancement-clair.png': JelvoColors.clair.background,
+        'lancement-sombre.png': JelvoColors.sombre.background,
+      }.entries) {
+        final _Png image = _Png.lire(File('web/splash/${cas.key}'));
+        expect(
+          image.couleurUnique,
+          isNotNull,
+          reason: '${cas.key} n’est pas un aplat',
+        );
+        expect(
+          hexa(image.couleurUnique!),
+          hexa(cas.value),
+          reason: '${cas.key} ne porte pas le fond de la palette',
+        );
       }
+    });
+
+    test('leur proportion est celle des iPhone, et non une taille', () {
+      // 19,5:9, tenu par Apple depuis l'iPhone X. C'est ce rapport de forme
+      // qui remplace la liste de modèles : il n'y a plus de taille à viser,
+      // donc plus de taille à manquer — iOS met l'aplat à l'échelle, et un
+      // aplat mis à l'échelle reste le même aplat.
+      final _Png image = _Png.lire(File('web/splash/lancement-clair.png'));
+      expect(image.hauteur / image.largeur, closeTo(19.5 / 9, 0.05));
     });
   });
 
@@ -238,4 +281,76 @@ void main() {
       expect(c.read(applicationPreteProvider), isTrue);
     });
   });
+}
+
+/// Lecteur de PNG minimal, pour un seul usage : contrôler qu'une image de
+/// lancement est bien un aplat de la teinte de la palette.
+///
+/// **Décoder plutôt que se fier au nom du fichier**, parce que c'est le
+/// contenu qui porte la règle : un logo qui reviendrait dans ces images
+/// ramènerait les deux tailles à faire coïncider, donc les captures par
+/// modèle. Un nom de fichier ne dirait rien de cela.
+class _Png {
+  const _Png._(this.largeur, this.hauteur, this.pixels);
+
+  final int largeur;
+  final int hauteur;
+
+  /// Les octets RVB, sans les octets de filtre des lignes.
+  final Uint8List pixels;
+
+  static _Png lire(File fichier) {
+    final Uint8List octets = fichier.readAsBytesSync();
+    final ByteData vue = ByteData.sublistView(octets);
+    if (vue.getUint64(0) != 0x89504E470D0A1A0A) {
+      throw StateError('${fichier.path} n’est pas un PNG');
+    }
+    final int largeur = vue.getUint32(16);
+    final int hauteur = vue.getUint32(20);
+    if (octets[24] != 8 || octets[25] != 2) {
+      throw StateError('${fichier.path} n’est pas en RVB 8 bits sans alpha');
+    }
+
+    final List<int> comprime = <int>[];
+    int tete = 8;
+    while (tete + 8 <= octets.length) {
+      final int taille = vue.getUint32(tete);
+      final String type = String.fromCharCodes(octets, tete + 4, tete + 8);
+      if (type == 'IDAT') {
+        comprime.addAll(octets.sublist(tete + 8, tete + 8 + taille));
+      }
+      tete += 12 + taille;
+    }
+    final List<int> brut = zlib.decode(comprime);
+
+    final int pas = 1 + largeur * 3;
+    final Uint8List pixels = Uint8List(largeur * hauteur * 3);
+    for (int y = 0; y < hauteur; y++) {
+      if (brut[y * pas] != 0) {
+        throw StateError(
+          '${fichier.path} : la ligne $y est filtrée (${brut[y * pas]}) — '
+          'le générateur n’écrit que des lignes non filtrées',
+        );
+      }
+      pixels.setRange(
+        y * largeur * 3,
+        (y + 1) * largeur * 3,
+        brut,
+        y * pas + 1,
+      );
+    }
+    return _Png._(largeur, hauteur, pixels);
+  }
+
+  /// La couleur de l'image si elle n'en porte qu'une, `null` sinon.
+  Color? get couleurUnique {
+    for (int i = 0; i + 2 < pixels.length; i += 3) {
+      if (pixels[i] != pixels[0] ||
+          pixels[i + 1] != pixels[1] ||
+          pixels[i + 2] != pixels[2]) {
+        return null;
+      }
+    }
+    return Color.fromARGB(0xFF, pixels[0], pixels[1], pixels[2]);
+  }
 }

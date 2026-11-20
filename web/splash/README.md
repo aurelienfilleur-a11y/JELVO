@@ -1,55 +1,77 @@
 # Écrans de lancement d'iOS
 
-Ces fichiers sont **générés**, jamais retouchés à la main :
+Deux fichiers, **générés**, jamais retouchés à la main :
 
 ```bash
-flutter build web                          # ils sont photographiés depuis build/web
 node tool/preparer_ecrans_de_lancement.js
 ```
 
-## Pourquoi ils existent
+Aucun prérequis : rien n'est compilé, rien n'est servi, rien n'est
+photographié.
 
-Une application ajoutée à l'écran d'accueil en affichait **deux à la suite** :
-celui qu'iOS fabrique — fond du `manifest.json`, icône à la taille qu'iOS
-décide — puis celui de la page. Le logo changeait donc de taille entre les
-deux, et le fond de couleur en mode sombre, le manifeste ne sachant pas
-varier.
+## Deux fichiers, et non deux par modèle
 
-Les déclarer supprime le premier des deux : iOS affiche alors exactement ce
-que la page affichera ensuite.
+La version précédente en portait **vingt-quatre** : l'écran de lancement de la
+page photographié à la taille exacte de douze iPhone. Cela n'a pas tenu, pour
+une raison qui était dans l'approche et non dans la liste — Apple sort des
+tailles chaque année, et **une taille absente retombe en silence sur ce que le
+système décide**. Une liste de modèles est en retard par construction.
 
-## Pourquoi une capture, et non un dessin
+Ce qui a permis de s'en passer, c'est de **ne plus dessiner le logo ici**.
 
-Un générateur qui redessinerait recopierait la géométrie de la page — taille
-du logo, rayon des coins, couleur du fond — et deviendrait une seconde
-source, qui dérive au premier changement de CSS. Ici on photographie la
-**vraie page** à la taille exacte de chaque appareil : la coïncidence n'est
-pas visée, elle est obtenue par construction.
+## Le logo n'est dessiné qu'à un seul endroit
 
-Le générateur s'arrête si le logo ne s'est pas chargé. Sans ce contrôle,
-l'élément restant en place, la capture serait écrite quand même et l'écran de
-lancement afficherait un carré vide sans que rien ne l'ait dit.
+C'est tout le correctif. Le logo apparaissait deux fois — une fois par iOS au
+lancement, une fois par le voile de la page — à deux tailles, d'où le saut. Les
+captures par modèle essayaient de faire **coïncider** ces deux tailles ; il
+suffit qu'il n'y en ait qu'une.
 
-## Ce que la liste couvre, et ce qu'elle ne couvre pas
+Le voile de `web/index.html` est désormais le seul à porter le logo, et il
+garde la plus grande des deux tailles (96 px). Ces deux fichiers ne sont qu'un
+**aplat** de la couleur de fond.
 
-**iOS n'accepte que des dimensions exactes.** Une taille absente retombe sur
-l'écran fabriqué par le système, donc sur l'ancien défaut. Les douze iPhone en
-**portrait** sont couverts, en clair et en sombre.
+| | Avant | Après |
+| --- | --- | --- |
+| fichiers | 24 | 2 |
+| poids | 2,5 Mio | 30 Kio |
+| dépend d'une liste de modèles | oui | **non** |
+| endroits qui dessinent le logo | 2 | **1** |
 
-Sont écartés, et c'est un arbitrage :
+## Pourquoi un aplat suffit là où il fallait une taille exacte
 
-| Écarté | Pourquoi |
-| --- | --- |
-| le **paysage** | on ne lance pas une application d'agenda de téléphone en paysage, et cela doublerait la liste |
-| l'**iPad** | la cible n'a jamais été éprouvée, et ses tailles sont aussi nombreuses que celles des iPhone |
+**Un aplat n'a pas de géométrie.** iOS peut l'étirer, le rogner ou le centrer :
+cela ne se voit pas. Il ne reste donc qu'une *proportion* à viser, et non une
+taille — celle des iPhone depuis l'iPhone X, que les dimensions du générateur
+reprennent (1320 × 2868). Sur un écran d'une autre proportion, le pire cas est
+une bande de quelques pixels, à comparer à l'écran blanc d'avant.
 
-Une réserve qui ne se devine pas : la variante est choisie par
-`prefers-color-scheme`, c'est-à-dire par le réglage **du téléphone**. Quelqu'un
-qui a explicitement choisi « Clair » alors que son téléphone est en sombre
-verra donc un écran de lancement sombre, puis une application claire. C'est
-plus étroit que le défaut d'avant — où le fond ne correspondait *jamais* en
-sombre — mais ce n'est pas nul.
+**Rien ne dépend de ces fichiers.** Si iOS refusait une image sans requête de
+taille — le point que la documentation d'Apple ne tranche pas —, on retombe sur
+son écran à lui, c'est-à-dire sur le comportement d'aujourd'hui pour tout
+appareil absent de l'ancienne liste. Le logo resterait unique de toute façon :
+c'est le voile qui le porte. Leur seul rôle est d'épargner le blanc que Safari
+affiche sinon pendant que la page charge.
+
+Les deux teintes sont **lues dans `web/index.html`**, qui les tient déjà de
+`JelvoColors`. Les recopier dans le générateur en ferait une troisième source,
+et c'est toujours la troisième qui dérive.
+
+## Sur un iPhone, remplacer les fichiers ne suffit pas
+
+**iOS fige les métadonnées de l'application installée.** Il faut retirer
+l'icône de l'écran d'accueil et réinstaller — ce qui **détruit l'abonnement
+push** et oblige à réactiver les notifications, exactement comme pour l'icône
+elle-même (voir `web/icons/README.md`).
+
+C'est la première chose à vérifier si le logo saute encore : une application
+installée avant ce changement ne l'a jamais lu.
+
+## Ce qui ne se règle pas ici
+
+La **transition d'ouverture d'iOS** — l'icône de l'écran d'accueil qui grandit
+jusqu'au cadre de l'application — appartient au système. Elle existe pour
+toute application, native comprise, et aucune page ne peut s'en abstraire.
 
 `test/launch_screen_test.dart` confronte ces fichiers aux balises de
-`web/index.html` : un appareil ajouté au générateur sans sa balise fait
-échouer les tests, plutôt que de retomber en silence.
+`web/index.html`, et contrôle qu'aucune balise ne porte de dimension — le
+contrôle négatif qui empêche la liste de modèles de revenir.

@@ -7,6 +7,7 @@ import '../../../core/core.dart';
 import '../../../data/app_config.dart';
 import '../../../router/app_routes.dart';
 import '../../auth/models/auth_failure.dart';
+import '../../profile/models/anniversaire.dart';
 import '../../profile/models/profile.dart';
 import '../../profile/providers/profile_providers.dart';
 import '../models/contact.dart';
@@ -161,6 +162,34 @@ class ContactActionsSheet extends ConsumerWidget {
                         contact.sharedGroupsLabel,
                         style: context.typo.caption,
                       ),
+                      // L'anniversaire, **quand il y en a un**. C'est la seule
+                      // fiche d'autrui que Jelvo possède : il n'existe pas
+                      // d'écran de profil d'une autre personne, et inventer
+                      // une ligne « non précisé » ferait passer une absence
+                      // pour une donnée manquante.
+                      if (ref
+                              .watch(contactBirthdayProvider)(contact.id)
+                              ?.anniversaire
+                          case final Anniversaire date)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Row(
+                            children: <Widget>[
+                              Icon(
+                                Icons.cake_outlined,
+                                size: 14,
+                                color: context.couleurs.warningInk,
+                              ),
+                              AppSpacing.hGapXs,
+                              Text(
+                                date.libelle,
+                                style: context.typo.caption.copyWith(
+                                  color: context.couleurs.warningInk,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                     ],
                   ),
                 ),

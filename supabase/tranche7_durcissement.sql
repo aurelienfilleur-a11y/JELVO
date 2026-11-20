@@ -225,7 +225,13 @@ create policy groups_update on public.groups
 -- d'atteinte.
 revoke update on public.profiles from anon, authenticated;
 grant update (pseudo, first_name, last_name, avatar_url, avatar_preset,
-              bio, interests, timezone, last_seen_at)
+              bio, interests, timezone, last_seen_at,
+              -- Tranche 12. L'anniversaire s'écrit comme la bio, directement
+              -- dans la table : il n'a besoin d'aucune fonction, la ligne
+              -- étant la sienne. Sans ces deux noms ici, l'écriture ne
+              -- toucherait **aucune ligne** et PostgREST répondrait 200 —
+              -- l'échec silencieux déjà payé sur `group_members`.
+              anniversaire_jour, anniversaire_mois)
   on public.profiles to authenticated;
 
 drop policy if exists profiles_update on public.profiles;
@@ -382,6 +388,7 @@ declare
     'definir_terme_adhesion',
     -- Contacts et recherche
     'mes_contacts', 'chercher_profils_par_pseudo',
+    'anniversaires_de_mes_contacts',
     -- Tâches
     'creer_tache', 'modifier_tache', 'supprimer_tache', 'mes_taches',
     'terminer_tache', 'repondre_tache', 's_attribuer_tache',
@@ -411,7 +418,8 @@ declare
   ];
   service constant text[] := array[
     'push_a_envoyer', 'marquer_push_traite', 'purger_push',
-    'empiler_rappels', 'appliquer_adhesions_echues'
+    'empiler_rappels', 'appliquer_adhesions_echues',
+    'empiler_anniversaires'
   ];
   manquantes text[] := '{}';
   n text;

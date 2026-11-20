@@ -56,11 +56,15 @@ class HomeScreen extends ConsumerWidget {
             ),
           ),
           AppSpacing.hGapSm,
+          // **Les paramètres, et non le calendrier.** Le calendrier a son
+          // onglet dans la barre du bas : cette place en doublait l'accès,
+          // alors que les paramètres n'étaient atteignables de nulle part
+          // depuis l'accueil. Rien n'est perdu, et un raccourci gagné.
           AppScreenAction(
-            icon: Icons.calendar_today_rounded,
-            tooltip: 'Calendrier',
+            icon: Icons.settings_outlined,
+            tooltip: 'Paramètres',
             accented: true,
-            onPressed: () => context.goNamed(AppRoutes.calendar),
+            onPressed: () => context.pushNamed(AppRoutes.settings),
           ),
         ],
       ),
@@ -197,7 +201,9 @@ class HomeScreen extends ConsumerWidget {
           AppRoutes.eventDetail,
           pathParameters: <String, String>{'id': entry.id},
         );
+      // Rien à ouvrir — voir `AgendaEntry.isOpenable`.
       case AgendaEntryKind.availability:
+      case AgendaEntryKind.birthday:
         break;
     }
   }

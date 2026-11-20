@@ -30,6 +30,14 @@ abstract final class AppDates {
   static String dayAndMonth(DateTime value) =>
       _capitalize(DateFormat('EEEE d MMMM', locale).format(value));
 
+  /// « 29 février » — ni jour de la semaine, ni année.
+  ///
+  /// Pour un anniversaire, les deux seraient faux : il n'a pas d'année, et le
+  /// jour de la semaine change chacune d'elles. [dayAndMonth] porte le jour de
+  /// la semaine, qui a du sens sous une salutation et pas ici.
+  static String dateSansAnnee(DateTime value) =>
+      DateFormat('d MMMM', locale).format(value);
+
   /// « Août 2026 »
   static String monthYear(DateTime value) =>
       _capitalize(DateFormat('MMMM y', locale).format(value));

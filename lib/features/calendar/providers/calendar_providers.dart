@@ -11,6 +11,8 @@ import '../../../data/supabase_providers.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../availability/models/availability.dart';
 import '../../availability/providers/availability_providers.dart';
+import '../../contacts/models/contact_birthday.dart';
+import '../../contacts/providers/contact_providers.dart';
 import '../../groups/models/group.dart';
 import '../../groups/providers/group_providers.dart';
 import '../../notifications/providers/notification_providers.dart';
@@ -357,6 +359,48 @@ final dayAgendaProvider = Provider.family<List<AgendaEntry>, DateTime>((
         timeLabel: AvailabilitySlot.formaterHeure(creneau.start),
         statusTone: creneau.status.tone,
         statusLabel: creneau.status.label,
+      ),
+    );
+  }
+
+  // Les anniversaires des contacts : **annuels et sur toute la journée**.
+  //
+  // Rien n'est lu de plus pour cela — `anniversaires_de_mes_contacts()` est
+  // chargée une fois, sans borne de dates, et filtrée en mémoire comme
+  // `mes_taches` et `mon_agenda`. C'est ce qui permet de faire défiler les
+  // jours sans une requête par jour.
+  //
+  // La règle du jour fêté est celle du modèle : ramenée au dernier jour du
+  // mois, de sorte qu'un 29 février tombe le 28 les années ordinaires.
+  for (final ContactBirthday anniv
+      in ref.watch(contactBirthdaysProvider).value ??
+          const <ContactBirthday>[]) {
+    if (!anniv.anniversaire.seFeteLe(jour)) continue;
+    // Un anniversaire n'appartient à aucun groupe : il passe par la clé du
+    // personnel, et un filtre de groupe le masque donc comme il masque un
+    // rendez-vous personnel. Les créneaux, eux, y échappent — mais ils
+    // décrivent le fond de la journée, pas quelque chose qui arrive.
+    if (!filtre.accepts(null)) continue;
+    final DateTime debut = DateTime(jour.year, jour.month, jour.day);
+    lignes.add(
+      AgendaEntry(
+        // L'année entre dans la clé : la ligne est reconstruite par jour
+        // affiché, et deux années différentes ne sont pas la même ligne.
+        id: 'anniversaire-${anniv.contactId}-${jour.year}',
+        kind: AgendaEntryKind.birthday,
+        title: '${anniv.fullName} fête son anniversaire',
+        start: debut,
+        // Toute la journée, et non un instant : la durée est ce qui dit
+        // qu'il n'y a pas d'heure à laquelle se présenter.
+        end: DateTime(jour.year, jour.month, jour.day, 23, 59),
+        accent: AgendaAccent.anniversaire,
+        subtitle: anniv.anniversaire.libelle,
+        // La gouttière porte une heure partout ailleurs ; ici elle dirait
+        // « 00:00 », ce qui serait faux.
+        timeLabel: 'Journée',
+        avatars: <AvatarData>[
+          AvatarData(name: anniv.fullName, imageUrl: anniv.avatarUrl),
+        ],
       ),
     );
   }

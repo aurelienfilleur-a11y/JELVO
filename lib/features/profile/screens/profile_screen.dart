@@ -94,6 +94,7 @@ class ProfileScreen extends ConsumerWidget {
         ProfileAboutCard(
           bio: profil.bio,
           email: ref.watch(currentEmailProvider),
+          anniversaire: profil.anniversaire,
         ),
 
         AppSpacing.gapLg,

@@ -125,6 +125,17 @@ class FakePushRepository implements PushRepository {
           description: 'Quand un événement auquel vous participez est déplacé',
           enabled: true,
         ),
+        // Tranche 12. **Ce décor recopie `types_de_notification()`**, et un
+        // type oublié ici n'atteindrait jamais l'écran de réglages en test :
+        // la famille se rendrait sans lui, et le test passerait pour de
+        // mauvaises raisons. C'est la même recopie muette que celles que ce
+        // dépôt traque ailleurs, d'où le test qui compte les neuf.
+        const NotificationPreference(
+          type: 'birthday',
+          label: 'Anniversaires',
+          description: 'Le jour de l’anniversaire d’un de vos contacts',
+          enabled: true,
+        ),
       ];
 
   @override

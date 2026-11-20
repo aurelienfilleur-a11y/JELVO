@@ -13,6 +13,7 @@ enum NotificationType {
   eventInvitation('event_invitation'),
   taskAssigned('task_assigned'),
   taskResponse('task_response'),
+  birthday('birthday'),
   autre('autre');
 
   const NotificationType(this.dbValue);
@@ -25,6 +26,7 @@ enum NotificationType {
     'event_invitation' => NotificationType.eventInvitation,
     'task_assigned' => NotificationType.taskAssigned,
     'task_response' => NotificationType.taskResponse,
+    'birthday' => NotificationType.birthday,
     _ => NotificationType.autre,
   };
 
@@ -39,6 +41,10 @@ enum NotificationType {
     // liste complète s'ouvre.
     NotificationType.taskAssigned => 0,
     NotificationType.taskResponse => 0,
+    // L'anniversaire d'un contact est une ligne du **calendrier** : c'est là
+    // qu'il se regarde, et c'est donc cet onglet qui doit le compter. Le
+    // ranger dans Contacts enverrait au carnet, où il n'y a rien à en voir.
+    NotificationType.birthday => 2,
     NotificationType.autre => 0,
   };
 
@@ -48,6 +54,7 @@ enum NotificationType {
     NotificationType.eventInvitation => Icons.event_rounded,
     NotificationType.taskAssigned => Icons.task_alt_rounded,
     NotificationType.taskResponse => Icons.mark_chat_read_outlined,
+    NotificationType.birthday => Icons.cake_outlined,
     NotificationType.autre => Icons.notifications_none_rounded,
   };
 
@@ -57,6 +64,9 @@ enum NotificationType {
     NotificationType.eventInvitation => c.warning,
     NotificationType.taskAssigned => c.primaryDark,
     NotificationType.taskResponse => c.success,
+    // Le même ambre que la ligne du calendrier : deux teintes pour la même
+    // chose se liraient comme deux choses.
+    NotificationType.birthday => c.warning,
     NotificationType.autre => c.textSecondary,
   };
 }
@@ -105,6 +115,7 @@ class AppNotification {
     NotificationType.eventInvitation => _text('auteur') ?? 'Un membre',
     NotificationType.taskAssigned => _text('auteur') ?? 'Un membre',
     NotificationType.taskResponse => _text('auteur') ?? 'Un membre',
+    NotificationType.birthday => _text('name') ?? 'Un contact',
     NotificationType.autre => 'Jelvo',
   };
 
@@ -114,6 +125,7 @@ class AppNotification {
     NotificationType.eventInvitation => null,
     NotificationType.taskAssigned => null,
     NotificationType.taskResponse => null,
+    NotificationType.birthday => _text('avatar_url'),
     NotificationType.autre => null,
   };
 
@@ -159,6 +171,7 @@ class AppNotification {
     NotificationType.eventInvitation => eventTitle,
     NotificationType.taskAssigned => taskTitle,
     NotificationType.taskResponse => taskTitle,
+    NotificationType.birthday => senderName,
     NotificationType.autre => 'Notification',
   };
 
@@ -174,6 +187,7 @@ class AppNotification {
       taskResponseAccepted
           ? '$senderName accepte cette tâche.'
           : '$senderName décline cette tâche.',
+    NotificationType.birthday => 'fête son anniversaire aujourd’hui.',
     NotificationType.autre => 'Vous avez une nouvelle notification.',
   };
 
@@ -184,6 +198,10 @@ class AppNotification {
     NotificationType.eventInvitation => 'Voir l’événement',
     NotificationType.taskAssigned => 'Voir la tâche',
     NotificationType.taskResponse => 'Voir la tâche',
+    // Rien à ouvrir : Jelvo n'a pas d'écran de profil d'autrui, et un bouton
+    // qui mènerait ailleurs annoncerait ce qu'il ne fait pas. La ligne du
+    // calendrier, elle, porte la même information là où on la cherche.
+    NotificationType.birthday => null,
     NotificationType.autre => null,
   };
 

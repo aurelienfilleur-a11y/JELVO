@@ -8,6 +8,7 @@ import '../../calendar/providers/calendar_providers.dart';
 import '../../groups/providers/group_providers.dart';
 import '../../tasks/models/task.dart';
 import '../../tasks/providers/task_providers.dart';
+import '../models/anniversaire.dart';
 import '../models/profile.dart';
 import '../repository/profile_repository.dart';
 
@@ -139,6 +140,18 @@ class ProfileActions {
       lastName: profil.lastName,
       bio: bio,
     );
+  }
+
+  /// Pose ou efface l'anniversaire — `null` pour l'effacer.
+  ///
+  /// Elle n'a rien à relire, contrairement à [saveBio] : l'écriture ne touche
+  /// que ses deux colonnes, et le profil est rafraîchi ensuite comme après
+  /// toute écriture.
+  Future<void> saveAnniversaire(Anniversaire? anniversaire) async {
+    await _ref
+        .read(profileRepositoryProvider)
+        .definirAnniversaire(userId: _userId, anniversaire: anniversaire);
+    _ref.invalidate(currentProfileProvider);
   }
 
   Future<void> changeAvatar(Uint8List bytes, String fileExtension) async {

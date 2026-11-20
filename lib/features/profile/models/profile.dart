@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import 'anniversaire.dart';
+
 /// Profil public d'un utilisateur, reflet de la table `profiles`.
 ///
 /// L'adresse e-mail n'en fait pas partie : elle appartient à `auth.users` et
@@ -14,6 +16,7 @@ class Profile {
     this.avatarUrl,
     this.avatarPreset,
     this.bio,
+    this.anniversaire,
     this.timezone,
     this.createdAt,
     this.lastSeenAt,
@@ -28,6 +31,10 @@ class Profile {
       avatarUrl: map['avatar_url'] as String?,
       avatarPreset: map['avatar_preset'] as String?,
       bio: map['bio'] as String?,
+      anniversaire: Anniversaire.depuisLigne(
+        map['anniversaire_jour'],
+        map['anniversaire_mois'],
+      ),
       timezone: map['timezone'] as String?,
       createdAt: _parseDate(map['created_at']),
       lastSeenAt: _parseDate(map['last_seen_at']),
@@ -47,6 +54,14 @@ class Profile {
   final String? avatarPreset;
 
   final String? bio;
+
+  /// Jour et mois de naissance, **sans année** — facultatif.
+  ///
+  /// `null` couvre « non renseigné », qui est le cas par défaut : la ligne du
+  /// profil invite alors à le remplir, et rien n'apparaît au calendrier de
+  /// personne.
+  final Anniversaire? anniversaire;
+
   final String? timezone;
   final DateTime? createdAt;
   final DateTime? lastSeenAt;
@@ -80,6 +95,10 @@ class Profile {
     'avatar_url': avatarUrl,
     'avatar_preset': avatarPreset,
     'bio': bio,
+    // Les **deux** colonnes, toujours ensemble : la contrainte de la base
+    // refuse une moitié de date, et les omettre à l'écriture laisserait une
+    // ancienne valeur en place sans que rien ne le dise.
+    ...(anniversaire?.versLigne ?? Anniversaire.versLigneVide),
     if (timezone != null) 'timezone': timezone,
   };
 
@@ -89,6 +108,7 @@ class Profile {
     String? lastName,
     String? avatarUrl,
     String? bio,
+    Anniversaire? anniversaire,
     String? timezone,
   }) {
     return Profile(
@@ -98,6 +118,11 @@ class Profile {
       lastName: lastName ?? this.lastName,
       avatarUrl: avatarUrl ?? this.avatarUrl,
       bio: bio ?? this.bio,
+      // Ne sert qu'à *poser* une date : l'effacer passe par le dépôt, qui
+      // écrit les deux colonnes à `null`. Un `copyWith` ne sait pas dire la
+      // différence entre « inchangé » et « vidé », et prétendre le contraire
+      // ici donnerait un effacement qui ne s'écrit pas.
+      anniversaire: anniversaire ?? this.anniversaire,
       timezone: timezone ?? this.timezone,
       createdAt: createdAt,
       lastSeenAt: lastSeenAt,

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:jelvo/features/auth/models/auth_failure.dart';
 import 'package:jelvo/features/auth/repository/auth_repository.dart';
+import 'package:jelvo/features/profile/models/anniversaire.dart';
 import 'package:jelvo/features/profile/models/profile.dart';
 import 'package:jelvo/features/profile/repository/profile_repository.dart';
 
@@ -167,6 +168,42 @@ class FakeProfileRepository implements ProfileRepository {
       firstName: firstName,
       lastName: lastName,
       bio: bio,
+    );
+    return _profile;
+  }
+
+  /// Dernier anniversaire écrit, `null` compris — d'où le drapeau qui
+  /// distingue « jamais appelé » de « appelé avec null ». Sans lui, on ne
+  /// saurait pas faire la différence entre un effacement et une inertie,
+  /// qui est précisément ce que le test du retrait doit prouver.
+  Anniversaire? dernierAnniversaire;
+  bool anniversaireEcrit = false;
+
+  @override
+  Future<Profile> definirAnniversaire({
+    required String userId,
+    required Anniversaire? anniversaire,
+  }) async {
+    if (echecEcriture) {
+      throw const AuthFailure('Le réseau est indisponible.');
+    }
+    anniversaireEcrit = true;
+    dernierAnniversaire = anniversaire;
+    // Reconstruit plutôt que `copyWith` : celui-ci ne sait pas dire
+    // « vidé », et un retrait qui ne se verrait pas dans le faux dépôt ferait
+    // passer le test pour de mauvaises raisons.
+    _profile = Profile(
+      id: _profile.id,
+      pseudo: _profile.pseudo,
+      firstName: _profile.firstName,
+      lastName: _profile.lastName,
+      avatarUrl: _profile.avatarUrl,
+      avatarPreset: _profile.avatarPreset,
+      bio: _profile.bio,
+      anniversaire: anniversaire,
+      timezone: _profile.timezone,
+      createdAt: _profile.createdAt,
+      lastSeenAt: _profile.lastSeenAt,
     );
     return _profile;
   }

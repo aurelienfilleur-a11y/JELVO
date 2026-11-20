@@ -9,6 +9,7 @@ import '../../groups/providers/group_providers.dart';
 import '../../tasks/models/task.dart';
 import '../../tasks/providers/task_providers.dart';
 import '../models/anniversaire.dart';
+import '../models/profil_consultable.dart';
 import '../models/profile.dart';
 import '../repository/profile_repository.dart';
 
@@ -27,6 +28,22 @@ final FutureProvider<Profile?> currentProfileProvider =
       if (userId == null) return null;
       return ref.watch(profileRepositoryProvider).fetchProfile(userId);
     });
+
+/// Le profil de quelqu'un d'autre, une lecture par personne consultée.
+///
+/// `autoDispose` : on ouvre un profil et on en sort, et la relation peut avoir
+/// changé d'ici à la prochaine visite — garder l'état montrerait « Ajouter en
+/// contact » sur quelqu'un qu'on vient d'ajouter.
+///
+/// Une seule lecture porte tout l'écran : les cinq champs publics, la
+/// relation, les groupes en commun, et les deux champs réservés aux contacts.
+/// C'est la règle des notifications et de `mon_agenda` — un écran ne fait
+/// qu'une lecture, sans jointure ni requête de complément.
+final profilConsultableProvider = FutureProvider.autoDispose
+    .family<ProfilConsultable?, String>(
+      (Ref ref, String userId) =>
+          ref.watch(profileRepositoryProvider).fetchProfilConsultable(userId),
+    );
 
 /// Les trois chiffres de la carte « Mes statistiques ».
 ///

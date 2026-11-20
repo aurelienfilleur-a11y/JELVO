@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/core.dart';
 import '../models/profile.dart';
+import 'profile_action_row.dart';
 
 /// Carte d'en-tête du profil : avatar, identité, et les trois actions.
 ///
@@ -100,112 +101,29 @@ class ProfileHeaderCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
           ),
 
-          AppSpacing.gapLg,
-          Divider(height: 1, color: context.couleurs.border),
-          AppSpacing.gapSm,
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: _Action(
-                  icon: Icons.qr_code_2_rounded,
-                  label: 'QR Code',
-                  accented: true,
-                  onTap: onQrCode,
-                ),
+          // Le fond violet clair va au QR code et à lui seul : c'est ce pour
+          // quoi on ouvre cette carte quand on est en face de quelqu'un.
+          ProfileActionRow(
+            actions: <ProfileAction>[
+              ProfileAction(
+                icon: Icons.qr_code_2_rounded,
+                label: 'QR Code',
+                accented: true,
+                onTap: onQrCode,
               ),
-              const _Trait(),
-              Expanded(
-                child: _Action(
-                  icon: Icons.edit_outlined,
-                  label: 'Modifier',
-                  onTap: onEdit,
-                ),
+              ProfileAction(
+                icon: Icons.edit_outlined,
+                label: 'Modifier',
+                onTap: onEdit,
               ),
-              const _Trait(),
-              Expanded(
-                child: _Action(
-                  icon: Icons.ios_share_rounded,
-                  label: 'Partager profil',
-                  onTap: onShare,
-                ),
+              ProfileAction(
+                icon: Icons.ios_share_rounded,
+                label: 'Partager profil',
+                onTap: onShare,
               ),
             ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _Trait extends StatelessWidget {
-  const _Trait();
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    height: 56,
-    child: VerticalDivider(
-      width: 1,
-      thickness: 1,
-      color: context.couleurs.border,
-    ),
-  );
-}
-
-class _Action extends StatelessWidget {
-  const _Action({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.accented = false,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  /// Fond violet clair sur la première action seulement : le QR code est ce
-  /// pour quoi on ouvre cette carte quand on est en face de quelqu'un.
-  final bool accented;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: AppRadii.fieldRadius,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-        child: Column(
-          children: <Widget>[
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: accented
-                    ? context.couleurs.primarySoft
-                    : context.couleurs.background,
-                borderRadius: AppRadii.fieldRadius,
-              ),
-              child: Icon(
-                icon,
-                size: 21,
-                color: accented
-                    ? context.couleurs.primary
-                    : context.couleurs.encre,
-              ),
-            ),
-            AppSpacing.gapSm,
-            Text(
-              label,
-              style: context.typo.caption.copyWith(
-                color: context.couleurs.encre,
-                fontWeight: AppTypography.semiBold,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
       ),
     );
   }

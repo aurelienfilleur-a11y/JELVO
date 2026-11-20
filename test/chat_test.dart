@@ -340,6 +340,36 @@ void main() {
       expect(find.text('Et moi le pain'), findsOneWidget);
     });
 
+    // Tranche 13 : c'est le geste pour lequel l'écran de profil existe —
+    // lire un message de quelqu'un qu'on ne replace pas.
+    testWidgets('le nom d’un expéditeur ouvre son profil', (
+      WidgetTester tester,
+    ) async {
+      final FakeChatRepository chat = await _pumpApp(tester);
+      await _ouvrirDiscussion(tester);
+
+      chat.receive(
+        Message(
+          id: 'm98',
+          groupId: 'g1',
+          senderId: 'u2',
+          createdAt: DateTime(2026, 8, 3, 8, 50),
+          content: 'Je prends le dessert',
+          senderName: 'Léa Marchand',
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Léa Marchand').first);
+      await tester.pumpAndSettle();
+
+      // Le faux dépôt de profil ne connaît personne : ce qui est éprouvé ici,
+      // c'est que le nom **mène au profil** de son auteur. Ce que l'écran
+      // affiche ensuite l'est dans `test/profil_consultable_test.dart`.
+      expect(find.text('Profil'), findsOneWidget);
+      expect(find.text('Profil introuvable'), findsOneWidget);
+    });
+
     testWidgets('l’indicateur de frappe apparaît puis se tait', (
       WidgetTester tester,
     ) async {

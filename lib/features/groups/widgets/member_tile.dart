@@ -17,6 +17,7 @@ class MemberTile extends StatelessWidget {
     this.onDemote,
     this.onRemove,
     this.onEditTerm,
+    this.onTapPerson,
   });
 
   final GroupMember member;
@@ -33,6 +34,11 @@ class MemberTile extends StatelessWidget {
   /// Régler la durée de l'adhésion : la poser, la déplacer, ou l'effacer.
   final VoidCallback? onEditTerm;
 
+  /// Ouvre le profil du membre. **L'avatar et le nom seulement** : le reste de
+  /// la ligne porte le menu d'administration, qui agit sur l'adhésion et non
+  /// sur la personne.
+  final VoidCallback? onTapPerson;
+
   bool get _showMenu => canManage && !isMe;
 
   @override
@@ -44,61 +50,70 @@ class MemberTile extends StatelessWidget {
       ),
       child: Row(
         children: <Widget>[
-          AvatarStack(
-            avatars: <AvatarData>[
-              AvatarData(name: member.displayName, imageUrl: member.avatarUrl),
-            ],
-            size: 40,
+          GestureDetector(
+            onTap: onTapPerson,
+            child: AvatarStack(
+              avatars: <AvatarData>[
+                AvatarData(
+                  name: member.displayName,
+                  imageUrl: member.avatarUrl,
+                ),
+              ],
+              size: 40,
+            ),
           ),
           AppSpacing.hGapMd,
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                EmojiText(
-                  isMe ? '${member.displayName} (vous)' : member.displayName,
-                  style: context.typo.body.copyWith(
-                    fontWeight: AppTypography.semiBold,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (member.pseudo != null) ...<Widget>[
-                  const SizedBox(height: 2),
+            child: GestureDetector(
+              onTap: onTapPerson,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
                   EmojiText(
-                    '@${member.pseudo}',
-                    style: context.typo.caption,
+                    isMe ? '${member.displayName} (vous)' : member.displayName,
+                    style: context.typo.body.copyWith(
+                      fontWeight: AppTypography.semiBold,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                ],
-                // La date, pas seulement la pastille : « temporaire » sans
-                // terme n'apprend rien à qui décide de prolonger ou non.
-                if (member.isTemporary) ...<Widget>[
-                  const SizedBox(height: 2),
-                  Row(
-                    children: <Widget>[
-                      Icon(
-                        Icons.schedule_rounded,
-                        size: 13,
-                        color: context.couleurs.warning,
-                      ),
-                      AppSpacing.hGapXs,
-                      Flexible(
-                        child: Text(
-                          'Jusqu’au ${AppDates.shortDate(member.expiresAt!)}',
-                          style: context.typo.caption.copyWith(
-                            color: context.couleurs.warning,
-                            fontWeight: AppTypography.semiBold,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                  if (member.pseudo != null) ...<Widget>[
+                    const SizedBox(height: 2),
+                    EmojiText(
+                      '@${member.pseudo}',
+                      style: context.typo.caption,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                  // La date, pas seulement la pastille : « temporaire » sans
+                  // terme n'apprend rien à qui décide de prolonger ou non.
+                  if (member.isTemporary) ...<Widget>[
+                    const SizedBox(height: 2),
+                    Row(
+                      children: <Widget>[
+                        Icon(
+                          Icons.schedule_rounded,
+                          size: 13,
+                          color: context.couleurs.warning,
                         ),
-                      ),
-                    ],
-                  ),
+                        AppSpacing.hGapXs,
+                        Flexible(
+                          child: Text(
+                            'Jusqu’au ${AppDates.shortDate(member.expiresAt!)}',
+                            style: context.typo.caption.copyWith(
+                              color: context.couleurs.warning,
+                              fontWeight: AppTypography.semiBold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
           if (member.isAdmin) ...<Widget>[

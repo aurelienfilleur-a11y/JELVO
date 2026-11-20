@@ -14,15 +14,29 @@ class ProfileStatsCard extends StatelessWidget {
   const ProfileStatsCard({
     super.key,
     required this.stats,
-    required this.onOpenGroups,
-    required this.onOpenCalendar,
-    required this.onOpenTasks,
+    this.titre = 'Mes statistiques',
+    this.onOpenGroups,
+    this.onOpenCalendar,
+    this.onOpenTasks,
   });
 
   final ProfileStats stats;
-  final VoidCallback onOpenGroups;
-  final VoidCallback onOpenCalendar;
-  final VoidCallback onOpenTasks;
+
+  /// « Mes statistiques » sur son propre profil, « Ses statistiques » sur
+  /// celui de quelqu'un d'autre.
+  final String titre;
+
+  /// Les trois ouvrent **la liste que le compteur résume** — un chiffre qu'on
+  /// ne peut pas ouvrir n'apprend rien de plus que lui-même.
+  ///
+  /// `null` sur le profil de quelqu'un d'autre, et le compteur n'est alors pas
+  /// touchable : les listes de l'application sont les **siennes**, et ouvrir
+  /// « ses groupes » depuis le profil de Léa montrerait les miens. Une
+  /// destination qui ne tient pas sa promesse est pire qu'une absence de
+  /// destination.
+  final VoidCallback? onOpenGroups;
+  final VoidCallback? onOpenCalendar;
+  final VoidCallback? onOpenTasks;
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +52,7 @@ class ProfileStatsCard extends StatelessWidget {
         children: <Widget>[
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-            child: Text('Mes statistiques', style: context.typo.h3),
+            child: Text(titre, style: context.typo.h3),
           ),
           AppSpacing.gapMd,
           Row(
@@ -115,12 +129,14 @@ class _Compteur extends StatelessWidget {
 
   /// Chaque compteur mène à la liste qu'il résume : un chiffre qu'on ne peut
   /// pas ouvrir n'apprend rien de plus que lui-même.
-  final VoidCallback onTap;
+  /// `null` rend le compteur inerte — sans `InkWell`, donc sans effet de
+  /// pression qui promettrait une ouverture.
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      button: true,
+      button: onTap != null,
       label: '$valeur $libelle',
       child: InkWell(
         onTap: onTap,

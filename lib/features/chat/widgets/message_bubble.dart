@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/core.dart';
+import '../../../router/ouvrir_profil.dart';
 import '../models/message.dart';
 import 'chat_media.dart';
 import 'voice_message.dart';
@@ -79,17 +80,23 @@ class MessageBubble extends StatelessWidget {
           if (showSender && !isMine)
             Padding(
               padding: const EdgeInsets.only(left: AppSpacing.xs, bottom: 2),
-              child: EmojiText(
-                message.senderName ?? 'Membre',
-                style: context.typo.caption.copyWith(
-                  // Une couleur par personne, dérivée de son identifiant :
-                  // dans un groupe de huit, le gris uniforme obligeait à lire
-                  // le nom pour savoir qui parle.
-                  color: SpeakerAccent.colorFor(
-                    message.senderId,
-                    context.couleurs,
+              // Le nom ouvre le profil de son auteur, comme son avatar plus
+              // bas : c'est le geste qu'on cherche quand on lit un message de
+              // quelqu'un qu'on ne replace pas.
+              child: GestureDetector(
+                onTap: () => context.ouvrirProfilDe(message.senderId),
+                child: EmojiText(
+                  message.senderName ?? 'Membre',
+                  style: context.typo.caption.copyWith(
+                    // Une couleur par personne, dérivée de son identifiant :
+                    // dans un groupe de huit, le gris uniforme obligeait à lire
+                    // le nom pour savoir qui parle.
+                    color: SpeakerAccent.colorFor(
+                      message.senderId,
+                      context.couleurs,
+                    ),
+                    fontWeight: AppTypography.semiBold,
                   ),
-                  fontWeight: AppTypography.semiBold,
                 ),
               ),
             ),
@@ -180,12 +187,15 @@ class MessageBubble extends StatelessWidget {
               ? Padding(
                   // Aligné sur la bulle, pas sur la marge basse qui la suit.
                   padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                  child: AvatarImage(
-                    data: AvatarData(
-                      name: message.senderName ?? 'Membre',
-                      imageUrl: message.senderAvatarUrl,
+                  child: GestureDetector(
+                    onTap: () => context.ouvrirProfilDe(message.senderId),
+                    child: AvatarImage(
+                      data: AvatarData(
+                        name: message.senderName ?? 'Membre',
+                        imageUrl: message.senderAvatarUrl,
+                      ),
+                      size: _tailleAvatar,
                     ),
-                    size: _tailleAvatar,
                   ),
                 )
               : null,

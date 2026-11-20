@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:jelvo/features/auth/models/auth_failure.dart';
 import 'package:jelvo/features/auth/repository/auth_repository.dart';
 import 'package:jelvo/features/profile/models/anniversaire.dart';
+import 'package:jelvo/features/profile/models/profil_consultable.dart';
 import 'package:jelvo/features/profile/models/profile.dart';
 import 'package:jelvo/features/profile/repository/profile_repository.dart';
 
@@ -153,6 +154,26 @@ class FakeProfileRepository implements ProfileRepository {
 
   @override
   Future<Profile?> fetchProfile(String userId) async => _profile;
+
+  /// Les profils que `fetchProfilConsultable` sait rendre, par identifiant.
+  ///
+  /// Vide par défaut, et le dépôt répond alors `null` — « cet identifiant
+  /// n'existe pas ». C'est le défaut juste : un faux qui rendrait un profil
+  /// pour n'importe quel identifiant ferait passer un test qui n'a rien
+  /// branché.
+  final Map<String, ProfilConsultable> profilsConsultables =
+      <String, ProfilConsultable>{};
+
+  /// Fait échouer la lecture d'un profil, pour éprouver l'état d'erreur.
+  bool echecLectureProfil = false;
+
+  @override
+  Future<ProfilConsultable?> fetchProfilConsultable(String userId) async {
+    if (echecLectureProfil) {
+      throw const AuthFailure('Le réseau est indisponible.');
+    }
+    return profilsConsultables[userId];
+  }
 
   @override
   Future<Profile> updateProfile({

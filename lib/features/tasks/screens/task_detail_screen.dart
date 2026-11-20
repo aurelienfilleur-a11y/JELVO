@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/core.dart';
+import '../../../router/ouvrir_profil.dart';
 import '../../../data/data_providers.dart';
 import '../../../router/app_routes.dart';
 import '../../auth/models/auth_failure.dart';
@@ -352,24 +353,30 @@ class _Assignes extends ConsumerWidget {
                     padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                     child: Row(
                       children: <Widget>[
-                        AvatarStack(
-                          avatars: <AvatarData>[
-                            AvatarData(
-                              name: assigne.displayName,
-                              imageUrl: assigne.avatarUrl,
-                            ),
-                          ],
-                          size: 32,
+                        GestureDetector(
+                          onTap: () => context.ouvrirProfilDe(assigne.userId),
+                          child: AvatarStack(
+                            avatars: <AvatarData>[
+                              AvatarData(
+                                name: assigne.displayName,
+                                imageUrl: assigne.avatarUrl,
+                              ),
+                            ],
+                            size: 32,
+                          ),
                         ),
                         AppSpacing.hGapMd,
                         Expanded(
-                          child: Text(
-                            assigne.userId == moi
-                                ? '${assigne.displayName} (vous)'
-                                : assigne.displayName,
-                            style: context.typo.body,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          child: GestureDetector(
+                            onTap: () => context.ouvrirProfilDe(assigne.userId),
+                            child: Text(
+                              assigne.userId == moi
+                                  ? '${assigne.displayName} (vous)'
+                                  : assigne.displayName,
+                              style: context.typo.body,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ),
                         AppSpacing.hGapSm,

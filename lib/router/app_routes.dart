@@ -140,6 +140,23 @@ abstract final class AppRoutes {
   static const String avatarGallery = 'avatarGallery';
   static const String avatarGalleryPath = '/profil/avatar';
 
+  /// Le profil de quelqu'un d'autre, ouvert en touchant son avatar ou son nom.
+  ///
+  /// **`/personnes/:id` et non `/profil/:id`**, pour une raison de forme :
+  /// `/profil` porte déjà trois enfants littéraux — `modifier`, `avatar`,
+  /// `qr` —, et un segment variable déclaré au même niveau les avalerait s'il
+  /// venait avant. C'est le piège documenté de `/groupes/nouveau`, qui doit
+  /// être déclaré avant `/groupes/:id` ; ici il faudrait le tenir pour trois
+  /// chemins, et pour chacun de ceux qu'on ajouterait ensuite. Un préfixe à
+  /// part le rend impossible, et nomme mieux ce qu'il désigne : une personne,
+  /// pas « mon profil ».
+  static const String publicProfile = 'publicProfile';
+  static const String publicProfilePath = '/personnes';
+
+  /// Chemin complet du profil d'une personne.
+  static String publicProfilePathFor(String userId) =>
+      '$publicProfilePath/$userId';
+
   /// Saisie de ses disponibilités, ouverte depuis le profil.
   static const String availability = 'availability';
   static const String availabilityPath = '/disponibilites';

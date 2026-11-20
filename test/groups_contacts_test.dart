@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:jelvo/features/contacts/widgets/contact_tile.dart';
 import 'package:jelvo/core/core.dart';
 import 'package:jelvo/data/app_config.dart';
 import 'package:jelvo/data/clock.dart';
@@ -1304,14 +1305,26 @@ void main() {
       expect(find.text('groupe'), findsOneWidget);
     });
 
-    testWidgets('toucher une ligne ouvre ce qu’on peut en faire', (
+    // Le **chevron**, et non le nom : depuis la tranche 13, l'avatar et le nom
+    // ouvrent le profil de la personne. Les deux cibles disent deux choses —
+    // la fiche agit sur le lien qu'on a avec quelqu'un, le profil montre
+    // quelqu'un — et le profil est éprouvé dans
+    // `test/profil_consultable_test.dart`.
+    testWidgets('toucher le chevron ouvre ce qu’on peut en faire', (
       WidgetTester tester,
     ) async {
       final ({FakeContactRepository contacts, FakeGroupRepository groups})
       fakes = await _pumpApp(tester);
       await ouvrirContacts(tester);
 
-      await tester.tap(find.text('Léa Marchand'));
+      await tester.tap(
+        find
+            .descendant(
+              of: find.widgetWithText(ContactTile, 'Léa Marchand'),
+              matching: find.byIcon(Icons.chevron_right_rounded),
+            )
+            .first,
+      );
       await tester.pumpAndSettle();
 
       // Retirer un contact existait en base sans être atteignable.

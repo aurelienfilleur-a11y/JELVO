@@ -389,6 +389,10 @@ declare
     -- Contacts et recherche
     'mes_contacts', 'chercher_profils_par_pseudo',
     'anniversaires_de_mes_contacts',
+    -- Tranche 13. Seule porte vers le profil de quelqu'un d'autre : sans ce
+    -- nom ici, l'écran se rendrait vide et le défaut ne se verrait qu'à
+    -- l'usage.
+    'profil_consultable',
     -- Tâches
     'creer_tache', 'modifier_tache', 'supprimer_tache', 'mes_taches',
     'terminer_tache', 'repondre_tache', 's_attribuer_tache',

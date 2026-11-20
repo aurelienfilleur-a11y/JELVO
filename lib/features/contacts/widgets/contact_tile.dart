@@ -12,6 +12,7 @@ class ContactTile extends StatelessWidget {
     super.key,
     required this.contact,
     this.onTap,
+    this.onTapPerson,
     this.onFavoriteToggled,
     this.trailing,
     this.showSharedGroups = false,
@@ -19,7 +20,20 @@ class ContactTile extends StatelessWidget {
   });
 
   final Contact contact;
+
+  /// Ouvre ce que la **relation** permet : épingler, retirer. C'est le geste
+  /// du chevron.
   final VoidCallback? onTap;
+
+  /// Ouvre le profil de la **personne** — l'avatar et le nom, pas la ligne
+  /// entière.
+  ///
+  /// Les deux cibles disent deux choses différentes, et c'est délibéré : la
+  /// fiche agit sur le lien qu'on a avec quelqu'un, le profil montre
+  /// quelqu'un. Confondre les deux obligerait à choisir laquelle des deux
+  /// disparaît, alors que « Gérer » de la bande des favoris ouvre déjà la
+  /// première depuis un autre endroit.
+  final VoidCallback? onTapPerson;
   final VoidCallback? onFavoriteToggled;
 
   /// Remplace le bouton favori, pour les demandes en attente.
@@ -43,35 +57,41 @@ class ContactTile extends StatelessWidget {
       ),
       child: Row(
         children: <Widget>[
-          AvatarStack(
-            avatars: <AvatarData>[
-              AvatarData(name: contact.fullName, imageUrl: contact.avatarUrl),
-            ],
-            size: 40,
+          GestureDetector(
+            onTap: onTapPerson,
+            child: AvatarStack(
+              avatars: <AvatarData>[
+                AvatarData(name: contact.fullName, imageUrl: contact.avatarUrl),
+              ],
+              size: 40,
+            ),
           ),
           AppSpacing.hGapMd,
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                EmojiText(
-                  contact.fullName,
-                  style: context.typo.body.copyWith(
-                    fontWeight: AppTypography.semiBold,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (contact.pseudo != null) ...<Widget>[
-                  const SizedBox(height: 2),
+            child: GestureDetector(
+              onTap: onTapPerson,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
                   EmojiText(
-                    contact.pseudoHandle,
-                    style: context.typo.caption,
+                    contact.fullName,
+                    style: context.typo.body.copyWith(
+                      fontWeight: AppTypography.semiBold,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  if (contact.pseudo != null) ...<Widget>[
+                    const SizedBox(height: 2),
+                    EmojiText(
+                      contact.pseudoHandle,
+                      style: context.typo.caption,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
           if (trailing != null)

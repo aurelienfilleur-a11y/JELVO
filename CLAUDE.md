@@ -866,6 +866,41 @@ sa valeur par défaut `default` donne précisément un bandeau blanc à texte
 sombre. Elle n'accepte aucune requête de média : en Automatique, le script
 résout lui-même et pose `black` ou `default`.
 
+#### Depuis iOS 26, le bandeau se règle par le fond, et plus par une méta
+
+**Et c'est ce qui l'a enfin fait suivre à chaud.** Le correctif précédent
+écrivait dans `apple-mobile-web-app-status-bar-style` à chaque changement de
+réglage — le crochet s'exécutait, la valeur était juste, et le bandeau ne
+bougeait pas jusqu'à ce qu'on quitte et rouvre. La raison tient en une phrase :
+**iOS lit cette méta au lancement et ne la relit jamais.**
+
+Sauf qu'à partir d'iOS 26, WebKit ne la lit plus du tout, et ne lit pas
+davantage `theme-color` : il **échantillonne le fond de la page** (bug WebKit
+301756). Ce qui ferme une porte en ouvre une autre, puisqu'un fond, lui, se
+change à l'exécution.
+
+Encore faut-il qu'il y ait un fond à échantillonner. `--jelvo-fond` peint bien
+l'écran, mais **une variable CSS ne se lit pas de l'extérieur du document**, et
+une fois Flutter démarré le fond visible est sa toile, qui ne porte aucune
+couleur CSS. `jelvoAppliquerApparence` pose donc la teinte **en clair** sur
+`html` et sur `body`, à chaque appel.
+
+Mesuré dans un navigateur, sur les deux réglages de téléphone : une bascule
+vers « Sombre » donne `html` et `body` à `rgb(14, 14, 26)`, et repasser en
+« Automatique » rend les deux déclarations `media` **et** résout le fond sur le
+réglage du téléphone.
+
+| Version d'iOS | Ce qui décide du bandeau | À chaud |
+| --- | --- | --- |
+| **26 et au-delà** | le fond de la page | **oui**, c'est le correctif |
+| 25 et avant | `apple-mobile-web-app-status-bar-style` | **non** — lue au lancement, jamais relue |
+
+Les deux mécanismes sont donc écrits, et la méta reste posée pour les versions
+qui n'ont que lui. Sur celles-là, **il n'y a pas de correctif** : le seul
+contournement, `black-translucent`, impose un texte de barre d'état *toujours
+blanc*, illisible sur le fond clair. C'est une limite, pas un défaut en
+attente.
+
 #### Un seul écran de lancement, et il attend que l'accueil ait son contenu
 
 Un voile plein écran, le logo fourni au centre, le fond du thème, retiré en
@@ -876,13 +911,43 @@ Deux choses ont demandé plus qu'un voile, et toutes deux se voyaient à
 l'ouverture.
 
 **Il y en avait deux.** Une application ajoutée à l'écran d'accueil affiche
-d'abord celui qu'iOS fabrique — fond du `manifest.json`, icône à la taille
-qu'iOS décide —, puis celui de la page : le logo changeait de taille entre les
-deux. `web/splash/` porte désormais nos propres `apple-touch-startup-image`,
-qui **sont** l'écran de la page photographié à la taille exacte de chaque
-appareil. La coïncidence n'est pas visée, elle est obtenue par construction —
-voir `web/splash/README.md` pour ce que la liste couvre et ce qu'elle ne
-couvre pas.
+d'abord un écran de lancement d'iOS, puis celui de la page : le logo changeait
+de taille entre les deux.
+
+Le premier correctif a été de photographier l'écran de la page **à la taille
+exacte de douze iPhone** — vingt-quatre fichiers — pour faire coïncider les
+deux tailles. **Il n'a pas tenu**, et le défaut était dans l'approche, non
+dans la liste : iOS n'accepte que des dimensions exactes, une taille absente
+retombe en silence sur ce que le système décide, et Apple sort des tailles
+chaque année. Une liste de modèles est en retard par construction.
+
+**Ce qui l'a réglé, c'est qu'un seul endroit dessine le logo.** Deux tailles à
+faire coïncider, c'était déjà le problème ; il suffit qu'il n'y en ait qu'une.
+Le voile de la page est désormais seul à porter le logo — et il garde la plus
+grande des deux tailles, 96 px —, tandis que les images de lancement se
+réduisent à **un aplat de la couleur de fond, un par apparence**.
+
+Un aplat n'a pas de géométrie : iOS peut l'étirer, le rogner ou le centrer,
+cela ne se voit pas. Il ne reste donc qu'une **proportion** à viser — 19,5:9,
+celle des iPhone depuis l'iPhone X — et plus aucune taille à manquer. Leur
+seul rôle est d'épargner le blanc que Safari affiche sinon pendant que la page
+charge : **rien ne dépend d'eux**, et si iOS refusait une image sans requête
+de taille, le logo resterait unique de toute façon.
+
+Deux fichiers au lieu de vingt-quatre, 30 Kio au lieu de 2,5 Mio, et plus de
+navigateur dans le générateur — `tool/preparer_ecrans_de_lancement.js` écrit
+les deux PNG à la main, en lisant les teintes dans `web/index.html` pour ne
+pas en devenir une troisième source. Voir `web/splash/README.md`.
+
+**Ce qui reste, et qu'aucune page ne peut reprendre** : la transition
+d'ouverture d'iOS, l'icône de l'écran d'accueil qui grandit jusqu'au cadre de
+l'application. Elle existe pour toute application, native comprise.
+
+**Et sur un iPhone, remplacer ces fichiers ne suffit pas à voir le
+changement** : iOS fige les métadonnées de l'application installée, comme il
+fige son icône. Il faut retirer l'icône de l'écran d'accueil et réinstaller —
+ce qui détruit l'abonnement push. C'est la première chose à vérifier si le
+logo saute encore.
 
 **Il partait trop tôt.** Il s'effaçait sur `flutter-first-frame`, or à cet
 instant l'accueil est construit mais ses quatre lectures sont en vol. Et comme
@@ -913,10 +978,11 @@ c'est le filet des deux secondes qui tranche.
 
 | Surface | Pourquoi |
 | --- | --- |
-| **le bandeau d'un iPhone, à chaud** | une application ajoutée à l'écran d'accueil ne lit pas `theme-color` : c'est `apple-mobile-web-app-status-bar-style`, qu'iOS lit **au lancement** et ne relit pas. Le crochet s'exécute bien — c'est éprouvé — et la valeur est juste à la réouverture suivante, mais iOS ne la réapplique pas en cours de route. Le seul contournement, `black-translucent`, impose un texte de barre d'état **toujours blanc**, illisible sur un fond clair |
+| le bandeau d'un iPhone **sous iOS 25 ou avant** | `apple-mobile-web-app-status-bar-style` est lue **au lancement** et jamais relue. Le crochet s'exécute, la valeur est juste à la réouverture suivante, et iOS ne la réapplique pas en cours de route. Sur iOS 26 et au-delà, le fond de la page prend le relais — voir la section précédente |
+| la **transition d'ouverture** d'iOS | l'icône de l'écran d'accueil qui grandit jusqu'au cadre de l'application appartient au système, et existe pour toute application, native comprise |
 | splash de la PWA installée sur **Android** | `manifest.json` ne porte ni requête de média ni variante sombre, et Chrome n'accepte pas d'image de lancement. La page reprend la main dès qu'elle est chargée |
 | écrans de lancement **natifs** Android et iOS | ils vivent dans `android/` et `ios/`, hors de la chaîne web, et ces deux cibles ne sont pas compilables ici |
-| un **choix explicite** contraire au téléphone | l'image de lancement est choisie par `prefers-color-scheme`, donc par le réglage du téléphone : « Clair » choisi sur un téléphone sombre donne un lancement sombre puis une application claire |
+| un **choix explicite** contraire au téléphone | l'aplat de lancement est choisi par `prefers-color-scheme`, donc par le réglage du téléphone : « Clair » choisi sur un téléphone sombre donne un lancement sombre puis une application claire |
 
 ### La palette
 
@@ -4105,13 +4171,18 @@ sécurité.
   qui doit exister au dépôt, le relais sur `flutter-first-frame` plutôt que
   sur une minuterie, et le retrait du document plutôt qu'une simple
   transparence. Côté bandeau : la requête de média qui couvre le mode
-  Automatique sans script, et la déclaration propre à l'iOS installé, que
-  `theme-color` ne couvre pas. Côté écrans de lancement d'iOS : chaque fichier
-  de `web/splash/` a sa balise et chaque balise son fichier — les deux listes
-  vivent à deux endroits, et une divergence ferait retomber iOS sur son propre
-  écran **sans rien dire** —, chaque taille a sa variante sombre, et chaque
-  déclaration porte ses dimensions exactes, sa densité et son apparence. Côté
-  préparation : sans session l'application est prête tout de suite, et le
+  Automatique sans script, la déclaration propre à l'iOS installé que
+  `theme-color` ne couvre pas, et — c'est le mécanisme qui le fait suivre à
+  chaud depuis iOS 26 — **le fond posé en clair sur `html` et sur `body`**, et
+  non seulement en méta. Côté écrans de lancement d'iOS : il y en a **deux, un
+  par apparence**, chaque fichier a sa balise et chaque balise son fichier, et
+  le contrôle négatif qui empêche la liste de modèles de revenir — **aucune
+  déclaration ne porte de dimension**. Les deux images sont **décodées** pour
+  vérifier que ce sont des aplats de la teinte de `JelvoColors` : un logo qui y
+  reviendrait ramènerait les deux tailles à faire coïncider, et un nom de
+  fichier ne le dirait pas. Leur proportion est celle des iPhone, non une
+  taille de modèle. Côté préparation : sans session l'application est prête
+  tout de suite, et le
   contrôle négatif qui compte — **avec** session, elle ne l'est pas avant que
   les quatre lectures aient répondu, ce qui est exactement l'instant où
   l'accueil s'affichait vide.
@@ -4349,14 +4420,23 @@ sûr d'éprouver son caractère contextuel.
   test de fumée prouve que la file se remplit à la bonne heure et une seule
   fois ; que le navigateur affiche bien la notification dépend de la
   planification, des clés VAPID et d'un vrai appareil.
-- **L'écran de lancement est unique et attend que l'accueil ait son contenu**,
-  et le bandeau suit le thème. Tout est éprouvé dans un vrai navigateur, mais
-  **rien ne l'a été sur un vrai iPhone** : les `apple-touch-startup-image` ne
-  s'observent que là, et une taille absente de la liste retombe en silence sur
-  l'écran fabriqué par iOS. Quatre surfaces ne suivent toujours pas le
-  réglage — voir le tableau sous « Un seul écran de lancement » —, dont une
-  qui compte : **le bandeau d'un iPhone ne change pas à chaud**, iOS ne
-  relisant `apple-mobile-web-app-status-bar-style` qu'au lancement.
+- **Un seul endroit dessine le logo de lancement**, et c'est ce qui a supprimé
+  le saut de taille : les captures par modèle ne pouvaient pas y suffire, et
+  la liste de douze iPhone a été retirée. Les images de lancement sont deux
+  aplats, et **rien ne dépend d'elles**. Tout est éprouvé dans un vrai
+  navigateur, mais **rien ne l'a été sur un vrai iPhone** : ni l'aplat, ni le
+  bandeau ne s'observent ailleurs. Deux réserves qui comptent : une
+  application **installée avant ce changement ne l'a jamais lu**, iOS figeant
+  ses métadonnées — il faut retirer l'icône et réinstaller —, et la
+  **transition d'ouverture d'iOS** reste celle du système.
+- **Le bandeau de la barre d'état ne suit le thème à chaud qu'à partir d'iOS
+  26.** C'est là que WebKit a cessé de lire `theme-color` et
+  `apple-mobile-web-app-status-bar-style` pour échantillonner le fond de la
+  page, que l'application pose désormais en clair sur `html` et `body`. Sur
+  iOS 25 et avant, la méta est lue **au lancement et jamais relue** : il n'y a
+  pas de correctif, seulement un contournement — `black-translucent` — qui
+  imposerait un texte de barre d'état toujours blanc, illisible sur le fond
+  clair. C'est une limite de la plateforme, pas un chantier en attente.
 - **Le thème sombre est livré**, avec son réglage. Deux réserves : les
   captures ont été relues écran par écran mais **sur un rendu de test**, pas
   sur un vrai appareil ; et une photo de couverture très sombre, fournie par

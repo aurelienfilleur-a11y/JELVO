@@ -1,137 +1,135 @@
 #!/usr/bin/env node
 //
-// Fabrique les écrans de lancement d'iOS (`apple-touch-startup-image`).
+// Fabrique les deux écrans de lancement d'iOS (`apple-touch-startup-image`).
 //
-// **Pourquoi ils existent.** Une application ajoutée à l'écran d'accueil
-// affiche d'abord un écran de lancement fabriqué par iOS — fond du
-// `manifest.json`, icône à la taille qu'iOS décide — puis la page affiche le
-// sien. Deux écrans se succèdent donc, et le logo change de taille entre les
-// deux. Fournir nos propres images supprime le premier des deux : iOS affiche
-// alors exactement ce que la page affichera ensuite, et il n'y a plus de
-// rupture.
+// **Deux fichiers, et non deux par modèle d'iPhone.** La version précédente
+// photographiait l'écran de lancement de la page à la taille exacte de douze
+// iPhone, soit vingt-quatre fichiers. Cette liste était en retard par
+// construction : Apple sort des tailles chaque année, et une taille absente
+// retombe en silence sur ce que le système décide.
 //
-// **Pourquoi une capture et non un dessin.** Le piège d'un générateur qui
-// redessine, c'est qu'il recopie la géométrie de la page — taille du logo,
-// rayon des coins, couleur du fond — et qu'il en devient une seconde source,
-// qui dérive au premier changement de CSS. Ici on photographie la **vraie
-// page**, à la taille exacte de chaque appareil : la coïncidence n'est pas
-// visée, elle est obtenue par construction.
+// **Ce qui a permis de s'en passer, c'est de ne plus dessiner le logo ici.**
+// Un seul endroit le dessine désormais — le voile de `web/index.html` —, si
+// bien qu'il n'y a plus deux tailles à faire coïncider. L'image de lancement
+// n'est plus qu'un **aplat** de la couleur de fond, dont le seul rôle est
+// d'épargner le blanc que Safari affiche sinon pendant que la page charge.
+//
+// Un aplat n'a pas de géométrie : iOS peut l'étirer, le rogner ou le centrer,
+// cela ne se voit pas. Il ne reste qu'une proportion à viser, et non une
+// taille : celle des iPhone depuis l'iPhone X, que les deux dimensions
+// ci-dessous reprennent. Sur un écran d'une autre proportion, le pire cas est
+// une bande de quelques pixels — à comparer à l'écran blanc d'avant.
 //
 // Usage : node tool/preparer_ecrans_de_lancement.js
-// Prérequis : `flutter build web` au moins une fois (on sert `build/web`).
+// Aucun prérequis : rien n'est compilé, rien n'est servi, rien n'est
+// photographié.
 
-const { chromium } = require('playwright');
-const http = require('http');
+const zlib = require('zlib');
 const fs = require('fs');
 const path = require('path');
 
 const RACINE = path.resolve(__dirname, '..');
-const SERVI = path.join(RACINE, 'build', 'web');
+const PAGE = path.join(RACINE, 'web', 'index.html');
 const SORTIE = path.join(RACINE, 'web', 'splash');
-const PORT = 8137;
 
-// Les iPhone en orientation portrait, en pixels CSS et densité. iOS n'accepte
-// **que** des dimensions exactes : une taille absente de cette liste retombe
-// sur l'écran de lancement fabriqué par le système, donc sur l'ancien défaut.
-// L'iPad et le paysage sont écartés — voir `web/splash/README.md`.
-const APPAREILS = [
-  { l: 320, h: 568, d: 2 }, // SE (1re génération)
-  { l: 375, h: 667, d: 2 }, // 6, 7, 8, SE 2 et 3
-  { l: 414, h: 736, d: 3 }, // 6+, 7+, 8+
-  { l: 375, h: 812, d: 3 }, // X, XS, 11 Pro, 12 mini, 13 mini
-  { l: 414, h: 896, d: 2 }, // XR, 11
-  { l: 414, h: 896, d: 3 }, // XS Max, 11 Pro Max
-  { l: 390, h: 844, d: 3 }, // 12, 13, 14
-  { l: 428, h: 926, d: 3 }, // 12 Pro Max, 13 Pro Max, 14 Plus
-  { l: 393, h: 852, d: 3 }, // 14 Pro, 15, 15 Pro, 16
-  { l: 430, h: 932, d: 3 }, // 14 Pro Max, 15 Plus, 15 Pro Max, 16 Plus
-  { l: 402, h: 874, d: 3 }, // 16 Pro
-  { l: 440, h: 956, d: 3 }, // 16 Pro Max
-];
+// La proportion des iPhone à encoche et à îlot — 1320 × 2868 est celle du plus
+// grand d'entre eux. Ce n'est pas un modèle visé : c'est le rapport de forme,
+// et l'image est mise à l'échelle pour tous les autres.
+const LARGEUR = 1320;
+const HAUTEUR = 2868;
 
-const APPARENCES = [
-  { mot: 'clair', nom: 'clair' },
-  { mot: 'sombre', nom: 'sombre' },
-];
-
-function servir() {
-  const types = {
-    '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
-    '.png': 'image/png', '.json': 'application/json',
-  };
-  const serveur = http.createServer((req, res) => {
-    // La version compilée porte `<base href="/JELVO/">` : ses ressources sont
-    // donc demandées sous ce préfixe, qu'on retire pour servir à plat.
-    const rel = decodeURIComponent(req.url.split('?')[0])
-      .replace(/^\/+/, '')
-      .replace(/^JELVO\//, '');
-    const fichier = path.join(SERVI, rel === '' ? 'index.html' : rel);
-    if (!fichier.startsWith(SERVI) || !fs.existsSync(fichier) ||
-        fs.statSync(fichier).isDirectory()) {
-      res.writeHead(404).end();
-      return;
-    }
-    res.writeHead(200, { 'Content-Type': types[path.extname(fichier)] || 'application/octet-stream' });
-    fs.createReadStream(fichier).pipe(res);
-  });
-  return new Promise((ok) => serveur.listen(PORT, () => ok(serveur)));
+/// Les deux teintes sont **lues dans la page**, qui les tient déjà de
+/// `JelvoColors` — `test/launch_screen_test.dart` confronte les deux. Les
+/// recopier ici en ferait une troisième source, et c'est toujours la troisième
+/// qui dérive.
+function fonds() {
+  const texte = fs.readFileSync(PAGE, 'utf8');
+  const m = /clair:\s*'(#[0-9A-Fa-f]{6})',\s*sombre:\s*'(#[0-9A-Fa-f]{6})'/.exec(
+    texte,
+  );
+  if (!m) {
+    throw new Error(
+      "Les deux fonds n'ont pas été trouvés dans web/index.html — " +
+        'la forme de `FONDS` a changé, les écrans de lancement ne sont pas écrits.',
+    );
+  }
+  return { clair: m[1], sombre: m[2] };
 }
 
-(async () => {
-  if (!fs.existsSync(path.join(SERVI, 'index.html'))) {
-    console.error(`Rien à servir dans ${SERVI} — lancez d'abord « flutter build web ».`);
-    process.exit(1);
+const TABLE_CRC = (() => {
+  const t = new Int32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    t[n] = c;
   }
-  fs.mkdirSync(SORTIE, { recursive: true });
-
-  const serveur = await servir();
-  const nav = await chromium.launch();
-  let total = 0;
-
-  for (const ap of APPARENCES) {
-    for (const a of APPAREILS) {
-      const ctx = await nav.newContext({
-        viewport: { width: a.l, height: a.h },
-        deviceScaleFactor: a.d,
-        // Le mot enregistré décide du fond : on le pose avant le premier
-        // pixel, exactement comme au démarrage réel.
-        storageState: {
-          cookies: [],
-          origins: [{
-            origin: `http://localhost:${PORT}`,
-            localStorage: [{ name: 'jelvo-apparence', value: ap.mot }],
-          }],
-        },
-      });
-      const page = await ctx.newPage();
-      // Sans Flutter, l'écran de lancement ne se retire jamais : c'est lui
-      // qu'on veut photographier, et rien d'autre.
-      await page.route('**/flutter_bootstrap.js', (r) => r.abort());
-      await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'domcontentloaded' });
-      await page.waitForSelector('#jelvo-amorce img');
-
-      // **Contrôlé, pas supposé.** Un logo qui ne charge pas laisse l'élément
-      // en place : la capture serait écrite quand même, et l'écran de
-      // lancement d'iOS afficherait un carré vide sans que rien ne l'ait dit.
-      const charge = await page.evaluate(() => {
-        const img = document.querySelector('#jelvo-amorce img');
-        return !!img && img.complete && img.naturalWidth > 0;
-      });
-      if (!charge) {
-        throw new Error(
-          `Le logo ne s'est pas chargé pour ${a.l}x${a.h}@${a.d}x — ` +
-          'écrans de lancement non écrits.',
-        );
-      }
-
-      const nom = `${a.l}x${a.h}@${a.d}x-${ap.nom}.png`;
-      await page.screenshot({ path: path.join(SORTIE, nom) });
-      total += 1;
-      await ctx.close();
-    }
-  }
-
-  await nav.close();
-  serveur.close();
-  console.log(`${total} écrans de lancement écrits dans web/splash/`);
+  return t;
 })();
+
+function crc32(buf) {
+  let c = -1;
+  for (let i = 0; i < buf.length; i++) c = TABLE_CRC[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
+  return (c ^ -1) >>> 0;
+}
+
+function morceau(type, donnees) {
+  const entete = Buffer.alloc(4);
+  entete.writeUInt32BE(donnees.length, 0);
+  const corps = Buffer.concat([Buffer.from(type, 'ascii'), donnees]);
+  const somme = Buffer.alloc(4);
+  somme.writeUInt32BE(crc32(corps), 0);
+  return Buffer.concat([entete, corps, somme]);
+}
+
+/// Un PNG d'une seule couleur, écrit à la main. Aucune bibliothèque d'images
+/// n'est tirée pour deux aplats, et le résultat est reproductible à l'octet.
+function aplat(largeur, hauteur, hexa) {
+  const r = parseInt(hexa.slice(1, 3), 16);
+  const v = parseInt(hexa.slice(3, 5), 16);
+  const b = parseInt(hexa.slice(5, 7), 16);
+
+  const pas = 1 + largeur * 3; // l'octet de filtre, puis les pixels
+  const ligne = Buffer.alloc(pas);
+  for (let x = 0; x < largeur; x++) {
+    ligne[1 + x * 3] = r;
+    ligne[2 + x * 3] = v;
+    ligne[3 + x * 3] = b;
+  }
+  const brut = Buffer.alloc(pas * hauteur);
+  for (let y = 0; y < hauteur; y++) ligne.copy(brut, y * pas);
+
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(largeur, 0);
+  ihdr.writeUInt32BE(hauteur, 4);
+  ihdr[8] = 8; // 8 bits par canal
+  ihdr[9] = 2; // couleur vraie, sans alpha
+  ihdr[10] = 0;
+  ihdr[11] = 0;
+  ihdr[12] = 0;
+
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    morceau('IHDR', ihdr),
+    morceau('IDAT', zlib.deflateSync(brut, { level: 9 })),
+    morceau('IEND', Buffer.alloc(0)),
+  ]);
+}
+
+const teintes = fonds();
+fs.mkdirSync(SORTIE, { recursive: true });
+
+// Les fichiers par modèle de la version précédente ne doivent pas survivre :
+// laissés là, leurs balises retirées, ils feraient échouer le contrôle qui
+// veut qu'à chaque fichier corresponde une déclaration.
+for (const nom of fs.readdirSync(SORTIE)) {
+  if (nom.endsWith('.png')) fs.unlinkSync(path.join(SORTIE, nom));
+}
+
+for (const [apparence, hexa] of Object.entries(teintes)) {
+  const nom = `lancement-${apparence}.png`;
+  const octets = aplat(LARGEUR, HAUTEUR, hexa);
+  fs.writeFileSync(path.join(SORTIE, nom), octets);
+  console.log(
+    `${nom} — ${LARGEUR}×${HAUTEUR}, ${hexa}, ${(octets.length / 1024).toFixed(1)} Kio`,
+  );
+}

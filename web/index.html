@@ -38,12 +38,21 @@
   <meta name="theme-color" content="#F7F7FB" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#0E0E1A" media="(prefers-color-scheme: dark)">
 
-  <!-- Sur iOS, l'application ajoutée à l'écran d'accueil **ne lit pas**
-       `theme-color` : c'est cette ligne, et elle seule, qui décide de son
-       bandeau. `default` donne un bandeau blanc à texte sombre, `black` un
-       bandeau noir à texte clair — d'où le bandeau resté blanc sous un
-       écran sombre. Elle n'accepte aucune requête de média : en
-       « Automatique », c'est le script qui résout. -->
+  <!-- **Cette ligne ne vaut plus que pour iOS 25 et avant**, et c'est tout
+       l'objet du second correctif. `default` donne un bandeau blanc à texte
+       sombre, `black` un bandeau noir à texte clair. Elle n'accepte aucune
+       requête de média : en « Automatique », c'est le script qui résout.
+
+       **iOS la lit au lancement et ne la relit jamais.** Sur ces versions, un
+       changement d'apparence à chaud ne peut donc pas atteindre le bandeau :
+       ce n'est pas un défaut à corriger, c'est la limite de la plateforme, et
+       le seul contournement — `black-translucent` — imposerait un texte de
+       barre d'état **toujours blanc**, illisible sur le fond clair.
+
+       Depuis iOS 26, le mécanisme a changé : WebKit ne lit plus cette ligne
+       ni `theme-color`, et **échantillonne le fond de la page** (bug WebKit
+       301756). C'est ce qui rend le changement à chaud possible — par le
+       fond, et non par une méta — voir `jelvoAppliquerApparence`. -->
   <meta name="apple-mobile-web-app-status-bar-style" content="default" id="jelvo-bandeau-ios">
 
   <meta name="apple-mobile-web-app-title" content="Jelvo">
@@ -57,65 +66,37 @@
   <link rel="apple-touch-icon" sizes="180x180" href="icons/Icon-180.png">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
-  <!-- **Les écrans de lancement d'iOS**, et la raison pour laquelle ils
-       existent : sans eux, une application ajoutée à l'écran d'accueil en
-       affiche deux à la suite — celui qu'iOS fabrique, puis celui de la page
-       — et le logo change de taille entre les deux. Ceux-ci **sont** l'écran
-       de la page, photographié à la taille exacte de chaque appareil par
-       `tool/preparer_ecrans_de_lancement.js` : il n'y a donc plus de rupture,
-       par construction.
+  <!-- **L'écran de lancement d'iOS, et pourquoi il n'y en a plus qu'un par
+       apparence.** La version précédente en déclarait vingt-quatre : l'écran
+       de la page photographié à la taille exacte de douze iPhone. Cette liste
+       était en retard par construction — Apple sort des tailles chaque année,
+       et une taille absente retombe en silence sur ce que le système décide.
 
-       iOS n'accepte que des dimensions exactes : une taille absente de cette
-       liste retombe sur l'écran fabriqué par le système. `test/launch_screen_test.dart`
-       confronte ces balises au contenu de `web/splash/`. -->
-  <link rel="apple-touch-startup-image" href="splash/320x568@2x-clair.png"
-        media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait) and (prefers-color-scheme: light)">
-  <link rel="apple-touch-startup-image" href="splash/320x568@2x-sombre.png"
-        media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait) and (prefers-color-scheme: dark)">
-  <link rel="apple-touch-startup-image" href="splash/375x667@2x-clair.png"
-        media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait) and (prefers-color-scheme: light)">
-  <link rel="apple-touch-startup-image" href="splash/375x667@2x-sombre.png"
-        media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait) and (prefers-color-scheme: dark)">
-  <link rel="apple-touch-startup-image" href="splash/375x812@3x-clair.png"
-        media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: light)">
-  <link rel="apple-touch-startup-image" href="splash/375x812@3x-sombre.png"
-        media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)">
-  <link rel="apple-touch-startup-image" href="splash/390x844@3x-clair.png"
-        media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: light)">
-  <link rel="apple-touch-startup-image" href="splash/390x844@3x-sombre.png"
-        media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)">
-  <link rel="apple-touch-startup-image" href="splash/393x852@3x-clair.png"
-        media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: light)">
-  <link rel="apple-touch-startup-image" href="splash/393x852@3x-sombre.png"
-        media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)">
-  <link rel="apple-touch-startup-image" href="splash/402x874@3x-clair.png"
-        media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: light)">
-  <link rel="apple-touch-startup-image" href="splash/402x874@3x-sombre.png"
-        media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)">
-  <link rel="apple-touch-startup-image" href="splash/414x736@3x-clair.png"
-        media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: light)">
-  <link rel="apple-touch-startup-image" href="splash/414x736@3x-sombre.png"
-        media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)">
-  <link rel="apple-touch-startup-image" href="splash/414x896@2x-clair.png"
-        media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait) and (prefers-color-scheme: light)">
-  <link rel="apple-touch-startup-image" href="splash/414x896@2x-sombre.png"
-        media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait) and (prefers-color-scheme: dark)">
-  <link rel="apple-touch-startup-image" href="splash/414x896@3x-clair.png"
-        media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: light)">
-  <link rel="apple-touch-startup-image" href="splash/414x896@3x-sombre.png"
-        media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)">
-  <link rel="apple-touch-startup-image" href="splash/428x926@3x-clair.png"
-        media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: light)">
-  <link rel="apple-touch-startup-image" href="splash/428x926@3x-sombre.png"
-        media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)">
-  <link rel="apple-touch-startup-image" href="splash/430x932@3x-clair.png"
-        media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: light)">
-  <link rel="apple-touch-startup-image" href="splash/430x932@3x-sombre.png"
-        media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)">
-  <link rel="apple-touch-startup-image" href="splash/440x956@3x-clair.png"
-        media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: light)">
-  <link rel="apple-touch-startup-image" href="splash/440x956@3x-sombre.png"
-        media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)">
+       Ce qui a permis de s'en passer, c'est de **ne plus dessiner le logo
+       ici**. Un seul endroit le dessine désormais, le voile plus bas : il n'y
+       a donc plus deux tailles à faire coïncider, et la rupture que ces
+       fichiers servaient à supprimer n'a plus lieu d'être supprimée — elle
+       n'existe pas.
+
+       Ces deux images ne sont donc qu'un **aplat** de la couleur de fond.
+       Leur seul rôle est d'épargner le blanc que Safari affiche sinon pendant
+       que la page charge, et un aplat n'a pas de géométrie : iOS peut
+       l'étirer, le rogner ou le centrer, cela ne se voit pas. C'est ce qui
+       rend la proportion suffisante là où il fallait une taille.
+
+       Conséquence assumée : si iOS refusait une image sans requête de taille,
+       on retombe sur son écran à lui — c'est-à-dire sur le comportement
+       d'aujourd'hui pour tout appareil absent de l'ancienne liste, et le logo
+       resterait de toute façon unique. Rien ne dépend de ces fichiers.
+
+       **Sur un iPhone, remplacer ces fichiers ne suffit pas à voir le
+       changement** : iOS fige les métadonnées de l'application installée. Il
+       faut retirer l'icône de l'écran d'accueil et réinstaller — ce qui
+       détruit l'abonnement push, comme pour l'icône elle-même. -->
+  <link rel="apple-touch-startup-image" href="splash/lancement-clair.png"
+        media="(prefers-color-scheme: light)">
+  <link rel="apple-touch-startup-image" href="splash/lancement-sombre.png"
+        media="(prefers-color-scheme: dark)">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
@@ -234,6 +215,23 @@
         if (bandeau) {
           bandeau.setAttribute('content', sombre ? 'black' : 'default');
         }
+
+        // **C'est ceci qui fait suivre le bandeau à chaud, et non la méta
+        // ci-dessus.** Depuis iOS 26, WebKit ne lit plus
+        // `apple-mobile-web-app-status-bar-style` ni `theme-color` : il
+        // échantillonne le **fond de la page**. Or une fois Flutter démarré,
+        // le fond visible est sa toile, qui ne porte aucune couleur CSS ; ce
+        // qui reste à échantillonner, c'est le fond de `html` et de `body`.
+        //
+        // La variable `--jelvo-fond` suffirait pour peindre l'écran — c'est
+        // elle qui le peint —, mais une variable ne se lit pas de l'extérieur
+        // du document : la couleur est donc **posée en clair** sur les deux
+        // éléments, à chaque changement. Sans cela, le bandeau gardait la
+        // couleur du lancement jusqu'à ce qu'on quitte et rouvre, ce qui est
+        // exactement le défaut constaté.
+        var fond = sombre ? FONDS.sombre : FONDS.clair;
+        racine.style.backgroundColor = fond;
+        if (document.body) document.body.style.backgroundColor = fond;
       };
 
       // **Lu avant le premier pixel**, et c'est tout l'enjeu : le réglage vit

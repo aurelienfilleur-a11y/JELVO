@@ -246,7 +246,7 @@ class _LinkCard extends StatelessWidget {
           Text(
             t.groupsUtilisationsExpireLe(
               link.usesLabel(t),
-              AppDates.shortDate(link.expiresAt),
+              AppDates.shortDate(link.expiresAt, t),
             ),
             style: context.typo.caption,
           ),
@@ -257,7 +257,7 @@ class _LinkCard extends StatelessWidget {
             const SizedBox(height: 2),
             Text(
               t.groupsAdhesionJusquAu(
-                AppDates.shortDate(link.membershipExpiresAt!),
+                AppDates.shortDate(link.membershipExpiresAt!, t),
               ),
               style: context.typo.caption.copyWith(
                 color: context.couleurs.warning,
@@ -270,7 +270,7 @@ class _LinkCard extends StatelessWidget {
             children: <Widget>[
               Expanded(
                 child: PrimaryButton(
-                  label: 'Partager',
+                  label: t.corePartager,
                   icon: Icons.ios_share_rounded,
                   onPressed: onShare,
                 ),

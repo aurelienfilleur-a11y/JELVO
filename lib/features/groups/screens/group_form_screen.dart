@@ -81,7 +81,7 @@ class _GroupFormScreenState extends ConsumerState<GroupFormScreen> {
         ),
         leading: IconButton(
           icon: const Icon(Icons.close_rounded),
-          tooltip: 'Fermer',
+          tooltip: AppTexts.of(context).commonClose,
           onPressed: _submitting
               ? null
               : () => Navigator.of(context).maybePop(),

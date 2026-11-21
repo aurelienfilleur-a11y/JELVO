@@ -74,8 +74,8 @@ class _SignUpIdentityScreenState extends ConsumerState<SignUpIdentityScreen> {
         AppSpacing.gapXl,
 
         AppTextField(
-          label: 'Prénom',
-          hint: 'Camille',
+          label: AppTexts.of(context).corePrenom,
+          hint: AppTexts.of(context).coreExemplePrenom,
           controller: _firstNameController,
           errorText: _firstNameError,
           textCapitalization: TextCapitalization.words,
@@ -87,8 +87,8 @@ class _SignUpIdentityScreenState extends ConsumerState<SignUpIdentityScreen> {
         AppSpacing.gapLg,
 
         AppTextField(
-          label: 'Nom',
-          hint: 'Rousseau',
+          label: AppTexts.of(context).coreNom,
+          hint: AppTexts.of(context).coreExempleNom,
           controller: _lastNameController,
           errorText: _lastNameError,
           textCapitalization: TextCapitalization.words,

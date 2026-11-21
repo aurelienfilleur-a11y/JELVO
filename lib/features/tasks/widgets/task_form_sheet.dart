@@ -164,7 +164,7 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
                 children: <Widget>[
                   OptionRow(
                     icon: Icons.notifications_none_rounded,
-                    label: 'Rappel',
+                    label: AppTexts.of(context).calendarRappel,
                     hint: AppTexts.of(
                       context,
                     ).tasksJelvoEnverraNotificationPersonne,
@@ -174,7 +174,7 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
                   Divider(height: 1, color: context.couleurs.border),
                   OptionRow(
                     icon: Icons.repeat_rounded,
-                    label: 'Répéter',
+                    label: AppTexts.of(context).calendarRepeter,
                     hint: AppTexts.of(context).tasksTachesRecurrentes,
                     value: _recurrence.label(AppTexts.of(context)),
                     onTap: _choisirRecurrence,
@@ -250,6 +250,7 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
 
   /// Échéance, priorité et description : utiles, mais pas à chaque fois.
   Widget _blocPlusDOptions() {
+    final AppTexts t = AppTexts.of(context);
     return ExpandableOptions(
       expanded: _plusDOptions,
       hint: AppTexts.of(context).tasksEcheancePrioriteDescription,
@@ -261,7 +262,7 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
               child: SecondaryButton(
                 label: _echeance == null
                     ? 'Échéance'
-                    : AppDates.shortDate(_echeance!),
+                    : AppDates.shortDate(_echeance!, t),
                 icon: Icons.calendar_today_rounded,
                 onPressed: _choisirDate,
               ),
@@ -292,7 +293,7 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
         ),
         AppSpacing.gapMd,
         AppTextField(
-          label: 'Description',
+          label: t.coreDescription,
           hint: AppTexts.of(context).tasksQuFautSavoirOccuper,
           controller: _description,
           maxLines: 3,

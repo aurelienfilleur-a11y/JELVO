@@ -102,7 +102,7 @@ class MemberTile extends StatelessWidget {
                         Flexible(
                           child: Text(
                             t.groupsJusquAu(
-                              AppDates.shortDate(member.expiresAt!),
+                              AppDates.shortDate(member.expiresAt!, t),
                             ),
                             style: context.typo.caption.copyWith(
                               color: context.couleurs.warning,
@@ -121,9 +121,9 @@ class MemberTile extends StatelessWidget {
           ),
           if (member.isAdmin) ...<Widget>[
             AppSpacing.hGapSm,
-            const StatusDot(
+            StatusDot(
               tone: StatusTone.info,
-              label: 'Admin',
+              label: AppTexts.of(context).coreAdmin,
               filled: true,
             ),
           ],

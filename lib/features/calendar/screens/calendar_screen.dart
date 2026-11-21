@@ -46,27 +46,27 @@ class CalendarScreen extends ConsumerWidget {
         selection.isNotEmpty || !ref.watch(showAvailabilityProvider);
 
     return AppScreen(
-      title: 'Calendrier',
+      title: t.navCalendar,
       leading: _Avatar(profil: profil),
       headerAction: Row(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           AppScreenAction(
             icon: Icons.search_rounded,
-            tooltip: 'Rechercher',
+            tooltip: t.coreRechercher,
             onPressed: () => CalendarSearchSheet.ouvrir(context),
           ),
           AppSpacing.hGapSm,
           AppScreenAction(
             icon: Icons.tune_rounded,
-            tooltip: 'Filtres',
+            tooltip: t.coreFiltres,
             badged: filtreActif,
             onPressed: () => CalendarFilterSheet.ouvrir(context),
           ),
           AppSpacing.hGapSm,
           AppScreenAction(
             icon: Icons.add_rounded,
-            tooltip: 'Créer',
+            tooltip: t.createTitle,
             accented: true,
             onPressed: () => context.pushNamed(AppRoutes.create),
           ),
@@ -135,7 +135,7 @@ class CalendarScreen extends ConsumerWidget {
                         ),
                         TextSpan(
                           text: t.calendarPuceEtDate(
-                            AppDates.fullDate(selectedDay),
+                            AppDates.fullDate(selectedDay, t),
                           ),
                           style: context.typo.h3.copyWith(
                             color: context.couleurs.encre,
@@ -253,7 +253,7 @@ class _Avatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: 'Profil',
+      message: AppTexts.of(context).coreProfil,
       child: InkWell(
         onTap: () => context.pushNamed(AppRoutes.profile),
         customBorder: const CircleBorder(),

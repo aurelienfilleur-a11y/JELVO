@@ -44,10 +44,10 @@ class _EventInvitationScreenState extends ConsumerState<EventInvitationScreen> {
     return Scaffold(
       backgroundColor: context.couleurs.background,
       appBar: AppBar(
-        title: const Text('Invitation'),
+        title: Text(AppTexts.of(context).coreInvitation),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Retour',
+          tooltip: AppTexts.of(context).commonBack,
           onPressed: _enCours ? null : () => _revenir(context),
         ),
       ),
@@ -89,7 +89,7 @@ class _EventInvitationScreenState extends ConsumerState<EventInvitationScreen> {
           ),
           child: CoverBanner(
             name: nomDuGroupe ?? 'Personnel',
-            subtitle: AppDates.fullDate(evenement.start),
+            subtitle: AppDates.fullDate(evenement.start, t),
             accentColor: GroupAccent.forId(
               evenement.groupId ?? evenement.id,
             ).color(context.couleurs),
@@ -140,13 +140,17 @@ class _EventInvitationScreenState extends ConsumerState<EventInvitationScreen> {
                   children: <Widget>[
                     InvitationDetailRow(
                       icon: Icons.calendar_today_rounded,
-                      label: 'Date',
-                      value: AppDates.fullDate(evenement.start),
+                      label: t.coreDate,
+                      value: AppDates.fullDate(evenement.start, t),
                     ),
                     InvitationDetailRow(
                       icon: Icons.schedule_rounded,
-                      label: 'Horaires',
-                      value: AppDates.timeRange(evenement.start, evenement.end),
+                      label: t.coreHoraires,
+                      value: AppDates.timeRange(
+                        evenement.start,
+                        evenement.end,
+                        t,
+                      ),
                       dernier:
                           evenement.location == null && nomDuGroupe == null,
                     ),
@@ -157,14 +161,14 @@ class _EventInvitationScreenState extends ConsumerState<EventInvitationScreen> {
                         evenement.location!.isNotEmpty)
                       InvitationDetailRow(
                         icon: Icons.place_outlined,
-                        label: 'Lieu',
+                        label: t.coreLieu,
                         value: evenement.location!,
                         dernier: nomDuGroupe == null,
                       ),
                     if (nomDuGroupe != null)
                       InvitationDetailRow(
                         icon: Icons.groups_outlined,
-                        label: 'Groupe',
+                        label: t.createGroupField,
                         value: nomDuGroupe,
                         dernier: true,
                       ),

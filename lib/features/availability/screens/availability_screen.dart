@@ -36,7 +36,7 @@ class AvailabilityScreen extends ConsumerWidget {
         title: Text(AppTexts.of(context).availabilityDisponibilites),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Retour',
+          tooltip: AppTexts.of(context).commonBack,
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         actions: <Widget>[
@@ -57,7 +57,7 @@ class AvailabilityScreen extends ConsumerWidget {
                 message: AuthFailure.from(
                   tout.error!,
                 ).message(AppTexts.of(context)),
-                actionLabel: 'Réessayer',
+                actionLabel: AppTexts.of(context).commonRetry,
                 onActionPressed: () =>
                     ref.read(myAvailabilityProvider.notifier).refresh(),
               ),
@@ -100,7 +100,7 @@ class AvailabilityScreen extends ConsumerWidget {
 
                   AppSpacing.gapXl,
                   SectionHeader(
-                    title: 'Exceptions',
+                    title: AppTexts.of(context).coreExceptions,
                     subtitle: AppTexts.of(
                       context,
                     ).availabilityDatePrecisePrimeSemaine,
@@ -215,7 +215,7 @@ class _LigneCreneau extends ConsumerWidget {
               date == null
                   ? creneau.plage
                   : t.availabilityDateEtPlage(
-                      AppDates.shortDate(date),
+                      AppDates.shortDate(date, t),
                       creneau.plage,
                     ),
               style: context.typo.body,
@@ -223,10 +223,16 @@ class _LigneCreneau extends ConsumerWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
+          // **Deux boutons d'icône de 48 dp ne tiennent pas ici.** La
+          // pastille de statut porte un mot, et la ligne débordait de 3 px à
+          // 360 dp — dans les quatre langues : ce défaut-là précède la
+          // traduction, c'est le balayage des langues qui l'a trouvé.
+          // `compact` les ramène à 40 dp, ce qui reste une cible touchable.
           IconButton(
             icon: const Icon(Icons.edit_outlined, size: 18),
             tooltip: AppTexts.of(context).availabilityModifierCreneau,
             color: context.couleurs.textSecondary,
+            visualDensity: VisualDensity.compact,
             onPressed: () =>
                 ouvrirFormulaireDeCreneau(context, creneau: creneau),
           ),
@@ -234,6 +240,7 @@ class _LigneCreneau extends ConsumerWidget {
             icon: const Icon(Icons.delete_outline_rounded, size: 18),
             tooltip: AppTexts.of(context).availabilitySupprimerCreneau,
             color: context.couleurs.textSecondary,
+            visualDensity: VisualDensity.compact,
             onPressed: () => _supprimer(context, ref),
           ),
         ],

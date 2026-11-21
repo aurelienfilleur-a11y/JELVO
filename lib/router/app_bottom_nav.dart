@@ -2,17 +2,34 @@ import 'package:flutter/material.dart';
 
 import '../core/core.dart';
 
+/// Les quatre onglets, dans l'ordre de la barre.
+enum NavTab { accueil, groupes, calendrier, contacts }
+
 /// Description d'un onglet de la barre inférieure.
+///
+/// **Elle dit quel onglet c'est, pas comment il s'appelle.** La liste des
+/// destinations est `static const`, donc construite là où aucun `BuildContext`
+/// n'existe — le libellé ne peut pas y être lu, et l'écrire en dur a laissé
+/// les quatre onglets en français tout un chantier de migration. C'est la
+/// règle des couleurs appliquée au vocabulaire : le modèle porte un rang,
+/// l'appelant en tire le mot.
 class NavDestination {
   const NavDestination({
-    required this.label,
+    required this.tab,
     required this.icon,
     required this.selectedIcon,
   });
 
-  final String label;
+  final NavTab tab;
   final IconData icon;
   final IconData selectedIcon;
+
+  String label(AppTexts t) => switch (tab) {
+    NavTab.accueil => t.navHome,
+    NavTab.groupes => t.navGroups,
+    NavTab.calendrier => t.navCalendar,
+    NavTab.contacts => t.navContacts,
+  };
 }
 
 /// Barre de navigation inférieure : Accueil · Groupes · [+] · Calendrier ·
@@ -28,7 +45,7 @@ class AppBottomNav extends StatelessWidget {
     required this.onDestinationSelected,
     required this.onCreatePressed,
     this.badges = const <int>[0, 0, 0, 0],
-    this.createLabel = 'Créer',
+    this.createLabel,
   });
 
   /// Index de l'onglet actif, de 0 à 3 (le bouton « + » n'en a pas).
@@ -45,26 +62,30 @@ class AppBottomNav extends StatelessWidget {
 
   /// Ce que crée le bouton central depuis l'onglet courant. Sert d'infobulle et
   /// d'étiquette d'accessibilité : l'icône seule ne dit pas ce qui va s'ouvrir.
-  final String createLabel;
+  ///
+  /// `null` plutôt qu'un libellé par défaut : **une valeur par défaut ne peut
+  /// pas lire le contexte**, et c'est au `build` de résoudre le mot — même
+  /// arbitrage que les couleurs d'`AppCard`.
+  final String? createLabel;
 
   static const List<NavDestination> destinations = <NavDestination>[
     NavDestination(
-      label: 'Accueil',
+      tab: NavTab.accueil,
       icon: Icons.home_outlined,
       selectedIcon: Icons.home_rounded,
     ),
     NavDestination(
-      label: 'Groupes',
+      tab: NavTab.groupes,
       icon: Icons.groups_outlined,
       selectedIcon: Icons.groups_rounded,
     ),
     NavDestination(
-      label: 'Calendrier',
+      tab: NavTab.calendrier,
       icon: Icons.calendar_today_outlined,
       selectedIcon: Icons.calendar_month_rounded,
     ),
     NavDestination(
-      label: 'Contacts',
+      tab: NavTab.contacts,
       icon: Icons.person_outline_rounded,
       selectedIcon: Icons.person_rounded,
     ),
@@ -89,7 +110,7 @@ class AppBottomNav extends StatelessWidget {
               Expanded(
                 child: _CreateButton(
                   onPressed: onCreatePressed,
-                  label: createLabel,
+                  label: createLabel ?? AppTexts.of(context).createTitle,
                 ),
               ),
               _tab(2),
@@ -128,6 +149,8 @@ class _NavTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AppTexts t = AppTexts.of(context);
+    final String libelle = destination.label(t);
     final Color color = selected
         ? context.couleurs.primary
         : context.couleurs.textSecondary;
@@ -135,9 +158,7 @@ class _NavTab extends StatelessWidget {
     return Semantics(
       selected: selected,
       button: true,
-      label: badge > 0
-          ? AppTexts.of(context).navBadgeNonLus(destination.label, badge)
-          : destination.label,
+      label: badge > 0 ? t.navBadgeNonLus(libelle, badge) : libelle,
       child: InkWell(
         onTap: onTap,
         borderRadius: AppRadii.buttonRadius,
@@ -154,7 +175,7 @@ class _NavTab extends StatelessWidget {
             ),
             const SizedBox(height: 2),
             Text(
-              destination.label,
+              libelle,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: context.typo.caption.copyWith(

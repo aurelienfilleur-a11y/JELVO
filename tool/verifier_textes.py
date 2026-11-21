@@ -58,9 +58,16 @@ PARAMETRES = (
 )
 
 # Une chaîne précédée de ceci s'affiche.
+#
+# La troisième forme est une **valeur par défaut** de paramètre
+# (`this.createLabel = 'Créer'`), et elle a manqué au premier passage : un
+# défaut n'est pas écrit avec deux-points, et `createLabel = 'Créer'` est
+# resté en dur jusqu'à la traduction. `(?<![=!<>])` écarte les comparaisons,
+# qu'`HORS_SUJET` couvre déjà par ailleurs.
 POSITIONS = re.compile(
     r'(?:\b(?:Text|EmojiText|SelectableText)\s*(?:\.rich\s*)?\(\s*'
-    r'|\b(?:' + PARAMETRES + r')\s*:\s*)$',
+    r'|\b(?:' + PARAMETRES + r')\s*:\s*'
+    r'|\b\w*(?i:' + PARAMETRES + r')\s*(?<![=!<>])=\s*)$',
 )
 
 # Contextes où une chaîne qui en a l'air n'est pourtant pas du texte affiché.
@@ -85,7 +92,18 @@ ACCENTS = 'àâäéèêëîïôöùûüÿçœæÀÂÄÉÈÊËÎÏÔÖÙÛÜŸÇ�
 # Formes qui ne sont jamais une phrase, quoi qu'elles contiennent.
 # `$` et les accolades compris : `'assets/avatars/$id.png'` est un
 # chemin, pas une phrase — et il avait bel et bien été migré une fois.
-IDENTIFIANT = re.compile(r'^[\w./:+${}#&?=@~%-]*$')
+#
+# **Un caractère non-lettre est exigé**, et c'est ce qui a manqué au premier
+# passage : `^[\w…]*$` acceptait `Accueil` et `Calendrier`, qui sont des
+# libellés d'onglet, pas des identifiants. `\w` couvre les lettres accentuées
+# en Python, si bien que `Créer` et `Filtres` passaient aussi — et les quatre
+# onglets de la barre sont restés en dur tout un chantier de migration.
+#
+# Un mot de lettres seules retombe donc sur les deux règles qui suivent, où
+# seule la **position** peut le signaler : `clair`, `sombre` et `systeme`
+# n'apparaissent jamais en position de texte, les trois mots du contrat
+# d'apparence restent donc tranquilles.
+IDENTIFIANT = re.compile(r'^(?=[\w./:+${}#&?=@~%-]*$).*[\d./:+${}#&?=@~%_-]')
 GABARIT_DATE = re.compile(r"^[dMyEHhmsaz'\s:/.,-]+$")
 
 

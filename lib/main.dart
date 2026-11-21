@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/core.dart';
 import 'data/app_config.dart';
 import 'data/data_providers.dart';
+import 'data/language_storage.dart';
 import 'data/onboarding_storage.dart';
 import 'data/theme_storage.dart';
 import 'demarrage.dart';
@@ -22,9 +23,11 @@ Future<void> main() async {
   // déjà pouvoir être lue en clair.
   DiagnosticMode.lireDepuisUrl();
 
-  // Charge les symboles de date français avant le premier rendu : sans cela,
-  // `DateFormat(..., 'fr_FR')` lève une exception au premier appel.
-  await initializeDateFormatting(AppDates.locale);
+  // Charge les symboles de date **des quatre langues** avant le premier
+  // rendu : sans cela, `DateFormat(..., 'de')` lève au premier appel. Sans
+  // argument, `initializeDateFormatting` les charge toutes — une cinquième
+  // langue ne demanderait donc rien ici.
+  await initializeDateFormatting();
 
   // `Supabase.initialize` restaure la session persistée : l'utilisateur reste
   // connecté d'un lancement à l'autre — sauf s'il a décoché « Se souvenir de
@@ -52,6 +55,11 @@ Future<void> main() async {
   final ThemeStorage apparence = ThemeStorage();
   await apparence.initialize();
 
+  // La langue, pour la même raison exactement : s'ouvrir en français pour
+  // basculer en espagnol à la première image serait le même clignotement.
+  final LanguageStorage langue = LanguageStorage();
+  await langue.initialize();
+
   runApp(
     ProviderScope(
       // `Override` n'est pas exporté par Riverpod 3 : inférence, comme dans
@@ -60,6 +68,7 @@ Future<void> main() async {
         sessionPersistenceProvider.overrideWithValue(persistance),
         onboardingStorageProvider.overrideWithValue(accueil),
         themeStorageProvider.overrideWithValue(apparence),
+        languageStorageProvider.overrideWithValue(langue),
       ],
       // L'enfant est **constant** : le signal de démarrage observe les
       // lectures du premier écran, et n'a donc pas à faire reconstruire
@@ -102,11 +111,26 @@ class JelvoApp extends ConsumerWidget {
       // Clair, sombre, ou celui du téléphone. Le réglage vit sur l'appareil
       // — voir `ThemeStorage` — et il est déjà chargé quand on arrive ici.
       themeMode: ref.watch(themeModeProvider),
-      // Une seule langue pour l'instant. Les délégués de Material et de
-      // Cupertino sont néanmoins nécessaires : sans eux, les sélecteurs de
-      // date et d'heure restent en anglais — quand ils ne lèvent pas.
+      // Les délégués de Material et de Cupertino ne sont pas décoratifs :
+      // sans eux, les sélecteurs de date et d'heure restent en anglais quand
+      // ils ne lèvent pas.
       localizationsDelegates: AppTexts.localizationsDelegates,
-      supportedLocales: AppTexts.supportedLocales,
+      supportedLocales: LanguageStorage.languesPrisesEnCharge,
+      // `null` veut dire « celle du téléphone », et c'est le défaut. La
+      // résolution passe alors par le rappel ci-dessous.
+      locale: ref.watch(localeProvider),
+      // **Flutter retomberait sur `supportedLocales.first`**, c'est-à-dire sur
+      // le français : un téléphone en japonais obtiendrait donc du français.
+      // La consigne est l'anglais, et c'est `LanguageStorage.resoudre` qui la
+      // porte — au même endroit que la liste des quatre langues, pour qu'une
+      // cinquième n'ait qu'un fichier à toucher.
+      //
+      // Ce rappel suit aussi le téléphone **à chaud** : Flutter le rappelle à
+      // chaque `didChangeLocales`, là où lire la langue une fois dans `main()`
+      // l'aurait figée jusqu'au prochain lancement.
+      localeListResolutionCallback:
+          (List<Locale>? preferees, Iterable<Locale> _) =>
+              LanguageStorage.resoudre(preferees),
       routerConfig: router,
       builder: (BuildContext context, Widget? child) {
         // Neutralise la mise à l'échelle extrême du texte : au-delà de 1,3 la

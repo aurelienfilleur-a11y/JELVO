@@ -96,7 +96,10 @@ class _SignUpCredentialsScreenState
         PasswordRulesChecklist(password: _password),
 
         AppSpacing.gapXl,
-        PrimaryButton(label: 'Continuer', onPressed: _continue),
+        PrimaryButton(
+          label: AppTexts.of(context).coreContinuer,
+          onPressed: _continue,
+        ),
 
         AppSpacing.gapLg,
         Text(

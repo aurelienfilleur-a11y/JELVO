@@ -48,7 +48,7 @@ class _MediaPickerSheetState extends State<_MediaPickerSheet> {
         children: <Widget>[
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-            child: Text('Joindre', style: context.typo.h2),
+            child: Text(t.coreJoindre, style: context.typo.h2),
           ),
           AppSpacing.gapMd,
 
@@ -101,7 +101,7 @@ class _MediaPickerSheetState extends State<_MediaPickerSheet> {
             ),
             _Choix(
               icone: Icons.videocam_outlined,
-              titre: 'Filmer',
+              titre: t.coreFilmer,
               onTap: () => _prendre(MediaKind.video, ImageSource.camera),
             ),
           ],

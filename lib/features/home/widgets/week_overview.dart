@@ -84,6 +84,7 @@ class _Jour extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AppTexts t = AppTexts.of(context);
     final Color couleurTexte = estAujourdHui
         ? context.couleurs.onAccent
         : context.couleurs.encre;
@@ -100,7 +101,7 @@ class _Jour extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               Text(
-                AppDates.weekdayInitial(summary.day),
+                AppDates.weekdayInitial(summary.day, t),
                 style: context.typo.caption.copyWith(
                   color: context.couleurs.textSecondary,
                   fontWeight: AppTypography.medium,
@@ -155,7 +156,7 @@ class _Jour extends StatelessWidget {
   /// Les pastilles ne disent rien à un lecteur d'écran : l'étiquette porte le
   /// compte réel.
   String _etiquette(AppTexts t) {
-    final StringBuffer texte = StringBuffer(AppDates.shortDate(summary.day));
+    final StringBuffer texte = StringBuffer(AppDates.shortDate(summary.day, t));
     if (estAujourdHui) texte.write(t.homeAujourdHui);
     if (summary.eventCount > 0) {
       texte.write(t.homeVirguleEvenementCount(summary.eventCount));

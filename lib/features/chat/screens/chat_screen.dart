@@ -130,7 +130,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     message: AuthFailure.from(
                       conversation.error!,
                     ).message(AppTexts.of(context)),
-                    actionLabel: 'Réessayer',
+                    actionLabel: AppTexts.of(context).commonRetry,
                     onActionPressed: () => ref
                         .read(conversationProvider(widget.groupId).notifier)
                         .refresh(),
@@ -212,6 +212,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       a.year == b.year && a.month == b.month && a.day == b.day;
 
   Widget _ligne(List<Message> messages, int index, String? moi) {
+    final AppTexts t = AppTexts.of(context);
     final Message message = messages[index];
 
     // Une carte n'est pas une bulle : elle occupe toute la largeur, ne
@@ -248,7 +249,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           suivant.isCard ||
           suivant.senderId != message.senderId ||
           !_memeJour(suivant.createdAt, message.createdAt),
-      timeLabel: AppDates.time(message.createdAt),
+      timeLabel: AppDates.time(message.createdAt, t),
       onLongPress: () => _ouvrirActions(message, moi),
       onReactionTap: (String emoji) => _reagir(message, emoji),
       onRetry: message.failed ? () => _reessayer(message) : null,

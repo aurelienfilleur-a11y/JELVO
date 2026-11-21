@@ -35,7 +35,7 @@ class CalendarCountersRow extends StatelessWidget {
             child: _Compteur(
               icon: Icons.event_rounded,
               value: '${counters.events}',
-              label: 'Événements',
+              label: AppTexts.of(context).coreEvenements,
               tint: context.couleurs.primary,
             ),
           ),
@@ -44,7 +44,7 @@ class CalendarCountersRow extends StatelessWidget {
             child: _Compteur(
               icon: Icons.task_alt_rounded,
               value: '${counters.tasks}',
-              label: 'Tâches',
+              label: AppTexts.of(context).coreTaches,
               tint: context.couleurs.success,
               onPressed: onTasksPressed,
             ),
@@ -54,7 +54,7 @@ class CalendarCountersRow extends StatelessWidget {
             child: _Compteur(
               icon: Icons.hourglass_bottom_rounded,
               value: counters.freeLabel(AppTexts.of(context)),
-              label: 'Disponible',
+              label: AppTexts.of(context).coreDisponible,
               tint: context.couleurs.warning,
               onPressed: onAvailabilityPressed,
             ),
@@ -64,7 +64,7 @@ class CalendarCountersRow extends StatelessWidget {
             child: _Compteur(
               icon: Icons.mark_email_unread_outlined,
               value: '${counters.pendingInvitations}',
-              label: 'Invitations',
+              label: AppTexts.of(context).coreInvitations,
               tint: context.couleurs.danger,
               onPressed: onInvitationsPressed,
             ),
@@ -176,7 +176,7 @@ class GroupFilterBar extends StatelessWidget {
         padding: AppSpacing.screenHorizontal,
         children: <Widget>[
           FilterChip(
-            label: const Text('Tout'),
+            label: Text(AppTexts.of(context).coreTout),
             selected: selection.isEmpty,
             showCheckmark: false,
             onSelected: (_) => onClear(),

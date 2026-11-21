@@ -158,7 +158,7 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
 
             AppSpacing.gapLg,
             AppTextField(
-              label: 'Lieu',
+              label: AppTexts.of(context).coreLieu,
               hint: AppTexts.of(context).calendarExPetitComptoir,
               controller: _lieu,
               prefixIcon: Icons.place_outlined,
@@ -177,7 +177,7 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
 
             AppSpacing.gapLg,
             AppTextField(
-              label: 'Description',
+              label: AppTexts.of(context).coreDescription,
               hint: AppTexts.of(context).calendarQuFautSavoirQu,
               controller: _description,
               maxLines: 3,
@@ -194,7 +194,7 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
                   if (_groupId != null) ...<Widget>[
                     OptionRow(
                       icon: Icons.group_outlined,
-                      label: 'Participants',
+                      label: AppTexts.of(context).calendarParticipants,
                       hint: AppTexts.of(context).calendarInviterMembresGroupe,
                       value: _libelleParticipants(membres),
                       onTap: () => _choisirParticipants(membres),
@@ -203,7 +203,7 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
                   ],
                   OptionRow(
                     icon: Icons.notifications_none_rounded,
-                    label: 'Rappel',
+                    label: AppTexts.of(context).calendarRappel,
                     hint: AppTexts.of(
                       context,
                     ).calendarJelvoPreviendraParticipants,
@@ -213,7 +213,7 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
                   Divider(height: 1, color: context.couleurs.border),
                   OptionRow(
                     icon: Icons.repeat_rounded,
-                    label: 'Répéter',
+                    label: AppTexts.of(context).calendarRepeter,
                     hint: AppTexts.of(context).calendarRendezReguliers,
                     value: _recurrence.label(AppTexts.of(context)),
                     onTap: _choisirRecurrence,
@@ -262,6 +262,7 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
   /// sous la colonne de l'heure à laquelle elle se rapporte, plutôt que de
   /// disparaître.
   Widget _blocHoraires() {
+    final AppTexts t = AppTexts.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
@@ -272,8 +273,8 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
               child: _Champ(
                 label: AppTexts.of(context).calendarDate,
                 icon: Icons.calendar_today_rounded,
-                valeur: _jour == null ? null : AppDates.shortDate(_jour!),
-                placeholder: 'Choisir',
+                valeur: _jour == null ? null : AppDates.shortDate(_jour!, t),
+                placeholder: t.coreChoisir,
                 onTap: _choisirDate,
               ),
             ),
@@ -283,7 +284,7 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
                 label: AppTexts.of(context).calendarHeure,
                 icon: Icons.schedule_rounded,
                 valeur: _debut?.format(context),
-                placeholder: 'Choisir',
+                placeholder: t.coreChoisir,
                 onTap: () => _choisirHeure(debut: true),
               ),
             ),
@@ -295,7 +296,7 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
             const Spacer(),
             Expanded(
               child: _Champ(
-                label: 'Fin',
+                label: t.coreFin,
                 icon: Icons.schedule_outlined,
                 valeur: _fin?.format(context),
                 placeholder: '+ 1 h',
@@ -322,7 +323,7 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
   Future<void> _choisirParticipants(List<GroupMember> membres) {
     return PersonPickerSheet.ouvrir(
       context,
-      titre: 'Participants',
+      titre: AppTexts.of(context).calendarParticipants,
       aide: AppTexts.of(context).calendarSelectionMembresGroupeConvies,
       personnes: <PickablePerson>[
         for (final GroupMember membre in membres)

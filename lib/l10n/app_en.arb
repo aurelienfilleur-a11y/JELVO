@@ -1,0 +1,2019 @@
+{
+  "@@locale": "en",
+  "appTitle": "Jelvo",
+  "@appTitle": {
+    "description": "Nom de l'application"
+  },
+  "navHome": "Home",
+  "navGroups": "Groups",
+  "navCalendar": "Calendar",
+  "navContacts": "Contacts",
+  "createNewGroup": "New group",
+  "createNewEvent": "New event",
+  "createAddContact": "Add a contact",
+  "createTitle": "Create",
+  "createQuestion": "What would you like to create?",
+  "createIntro": "Pick a type, then fill in the essentials. You can add the details later.",
+  "createDetails": "Details",
+  "createGroupField": "Group",
+  "createPersonalOption": "Personal — visible to you only",
+  "createPickDate": "Choose the date",
+  "createDueDate": "Due date",
+  "createTime": "Time",
+  "createMissingDate": "Choose the date of the event.",
+  "commonCancel": "Cancel",
+  "commonBack": "Back",
+  "commonClose": "Close",
+  "commonRetry": "Try again",
+  "commonSave": "Save",
+  "commonDelete": "Delete",
+  "commonRequiredField": "This field is required.",
+  "commonOptional": "Optional",
+  "homeSubtitle": "Here is your day at a glance.",
+  "homeToday": "Today",
+  "homeNoEventTitle": "Free day",
+  "homeNoEventMessage": "Nothing is planned for today yet.",
+  "homeSoon": "Coming up",
+  "homeNothingUrgent": "Nothing urgent",
+  "homeAllUpToDateTitle": "All caught up",
+  "homeAllUpToDateMessage": "No task is due in the next 48 hours.",
+  "homeMyGroups": "My groups",
+  "homeMostActive": "Most active right now",
+  "homeSeeAll": "See all",
+  "homeEventCount": "{count, plural, =0{No events} =1{1 event} other{{count} events}}",
+  "@homeEventCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeTaskCount": "{count, plural, =0{No tasks} =1{1 task due soon} other{{count} tasks due soon}}",
+  "@homeTaskCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupUpcoming": "Upcoming",
+  "groupNothingPlanned": "Nothing planned",
+  "groupNoEventTitle": "No events",
+  "groupNoEventMessage": "Suggest a date to the group: everyone replies yes, maybe or no.",
+  "groupProposeDate": "Suggest a date",
+  "groupTasksToDo": "Tasks to do",
+  "groupNoTaskTitle": "No open tasks",
+  "groupNoTaskMessage": "Share out what needs doing: everyone sees their part.",
+  "groupAddTask": "Add a task",
+  "groupAdd": "Add",
+  "groupAddToGroup": "Add to the group",
+  "groupCreationSheetIntro": "What you create here will be shared with “{name}”.",
+  "@groupCreationSheetIntro": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "groupMembers": "Members",
+  "groupMemberCount": "{count, plural, =0{No members} =1{1 member} other{{count} members}}",
+  "@groupMemberCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "taskStatusTodo": "To do",
+  "taskStatusDone": "Done",
+  "taskStatusOverdue": "Overdue",
+  "taskPriorityLow": "Low",
+  "taskPriorityMedium": "Normal",
+  "taskPriorityHigh": "High",
+  "taskAssigneePending": "Pending",
+  "taskAssigneeAccepted": "Accepted",
+  "taskAssigneeDeclined": "Declined",
+  "taskAccept": "Accept",
+  "taskDecline": "Decline",
+  "taskListProgress": "{checked} of {total} items",
+  "@taskListProgress": {
+    "placeholders": {
+      "checked": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "eventAnswerYes": "Yes",
+  "eventAnswerMaybe": "Maybe",
+  "eventAnswerNo": "No",
+  "eventAnswerPending": "Pending",
+  "errorGeneric": "Something went wrong. Try again in a moment.",
+  "errorNetwork": "No connection. Check your internet access, then try again.",
+  "errorForbidden": "You do not have the permissions needed for this action.",
+  "errorNotSaved": "The data could not be saved. Try again in a moment.",
+  "coreAujourdHui": "Today",
+  "coreInstant": "just now",
+  "coreDateLabelTimeLabel": "{dateLabel} · {timeLabel}",
+  "@coreDateLabelTimeLabel": {
+    "placeholders": {
+      "dateLabel": {
+        "type": "Object"
+      },
+      "timeLabel": {
+        "type": "Object"
+      }
+    }
+  },
+  "coreVoirMembres": "See all members",
+  "corePersonneNom": "Nobody by that name.",
+  "coreMarquerTacheCommeTerminee": "Mark the task as done",
+  "authMessageDiagnosticRaw": "{_message}\n\n[diagnostic] {raw}",
+  "@authMessageDiagnosticRaw": {
+    "placeholders": {
+      "_message": {
+        "type": "Object"
+      },
+      "raw": {
+        "type": "Object"
+      }
+    }
+  },
+  "authEnvoiPhotoEchoueReessayez": "Uploading the photo failed. Try again in a moment.",
+  "authIdentifiantsIncorrectsVerifiezSaisie": "Incorrect credentials. Check what you typed, then try again.",
+  "authAdresseEMailEncore": "Your email address is not verified yet.",
+  "authAdresseEMailDeja": "This email address is already in use. Sign in or choose another address.",
+  "authCodeExpireDemandezNouveau": "This code has expired. Request a new one.",
+  "authCodeIncorrectVerifiezSix": "Incorrect code. Check the six digits sent to you by email.",
+  "authTropTentativesPatientezMinute": "Too many attempts. Wait a minute before trying again.",
+  "authMotPasseTropFaible": "This password is too weak. Choose a stronger one.",
+  "authNouveauMotPasseDoit": "The new password must differ from the old one.",
+  "authAucunCompteCorrespondInformations": "No account matches these details.",
+  "authSessionExpireReconnectez": "Your session has expired. Sign in again.",
+  "authConnexionEchoueReessayezInstant": "Signing in failed. Try again in a moment.",
+  "authPseudoVientEtrePris": "This username has just been taken. Choose another one.",
+  "authFonctionnaliteAttendMiseJour": "This feature is waiting on a database update. Try again later, or report it if it persists.",
+  "authChoisissezPseudo": "Choose a username.",
+  "authPseudoDoitContenirMoins": "The username must be at least {pseudoMinLength} characters long.",
+  "@authPseudoDoitContenirMoins": {
+    "placeholders": {
+      "pseudoMinLength": {
+        "type": "Object"
+      }
+    }
+  },
+  "authPseudoDoitDepasserPseudoMaxLength": "The username must not exceed {pseudoMaxLength} characters.",
+  "@authPseudoDoitDepasserPseudoMaxLength": {
+    "placeholders": {
+      "pseudoMaxLength": {
+        "type": "Object"
+      }
+    }
+  },
+  "authUniquementMinusculesChiffresPoints": "Lowercase letters, digits and dots only.",
+  "authRenseignezAdresseEMail": "Enter your email address.",
+  "authAdresseEMailSemble": "This email address looks incomplete.",
+  "authChoisissezMotPasse": "Choose a password.",
+  "authMoinsPasswordMinLengthCaracteresNecessaires": "At least {passwordMinLength} characters are required.",
+  "@authMoinsPasswordMinLengthCaracteresNecessaires": {
+    "placeholders": {
+      "passwordMinLength": {
+        "type": "Object"
+      }
+    }
+  },
+  "authAjoutezMoinsMajuscule": "Add at least one capital letter.",
+  "authAjoutezMoinsChiffre": "Add at least one digit.",
+  "authConnexionPseudoEncoreDisponible": "Signing in with a username is not available yet. Use your email address.",
+  "authMotPasseOublie": "Forgotten password",
+  "authIndiquezAdresseEMail": "Enter your email address: we will send you a six-digit code to choose a new one.",
+  "authAdresseEMail": "Email address",
+  "authEnvoyerCode": "Send the code",
+  "authContentRevoir": "Good to see you again",
+  "authConnectezRetrouverGroupesAgenda": "Sign in to find your groups and your calendar.",
+  "authPseudoAdresseEMail": "Username or email address",
+  "authMotPasseOublie2": "Forgotten your password?",
+  "authConnecter": "Sign in",
+  "authEncoreCompte": "No account yet?",
+  "authInscrire": "Sign up",
+  "authSouvenirMoi": "Remember me",
+  "authResterezConnecteJusquDeconnexion": "You will stay signed in until you sign out.",
+  "authSerezDeconnecteFermetureApplication": "You will be signed out when the app closes.",
+  "authJelvoInstalleEcranAccueil": "Jelvo installed on your home screen has its own session: signing in there is separate from Safari, even with this box ticked.",
+  "authRenseignezPseudoAdresseE": "Enter your username or your email address.",
+  "authRenseignezMotPasse": "Enter your password.",
+  "authNouveauMotPasse": "New password",
+  "authSaisissezCodeRecuPuis": "Enter the code you received, then choose a new password.",
+  "authSaisissezCodeEnvoyeEmail": "Enter the code sent to {email}, then choose a new password.",
+  "@authSaisissezCodeEnvoyeEmail": {
+    "placeholders": {
+      "email": {
+        "type": "Object"
+      }
+    }
+  },
+  "authCodeVerification": "Verification code",
+  "auth8CaracteresMinimum": "8 characters minimum",
+  "authChangerMotPasse": "Change the password",
+  "authRenvoyerCode": "Resend the code",
+  "authEnvoiCours": "Sending…",
+  "authNouveauCodePossibleSecondsLeft": "New code available in {_secondsLeft} s",
+  "@authNouveauCodePossibleSecondsLeft": {
+    "placeholders": {
+      "_secondsLeft": {
+        "type": "Object"
+      }
+    }
+  },
+  "authSaisissezSixChiffresCode": "Enter the six digits of the code.",
+  "authMotPasseEteMis": "Your password has been updated.",
+  "authNouveauCodeVientEtre": "A new code has just been sent.",
+  "authCreerCompte": "Create your account",
+  "authChoisissezPseudoSecurisezCompte": "Choose a username and secure your account.",
+  "authEtape12": "Step 1 of 2",
+  "authCreantCompteAcceptezRecevoir": "By creating an account, you agree to receive a verification email.",
+  "authAppelezComment": "What is your name?",
+  "authProchesReconnaitrontFacilement": "Your friends and family will recognise you more easily.",
+  "authEtape22": "Step 2 of 2",
+  "authCreerCompte2": "Create my account",
+  "authRenseignezPrenom": "Enter your first name.",
+  "authRenseignezNom": "Enter your last name.",
+  "authCompteCreeMaisProfil": "Account created, but the profile could not be saved: {warning}",
+  "@authCompteCreeMaisProfil": {
+    "placeholders": {
+      "warning": {
+        "type": "Object"
+      }
+    }
+  },
+  "authVerifiezEMail": "Check your email",
+  "authSaisissezCodeSixChiffres": "Enter the six-digit code we have just sent you.",
+  "authChoisirPhotoProfil": "Choose a profile picture",
+  "authOuvertureGalerie": "Opening the gallery…",
+  "authRetirerPhoto": "Remove the photo",
+  "authAjouterPhotoFacultatif": "Add a photo (optional)",
+  "authPhotoPuEtreOuverte": "The photo could not be opened. Try again.",
+  "authMotPasse": "Password",
+  "authMotPasse2": "Your password",
+  "authAfficherMotPasse": "Show the password",
+  "authMasquerMotPasse": "Hide the password",
+  "authMajuscule": "One capital letter",
+  "authChiffre": "One digit",
+  "authPseudoDejaPris": "This username is already taken.",
+  "authPseudoDisponible": "This username is available.",
+  "authCodeVerificationSixChiffres": "Six-digit verification code",
+  "availabilityChaqueSemaine": "Every week",
+  "availabilityDatePrecise": "A specific date",
+  "availabilityCreneauPuEtreEnregistre": "The time slot could not be saved. Try again in a moment.",
+  "availabilityDisponibilites": "My availability",
+  "availabilityNouveauCreneau": "New time slot",
+  "availabilityDisponibilitesIndisponibles": "Availability unavailable",
+  "availabilitySemaineType": "My typical week",
+  "availabilityCreneauxReviennentChaqueSemaine": "Slots that come back every week",
+  "availabilityAucunCreneauRecurrentRien": "No recurring slot. With nothing declared, others see you as “Unknown”.",
+  "availabilityDatePrecisePrimeSemaine": "A specific date, which overrides the typical week",
+  "availabilityAucuneExceptionJourConge": "No exceptions. A day off or a trip goes here.",
+  "availabilityAjouterCreneau": "Add a time slot",
+  "availabilityContactsMembresGroupesVoient": "Your contacts and the members of your groups only see “Available”, “Unavailable” or “Unknown”. Never your hours, never the reason.",
+  "availabilityModifierCreneau": "Edit the time slot",
+  "availabilitySupprimerCreneau": "Delete the time slot",
+  "availabilityCreneauSupprime": "Time slot deleted.",
+  "availabilityCreneauExisteListeVa": "This time slot no longer exists. The list will refresh.",
+  "availabilityAjouterCreneau2": "Add the time slot",
+  "availabilityChoisissezDateCreneau": "Choose the date of the time slot.",
+  "availabilityFinDoitSuivreDebut": "The end must come after the start.",
+  "availabilityCreneauModifie": "Time slot updated.",
+  "availabilityCreneauAjoute": "Time slot added.",
+  "availabilityDisponible": "Who is available?",
+  "availabilityHeureChoisieVoyezQu": "At the chosen time. You only see a word, never their slots.",
+  "availabilityDisponibilitesIndisponiblesInstant": "Availability is unavailable for now.",
+  "calendarJours": "Every day",
+  "calendarToutesSemaines": "Every week",
+  "calendarToutesDeuxSemaines": "Every two weeks",
+  "calendarMois": "Every month",
+  "calendarAns": "Every year",
+  "calendar10MinutesAvant": "10 minutes before",
+  "calendar1HeureAvant": "1 hour before",
+  "calendarVeille": "The day before",
+  "calendar1SemaineAvant": "1 week before",
+  "calendarMinutesMin": "{minutes} min",
+  "@calendarMinutesMin": {
+    "placeholders": {
+      "minutes": {
+        "type": "Object"
+      }
+    }
+  },
+  "calendarEvenementPuEtreCree": "The event could not be created. Try again in a moment.",
+  "calendarEvenementPuEtreModifie": "The event could not be updated. Try again in a moment.",
+  "calendarSemainePrecedente": "Previous week",
+  "calendarSemaineSuivante": "Next week",
+  "calendarRienFiltres": "Nothing with these filters",
+  "calendarFiltrePoseJourneeEntiere": "A filter is on: the full day may hold something else.",
+  "calendarNiEvenementNiTache": "No event, no task and no declared slot for this day.",
+  "calendarCreerEvenement": "Create an event",
+  "calendarModifierEvenement": "Edit the event",
+  "calendarSupprimerEvenement": "Delete the event",
+  "calendarEvenementIntrouvable": "Event not found",
+  "calendarEteSupprimeAvezAcces": "It has been deleted, or you no longer have access to it.",
+  "calendarNonPrecise": "Not specified",
+  "calendarReponse": "Your reply",
+  "calendarPersonneEncoreEteConvie": "Nobody has been invited yet.",
+  "calendarEteSupprimeAvezAcces2": "It has been deleted, or you no longer have access to it. There is nothing left to confirm.",
+  "calendarRevenirCalendrier": "Back to the calendar",
+  "calendarMembre": "A member",
+  "calendarConvieEvenement": "invites you to an event",
+  "calendarPropos": "About",
+  "calendarCetEvenementDejaEu": "This event has already taken place.",
+  "calendarSerez": "Will you be there?",
+  "calendarVoirDetailEvenement": "See the event details",
+  "calendarCreneauxDeclaresFondJournee": "Declared slots, as the backdrop of the day. They do not belong to any group.",
+  "calendarEvenementTache": "An event, a task…",
+  "calendarDeuxLettresSuffisentChercher": "Two letters are enough to search.",
+  "calendarTitre": "Title *",
+  "calendarExDejeunerChezCamille": "E.g. Lunch at Camille’s",
+  "calendarExPetitComptoir": "E.g. Le Petit Comptoir",
+  "calendarEffacerLieu": "Clear the location",
+  "calendarQuFautSavoirQu": "What to know, what to bring",
+  "calendarInviterMembresGroupe": "Invite members of the group",
+  "calendarJelvoPreviendraParticipants": "Jelvo will notify the participants",
+  "calendarRendezReguliers": "For recurring get-togethers",
+  "calendarEnregistrerModifications": "Save the changes",
+  "calendarCreerEvenement2": "Create the event",
+  "calendarDate": "Date *",
+  "calendarHeure": "Time *",
+  "calendarMembres": "All members",
+  "calendarSelectionMembresGroupeConvies": "With no selection, every member of the group is invited.",
+  "calendarDonnezTitreEvenement": "Give the event a title.",
+  "calendarEvenementEteModifie": "The event has been updated.",
+  "calendarEvenementTitreEteCree": "The event “{titre}” has been created.",
+  "@calendarEvenementTitreEteCree": {
+    "placeholders": {
+      "titre": {
+        "type": "Object"
+      }
+    }
+  },
+  "calendarQuelGroupe": "In which group? *",
+  "calendarSeulVerrez": "Only you will see it",
+  "calendarQuelGroupe2": "In which group?",
+  "chatMoMo": "{mo} MB",
+  "@chatMoMo": {
+    "placeholders": {
+      "mo": {
+        "type": "Object"
+      }
+    }
+  },
+  "chatOuiOui": "{oui} yes",
+  "@chatOuiOui": {
+    "placeholders": {
+      "oui": {
+        "type": "Object"
+      }
+    }
+  },
+  "chatPeutEtrePeutEtre": "{peutEtre} maybe",
+  "@chatPeutEtrePeutEtre": {
+    "placeholders": {
+      "peutEtre": {
+        "type": "Object"
+      }
+    }
+  },
+  "chatNonNon": "{non} no",
+  "@chatNonNon": {
+    "placeholders": {
+      "non": {
+        "type": "Object"
+      }
+    }
+  },
+  "chatAucuneReponse": "No replies",
+  "chatQuelqu": "Someone",
+  "chatMessagePuEtreEnvoye": "The message could not be sent. Try again in a moment.",
+  "chatConversationIndisponible": "Conversation unavailable",
+  "chatRienEncore": "Nothing yet",
+  "chatLancezConversationPersonneEncore": "Start the conversation: nobody has written here yet.",
+  "chatReagirEmoji": "React {emoji}",
+  "@chatReagirEmoji": {
+    "placeholders": {
+      "emoji": {
+        "type": "Object"
+      }
+    }
+  },
+  "chatSupprimerMessage": "Delete the message",
+  "chatPouvezSupprimerMessages": "You can only delete your own messages",
+  "chatMessageSupprime": "Message deleted.",
+  "chatMessagePeutEtreSupprime": "This message can no longer be deleted.",
+  "chatNouvelleTache": "New task",
+  "chatCreerTacheFaire": "Create a task to do",
+  "chatPlanifierEvenement": "Plan an event",
+  "chatPhotoVideo": "Photo or video",
+  "chatEnvoyerMedia": "Send a media file",
+  "chatRienPrevuInstant": "Nothing planned for now",
+  "chatPhotoGalerie": "Photo from the gallery",
+  "chatPrendrePhoto": "Take a photo",
+  "chatVideoGalerie": "Video from the gallery",
+  "chatMediaPuEtreLu": "This media file could not be read. Try again.",
+  "chatNonEnvoyeReessayer": "Not sent — try again",
+  "chatMessageSupprime2": "Message deleted",
+  "chatTacheEteSupprimee": "This task has been deleted.",
+  "chatDesister": "Step down",
+  "chatProposeeGroupePersonneEncore": "Offered to the group — nobody has taken it yet.",
+  "chatCetEvenementEteSupprime": "This event has been deleted.",
+  "chatTresBienTacheReste": "Fine — the task stays offered to the group.",
+  "chatMicrophoneAccessibleAutorisezReglages": "The microphone is not accessible. Allow it in your browser settings, then reopen the conversation.",
+  "chatAjouterConversation": "Add to the conversation",
+  "chatMessage": "Your message",
+  "chatFermerEmojis": "Close the emojis",
+  "chatEnregistrerMessageVocal": "Record a voice message",
+  "chatAnnulerEnregistrement": "Cancel the recording",
+  "chatEnregistrement": "Recording…",
+  "chatEnvoyerMessageVocal": "Send the voice message",
+  "chatPlusieursPersonnesTrainEcrire": "Several people are typing…",
+  "chatMettrePause": "Pause",
+  "contactsDemandeEnvoyee": "Request sent.",
+  "contactsPersonneFaitDejaPartie": "This person is already one of your contacts.",
+  "contactsDemandeDejaAttente": "A request is already pending.",
+  "contactsPouvezAjouterMeme": "You cannot add yourself.",
+  "contactsQRCode": "My QR code",
+  "contactsCherchezPseudo": "Search for a username",
+  "contactsSaisissezMoinsDeuxCaracteres": "Type at least two characters to find someone, or scan their QR code.",
+  "contactsRechercheIndisponible": "Search unavailable",
+  "contactsAucunResultat": "No results",
+  "contactsAucunPseudoCommenceTerm": "No username starts with “{term}”.",
+  "@contactsAucunPseudoCommenceTerm": {
+    "placeholders": {
+      "term": {
+        "type": "Object"
+      }
+    }
+  },
+  "contactsDejaCarnet": "Already in your contacts",
+  "contactsContacts": "My contacts",
+  "contactsRechercherContact": "Search for a contact",
+  "contactsDemandesRecues": "Requests received",
+  "contactsCarnetIndisponible": "Contacts unavailable",
+  "contactsCarnetVide": "No contacts",
+  "contactsAjoutezProchesLeurPseudo": "Add your friends and family by username, or by scanning their QR code, to plan together.",
+  "contactsAucunContactCorrespondQuery": "No contact matches “{query}”.",
+  "@contactsAucunContactCorrespondQuery": {
+    "placeholders": {
+      "query": {
+        "type": "Object"
+      }
+    }
+  },
+  "contactsDemandeRefusee": "Request declined.",
+  "contactsFaitesScannerCodeEtre": "Have this code scanned to be added as a contact. It only contains your username — no email address, no calendar.",
+  "contactsPartagerPseudo": "Share my username",
+  "contactsPseudoJelvo": "My Jelvo username",
+  "contactsScannerQRCode": "Scan a QR code",
+  "contactsScanIndisponibleIci": "Scanning unavailable here",
+  "contactsChercherPseudo": "Search by username",
+  "contactsCameraInaccessible": "Camera unavailable",
+  "contactsAutorisezAccesCameraScanner": "Allow camera access to scan a QR code.",
+  "contactsVisezQRCodeProche": "Point at someone’s QR code to send them a contact request.",
+  "contactsQRCodeProfilJelvo": "This QR code is not a Jelvo profile.",
+  "contactsAucunComptePortePseudo": "No account has the username @{pseudo}.",
+  "@contactsAucunComptePortePseudo": {
+    "placeholders": {
+      "pseudo": {
+        "type": "Object"
+      }
+    }
+  },
+  "contactsScannerQRCode2": "Scan a QR code",
+  "contactsAjouterContactQRCode": "Add a contact with their QR code",
+  "contactsRechercherPseudo": "Search for a username",
+  "contactsTrouverUtilisateurJelvo": "Find a Jelvo user",
+  "contactsInviterAmi": "Invite a friend",
+  "contactsEnvoyerInvitationJelvo": "Send a Jelvo invitation",
+  "contactsRejoignezMoiJelvo": "Join me on Jelvo",
+  "contactsRetirerFavoris": "Remove from favourites",
+  "contactsAjouterFavoris": "Add to favourites",
+  "contactsFavorisTeteCarnet": "Favourites come first in your contacts",
+  "contactsRetirerContacts": "Remove from my contacts",
+  "contactsRelationSupprimeeDeuxCotes": "The connection is removed on both sides",
+  "contactsRetirerContact": "Remove this contact",
+  "contactsGererFavoris": "Manage favourites",
+  "contactsFavoriPersonnelAutreSait": "Favourites are private: the other person knows nothing about it.",
+  "contactsAjoutezAbordContactsEpingler": "Add some contacts to pin first.",
+  "contactsEpinglezProchesRetrouverIci": "Pin your closest people to find them here.",
+  "contactsScanQRCodeDemande": "Scanning a QR code needs a camera: it is available in the mobile app. Here, search for the person by username.",
+  "createCreneauAgendaSeulPartage": "A slot in your calendar, on your own or shared",
+  "createActionFaireEcheanceResponsable": "Something to do, with a due date and someone in charge",
+  "createEspacePartageProchesAmis": "A shared space with your family or your friends",
+  "createChoisissezTypeFormulaireOuvre": "Pick a type: the form opens just below.",
+  "groupsLienInvitationExisteValable": "This invitation link does not exist or is no longer valid.",
+  "groupsLienInvitationExpireDemandez": "This invitation link has expired. Ask the group for a new one.",
+  "groupsLienInvitationEteRevoque": "This invitation link has been revoked by the group.",
+  "groupsLienDejaServiNombre": "This link has already been used the intended number of times.",
+  "groupsAvezRejointGroupe": "You have joined the group.",
+  "groupsFaitesDejaPartieGroupe": "You are already part of this group.",
+  "groupsLienInvitationExpire": "This invitation link has expired.",
+  "groupsLienInvitationEteRevoque2": "This invitation link has been revoked.",
+  "groupsConnectezRejoindreGroupe": "Sign in to join this group.",
+  "groupsAvezQuitteGroupe": "You have left the group.",
+  "groupsAvezQuitteGroupeAncien": "You have left the group. The longest-standing member becomes admin.",
+  "groupsEtiezDernierMembreGroupe": "You were the last member: the group has been deleted.",
+  "groupsFaitesPartieGroupe": "You are not part of this group.",
+  "groupsNomDesormaisAdministrateur": "{nom} is now an administrator.",
+  "@groupsNomDesormaisAdministrateur": {
+    "placeholders": {
+      "nom": {
+        "type": "Object"
+      }
+    }
+  },
+  "groupsNomAdministrateur": "{nom} is no longer an administrator.",
+  "@groupsNomAdministrateur": {
+    "placeholders": {
+      "nom": {
+        "type": "Object"
+      }
+    }
+  },
+  "groupsNomEteRetireGroupe": "{nom} has been removed from the group.",
+  "@groupsNomEteRetireGroupe": {
+    "placeholders": {
+      "nom": {
+        "type": "Object"
+      }
+    }
+  },
+  "groupsAdhesionNomDesormaisTemporaire": "{nom}’s membership is now temporary.",
+  "@groupsAdhesionNomDesormaisTemporaire": {
+    "placeholders": {
+      "nom": {
+        "type": "Object"
+      }
+    }
+  },
+  "groupsNomFaitPartieGroupe": "{nom} is part of the group until {terme}.",
+  "@groupsNomFaitPartieGroupe": {
+    "placeholders": {
+      "nom": {
+        "type": "Object"
+      },
+      "terme": {
+        "type": "Object"
+      }
+    }
+  },
+  "groupsAdhesionNomTerme": "{nom}’s membership no longer has an end date.",
+  "@groupsAdhesionNomTerme": {
+    "placeholders": {
+      "nom": {
+        "type": "Object"
+      }
+    }
+  },
+  "groupsEtaitDejaCasRien": "That was already the case, nothing has changed.",
+  "groupsDateDejaPasseeDepart": "That date has already passed. For an immediate departure, use “Remove from the group”.",
+  "groupsNomDejaAdministrateur": "{nom} is already an administrator.",
+  "@groupsNomDejaAdministrateur": {
+    "placeholders": {
+      "nom": {
+        "type": "Object"
+      }
+    }
+  },
+  "groupsGroupeDoitGarderMoins": "A group must keep at least one administrator. Appoint someone else first.",
+  "groupsSeulAdministrateurGroupePeut": "Only a group administrator can do that.",
+  "groupsNomAdministrateur2": "{nom} is not an administrator.",
+  "@groupsNomAdministrateur2": {
+    "placeholders": {
+      "nom": {
+        "type": "Object"
+      }
+    }
+  },
+  "groupsNomFaitPartieGroupe2": "{nom} is no longer part of the group.",
+  "@groupsNomFaitPartieGroupe2": {
+    "placeholders": {
+      "nom": {
+        "type": "Object"
+      }
+    }
+  },
+  "groupsPartirMemeUtilisezQuitter": "To leave yourself, use “Leave the group”.",
+  "groupsActionAboutiReessayezInstant": "The action did not go through. Try again in a moment.",
+  "groupsJamaisUtilise": "Never used",
+  "groupsInvitationDejaAcceptee": "Invitation already accepted",
+  "groupsInvitationDejaRefusee": "Invitation already declined",
+  "groupsInvitationExpiree": "Invitation expired",
+  "groupsEtesDejaMembre": "You are already a member",
+  "groupsGroupeSupprime": "Group deleted",
+  "groupsInvitationIntrouvable": "Invitation not found",
+  "groupsAvezDejaRejointGroupe": "You have already joined this group. Open it to find its events, its tasks and its conversation.",
+  "groupsAvezDeclineInvitationDemandez": "You declined this invitation. Ask for a new one if you change your mind.",
+  "groupsInvitationPasseDateLimite": "This invitation is past its deadline. Ask the group for a new one.",
+  "groupsFaitesDejaPartieGroupe2": "You are already part of this group, probably through a shared link.",
+  "groupsGroupeInvitaitEteSupprime": "The group that invited you has been deleted. There is nothing left to join.",
+  "groupsInvitationExisteEtaitDestinee": "This invitation does not exist, or it was not meant for you.",
+  "groupsGroupe": "this group",
+  "groupsGroupePuEtreCree": "The group could not be created. Try again in a moment.",
+  "groupsGroupeIndisponible": "Group unavailable",
+  "groupsGroupeIntrouvable": "Group not found",
+  "groupsGroupeEteSupprimeFaites": "This group has been deleted, or you are no longer part of it.",
+  "groupsRevenirGroupes": "Back to the groups",
+  "groupsInviterQuelqu": "Invite someone",
+  "groupsPartagerLien": "Share a link",
+  "groupsModifierGroupe": "Edit the group",
+  "groupsQuitterGroupe": "Leave the group",
+  "groupsSupprimerGroupe": "Delete the group",
+  "groupsAucunMembreAfficher": "No members to show",
+  "groupsListeMembresPuEtre": "The list of members could not be loaded. Try again in a moment.",
+  "groupsVoir": "See all",
+  "groupsAjouterEvenement": "Add an event",
+  "groupsTachesPrioritaires": "Priority tasks",
+  "groupsRetirerMembre": "Remove this member",
+  "groupsGroupeEteSupprime": "The group has been deleted.",
+  "groupsDecrivezGroupePhrase": "Describe this group in one sentence.",
+  "groupsInviterMembre": "Invite a member",
+  "groupsCherchezPersonnePseudoRecevra": "Search for the person by username. They will get an invitation to accept.",
+  "groupsNameRecuInvitation": "{name} has received your invitation.",
+  "@groupsNameRecuInvitation": {
+    "placeholders": {
+      "name": {
+        "type": "Object"
+      }
+    }
+  },
+  "groupsNameFaitDejaPartie": "{name} is already part of the group.",
+  "@groupsNameFaitDejaPartie": {
+    "placeholders": {
+      "name": {
+        "type": "Object"
+      }
+    }
+  },
+  "groupsNameDejaInvitationAttente": "{name} already has a pending invitation.",
+  "@groupsNameDejaInvitationAttente": {
+    "placeholders": {
+      "name": {
+        "type": "Object"
+      }
+    }
+  },
+  "groupsDateFinChoisieDeja": "The end date you chose has already passed.",
+  "groupsSeulAdministrateurPeutFixer": "Only an administrator can set a membership duration.",
+  "groupsSeulsMembresGroupePeuvent": "Only members of the group can invite.",
+  "groupsSaisissezMoinsDeuxCaracteres": "Type at least two characters.",
+  "groupsCreezGroupeInvitezPremiers": "Create your group and invite the first members.",
+  "groupsPhotoGroupe": "Group photo",
+  "groupsNomGroupe": "Group name *",
+  "groupsExFamilleRousseau": "E.g. The Rousseau family",
+  "groupsDescriptionOptionnelle": "Description (optional)",
+  "groupsDecrivezBrievementButGroupe": "Briefly describe what this group is for",
+  "groupsCreerGroupe": "Create the group",
+  "groupsDonnezNomGroupe": "Give your group a name.",
+  "groupsNomDoitDepasserNameMaxLength": "The name must not exceed {_nameMaxLength} characters.",
+  "@groupsNomDoitDepasserNameMaxLength": {
+    "placeholders": {
+      "_nameMaxLength": {
+        "type": "Object"
+      }
+    }
+  },
+  "groupsGroupeCree1Invitation": "Group created, 1 invitation sent.",
+  "groupsGroupeCreeEnvoyeesInvitations": "Group created, {envoyees} invitations sent.",
+  "@groupsGroupeCreeEnvoyeesInvitations": {
+    "placeholders": {
+      "envoyees": {
+        "type": "Object"
+      }
+    }
+  },
+  "groupsGroupeCreeMaisInvitation": "Group created, but the invitation could not be sent.",
+  "groupsGroupeCreeMaisAucune": "Group created, but none of the {echecs} invitations could be sent.",
+  "@groupsGroupeCreeMaisAucune": {
+    "placeholders": {
+      "echecs": {
+        "type": "Object"
+      }
+    }
+  },
+  "groupsGroupeCreeEnvoyeesInvitation": "Group created, {envoyees} invitation(s) sent, {echecs} not sent.",
+  "@groupsGroupeCreeEnvoyeesInvitation": {
+    "placeholders": {
+      "envoyees": {
+        "type": "Object"
+      },
+      "echecs": {
+        "type": "Object"
+      }
+    }
+  },
+  "groupsGroupePrive": "Private group",
+  "groupsSeulsMembresInvitesPourront": "Only invited members will be able to join it and see its content. Every Jelvo group is private.",
+  "groupsRechercherGroupe": "Search for a group",
+  "groupsEffacerRecherche": "Clear the search",
+  "groupsGroupesIndisponibles": "Groups unavailable",
+  "groupsAucunGroupeMoment": "No groups yet",
+  "groupsCreezGroupePartagerAgenda": "Create a group to share a calendar and split up the tasks with the people close to you.",
+  "groupsCreerGroupe2": "Create a group",
+  "groupsAucunGroupeNom": "No group by that name",
+  "groupsAucunGroupesCorrespondTerme": "None of your groups matches “{terme}”.",
+  "@groupsAucunGroupesCorrespondTerme": {
+    "placeholders": {
+      "terme": {
+        "type": "Object"
+      }
+    }
+  },
+  "groupsInviteRejoindreGroupe": "You have been invited to join a group.",
+  "groupsInvitationsIndisponibles": "Invitations unavailable",
+  "groupsAucuneInvitation": "No invitations",
+  "groupsQuandProcheInviteraGroupe": "When someone invites you to a group, the invitation will appear here.",
+  "groupsInvitationIndisponible": "Invitation unavailable",
+  "groupsInviteRejoindreGroupe2": "invites you to join a group",
+  "groupsCree": "Created on",
+  "groupsDejaGroupe": "Already in the group",
+  "groupsInvitationRefusee": "Invitation declined.",
+  "groupsOuvrirGroupe": "Open the group",
+  "groupsLienInutilisable": "Link unusable",
+  "groupsRevenirAccueil": "Back to home",
+  "groupsEtesInviteRejoindreGroupe": "You are invited to join this group on Jelvo.",
+  "groupsRejoindreGroupe": "Join the group",
+  "groupsCreerCompteRejoindre": "Create an account to join",
+  "groupsAiDejaCompte": "I already have an account",
+  "groupsGroupeSeraRejointAutomatiquement": "You will join the group automatically once your account is created.",
+  "groupsCreezIciSeraPartage": "What you create here will be shared with the group.",
+  "groupsDateProposerMembres": "A date to suggest to the members",
+  "groupsQuelqueChoseFaireRepartir": "Something to do, to share out",
+  "groupsAjouterMembres": "Add members",
+  "groupsChoisirContacts": "Choose from my contacts",
+  "groupsParcourirCarnetJelvo": "Browse my Jelvo contacts",
+  "groupsInviterLien": "Invite by link",
+  "groupsProposeApresCreation": "Offered after creation",
+  "groupsPartagerLienInvitation": "Share an invitation link",
+  "groupsInvitationsPartentCreationGroupe": "The invitations go out when the group is created.",
+  "groupsAucunContactNom": "No contact by that name.",
+  "groupsPersonneInviteInstant": "Nobody is invited for now.",
+  "groups1PersonneSeraInvitee": "1 person will be invited.",
+  "groupsNombrePersonnesSerontInvitees": "{nombre} people will be invited.",
+  "@groupsNombrePersonnesSerontInvitees": {
+    "placeholders": {
+      "nombre": {
+        "type": "Object"
+      }
+    }
+  },
+  "groupsRetirer": "Remove all",
+  "groupsCarnetVideInstantPourrez": "Your contacts are empty for now. You will be able to invite from the group screen, by shared link or by username.",
+  "groupsChoisirPhotoGroupe": "Choose a group photo",
+  "groupsChangerPhoto": "Change the photo",
+  "groupsAjouterPhoto": "Add a photo",
+  "groupsTachesNenRetard": "tasks\noverdue",
+  "groupsEvenementsNaVenir": "events\ncoming up",
+  "groupsAucunLienActifMoment": "No active link for now.",
+  "groupsDureeAccordeeProchainLien": "Duration granted by the next link",
+  "groupsGenererLien": "Generate a link",
+  "groupsGenererAutreLien": "Generate another link",
+  "groupsLienCopiePressePapiers": "Link copied to the clipboard.",
+  "groupsCopierLien": "Copy the link",
+  "groupsRevoquerLien": "Revoke the link",
+  "groupsGererMembre": "Manage this member",
+  "groupsRetirerRoleAdministrateur": "Remove the administrator role",
+  "groupsNommerAdministrateur": "Make administrator",
+  "groupsModifierDureeAdhesion": "Change the membership duration",
+  "groupsRendreAdhesionTemporaire": "Make the membership temporary",
+  "groupsRetirerGroupe": "Remove from the group",
+  "groupsDureeAdhesion": "Membership duration",
+  "groupsTerme": "No end date",
+  "groupsFinAdhesion": "End of membership",
+  "groupsNouvelleDuree": "New duration",
+  "homeBonApresMidi": "Good afternoon",
+  "homeCreezGroupePartagerAgenda": "Create a group to share a calendar, tasks and a conversation.",
+  "homeBasePrenom": "{base} {prenom}",
+  "@homeBasePrenom": {
+    "placeholders": {
+      "base": {
+        "type": "Object"
+      },
+      "prenom": {
+        "type": "Object"
+      }
+    }
+  },
+  "homeAgenda": "My day",
+  "homeVoirCalendrier": "See calendar",
+  "homeVoirAgenda1": "See my whole day (1 more)",
+  "homeVoirAgendaReste": "See my whole day ({reste} more)",
+  "@homeVoirAgendaReste": {
+    "placeholders": {
+      "reste": {
+        "type": "Object"
+      }
+    }
+  },
+  "homeTaches": "My tasks",
+  "homeVoirToutesTaches": "See all my tasks",
+  "home1Tache": "1 task",
+  "homeSemaine": "this week",
+  "homeTraiter": "to handle",
+  "homeAucuneTacheAttendEtre": "No task is waiting to be handled.",
+  "homeDejaAgenda": "Already in your day",
+  "homeTachesJourFigurentChronologie": "Your tasks for today appear in the timeline above.",
+  "homeValeurLibelleDetail": "{valeur} {libelle}, {detail}",
+  "@homeValeurLibelleDetail": {
+    "placeholders": {
+      "valeur": {
+        "type": "Object"
+      },
+      "libelle": {
+        "type": "Object"
+      },
+      "detail": {
+        "type": "Object"
+      }
+    }
+  },
+  "homeValeurLibelle": "{valeur} {libelle}",
+  "@homeValeurLibelle": {
+    "placeholders": {
+      "valeur": {
+        "type": "Object"
+      },
+      "libelle": {
+        "type": "Object"
+      }
+    }
+  },
+  "homeAujourdHui": ", today",
+  "homeRienPrevu": ", nothing planned",
+  "notificationsGroupe": "a group",
+  "notificationsContact": "A contact",
+  "notificationsEvenement": "an event",
+  "notificationsTache": "a task",
+  "notificationsInvitationRejoindreGroupName": "Invitation to join {groupName}",
+  "@notificationsInvitationRejoindreGroupName": {
+    "placeholders": {
+      "groupName": {
+        "type": "Object"
+      }
+    }
+  },
+  "notificationsDemandeContact": "Contact request",
+  "notificationsSenderNameInviteRejoindreGroupName": "{senderName} invites you to join “{groupName}”.",
+  "@notificationsSenderNameInviteRejoindreGroupName": {
+    "placeholders": {
+      "senderName": {
+        "type": "Object"
+      },
+      "groupName": {
+        "type": "Object"
+      }
+    }
+  },
+  "notificationsSenderNameSouhaiteAjouterContacts": "{senderName} would like to add you to their contacts.",
+  "@notificationsSenderNameSouhaiteAjouterContacts": {
+    "placeholders": {
+      "senderName": {
+        "type": "Object"
+      }
+    }
+  },
+  "notificationsSenderNameConfieTache": "{senderName} has given you this task.",
+  "@notificationsSenderNameConfieTache": {
+    "placeholders": {
+      "senderName": {
+        "type": "Object"
+      }
+    }
+  },
+  "notificationsSenderNameAccepteTache": "{senderName} accepts this task.",
+  "@notificationsSenderNameAccepteTache": {
+    "placeholders": {
+      "senderName": {
+        "type": "Object"
+      }
+    }
+  },
+  "notificationsSenderNameDeclineTache": "{senderName} declines this task.",
+  "@notificationsSenderNameDeclineTache": {
+    "placeholders": {
+      "senderName": {
+        "type": "Object"
+      }
+    }
+  },
+  "notificationsFeteAnniversaireAujourdHui": "has a birthday today.",
+  "notificationsAvezNouvelleNotification": "You have a new notification.",
+  "notificationsVoirDemande": "See the request",
+  "notificationsVoirEvenement": "See the event",
+  "notificationsVoirTache": "See the task",
+  "notificationsGroupesDiscussions": "Groups and conversations",
+  "notificationsTachesRappels": "Tasks and reminders",
+  "notificationsMarquerCommeLu": "Mark all read",
+  "notificationsNotificationsIndisponibles": "Notifications unavailable",
+  "notificationsAucuneNotification": "No notifications",
+  "notificationsInvitationsGroupeDemandesContact": "Group invitations and contact requests will appear here.",
+  "notificationsNotificationsPush": "Push notifications",
+  "notificationsInstaller": "To install",
+  "notificationsActiverNotifications": "Turn on notifications",
+  "notificationsDesactiverCetAppareil": "Turn off on this device",
+  "notificationsNotificationsActives": "Notifications on",
+  "notificationsNotificationsRefusees": "Notifications refused",
+  "notificationsInstallezJelvoRecevoir": "Install Jelvo to receive them",
+  "notificationsNotificationsDesactivees": "Notifications off",
+  "notificationsNotificationsIndisponiblesIci": "Notifications unavailable here",
+  "notificationsCetAppareilRecevraNotifications": "This device will receive the notifications you leave ticked in the settings.",
+  "notificationsAvezRefuseAutorisationApplication": "You refused permission. The app can no longer ask again: it reopens in your browser settings, on the site’s “Notifications” row.",
+  "notificationsIPhoneIPadNotificationsExistent": "On iPhone and iPad, notifications only exist in Jelvo added to the home screen. In a Safari tab, the system does not offer them at all.",
+  "notificationsNavigateurDemanderaAutorisationPourrez": "Your browser will ask you for permission. You can change your mind at any time.",
+  "notificationsVersionApplicationGereNotifications": "This version of the app does not support system notifications.",
+  "notificationsAutorisationRefuseeRouvreReglages": "Permission refused. It reopens in your browser settings, not here.",
+  "notificationsNotificationsOntPuEtre": "Notifications could not be turned on.",
+  "notificationsNotificationsDesactiveesCetAppareil": "Notifications turned off on this device.",
+  "notifications1TouchezBoutonPartager": "1. Tap Safari’s Share button.",
+  "notifications2ChoisissezEcranAccueil": "2. Choose “Add to Home Screen”.",
+  "notifications3OuvrezJelvoDepuis": "3. Open Jelvo from the icon, then sign in again.",
+  "notificationsReconnexionErreurApplicationInstallee": "Signing in again is not a bug: the installed app has its own storage, separate from Safari.",
+  "onboardingBienvenueJelvo": "Welcome to Jelvo",
+  "onboardingAppRassembleGroupesProjets": "The app that brings together your groups, your plans and the people close to you.",
+  "onboardingGroupesMemeEndroit": "All your groups in one place",
+  "onboardingOrganisezProjetsActivitesEchanges": "Organise your plans, activities and conversations with ease.",
+  "onboardingAgendaPartageSynchronise": "A shared, synced calendar",
+  "onboardingManquezAucunEvenementImportant": "Never miss an important event again.",
+  "onboardingTachesClairesEfficaces": "Clear, effective tasks",
+  "onboardingAttribuezSuivezAccomplissezEnsemble": "Assign, follow and reach your goals together.",
+  "profileProposJelvo": "About Jelvo",
+  "profileJelvoReunitGroupesEvenements": "Jelvo brings together your groups, your events, your tasks and your availability in one place — for family, friends and flatmates.",
+  "profileBonSavoir": "Good to know",
+  "profileJelvoApplicationWebInstallable": "Jelvo is an installable web app. On iPhone, notifications only work once the icon has been added to the home screen, and the installed app has its own session: you need to sign in there.",
+  "profileChoisirAvatar": "Choose an avatar",
+  "profileUtiliserCetAvatar": "Use this avatar",
+  "profileAvatarId": "Avatar {id}",
+  "@profileAvatarId": {
+    "placeholders": {
+      "id": {
+        "type": "Object"
+      }
+    }
+  },
+  "profileChangerMotPasse": "Change password",
+  "profileMotPasseChange": "Password changed.",
+  "profileModifierProfil": "Edit profile",
+  "profileProfilEnregistre": "Profile saved.",
+  "profileProfil": "My profile",
+  "profileProfilIndisponible": "Profile unavailable",
+  "profileProfilIntrouvable": "Profile not found",
+  "profileProfilEncoreEteCree": "Your profile has not been created yet. Sign in again to finish it.",
+  "profileProfilJelvo": "My Jelvo profile",
+  "profileAutresVoientQuMot": "Others only see a word: available, unavailable or unknown.",
+  "profileLectureAboutiReessayezInstant": "Loading did not go through. Try again in a moment.",
+  "profilePersonneCompteJelvo": "This person no longer has a Jelvo account.",
+  "profileAnnulerDemande": "Cancel the request",
+  "profileAjouterContact": "Add as a contact",
+  "profileRetirerContact": "Remove this contact?",
+  "profileActionAbouti": "The action did not go through.",
+  "profileInformationsPersonnelles": "Personal details",
+  "profileDeconnecter": "Sign out",
+  "profileDevrezSaisirNouveauIdentifiants": "You will have to enter your credentials again to come back.",
+  "profileJourMoisSeulementJelvo": "The day and the month only. Jelvo does not ask for your year of birth.",
+  "profileContactsVoientPrevenusJour": "Your contacts see it, and are notified on the day.",
+  "profileAnneesNonBissextilesSera": "In non-leap years, it will be celebrated on 28 February, the last day of the month.",
+  "profileSuitReglageTelephone": "Follows your phone’s setting",
+  "profileFondBlancTexteSombre": "White background, dark text",
+  "profileFondSombreTexteClair": "Dark background, light text",
+  "profileChoixVautCetAppareil": "This choice only applies on this device.",
+  "profilePhotoProfil": "Profile picture",
+  "profileChoisirPhoto": "Choose a photo",
+  "profileDepuisPhotosAppareil": "From the photos on your device",
+  "profileChoisirAvatarJelvo": "Choose a Jelvo avatar",
+  "profileQuatreVingtTreizeIllustrations": "Ninety-three illustrations to choose from",
+  "profileInitialesPrendrontPlace": "Your initials will take its place",
+  "profileAjoutezJourMoisAnnee": "Add the day and the month, without the year",
+  "profileAdresseIndisponible": "Address unavailable",
+  "profileQuelquesMots": "A few words about you",
+  "profileAjoutezQuelquesMots": "Add a few words about you",
+  "profileEnregistrerBio": "Save the bio",
+  "profileModifierBio": "Edit the bio",
+  "profileChangerPhoto": "Change photo",
+  "profileChangerPhotoProfil": "Change profile picture",
+  "profileQRCode": "QR code",
+  "profilePartagerProfil": "Share profile",
+  "profileStatistiques": "My stats",
+  "profileTachesTerminees": "Tasks done",
+  "profile1GroupeCommun": "1 group in common",
+  "profileOrganisezRienEnsembleInstant": "You are not organising anything together for now.",
+  "tasksAvezPrisTache": "You have taken this task.",
+  "tasksAvezRenduTacheGroupe": "You have given this task back to the group.",
+  "tasksQuelquVientPrendreAvant": "Someone has just taken it before you.",
+  "tasksTache": "This task is not yours.",
+  "tasksTacheEteConfieeRefusez": "This task was given to you: decline it rather than giving it back.",
+  "tasksFaitesPartieGroupe": "You are no longer part of this group.",
+  "tasksTachePuEtreCreee": "The task could not be created. Try again in a moment.",
+  "tasksTachePuEtreModifiee": "The task could not be updated. Try again in a moment.",
+  "tasksTacheConfiee": "Task assigned",
+  "tasksTacheIntrouvable": "Task not found",
+  "tasksEteSupprimeeAvezAcces": "It has been deleted, or you no longer have access to it. There is nothing left to accept.",
+  "tasksRevenirAccueil": "Back to home",
+  "tasksTacheEteConfiee": "This task has been given to you",
+  "tasksConfieTache": "has given you a task",
+  "tasksAssignee": "Assigned to",
+  "tasksEcheanceDejaPassee": "The due date has already passed.",
+  "tasksAvezAccepteTache": "You have accepted this task.",
+  "tasksAvezDeclineTache": "You have declined this task.",
+  "tasksAvezTerminePart": "You have finished your part.",
+  "tasksTacheAssignee": "This task is not assigned to you.",
+  "tasksOuvrirTache": "Open the task",
+  "tasksTacheAcceptee": "Task accepted.",
+  "tasksTacheDeclinee": "Task declined.",
+  "tasksModifierTache": "Edit the task",
+  "tasksSupprimerTache": "Delete the task",
+  "tasksEteSupprimeeAvezAcces2": "It has been deleted, or you no longer have access to it.",
+  "tasksPersonneInstantImporteQuel": "Nobody for now. Any member of the group can take it on.",
+  "tasksRetirer": "Step down",
+  "tasksJeMCharge": "I’ll take it",
+  "tasksChargezTache": "You are taking on this task.",
+  "tasksChargiezDeja": "You were already taking it on.",
+  "tasksChargez": "You are no longer taking it on.",
+  "tasksEtiezAssigneTache": "You were not assigned to this task.",
+  "tasksQuelquChargeDejaPassez": "Someone is already taking it on. Use “Edit” to change the assignees.",
+  "tasksRienCocherAjoutezQu": "Nothing to tick. Add what is needed: everyone will see what is left.",
+  "tasksAjouterArticle": "Add an item",
+  "tasksAjouterListe": "Add to the list",
+  "tasksRetirerListe": "Remove from the list",
+  "tasksRouvrirTache": "Reopen the task",
+  "tasksMarquerCommeTerminee": "Mark as done",
+  "tasksTachesIndisponibles": "Tasks unavailable",
+  "tasksAucuneTache": "No tasks",
+  "tasksFaitRienEncoreEte": "Everything is done — or nothing has been noted down yet.",
+  "tasksGroupeAucuneTacheInstant": "This group has no tasks for now.",
+  "tasksAssigner": "Assign to",
+  "tasksMembresGroupeOntEncore": "The members of the group have not been loaded yet.",
+  "tasksExAcheterPain": "E.g. Buy the bread",
+  "tasksJelvoEnverraNotificationPersonne": "Jelvo will send a notification to the assigned person",
+  "tasksTachesRecurrentes": "For recurring tasks",
+  "tasksCreerTache": "Create the task",
+  "tasksProposeeGroupeCarteAffichera": "Offered to the whole group: a card will show up in the conversation, and the first to accept takes it.",
+  "tasksConfieeListeRecevraNotification": "Given to {liste}, who will get a notification.",
+  "@tasksConfieeListeRecevraNotification": {
+    "placeholders": {
+      "liste": {
+        "type": "Object"
+      }
+    }
+  },
+  "tasksConfieeListeRecevrontNotification": "Given to {liste}, who will get a notification.",
+  "@tasksConfieeListeRecevrontNotification": {
+    "placeholders": {
+      "liste": {
+        "type": "Object"
+      }
+    }
+  },
+  "tasksEcheancePrioriteDescription": "Due date, priority, description…",
+  "tasksQuFautSavoirOccuper": "What to know in order to handle it",
+  "tasksDonnezTitreTache": "Give the task a title.",
+  "tasksTacheEteModifiee": "The task has been updated.",
+  "tasksTacheTitreEteCreee": "The task “{titre}” has been created.",
+  "@tasksTacheTitreEteCreee": {
+    "placeholders": {
+      "titre": {
+        "type": "Object"
+      }
+    }
+  },
+  "routerPageIntrouvable": "Page not found",
+  "routerAucunEcranCorrespondLocation": "No screen matches “{location}”.",
+  "@routerAucunEcranCorrespondLocation": {
+    "placeholders": {
+      "location": {
+        "type": "Object"
+      }
+    }
+  },
+  "calendarRecurrenceJamais": "Never",
+  "calendarRappelAucun": "None",
+  "coreDemain": "Tomorrow",
+  "coreHier": "Yesterday",
+  "coreIlYaMinutes": "{minutes} min ago",
+  "@coreIlYaMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "coreIlYaHeures": "{heures} h ago",
+  "@coreIlYaHeures": {
+    "placeholders": {
+      "heures": {
+        "type": "int"
+      }
+    }
+  },
+  "coreIlYaJours": "{jours, plural, one{{jours} day ago} other{{jours} days ago}}",
+  "@coreIlYaJours": {
+    "description": "Ancienneté en jours — pluriel ICU, et non un « s » collé en Dart.",
+    "placeholders": {
+      "jours": {
+        "type": "int"
+      }
+    }
+  },
+  "coreLeDate": "on {date}",
+  "@coreLeDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "createEvenement": "Event",
+  "createTache": "Task",
+  "createGroupe": "Group",
+  "profileApparence": "Appearance",
+  "profileApparenceAutomatique": "Automatic",
+  "profileApparenceClair": "Light",
+  "profileApparenceSombre": "Dark",
+  "groupsTachesEnCours": "{count, plural, one{{count} task in progress} other{{count} tasks in progress}}",
+  "@groupsTachesEnCours": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupsEvenementsAVenir": "{count, plural, one{{count} event coming up} other{{count} events coming up}}",
+  "@groupsEvenementsAVenir": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupsVousAdministrezCeGroupe": "{membres} · you administer this group",
+  "@groupsVousAdministrezCeGroupe": {
+    "placeholders": {
+      "membres": {
+        "type": "String"
+      }
+    }
+  },
+  "authMoinsCaracteres": "At least {min} characters",
+  "@authMoinsCaracteres": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "homeBonjour": "Good morning",
+  "homeBonsoir": "Good evening",
+  "calendarPersonnel": "Personal",
+  "calendarJournee": "All day",
+  "calendarFeteSonAnniversaire": "It’s {nom}’s birthday",
+  "@calendarFeteSonAnniversaire": {
+    "placeholders": {
+      "nom": {
+        "type": "String"
+      }
+    }
+  },
+  "navNotifications": "Notifications",
+  "navParametres": "Settings",
+  "coreStatutInformation": "Information",
+  "coreStatutConfirme": "Confirmed",
+  "coreStatutEnAttente": "Pending",
+  "coreStatutConflit": "Conflict",
+  "coreStatutInactif": "Inactive",
+  "notificationsActives": "On",
+  "notificationsNotification": "Notification",
+  "chatUnePersonneEcrit": "{nom} is typing…",
+  "@chatUnePersonneEcrit": {
+    "placeholders": {
+      "nom": {
+        "type": "String"
+      }
+    }
+  },
+  "chatDeuxPersonnesEcrivent": "{premier} and {second} are typing…",
+  "@chatDeuxPersonnesEcrivent": {
+    "placeholders": {
+      "premier": {
+        "type": "String"
+      },
+      "second": {
+        "type": "String"
+      }
+    }
+  },
+  "chatAPrisLaTache": "{nom} has taken the task",
+  "@chatAPrisLaTache": {
+    "placeholders": {
+      "nom": {
+        "type": "String"
+      }
+    }
+  },
+  "chatAAccepteLaTache": "{nom} has accepted the task",
+  "@chatAAccepteLaTache": {
+    "placeholders": {
+      "nom": {
+        "type": "String"
+      }
+    }
+  },
+  "chatARefuseLaTache": "{nom} has declined the task",
+  "@chatARefuseLaTache": {
+    "placeholders": {
+      "nom": {
+        "type": "String"
+      }
+    }
+  },
+  "chatATermineLaTache": "{nom} has finished the task",
+  "@chatATermineLaTache": {
+    "placeholders": {
+      "nom": {
+        "type": "String"
+      }
+    }
+  },
+  "chatTacheAttribueeA": "Task assigned to {nom}",
+  "@chatTacheAttribueeA": {
+    "placeholders": {
+      "nom": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsInvitationDe": "Invitation from {nom}",
+  "@groupsInvitationDe": {
+    "placeholders": {
+      "nom": {
+        "type": "String"
+      }
+    }
+  },
+  "calendarRappel": "Reminder",
+  "calendarRepeter": "Repeat",
+  "groupsMembreCount": "{count, plural, one{{count} member} other{{count} members}}",
+  "@groupsMembreCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupsEvenementCount": "{count, plural, one{{count} event} other{{count} events}}",
+  "@groupsEvenementCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupsTacheOuverteCount": "{count, plural, one{{count} open task} other{{count} open tasks}}",
+  "@groupsTacheOuverteCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "coreJourEtHeure": "{jour} · {heures}",
+  "@coreJourEtHeure": {
+    "placeholders": {
+      "jour": {
+        "type": "String"
+      },
+      "heures": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsRetraitMembreConfirmation": "{nom} will no longer have access to the group. You can invite them again later.",
+  "@groupsRetraitMembreConfirmation": {
+    "placeholders": {
+      "nom": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsQuitterConfirmation": "You will no longer see “{groupe}”. If you are its last administrator, the longest-standing member will take over.",
+  "@groupsQuitterConfirmation": {
+    "placeholders": {
+      "groupe": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsSupprimerConfirmation": "“{groupe}” will disappear for all its members. This action cannot be undone from the app.",
+  "@groupsSupprimerConfirmation": {
+    "placeholders": {
+      "groupe": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsInvitationRecueJusquAu": "{nom} has received your invitation, until {date}.",
+  "@groupsInvitationRecueJusquAu": {
+    "placeholders": {
+      "nom": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "coreRetirer": "Remove",
+  "coreQuitter": "Leave",
+  "coreSupprimer": "Delete",
+  "tasksTacheSupprimee": "“{titre}” has been deleted.",
+  "@tasksTacheSupprimee": {
+    "placeholders": {
+      "titre": {
+        "type": "String"
+      }
+    }
+  },
+  "tasksSupprimerConfirmation": "“{titre}” will disappear for everyone. This action cannot be undone from the app.",
+  "@tasksSupprimerConfirmation": {
+    "placeholders": {
+      "titre": {
+        "type": "String"
+      }
+    }
+  },
+  "coreVous": "{nom} (you)",
+  "@coreVous": {
+    "placeholders": {
+      "nom": {
+        "type": "String"
+      }
+    }
+  },
+  "coreSurTotal": "{fait} of {total}",
+  "@coreSurTotal": {
+    "placeholders": {
+      "fait": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "tasksCochePar": "Ticked by {nom}",
+  "@tasksCochePar": {
+    "placeholders": {
+      "nom": {
+        "type": "String"
+      }
+    }
+  },
+  "tasksListe": "List",
+  "tasksEcheance": "Due date",
+  "tasksAucune": "None",
+  "calendarEvenementSupprime": "“{titre}” has been deleted.",
+  "@calendarEvenementSupprime": {
+    "placeholders": {
+      "titre": {
+        "type": "String"
+      }
+    }
+  },
+  "calendarSupprimerConfirmation": "“{titre}” will disappear for all the participants. This action cannot be undone from the app.",
+  "@calendarSupprimerConfirmation": {
+    "placeholders": {
+      "titre": {
+        "type": "String"
+      }
+    }
+  },
+  "calendarParticipants": "Participants",
+  "calendarOuiCount": "{count} yes",
+  "@calendarOuiCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "calendarVousAvezRepondu": "You replied: {reponse}. You can still change your mind.",
+  "@calendarVousAvezRepondu": {
+    "placeholders": {
+      "reponse": {
+        "type": "String"
+      }
+    }
+  },
+  "calendarReponseEnregistree": "Reply saved: {reponse}.",
+  "@calendarReponseEnregistree": {
+    "placeholders": {
+      "reponse": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsPartagezCeLien": "Share this link by text, messaging app or email. The person will be able to create their account and then join “{groupe}”.",
+  "@groupsPartagezCeLien": {
+    "placeholders": {
+      "groupe": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsRejoinsSurJelvo": "Join “{groupe}” on Jelvo: {url}",
+  "@groupsRejoinsSurJelvo": {
+    "placeholders": {
+      "groupe": {
+        "type": "String"
+      },
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsInvitationARejoindre": "Invitation to join {groupe}",
+  "@groupsInvitationARejoindre": {
+    "placeholders": {
+      "groupe": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsUtilisationsExpireLe": "{utilisations} · expires on {date}",
+  "@groupsUtilisationsExpireLe": {
+    "placeholders": {
+      "utilisations": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsAdhesionJusquAu": "Membership until {date}",
+  "@groupsAdhesionJusquAu": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsUtilisationCount": "{count, plural, one{{count} use} other{{count} uses}}",
+  "@groupsUtilisationCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupsUtilisationSurMax": "{utilisations} of {max}",
+  "@groupsUtilisationSurMax": {
+    "placeholders": {
+      "utilisations": {
+        "type": "String"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "contactsGroupeCount": "{count, plural, one{{count} group} other{{count} groups}}",
+  "@contactsGroupeCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "contactsPersonnesSouhaitentVousAjouter": "{count, plural, one{{count} person wants to add you} other{{count} people want to add you}}",
+  "@contactsPersonnesSouhaitentVousAjouter": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "contactsFaitMaintenantPartie": "{nom} is now one of your contacts.",
+  "@contactsFaitMaintenantPartie": {
+    "placeholders": {
+      "nom": {
+        "type": "String"
+      }
+    }
+  },
+  "contactsAjoutezMoiSurJelvo": "Add me on Jelvo: {pseudo}",
+  "@contactsAjoutezMoiSurJelvo": {
+    "placeholders": {
+      "pseudo": {
+        "type": "String"
+      }
+    }
+  },
+  "contactsNomEtMessage": "{nom} — {message}",
+  "@contactsNomEtMessage": {
+    "placeholders": {
+      "nom": {
+        "type": "String"
+      },
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "contactsRejoignezMoi": "Join me on Jelvo so we can plan our get-togethers: {url}",
+  "@contactsRejoignezMoi": {
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "contactsMonPseudoLigne": "\nMy username: {pseudo}",
+  "@contactsMonPseudoLigne": {
+    "placeholders": {
+      "pseudo": {
+        "type": "String"
+      }
+    }
+  },
+  "contactsRetraitConfirmation": "{nom} will no longer be one of your contacts, and you will no longer be one of theirs.",
+  "@contactsRetraitConfirmation": {
+    "placeholders": {
+      "nom": {
+        "type": "String"
+      }
+    }
+  },
+  "contactsAEteRetire": "{nom} has been removed.",
+  "@contactsAEteRetire": {
+    "placeholders": {
+      "nom": {
+        "type": "String"
+      }
+    }
+  },
+  "coreParticipantCount": "{count, plural, one{{count} participant} other{{count} participants}}",
+  "@coreParticipantCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "coreMessageNonLuCount": "{count, plural, one{{count} unread message} other{{count} unread messages}}",
+  "@coreMessageNonLuCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "authCodeEnvoyeA": "We have sent a six-digit code to {email}.",
+  "@authCodeEnvoyeA": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "authFormatPseudo": "Lowercase letters, digits and dots, from {min} to {max} characters.",
+  "@authFormatPseudo": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "availabilityDateEtPlage": "{date} · {plage}",
+  "@availabilityDateEtPlage": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "plage": {
+        "type": "String"
+      }
+    }
+  },
+  "availabilityDe": "From {heure}",
+  "@availabilityDe": {
+    "placeholders": {
+      "heure": {
+        "type": "String"
+      }
+    }
+  },
+  "availabilityA": "To {heure}",
+  "@availabilityA": {
+    "placeholders": {
+      "heure": {
+        "type": "String"
+      }
+    }
+  },
+  "calendarPuceEtDate": " • {date}",
+  "@calendarPuceEtDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "calendarRienNeCorrespond": "Nothing matches “{terme}”.",
+  "@calendarRienNeCorrespond": {
+    "placeholders": {
+      "terme": {
+        "type": "String"
+      }
+    }
+  },
+  "coreSurTotalTexte": "{fait} of {total}",
+  "@coreSurTotalTexte": {
+    "placeholders": {
+      "fait": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "calendarHeuresMinutes": "{heures} h {minutes}",
+  "@calendarHeuresMinutes": {
+    "placeholders": {
+      "heures": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
+  "calendarHeures": "{heures} h",
+  "@calendarHeures": {
+    "placeholders": {
+      "heures": {
+        "type": "int"
+      }
+    }
+  },
+  "chatMegaoctets": "{taille} MB",
+  "@chatMegaoctets": {
+    "placeholders": {
+      "taille": {
+        "type": "String"
+      }
+    }
+  },
+  "chatKilooctets": "{taille} kB",
+  "@chatKilooctets": {
+    "placeholders": {
+      "taille": {
+        "type": "int"
+      }
+    }
+  },
+  "chatJusquAEnvironUneMinute": "Up to {taille}, about a minute",
+  "@chatJusquAEnvironUneMinute": {
+    "placeholders": {
+      "taille": {
+        "type": "String"
+      }
+    }
+  },
+  "chatVideoTropLourde": "This video weighs {taille}, beyond the {max} accepted. Film something shorter, or send it another way.",
+  "@chatVideoTropLourde": {
+    "placeholders": {
+      "taille": {
+        "type": "String"
+      },
+      "max": {
+        "type": "String"
+      }
+    }
+  },
+  "chatEcheanceDateHeure": "Due {date} at {heure}",
+  "@chatEcheanceDateHeure": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "heure": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsInvitationEnAttenteCount": "{count, plural, one{{count} pending invitation} other{{count} pending invitations}}",
+  "@groupsInvitationEnAttenteCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupsAdhesionTemporaireJusquAu": "Temporary membership: until {date}.",
+  "@groupsAdhesionTemporaireJusquAu": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsAdhesionTemporaireVousFerezPartie": "Temporary membership: you will be part of the group until {date}.",
+  "@groupsAdhesionTemporaireVousFerezPartie": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsCreezIciPartageAvec": "What you create here will be shared with “{groupe}”.",
+  "@groupsCreezIciPartageAvec": {
+    "placeholders": {
+      "groupe": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsJusquAu": "Until {date}",
+  "@groupsJusquAu": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsAdhesionJusquAuPuisDisparait": "Membership until {date}, after which the group will disappear from their app.",
+  "@groupsAdhesionJusquAuPuisDisparait": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsMembreJusquAu": "{nom} is part of the group until {date}.",
+  "@groupsMembreJusquAu": {
+    "placeholders": {
+      "nom": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsMembreSansTerme": "{nom} is part of the group with no end date.",
+  "@groupsMembreSansTerme": {
+    "placeholders": {
+      "nom": {
+        "type": "String"
+      }
+    }
+  },
+  "homeTacheCount": "{count, plural, one{{count} task} other{{count} tasks}}",
+  "@homeTacheCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeVirguleEvenementCount": "{count, plural, one{, {count} event} other{, {count} events}}",
+  "@homeVirguleEvenementCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeVirguleTacheCount": "{count, plural, one{, {count} task} other{, {count} tasks}}",
+  "@homeVirguleTacheCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notificationsVousConvie": "{nom} is inviting you.",
+  "@notificationsVousConvie": {
+    "placeholders": {
+      "nom": {
+        "type": "String"
+      }
+    }
+  },
+  "notificationsVousConvieAvecGroupe": "{nom} is inviting you with “{groupe}”.",
+  "@notificationsVousConvieAvecGroupe": {
+    "placeholders": {
+      "nom": {
+        "type": "String"
+      },
+      "groupe": {
+        "type": "String"
+      }
+    }
+  },
+  "profileVersion": "Version {version}",
+  "@profileVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "profileRetrouvezMoi": "Find me on Jelvo: {pseudo}\n{code}",
+  "@profileRetrouvezMoi": {
+    "placeholders": {
+      "pseudo": {
+        "type": "String"
+      },
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "profileVotrePseudo": "Your username: {pseudo}",
+  "@profileVotrePseudo": {
+    "placeholders": {
+      "pseudo": {
+        "type": "String"
+      }
+    }
+  },
+  "profileRetraitCarnetConfirmation": "{nom} will no longer appear in your contacts. Your groups in common do not change.",
+  "@profileRetraitCarnetConfirmation": {
+    "placeholders": {
+      "nom": {
+        "type": "String"
+      }
+    }
+  },
+  "profileGroupesCommunsCount": "{count, plural, one{{count} group in common} other{{count} groups in common}}",
+  "@profileGroupesCommunsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tasksEcheanceDate": "Due {date}",
+  "@tasksEcheanceDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "coreDateAHeure": "{date} at {heure}",
+  "@coreDateAHeure": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "heure": {
+        "type": "String"
+      }
+    }
+  },
+  "tasksTerminees": "Done",
+  "tasksConfieeAuxPersonnes": "{count, plural, one{Given to {count} person, who will get a notification.} other{Given to {count} people, who will get a notification.}}",
+  "@tasksConfieeAuxPersonnes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "coreDeuxNoms": "{premier} and {second}",
+  "@coreDeuxNoms": {
+    "placeholders": {
+      "premier": {
+        "type": "String"
+      },
+      "second": {
+        "type": "String"
+      }
+    }
+  },
+  "coreDeuxNomsEtAutres": "{premier}, {second} and {reste, plural, one{{reste} other} other{{reste} others}}",
+  "@coreDeuxNomsEtAutres": {
+    "placeholders": {
+      "premier": {
+        "type": "String"
+      },
+      "second": {
+        "type": "String"
+      },
+      "reste": {
+        "type": "int"
+      }
+    }
+  },
+  "tasksArticlesCoches": "{faits} of {total} items",
+  "@tasksArticlesCoches": {
+    "placeholders": {
+      "faits": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "tasksPrioriteLabel": "{priorite} priority",
+  "@tasksPrioriteLabel": {
+    "placeholders": {
+      "priorite": {
+        "type": "String"
+      }
+    }
+  },
+  "navBadgeNonLus": "{destination}, {count, plural, one{{count} unread} other{{count} unread}}",
+  "@navBadgeNonLus": {
+    "placeholders": {
+      "destination": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "profileLangue": "Language",
+  "profileLangueDuTelephone": "Your phone’s language",
+  "profileLangueDuTelephoneAide": "Follows the device setting, and English if the language is not offered",
+  "profileLangueFrancais": "French",
+  "profileLangueAllemand": "German",
+  "profileLangueAnglais": "English",
+  "profileLangueEspagnol": "Spanish",
+  "homeBonWeekEnd": "Have a great weekend",
+  "coreDebutApresMidi": "12",
+  "@coreDebutApresMidi": {
+    "description": "Heure à laquelle « Bon après-midi » commence à se dire dans cette langue. L'espagnol dit « buenas tardes » après le déjeuner, vers 14 h, pas à midi."
+  },
+  "coreDebutSoiree": "18",
+  "@coreDebutSoiree": {
+    "description": "Heure à laquelle « Bonsoir » commence à se dire dans cette langue."
+  },
+  "coreDescription": "Description",
+  "coreRechercher": "Search",
+  "coreProfil": "Profile",
+  "coreLieu": "Location",
+  "coreAnniversaire": "Birthday",
+  "coreAutre": "Other",
+  "corePrenom": "First name",
+  "coreNom": "Last name",
+  "corePseudo": "Username",
+  "coreHintPseudo": "username",
+  "coreFiltres": "Filters",
+  "coreRepetition": "Repeat",
+  "coreInvitation": "Invitation",
+  "coreInvitations": "Invitations",
+  "coreChoisir": "Choose",
+  "corePriorite": "Priority",
+  "coreDate": "Date",
+  "coreHoraires": "Time",
+  "coreDisponible": "Available",
+  "coreTout": "All",
+  "coreAfficher": "Show",
+  "coreFin": "End",
+  "coreVideo": "Video",
+  "coreJoindre": "Attach",
+  "coreFilmer": "Record",
+  "coreScanner": "Scan",
+  "coreResultats": "Results",
+  "coreEffacer": "Clear",
+  "coreFavoris": "Favorites",
+  "coreGerer": "Manage",
+  "coreActions": "Actions",
+  "coreDiscussion": "Chat",
+  "coreInviter": "Invite",
+  "coreSuggestions": "Suggestions",
+  "corePartager": "Share",
+  "coreAdmin": "Admin",
+  "coreCommencer": "Get started",
+  "coreCompte": "Account",
+  "coreDeconnexion": "Sign out",
+  "coreJour": "Day",
+  "coreMois": "Month",
+  "coreEmail": "Email",
+  "coreBio": "Bio",
+  "coreModifier": "Edit",
+  "coreContinuer": "Continue",
+  "coreVerifier": "Verify",
+  "coreExceptions": "Exceptions",
+  "coreEvenements": "Events",
+  "coreTaches": "Tasks",
+  "coreExemplePrenom": "Alex",
+  "coreExempleNom": "Taylor",
+  "corePlusDOptions": "More options"
+}

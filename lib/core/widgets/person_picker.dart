@@ -199,7 +199,7 @@ class _Autre extends StatelessWidget {
               ),
               AppSpacing.gapXs,
               Text(
-                'Autre',
+                AppTexts.of(context).coreAutre,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
@@ -309,7 +309,7 @@ class _PersonPickerSheetState extends State<PersonPickerSheet> {
                   ],
                   AppSpacing.gapMd,
                   AppTextField(
-                    hint: 'Rechercher',
+                    hint: AppTexts.of(context).coreRechercher,
                     controller: _recherche,
                     prefixIcon: Icons.search_rounded,
                     onChanged: (String valeur) =>

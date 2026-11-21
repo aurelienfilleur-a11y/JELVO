@@ -42,7 +42,7 @@ class ChatHeader extends StatelessWidget implements PreferredSizeWidget {
           children: <Widget>[
             IconButton(
               icon: const Icon(Icons.arrow_back_rounded),
-              tooltip: 'Retour',
+              tooltip: AppTexts.of(context).commonBack,
               onPressed: onBack,
             ),
             Expanded(

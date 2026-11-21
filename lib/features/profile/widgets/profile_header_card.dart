@@ -113,7 +113,7 @@ class ProfileHeaderCard extends StatelessWidget {
               ),
               ProfileAction(
                 icon: Icons.edit_outlined,
-                label: 'Modifier',
+                label: AppTexts.of(context).coreModifier,
                 onTap: onEdit,
               ),
               ProfileAction(

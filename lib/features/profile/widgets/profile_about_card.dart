@@ -118,9 +118,9 @@ class _ProfileAboutCardState extends ConsumerState<ProfileAboutCard> {
           // demande qu'à être remplie.
           _LigneLecture(
             icon: Icons.cake_outlined,
-            label: 'Anniversaire',
+            label: AppTexts.of(context).coreAnniversaire,
             value:
-                widget.anniversaire?.libelle ??
+                widget.anniversaire?.libelle(AppTexts.of(context)) ??
                 AppTexts.of(context).profileAjoutezJourMoisAnnee,
             attenue: widget.anniversaire == null,
             onTap: () => AnniversaireSheet.ouvrir(context, widget.anniversaire),
@@ -128,7 +128,7 @@ class _ProfileAboutCardState extends ConsumerState<ProfileAboutCard> {
           Divider(height: 1, indent: 52, color: context.couleurs.border),
           _LigneLecture(
             icon: Icons.mail_outline_rounded,
-            label: 'Email',
+            label: AppTexts.of(context).coreEmail,
             value:
                 widget.email ?? AppTexts.of(context).profileAdresseIndisponible,
             attenue: widget.email == null,
@@ -243,7 +243,7 @@ class _LigneBio extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Text(
-                        'Bio',
+                        AppTexts.of(context).coreBio,
                         style: context.typo.body.copyWith(
                           fontWeight: AppTypography.semiBold,
                         ),

@@ -52,10 +52,10 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
     return Scaffold(
       backgroundColor: context.couleurs.background,
       appBar: AppBar(
-        title: const Text('Créer'),
+        title: Text(AppTexts.of(context).createTitle),
         leading: IconButton(
           icon: const Icon(Icons.close_rounded),
-          tooltip: 'Fermer',
+          tooltip: AppTexts.of(context).commonClose,
           onPressed: () => _fermer(),
         ),
       ),

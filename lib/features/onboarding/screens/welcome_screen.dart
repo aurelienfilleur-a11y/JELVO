@@ -88,7 +88,7 @@ class WelcomeScreen extends ConsumerWidget {
                 AppSpacing.xl,
               ),
               child: PrimaryButton(
-                label: 'Commencer',
+                label: AppTexts.of(context).coreCommencer,
                 onPressed: () {
                   ref.read(welcomeSeenProvider.notifier).marquerVu();
                   context.goNamed(AppRoutes.login);

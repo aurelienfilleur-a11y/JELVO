@@ -44,10 +44,10 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
     return Scaffold(
       backgroundColor: context.couleurs.background,
       appBar: AppBar(
-        title: const Text('Profil'),
+        title: Text(AppTexts.of(context).coreProfil),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Retour',
+          tooltip: AppTexts.of(context).commonBack,
           onPressed: () => Navigator.of(context).maybePop(),
         ),
       ),
@@ -106,13 +106,13 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
       return <ProfileAction>[
         ProfileAction(
           icon: Icons.person_add_alt_1_rounded,
-          label: 'Accepter',
+          label: AppTexts.of(context).taskAccept,
           accented: true,
           onTap: () => _agir(() => _actionsContact.accept(widget.userId)),
         ),
         ProfileAction(
           icon: Icons.close_rounded,
-          label: 'Refuser',
+          label: AppTexts.of(context).taskDecline,
           destructive: true,
           onTap: () => _agir(() => _actionsContact.decline(widget.userId)),
         ),
@@ -145,7 +145,7 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
         ),
         ProfileAction(
           icon: Icons.person_remove_outlined,
-          label: 'Retirer',
+          label: AppTexts.of(context).coreRetirer,
           destructive: true,
           onTap: () => _retirer(p),
         ),
@@ -179,12 +179,12 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
             actions: <Widget>[
               TextButton(
                 onPressed: () => Navigator.of(c).pop(false),
-                child: const Text('Annuler'),
+                child: Text(t.commonCancel),
               ),
               TextButton(
                 onPressed: () => Navigator.of(c).pop(true),
                 child: Text(
-                  'Retirer',
+                  t.coreRetirer,
                   style: TextStyle(color: context.couleurs.dangerInk),
                 ),
               ),

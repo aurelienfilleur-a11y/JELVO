@@ -5,6 +5,9 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart' as intl;
 
+import 'app_localizations_de.dart';
+import 'app_localizations_en.dart';
+import 'app_localizations_es.dart';
 import 'app_localizations_fr.dart';
 
 // ignore_for_file: type=lint
@@ -91,7 +94,12 @@ abstract class AppTexts {
       ];
 
   /// A list of this localizations delegate's supported locales.
-  static const List<Locale> supportedLocales = <Locale>[Locale('fr')];
+  static const List<Locale> supportedLocales = <Locale>[
+    Locale('de'),
+    Locale('en'),
+    Locale('es'),
+    Locale('fr'),
+  ];
 
   /// Nom de l'application
   ///
@@ -4867,6 +4875,378 @@ abstract class AppTexts {
   /// In fr, this message translates to:
   /// **'{destination}, {count, plural, one{{count} non lu} other{{count} non lus}}'**
   String navBadgeNonLus(String destination, int count);
+
+  /// No description provided for @profileLangue.
+  ///
+  /// In fr, this message translates to:
+  /// **'Langue'**
+  String get profileLangue;
+
+  /// No description provided for @profileLangueDuTelephone.
+  ///
+  /// In fr, this message translates to:
+  /// **'Celle du téléphone'**
+  String get profileLangueDuTelephone;
+
+  /// No description provided for @profileLangueDuTelephoneAide.
+  ///
+  /// In fr, this message translates to:
+  /// **'Suit le réglage de l’appareil, et l’anglais si la langue n’est pas proposée'**
+  String get profileLangueDuTelephoneAide;
+
+  /// No description provided for @profileLangueFrancais.
+  ///
+  /// In fr, this message translates to:
+  /// **'Français'**
+  String get profileLangueFrancais;
+
+  /// No description provided for @profileLangueAllemand.
+  ///
+  /// In fr, this message translates to:
+  /// **'Allemand'**
+  String get profileLangueAllemand;
+
+  /// No description provided for @profileLangueAnglais.
+  ///
+  /// In fr, this message translates to:
+  /// **'Anglais'**
+  String get profileLangueAnglais;
+
+  /// No description provided for @profileLangueEspagnol.
+  ///
+  /// In fr, this message translates to:
+  /// **'Espagnol'**
+  String get profileLangueEspagnol;
+
+  /// No description provided for @homeBonWeekEnd.
+  ///
+  /// In fr, this message translates to:
+  /// **'Bon week-end'**
+  String get homeBonWeekEnd;
+
+  /// Heure à laquelle « Bon après-midi » commence à se dire dans cette langue. L'espagnol dit « buenas tardes » après le déjeuner, vers 14 h, pas à midi.
+  ///
+  /// In fr, this message translates to:
+  /// **'12'**
+  String get coreDebutApresMidi;
+
+  /// Heure à laquelle « Bonsoir » commence à se dire dans cette langue.
+  ///
+  /// In fr, this message translates to:
+  /// **'18'**
+  String get coreDebutSoiree;
+
+  /// No description provided for @coreDescription.
+  ///
+  /// In fr, this message translates to:
+  /// **'Description'**
+  String get coreDescription;
+
+  /// No description provided for @coreRechercher.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rechercher'**
+  String get coreRechercher;
+
+  /// No description provided for @coreProfil.
+  ///
+  /// In fr, this message translates to:
+  /// **'Profil'**
+  String get coreProfil;
+
+  /// No description provided for @coreLieu.
+  ///
+  /// In fr, this message translates to:
+  /// **'Lieu'**
+  String get coreLieu;
+
+  /// No description provided for @coreAnniversaire.
+  ///
+  /// In fr, this message translates to:
+  /// **'Anniversaire'**
+  String get coreAnniversaire;
+
+  /// No description provided for @coreAutre.
+  ///
+  /// In fr, this message translates to:
+  /// **'Autre'**
+  String get coreAutre;
+
+  /// No description provided for @corePrenom.
+  ///
+  /// In fr, this message translates to:
+  /// **'Prénom'**
+  String get corePrenom;
+
+  /// No description provided for @coreNom.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nom'**
+  String get coreNom;
+
+  /// No description provided for @corePseudo.
+  ///
+  /// In fr, this message translates to:
+  /// **'Pseudo'**
+  String get corePseudo;
+
+  /// No description provided for @coreHintPseudo.
+  ///
+  /// In fr, this message translates to:
+  /// **'pseudo'**
+  String get coreHintPseudo;
+
+  /// No description provided for @coreFiltres.
+  ///
+  /// In fr, this message translates to:
+  /// **'Filtres'**
+  String get coreFiltres;
+
+  /// No description provided for @coreRepetition.
+  ///
+  /// In fr, this message translates to:
+  /// **'Répétition'**
+  String get coreRepetition;
+
+  /// No description provided for @coreInvitation.
+  ///
+  /// In fr, this message translates to:
+  /// **'Invitation'**
+  String get coreInvitation;
+
+  /// No description provided for @coreInvitations.
+  ///
+  /// In fr, this message translates to:
+  /// **'Invitations'**
+  String get coreInvitations;
+
+  /// No description provided for @coreChoisir.
+  ///
+  /// In fr, this message translates to:
+  /// **'Choisir'**
+  String get coreChoisir;
+
+  /// No description provided for @corePriorite.
+  ///
+  /// In fr, this message translates to:
+  /// **'Priorité'**
+  String get corePriorite;
+
+  /// No description provided for @coreDate.
+  ///
+  /// In fr, this message translates to:
+  /// **'Date'**
+  String get coreDate;
+
+  /// No description provided for @coreHoraires.
+  ///
+  /// In fr, this message translates to:
+  /// **'Horaires'**
+  String get coreHoraires;
+
+  /// No description provided for @coreDisponible.
+  ///
+  /// In fr, this message translates to:
+  /// **'Disponible'**
+  String get coreDisponible;
+
+  /// No description provided for @coreTout.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tout'**
+  String get coreTout;
+
+  /// No description provided for @coreAfficher.
+  ///
+  /// In fr, this message translates to:
+  /// **'Afficher'**
+  String get coreAfficher;
+
+  /// No description provided for @coreFin.
+  ///
+  /// In fr, this message translates to:
+  /// **'Fin'**
+  String get coreFin;
+
+  /// No description provided for @coreVideo.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vidéo'**
+  String get coreVideo;
+
+  /// No description provided for @coreJoindre.
+  ///
+  /// In fr, this message translates to:
+  /// **'Joindre'**
+  String get coreJoindre;
+
+  /// No description provided for @coreFilmer.
+  ///
+  /// In fr, this message translates to:
+  /// **'Filmer'**
+  String get coreFilmer;
+
+  /// No description provided for @coreScanner.
+  ///
+  /// In fr, this message translates to:
+  /// **'Scanner'**
+  String get coreScanner;
+
+  /// No description provided for @coreResultats.
+  ///
+  /// In fr, this message translates to:
+  /// **'Résultats'**
+  String get coreResultats;
+
+  /// No description provided for @coreEffacer.
+  ///
+  /// In fr, this message translates to:
+  /// **'Effacer'**
+  String get coreEffacer;
+
+  /// No description provided for @coreFavoris.
+  ///
+  /// In fr, this message translates to:
+  /// **'Favoris'**
+  String get coreFavoris;
+
+  /// No description provided for @coreGerer.
+  ///
+  /// In fr, this message translates to:
+  /// **'Gérer'**
+  String get coreGerer;
+
+  /// No description provided for @coreActions.
+  ///
+  /// In fr, this message translates to:
+  /// **'Actions'**
+  String get coreActions;
+
+  /// No description provided for @coreDiscussion.
+  ///
+  /// In fr, this message translates to:
+  /// **'Discussion'**
+  String get coreDiscussion;
+
+  /// No description provided for @coreInviter.
+  ///
+  /// In fr, this message translates to:
+  /// **'Inviter'**
+  String get coreInviter;
+
+  /// No description provided for @coreSuggestions.
+  ///
+  /// In fr, this message translates to:
+  /// **'Suggestions'**
+  String get coreSuggestions;
+
+  /// No description provided for @corePartager.
+  ///
+  /// In fr, this message translates to:
+  /// **'Partager'**
+  String get corePartager;
+
+  /// No description provided for @coreAdmin.
+  ///
+  /// In fr, this message translates to:
+  /// **'Admin'**
+  String get coreAdmin;
+
+  /// No description provided for @coreCommencer.
+  ///
+  /// In fr, this message translates to:
+  /// **'Commencer'**
+  String get coreCommencer;
+
+  /// No description provided for @coreCompte.
+  ///
+  /// In fr, this message translates to:
+  /// **'Compte'**
+  String get coreCompte;
+
+  /// No description provided for @coreDeconnexion.
+  ///
+  /// In fr, this message translates to:
+  /// **'Déconnexion'**
+  String get coreDeconnexion;
+
+  /// No description provided for @coreJour.
+  ///
+  /// In fr, this message translates to:
+  /// **'Jour'**
+  String get coreJour;
+
+  /// No description provided for @coreMois.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mois'**
+  String get coreMois;
+
+  /// No description provided for @coreEmail.
+  ///
+  /// In fr, this message translates to:
+  /// **'Email'**
+  String get coreEmail;
+
+  /// No description provided for @coreBio.
+  ///
+  /// In fr, this message translates to:
+  /// **'Bio'**
+  String get coreBio;
+
+  /// No description provided for @coreModifier.
+  ///
+  /// In fr, this message translates to:
+  /// **'Modifier'**
+  String get coreModifier;
+
+  /// No description provided for @coreContinuer.
+  ///
+  /// In fr, this message translates to:
+  /// **'Continuer'**
+  String get coreContinuer;
+
+  /// No description provided for @coreVerifier.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vérifier'**
+  String get coreVerifier;
+
+  /// No description provided for @coreExceptions.
+  ///
+  /// In fr, this message translates to:
+  /// **'Exceptions'**
+  String get coreExceptions;
+
+  /// No description provided for @coreEvenements.
+  ///
+  /// In fr, this message translates to:
+  /// **'Événements'**
+  String get coreEvenements;
+
+  /// No description provided for @coreTaches.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tâches'**
+  String get coreTaches;
+
+  /// No description provided for @coreExemplePrenom.
+  ///
+  /// In fr, this message translates to:
+  /// **'Camille'**
+  String get coreExemplePrenom;
+
+  /// No description provided for @coreExempleNom.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rousseau'**
+  String get coreExempleNom;
+
+  /// No description provided for @corePlusDOptions.
+  ///
+  /// In fr, this message translates to:
+  /// **'Plus d’options'**
+  String get corePlusDOptions;
 }
 
 class _AppTextsDelegate extends LocalizationsDelegate<AppTexts> {
@@ -4879,7 +5259,7 @@ class _AppTextsDelegate extends LocalizationsDelegate<AppTexts> {
 
   @override
   bool isSupported(Locale locale) =>
-      <String>['fr'].contains(locale.languageCode);
+      <String>['de', 'en', 'es', 'fr'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppTextsDelegate old) => false;
@@ -4888,6 +5268,12 @@ class _AppTextsDelegate extends LocalizationsDelegate<AppTexts> {
 AppTexts lookupAppTexts(Locale locale) {
   // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
+    case 'de':
+      return AppTextsDe();
+    case 'en':
+      return AppTextsEn();
+    case 'es':
+      return AppTextsEs();
     case 'fr':
       return AppTextsFr();
   }

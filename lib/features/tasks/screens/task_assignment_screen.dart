@@ -41,7 +41,7 @@ class _TaskAssignmentScreenState extends ConsumerState<TaskAssignmentScreen> {
         title: Text(AppTexts.of(context).tasksTacheConfiee),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Retour',
+          tooltip: AppTexts.of(context).commonBack,
           onPressed: _enCours ? null : () => _revenir(context),
         ),
       ),
@@ -90,7 +90,7 @@ class _TaskAssignmentScreenState extends ConsumerState<TaskAssignmentScreen> {
             name: nomDuGroupe ?? 'Personnel',
             subtitle: tache.dueDate == null
                 ? null
-                : t.tasksEcheanceDate(AppDates.shortDate(tache.dueDate!)),
+                : t.tasksEcheanceDate(AppDates.shortDate(tache.dueDate!, t)),
             accentColor: GroupAccent.forId(
               tache.groupId ?? tache.id,
             ).color(context.couleurs),
@@ -139,13 +139,13 @@ class _TaskAssignmentScreenState extends ConsumerState<TaskAssignmentScreen> {
                   children: <Widget>[
                     InvitationDetailRow(
                       icon: Icons.groups_outlined,
-                      label: 'Groupe',
+                      label: t.createGroupField,
                       value: nomDuGroupe ?? 'Personnel',
                     ),
                     if (tache.notes != null && tache.notes!.isNotEmpty)
                       InvitationDetailRow(
                         icon: Icons.notes_rounded,
-                        label: 'Description',
+                        label: t.coreDescription,
                         value: tache.notes!,
                       ),
                     if (tache.dueDate != null)
@@ -153,14 +153,14 @@ class _TaskAssignmentScreenState extends ConsumerState<TaskAssignmentScreen> {
                         icon: Icons.event_outlined,
                         label: t.tasksEcheance,
                         value: t.coreDateAHeure(
-                          AppDates.fullDate(tache.dueDate!),
-                          AppDates.time(tache.dueDate!),
+                          AppDates.fullDate(tache.dueDate!, t),
+                          AppDates.time(tache.dueDate!, t),
                         ),
                       ),
                     // `task_priority` existe bel et bien : `low`, `medium`, `high`.
                     InvitationDetailRow(
                       icon: Icons.flag_outlined,
-                      label: 'Priorité',
+                      label: t.corePriorite,
                       value: tache.priority.label(AppTexts.of(context)),
                       dernier: true,
                     ),

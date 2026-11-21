@@ -124,7 +124,7 @@ class _Video extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Vidéo',
+            AppTexts.of(context).coreVideo,
             style: context.typo.caption.copyWith(color: Colors.white),
           ),
         ],
@@ -154,7 +154,7 @@ void _ouvrirEnGrand(BuildContext context, String url) {
               right: AppSpacing.sm,
               child: IconButton(
                 icon: const Icon(Icons.close_rounded, color: Colors.white),
-                tooltip: 'Fermer',
+                tooltip: AppTexts.of(context).commonClose,
                 onPressed: () => Navigator.of(pageContext).maybePop(),
               ),
             ),

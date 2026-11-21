@@ -113,7 +113,7 @@ class _GroupPhotoPickerState extends State<GroupPhotoPicker> {
             style: TextButton.styleFrom(
               foregroundColor: context.couleurs.danger,
             ),
-            child: const Text('Retirer'),
+            child: Text(AppTexts.of(context).coreRetirer),
           ),
         if (_error != null) ...<Widget>[
           AppSpacing.gapXs,

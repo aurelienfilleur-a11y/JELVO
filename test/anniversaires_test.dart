@@ -37,6 +37,7 @@ import 'fakes/fake_group_repository.dart';
 import 'fakes/fake_notification_repository.dart';
 import 'fakes/fake_push.dart';
 import 'fakes/fake_task_repository.dart';
+import 'package:jelvo/data/language_storage.dart';
 
 /// Lundi 3 août 2026, comme les autres tests de calendrier.
 final DateTime _testNow = DateTime(2026, 8, 3, 9);
@@ -152,12 +153,16 @@ void main() {
       expect(Anniversaire.depuisLigne(30, 2), isNull);
     });
 
-    test('le libellé ne porte pas d’année, et ne glisse pas', () {
-      expect(const Anniversaire(jour: 12, mois: 3).libelle, '12 mars');
+    test('le libellé ne porte pas d’année, et ne glisse pas', () async {
+      // Le libellé formate une date : il lui faut donc la langue, comme à
+      // tout `AppDates`. C'est le français qui est éprouvé ici — les mois des
+      // trois autres langues sont ceux d'`intl`, pas les nôtres.
+      final AppTexts t = await _textes();
+      expect(const Anniversaire(jour: 12, mois: 3).libelle(t), '12 mars');
       // Le piège : construire la `DateTime` du libellé sur une année non
       // bissextile ramènerait le 29 février au 1er mars.
-      expect(const Anniversaire(jour: 29, mois: 2).libelle, '29 février');
-      expect(const Anniversaire(jour: 1, mois: 1).libelle, '1 janvier');
+      expect(const Anniversaire(jour: 29, mois: 2).libelle(t), '29 février');
+      expect(const Anniversaire(jour: 1, mois: 1).libelle(t), '1 janvier');
     });
   });
 
@@ -533,6 +538,12 @@ Future<ProviderContainer> _conteneur(
   final ProviderContainer c = ProviderContainer(
     overrides: [
       clockProvider.overrideWithValue(FixedClock(_testNow)),
+      // **La langue est épinglée au français.** Ces tests affirment des
+      // phrases exactes ; sans cela, ils liraient la langue de la machine
+      // — `en_US` sur le harnais — et échoueraient sur du bon anglais.
+      languageStorageProvider.overrideWithValue(
+        EphemeralLanguageStorage(langue: const Locale('fr')),
+      ),
       authRepositoryProvider.overrideWithValue(auth),
       profileRepositoryProvider.overrideWithValue(FakeProfileRepository()),
       groupRepositoryProvider.overrideWithValue(FakeGroupRepository()),
@@ -576,6 +587,12 @@ Future<FakeProfileRepository> _ouvrirProfil(
     ProviderScope(
       overrides: [
         clockProvider.overrideWithValue(FixedClock(_testNow)),
+        // **La langue est épinglée au français.** Ces tests affirment des
+        // phrases exactes ; sans cela, ils liraient la langue de la machine
+        // — `en_US` sur le harnais — et échoueraient sur du bon anglais.
+        languageStorageProvider.overrideWithValue(
+          EphemeralLanguageStorage(langue: const Locale('fr')),
+        ),
         authRepositoryProvider.overrideWithValue(auth),
         profileRepositoryProvider.overrideWithValue(profils),
         groupRepositoryProvider.overrideWithValue(FakeGroupRepository()),

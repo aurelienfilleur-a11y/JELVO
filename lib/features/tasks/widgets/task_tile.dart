@@ -106,7 +106,7 @@ class TaskTile extends ConsumerWidget {
                 Icons.delete_outline_rounded,
                 color: context.couleurs.danger,
               ),
-              title: const Text('Supprimer'),
+              title: Text(t.commonDelete),
               onTap: () => Navigator.of(sheetContext).pop(_ChoixCase.supprimer),
             ),
             AppSpacing.gapMd,

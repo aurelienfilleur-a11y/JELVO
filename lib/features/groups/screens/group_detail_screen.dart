@@ -97,7 +97,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
             icon: Icons.cloud_off_rounded,
             title: AppTexts.of(context).groupsGroupeIndisponible,
             message: AuthFailure.from(error).message(AppTexts.of(context)),
-            actionLabel: 'Réessayer',
+            actionLabel: AppTexts.of(context).commonRetry,
             onActionPressed: () => ref.invalidate(groupDetailProvider(groupId)),
           ),
         ),
@@ -148,7 +148,7 @@ class _GroupView extends ConsumerWidget {
             onBack: () => _goBack(context),
             onNotifications: () => context.pushNamed(AppRoutes.notifications),
             menu: PopupMenuButton<_GroupAction>(
-              tooltip: 'Actions',
+              tooltip: t.coreActions,
               icon: const Icon(Icons.more_horiz_rounded),
               onSelected: (_GroupAction action) => switch (action) {
                 _GroupAction.invite => _openInviteSheet(context),
@@ -216,7 +216,7 @@ class _GroupView extends ConsumerWidget {
                   actions: <GroupQuickAction>[
                     GroupQuickAction(
                       icon: Icons.forum_outlined,
-                      label: 'Discussion',
+                      label: t.coreDiscussion,
                       badge: ref.watch(unreadForGroupProvider(group.id)),
                       onPressed: () => context.pushNamed(
                         AppRoutes.groupChat,
@@ -225,12 +225,12 @@ class _GroupView extends ConsumerWidget {
                     ),
                     GroupQuickAction(
                       icon: Icons.task_alt_rounded,
-                      label: 'Tâches',
+                      label: t.coreTaches,
                       onPressed: () => _ouvrirLesTaches(context, group),
                     ),
                     GroupQuickAction(
                       icon: Icons.calendar_month_rounded,
-                      label: 'Événements',
+                      label: t.coreEvenements,
                       onPressed: () => _ouvrirLeCalendrier(context, ref, group),
                     ),
                   ],
@@ -375,7 +375,7 @@ class _GroupView extends ConsumerWidget {
                 title: event.title,
                 timeLabel: t.coreJourEtHeure(
                   AppDates.relativeDay(event.start, t, now: now),
-                  AppDates.timeRange(event.start, event.end),
+                  AppDates.timeRange(event.start, event.end, t),
                 ),
                 location: event.location,
                 accentColor: group.accent.color(context.couleurs),
@@ -667,7 +667,7 @@ class _GroupView extends ConsumerWidget {
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Annuler'),
+            child: Text(AppTexts.of(dialogContext).commonCancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
@@ -727,7 +727,7 @@ class _AjouterSliver extends StatelessWidget {
                   ),
                   AppSpacing.hGapXs,
                   Text(
-                    'Ajouter',
+                    AppTexts.of(context).groupAdd,
                     style: context.typo.caption.copyWith(
                       color: context.couleurs.primary,
                       fontWeight: AppTypography.semiBold,
@@ -858,7 +858,7 @@ class _InviteMemberSheetState extends ConsumerState<_InviteMemberSheet> {
           AppSpacing.gapXl,
           AppTextField(
             controller: _controller,
-            hint: 'pseudo',
+            hint: AppTexts.of(context).coreHintPseudo,
             prefixIcon: Icons.alternate_email_rounded,
             autofocus: true,
             onChanged: (String value) => setState(() {
@@ -896,7 +896,7 @@ class _InviteMemberSheetState extends ConsumerState<_InviteMemberSheet> {
         _message = switch (outcome) {
           'invite' when terme != null => t.groupsInvitationRecueJusquAu(
             name,
-            AppDates.shortDate(terme),
+            AppDates.shortDate(terme, t),
           ),
           'invite' => AppTexts.of(context).groupsNameRecuInvitation(name),
           'deja_membre' => AppTexts.of(context).groupsNameFaitDejaPartie(name),
@@ -993,7 +993,7 @@ class _Results extends ConsumerWidget {
                     ),
                     TextButton(
                       onPressed: () => onPick(profile.id, profile.fullName),
-                      child: const Text('Inviter'),
+                      child: Text(AppTexts.of(context).coreInviter),
                     ),
                   ],
                 ),

@@ -328,7 +328,7 @@ lib/
 ├── core/                     # design system + utilitaires, aucune logique métier
 │   ├── core.dart             # barrel : le seul import dont un écran a besoin
 │   ├── theme/                # couleurs, typo, espacements, rayons, ombres, ThemeData
-│   ├── utils/                # AppDates (formatage fr_FR)
+│   ├── utils/                # AppDates (dates et heures, par langue)
 │   └── widgets/              # composants réutilisables (voir plus bas)
 ├── data/                     # infrastructure partagée, sans connaissance métier
 │   ├── clock.dart            # Clock / SystemClock / FixedClock
@@ -4058,23 +4058,146 @@ l'en-tête : « comment j'ajoute quelqu'un ? » n'a qu'une réponse.
 
 ## Internationalisation
 
-Les textes vivent dans `lib/l10n/app_fr.arb` et sont exposés par la classe
-générée `AppTexts` (`l10n.yaml`). `main()` branche
-`AppTexts.localizationsDelegates` et `AppTexts.supportedLocales`.
+**Quatre langues : français, anglais, espagnol, allemand.** Le français est la
+langue de référence — `template-arb-file` de `l10n.yaml` —, et les quatre
+fichiers `lib/l10n/app_{fr,en,es,de}.arb` portent les **857 mêmes clés**, dont
+150 paramétrées et 22 en pluriel ICU. `AppTexts` est la classe générée.
 
 Les délégués de Material et de Cupertino ne sont pas décoratifs : sans eux, un
 `showDatePicker(locale: Locale('fr'))` reste en anglais quand il ne lève pas.
 
-**Ajouter une langue = déposer `app_<code>.arb` à côté et le remplir.** Aucun
-code à modifier.
-
-**La migration est terminée** : il n'y a plus un seul texte affiché écrit en
-dur dans `lib/`. Le fichier compte **795 clés**, dont 150 portent un paramètre
-et 22 un pluriel ICU.
+**Ajouter une cinquième langue = déposer `app_<code>.arb` et l'inscrire dans
+`LanguageStorage.languesPrisesEnCharge`.** Deux endroits, pas un : la liste
+sert aussi la feuille des paramètres et la résolution de la langue du
+téléphone.
 
 `core/core.dart` **exporte `AppTexts`**, pour la même raison qu'il exporte la
 palette : un écran lit ses mots au contexte comme il y lit ses couleurs, et un
 seul import doit suffire.
+
+### La langue vient du téléphone, et se choisit sur l'appareil
+
+| Situation | Langue servie |
+| --- | --- |
+| rien de choisi, téléphone dans les quatre | celle du téléphone |
+| rien de choisi, téléphone ailleurs (japonais…) | **l'anglais** |
+| une langue choisie dans les paramètres | celle-là, quel que soit le téléphone |
+
+**L'anglais est le repli, et non le français** bien qu'il soit la langue de
+référence du projet : quelqu'un dont le téléphone est en japonais a plus de
+chances de lire l'anglais.
+
+Flutter, lui, retombe sur `supportedLocales.first`, c'est-à-dire sur le
+français : il faut donc un `localeListResolutionCallback` explicite. Il a un
+second effet, qui vaut à lui seul : il est **rappelé à chaque
+`didChangeLocales`**, si bien qu'un téléphone qui change de langue en cours de
+route est suivi sans redémarrage.
+
+**La correspondance se fait sur le code de langue seul.** Un téléphone en
+`es_MX` doit obtenir l'espagnol ; exiger la région reviendrait à servir
+l'anglais à tout le Mexique pour une variante que Jelvo ne distingue pas.
+
+#### Le réglage vit sur l'appareil, pas sur le compte
+
+`LanguageStorage` reprend la brique de `ThemeStorage` — un `LocalStorage` de
+gotrue détourné, clé `jelvo-langue` — et pour la **même** raison : un seul
+compte peut être ouvert sur un téléphone acheté en Espagne et sur
+l'ordinateur d'un bureau français. Un réglage de compte imposerait la même
+langue aux deux.
+
+Ce qui est écrit est un **code de langue** (`fr`, `en`, `es`, `de`, ou
+`systeme`), jamais un rang : un index se décalerait à la cinquième langue, et
+l'appareil se réveillerait dans une langue qu'il n'a pas choisie. C'est la
+leçon des trois mots d'apparence, appliquée avant d'en avoir payé le prix.
+
+Il est lu dans `main()` **avant `runApp`**, comme la session, la bienvenue et
+l'apparence : s'ouvrir en français pour basculer en espagnol à la première
+image serait le même clignotement, et il ne se rattrape pas après coup.
+
+**Contrairement à l'apparence, `web/index.html` n'a rien à lire ici.** Le fond
+de la page et le bandeau de la barre d'état sont décidés avant que Flutter
+démarre ; la langue ne se voit qu'une fois qu'il y a du texte, donc après. Il
+n'y a **aucun contrat recopié** de ce côté, et rien à tenir d'accord.
+
+#### La feuille applique sur place, et nomme chaque langue dans sa langue
+
+« Celle du téléphone » en tête — c'est le défaut, et le seul choix qui n'en
+est pas un —, puis `Français`, `Deutsch`, `English`, `Español`. **Le nom natif
+ne passe pas par l'ARB** : traduit, il changerait de mot selon la langue
+courante, et « German » ne sert à rien à quelqu'un qui cherche l'allemand sans
+parler anglais. Le nom dans la langue courante est en aide, sous le nom natif.
+
+Pas de drapeau : **un drapeau nomme un État, pas une langue**, et l'espagnol
+en couvre vingt. Comme l'apparence, le choix s'applique sans bouton
+« Enregistrer » — une langue se juge en la voyant.
+
+### Les dates et les heures sont le vrai piège, pas les mots
+
+`AppDates` ne porte plus de `locale` : **chaque méthode prend l'`AppTexts`**,
+dont elle lit `localeName`. Lui faire lire `Intl.defaultLocale` aurait été la
+variable globale qu'on écarte pour les couleurs — avec le même défaut, un
+écran à moitié reconstruit dans l'ancienne langue.
+
+**Les squelettes l'emportent sur les motifs littéraux**, et c'est ce qui
+distingue une date traduite d'une date française écrite en allemand :
+
+| Besoin | Squelette | fr | en |
+| --- | --- | --- | --- |
+| l'heure | `jm` | 14:00 | 2:00 PM |
+| la date complète | `yMMMMEEEEd` | Jeudi 6 août 2026 | Thursday, August 6, 2026 |
+| jour et mois | `MMMMEEEEd` | Jeudi 6 août | Thursday, August 6 |
+
+`'HH:mm'` aurait donné « 14:00 » à un anglophone, et `'EEEE d MMMM y'` aurait
+privé l'espagnol des « de » qu'il intercale — *jueves, 6 de agosto de 2026*.
+
+`initializeDateFormatting()` est appelée **sans argument** : avec `'fr_FR'`,
+elle ne charge que les symboles français, et les trois autres langues
+formateraient en anglais sans rien dire.
+
+#### Une plage horaire ne porte son marqueur qu'une fois
+
+« 9:00 AM – 10:30 AM » débordait la carte d'agenda de l'accueil à 360 dp.
+`AppDates.timeRange` écrit donc **« 9:00 – 10:30 AM »** quand les deux heures
+partagent leur demi-journée — c'est ce que font les formats d'intervalle du
+CLDR (`h:mm – h:mm a`), que `DateFormat` n'expose pas. Un intervalle qui
+change de demi-journée garde les deux marqueurs : « 11:30 AM – 1:00 PM ».
+
+Le marqueur est trouvé en comparant `jm` à `Hm` plutôt que codé par langue :
+une liste de langues à 24 heures serait fausse à la cinquième.
+
+### « Bon week-end », et aucune fête nationale
+
+La salutation de l'accueil connaît quatre moments : matin, après-midi, soir,
+**week-end**. Le soir l'emporte sur le week-end — « Bon week-end » à 23 h un
+samedi serait étrange, « Bonsoir » est juste tous les jours.
+
+**Les fêtes nationales sont écartées, et c'est un choix de fond.** Une fête
+dépend du **pays**, pas de la langue : l'espagnol couvre vingt pays,
+l'allemand trois, l'anglais aucun en particulier — et le 14 juillet ne dit
+rien à un francophone belge ou québécois. Or Jelvo ne sait pas où vous êtes :
+ni localisation, ni numéro de téléphone, et `profiles.timezone` que personne
+ne lit. Déduire le pays de la langue serait exactement la devinette qu'on
+écarte partout ailleurs — les icônes de catégorie déduites du nom d'un groupe,
+la pastille de présence sans `last_seen_at`.
+
+Demander le pays serait **une donnée de plus à collecter** pour une phrase de
+salutation, et Jelvo collecte le minimum : c'est la raison pour laquelle
+l'anniversaire n'a pas d'année. Samedi et dimanche, eux, sont les mêmes dans
+les quatre langues.
+
+#### L'après-midi espagnol commence plus tard, et c'est une donnée de langue
+
+*Buenas tardes* commence après le déjeuner — vers 14 h —, et servir « buenas
+tardes » à midi est quelque chose qu'aucun hispanophone n'écrit. Les deux
+bornes horaires vivent donc dans l'ARB (`coreDebutApresMidi`,
+`coreDebutSoiree`), au même titre qu'un format de date :
+
+| | fr | en | es | de |
+| --- | --- | --- | --- | --- |
+| après-midi | 12 | 12 | **14** | 12 |
+| soir | 18 | 18 | **20** | 18 |
+
+C'est la seule raison pour laquelle `greetingProvider` prend la langue.
 
 ### Le contrôle est dans la CI, et il échoue sur un texte en dur
 
@@ -4102,6 +4225,34 @@ deux mots dont l'un fait au moins deux lettres** est une phrase, où qu'elle
 soit. C'est ce qui a trouvé les libellés rendus par un modèle ou un provider,
 loin de tout widget. La première version du détecteur n'exigeait qu'un accent,
 et laissait donc passer toute phrase française sans accent.
+
+#### Il a laissé passer 170 mots d'un seul tenant
+
+**Deux trous, trouvés par la traduction et non par le détecteur**, et c'est le
+plus instructif de ce chantier : la migration a été annoncée terminée alors
+que les quatre onglets de la barre de navigation étaient encore en français.
+
+| Le trou | Ce qu'il laissait passer |
+| --- | --- |
+| `IDENTIFIANT` valait `^[\w./:+${}#&?=@~%-]*$` | **tout mot d'un seul tenant** : `Accueil`, `Calendrier`, `Retour`, `Profil`. `\w` couvrant les lettres accentuées en Python, `Créer` et `Filtres` passaient aussi |
+| `POSITIONS` n'acceptait que `nom:` | une **valeur par défaut**, écrite avec `=` : `this.createLabel = 'Créer'` |
+
+Le premier est le plus cher : il visait les chemins (`assets/avatars/$id.png`,
+`jelvo-apparence`), et un mot de lettres seules en avait la forme. Il exige
+désormais **un caractère non-lettre** — un mot pur retombe sur les deux règles
+suivantes, où seule la *position* peut le signaler. Les trois mots du contrat
+d'apparence restent donc tranquilles : `clair`, `sombre` et `systeme`
+n'apparaissent jamais en position de texte.
+
+Ce que cela a coûté : 170 sites dans 60 fichiers, 52 clés de plus, et une
+restructuration — `NavDestination` portait son libellé en `static const`, là
+où aucun `BuildContext` n'existe. Elle porte désormais un `NavTab` et rend
+`label(AppTexts t)`, ce qui est la règle du projet appliquée au vocabulaire.
+
+**Règle de méthode** : un détecteur qui écarte une forme doit écarter *cette*
+forme, pas la classe de caractères qui la contient. Les deux trous étaient des
+écartements trop larges, et un écartement trop large ne se voit jamais — il
+rend le vert.
 
 ### Un modèle ne choisit pas ses mots
 
@@ -4141,11 +4292,64 @@ met en cache, et la clé de famille ne change donc qu'au changement de langue.
 
 ### Une valeur par défaut ne peut pas lire le contexte
 
-`PasswordField.label`, `GroupSelector.label`, `MembershipTermPicker.label` et
-`AssigneePicker.titre` passent à `null`, résolu au `build`. C'est le même
+`PasswordField.label`, `GroupSelector.label`, `MembershipTermPicker.label`,
+`AssigneePicker.titre`, `AppBottomNav.createLabel` et
+`ExpandableOptions.title` passent à `null`, résolu au `build`. C'est le même
 arbitrage que pour `AppCard`, `EventCard` et `NavBadge`, dont les couleurs par
 défaut avaient dû quitter la liste de paramètres : **le contexte n'y existe
 pas.**
+
+### Les langues longues débordent, et le balayage le dit
+
+**L'allemand est de 20 à 30 % plus long que le français**, et un débordement
+ne se voit ni à l'analyse ni dans un test qui vise un texte. `test/langues_test.dart`
+ouvre donc **27 écrans dans les quatre langues à 360 dp** — la largeur
+minimale que le projet se donne — et échoue sur tout `RenderFlex overflowed`.
+
+Ce n'est pas un test qui *vérifie* quelque chose en plus : c'est l'ouverture
+de l'écran qui est le contrôle. Flutter consigne un débordement par
+`FlutterError.reportError`, que le harnais de test transforme en échec, et le
+message nomme le fichier et la ligne du widget fautif.
+
+Quatre défauts trouvés, et **deux précédaient la traduction** :
+
+| Où | fr | de | La cause |
+| --- | --- | --- | --- |
+| « Tout voir » d'un `SectionHeader` | **18 px** | 83 px | le `TextButton` était posé nu dans la `Row` |
+| les deux boutons d'un créneau | **3 px** | 3 px | deux `IconButton` de 48 dp, passés en `compact` |
+| plage horaire de la carte d'agenda | — | 16 px (en) | « 9:00 AM – 10:30 AM », voir ci-dessus |
+| « Tout marquer comme lu » | — | 79 px | les `actions` d'un `AppBar` prennent leur largeur naturelle |
+
+Les deux premières lignes disent l'essentiel : **ces écrans débordaient déjà
+en français**, à 360 dp, et personne ne l'avait vu. Traduire n'a pas créé le
+défaut, il a créé le balayage qui le trouve.
+
+Les corrections sont structurelles — `Flexible` et `overflow: ellipsis`, la
+règle du projet sur les `Row` — sauf pour l'`AppBar`, dont les actions ne sont
+pas élastiques : le libellé y est borné à 150 dp, et les traductions ont été
+raccourcies. Une borne, pas une traduction courte, parce qu'une traduction
+courte est une convention que la cinquième langue ne connaîtra pas.
+
+### Les quatre fichiers ARB ne peuvent pas diverger en silence
+
+Une clé ajoutée au français sans traduction **ne lève pas** : `gen-l10n`
+avertit, et l'application sert la valeur française. Trois contrôles tiennent
+donc le contrat, dans `test/langues_test.dart` :
+
+- **les mêmes clés**, exactement, dans les quatre fichiers ;
+- **les mêmes paramètres et les mêmes branches `=N`.** Un paramètre renommé
+  n'affiche rien, et une branche `=0` perdue ne se verrait qu'à zéro —
+  c'est-à-dire sur un compte neuf, chez quelqu'un qui découvre
+  l'application ;
+- **aucune valeur française laissée en place** au-delà de deux mots. En deçà,
+  l'identité est souvent juste — « Description » en anglais, « Admin »
+  partout — et deux clés sont nommément exemptées.
+
+**Le zéro n'est pas traité pareil d'une langue à l'autre**, et c'est le piège
+des pluriels : le CLDR français met le singulier après 0 (« 0 tâche »), alors
+que l'anglais, l'espagnol et l'allemand y mettent le pluriel (« 0 tasks »).
+Les branches `one`/`other` suffisent donc, et les branches `=0` explicites
+— « Aucune tâche » — sont traduites en toutes lettres.
 
 ### `AppTexts.of` se lit avant l'attente, jamais après
 
@@ -4154,16 +4358,33 @@ pu quitter l'écran. C'est la règle déjà tenue pour `ScaffoldMessenger`, et
 `use_build_context_synchronously` la signale : 38 membres déclarent donc
 `final AppTexts t = AppTexts.of(context);` **en tête**, avant tout `await`.
 
-### Les tests doivent brancher les délégués
+### Les tests doivent brancher les délégués, **et épingler la langue**
 
 Deux fichiers montent leur propre `MaterialApp.router` plutôt que `JelvoApp` :
 sans `localizationsDelegates`, `AppTexts.of` n'a rien à rendre et **tout écran
 qui lit un mot lève sur un `null`**. Hors widget, `AppTexts.delegate.load(const
 Locale('fr'))` donne une instance.
 
+Depuis qu'il y a quatre langues, tout harnais de widget surcharge en outre
+`languageStorageProvider` avec `EphemeralLanguageStorage(langue: Locale('fr'))` :
+
+```dart
+languageStorageProvider.overrideWithValue(
+  EphemeralLanguageStorage(langue: const Locale('fr')),
+),
+```
+
+Sans cela, l'application suit la langue de la **machine de test** — `en_US`
+sur le harnais —, et les 443 tests qui affirment des phrases exactes échouent
+sur du bon anglais. C'est arrivé : 212 échecs d'un coup, tous du même défaut.
+
+`test/langues_harnais.dart` porte le harnais partagé des tests de langue, et
+c'est le seul endroit où la langue est un **paramètre** plutôt qu'un réglage
+épinglé.
+
 ### Ce qui reste en dur, et pourquoi
 
-Vingt-huit chaînes portent `// texte-en-dur-autorise: <raison>`, dans dix-huit
+Trente chaînes portent `// texte-en-dur-autorise: <raison>`, dans dix-neuf
 fichiers. Le marqueur vaut pour sa ligne et les six qui la précèdent — une
 longue chaîne est coupée en morceaux, et la raison s'écrit **une fois**,
 au-dessus de l'instruction. Il demande une raison écrite : c'est ce qui
@@ -4180,6 +4401,7 @@ distingue une exception d'un oubli.
 | clé de stockage | `sb-<hôte>-auth-token`, dont changer déconnecterait tout le monde |
 | requête de média CSS | `(display-mode: standalone)` |
 | chiffres sans mot | « 1:07 » d'un message vocal, « 09:00 – 12:00 » d'un créneau, un emoji suivi de son compte |
+| nom d'une langue dans sa langue | `Français`, `Deutsch`, `English`, `Español` — les traduire ferait chercher « Allemand » à la lettre A dans une liste en espagnol |
 
 Trois recopies de plus vivent dans `web/index.html`, inévitables puisqu'elle
 est servie avant tout Dart : la clé de stockage, les trois mots d'apparence et
@@ -4197,6 +4419,35 @@ Elles portaient sur **zéro**, et le CLDR français met le singulier après « 0
 
 Un pluriel ICU ne peut pas dire deux choses du même nombre : le singulier
 l'emporte, et deux tests ont changé d'attente.
+
+### Ce qui reste en français : les notifications fabriquées côté base
+
+**C'est la limite connue de ce chantier, et elle est assumée.** Les titres et
+les corps des notifications système sont composés **en SQL**, par les
+déclencheurs de `supabase/tranche5c_notifications_push.sql` et des suivantes :
+`Julie Martin vous convie à Randonnée du lac Blanc` est écrit par
+`push_invitation_evenement`, pas par Dart. Un fichier ARB ne peut rien pour
+eux, et l'écran de verrouillage d'un téléphone en allemand reçoit donc du
+français.
+
+Deux choses rendent le problème plus profond qu'une traduction :
+
+- **la base ne sait pas la langue du destinataire.** Le réglage vit sur
+  l'appareil, délibérément — voir plus haut —, et il peut différer d'un
+  appareil à l'autre pour le même compte. Mettre une colonne `profiles.langue`
+  serait reprendre d'une main ce que le réglage par appareil donne de l'autre ;
+- **l'envoi est à sens unique.** `push_outbox` porte un titre et un corps déjà
+  rédigés ; traduire au moment de l'affichage demanderait qu'elle porte une
+  **clé et des paramètres**, et que le service worker fasse le rendu.
+
+C'est la **tranche 14**, et elle se fera séparément : `push_outbox` gagne
+`cle` et `params`, les déclencheurs les remplissent, `web/jelvo_push_sw.js`
+lit la langue dans `localStorage` — la même clé `jelvo-langue` — et compose la
+phrase. Les colonnes de texte restent pendant la transition, un client qui ne
+connaîtrait pas les clés continuant de les lire. Un test confrontera les
+gabarits du service worker à l'ARB, sur le modèle de
+`test/launch_screen_test.dart`, qui tient déjà le contrat entre
+`web/index.html` et le Dart.
 
 ---
 
@@ -4465,7 +4716,7 @@ Téléphone et Localisation écartées.
 | Sécurité et confidentialité | écartée | recouvre ce que les autres lignes font déjà ; le reste — blocage, visibilité — n'existe pas en base |
 | Sessions actives | écartée | **impossible côté client** : gotrue ne liste les sessions qu'avec la clé `service_role`. Il faudrait une fonction Edge |
 | Apparence (thème sombre) | **ajoutée** | trois choix — Clair, Sombre, Automatique — mémorisés sur l'appareil ; voir « Le thème sombre » |
-| Langue | écartée | une seule locale, et la migration vers l'ARB est partielle. Un sélecteur sans second choix ne réglerait rien |
+| Langue | **ajoutée** | quatre langues, le choix mémorisé sur l'appareil, « Celle du téléphone » par défaut ; voir « Internationalisation » |
 | Fuseau horaire | écartée | `profiles.timezone` **existe** et vaut `Europe/Paris`, mais **rien ne le lit** : les rappels sont rendus en Europe/Paris en dur, côté SQL. L'afficher laisserait croire à un réglage sans effet |
 | Aide et support | écartée | il n'y a ni adresse de support ni page d'aide à ouvrir |
 
@@ -4519,8 +4770,14 @@ sécurité.
   `context.ombres.x`. Aucune valeur statique, aucun `Color(0x…)` hors de
   `core/theme/`. Un modèle ou un provider ne choisit **jamais** une couleur :
   il dit ce que la chose est, le widget en tire la teinte.
-- **Dates** : passer par `AppDates` (locale `fr_FR`). `initializeDateFormatting`
-  est appelé dans `main()` — un test qui formate une date doit faire de même.
+- **Dates** : passer par `AppDates`, qui prend l'`AppTexts` — jamais
+  `DateFormat` directement, et jamais un motif littéral : `'HH:mm'` écrirait
+  « 14:00 » à un anglophone. `initializeDateFormatting()` est appelée **sans
+  argument** dans `main()` ; un test qui formate une date doit faire de même.
+- **Textes** : tout texte affiché vient de l'ARB et se lit
+  `AppTexts.of(context).<cle>`. Un modèle ou un provider ne choisit **jamais**
+  ses mots : il dit ce que la chose est, l'appelant en tire le libellé — même
+  règle que pour les couleurs. `tool/verifier_textes.py` le tient.
 - **Heure courante** : ne jamais appeler `DateTime.now()` dans un provider, un
   dépôt ou un widget. Utiliser `ref.watch(nowProvider)`, surchargeable avec
   `FixedClock` en test.
@@ -4804,6 +5061,27 @@ sécurité.
 - `test/app_version_test.dart` confronte `AppConfig.version` au `pubspec.yaml`,
   sans widget : la version est recopiée à la main, et une version fausse est
   pire qu'une version absente.
+- `test/langues_test.dart` couvre les quatre langues. **Le contrat entre les
+  fichiers ARB** : les mêmes clés, les mêmes paramètres, les mêmes branches
+  `=N`, aucun pluriel aplati en phrase fixe, et aucune valeur française
+  laissée en place au-delà de deux mots — deux clés exemptées, nommément.
+  Côté réglage, sans widget : ce qui est écrit est un code et non un rang, un
+  stockage abîmé suit le téléphone plutôt que de lever, `es_MX` donne
+  l'espagnol, une langue inconnue donne **l'anglais et non le français**, et
+  la clé de stockage ne change pas. Côté écran : l'application qui suit le
+  téléphone, l'anglais servi à un téléphone japonais, un choix enregistré qui
+  l'emporte, la ligne « Langue » qui annonce « Celle du téléphone » plutôt
+  que « Français » quand rien n'est choisi — ce n'est pas un choix, c'est une
+  délégation —, la feuille qui nomme chaque langue dans sa langue, le
+  basculement en allemand qui change l'écran **et** s'enregistre, et le
+  retour au téléphone. Côté dates : l'heure en 24 h d'un côté et en 12 h de
+  l'autre, les « de » que l'espagnol intercale, et le mois sans année qui n'en
+  porte dans aucune langue. Côté salutation : le week-end, le soir qui
+  l'emporte sur lui, **aucune fête nationale** — le contrôle porte sur
+  l'énumération, quatre moments et pas un cinquième —, et l'après-midi
+  espagnol qui commence plus tard. Enfin **27 écrans ouverts dans les quatre
+  langues à 360 dp**, où l'ouverture est le contrôle : c'est ce balayage qui a
+  trouvé quatre débordements, dont deux antérieurs à la traduction.
 - `test/welcome_screen_test.dart` couvre l'écran de bienvenue : l'installation
   neuve qui s'ouvre dessus, les trois arguments et leurs pictogrammes,
   l'absence de « Passer » et de `PageView`, le titre sans emoji, la bande
@@ -4850,7 +5128,7 @@ construction donne un `AsyncValue` en erreur, dont le `.value` nul retombe sur
 la liste vide de repli. L'écran s'affiche, vide, et le test passe pour de
 mauvaises raisons.
 
-Quatre points à respecter dans tout nouveau test de widget :
+Cinq points à respecter dans tout nouveau test de widget :
 
 1. Surcharger l'horloge — les données de démonstration et les libellés
    « Aujourd'hui »/« Demain » en dépendent :
@@ -4859,6 +5137,14 @@ Quatre points à respecter dans tout nouveau test de widget :
      overrides: [clockProvider.overrideWithValue(FixedClock(dateFigee))],
      child: const JelvoApp(),
    )
+   ```
+   **Et épingler la langue au français**, juste à côté : sans cela
+   l'application suit celle de la machine de test, et un test qui affirme une
+   phrase échoue sur du bon anglais.
+   ```dart
+   languageStorageProvider.overrideWithValue(
+     EphemeralLanguageStorage(langue: const Locale('fr')),
+   ),
    ```
 2. Agrandir la surface de test. Par défaut elle fait 800 × 600, ce qui laisse la
    moitié des écrans hors champ : les `Sliver` ne construisent alors pas leurs
@@ -4925,14 +5211,26 @@ sûr d'éprouver son caractère contextuel.
   rafraîchit à l'ouverture de l'écran, au geste de traction et après chaque
   action. Le temps réel et les notifications système (`push_tokens`) ne sont pas
   au périmètre.
-- **La migration des chaînes vers l'ARB est terminée** : plus un seul texte
-  affiché n'est écrit en dur dans `lib/`, et `tool/verifier_textes.py` fait
-  échouer la CI si un seul revient. 795 clés, 150 paramétrées, 22 pluriels
-  ICU. Ce qui reste : **l'application n'a toujours qu'une locale.**
-  `app_fr.arb` est seul, `AppDates.locale` vaut `'fr_FR'` en dur, il n'y a ni
-  réglage de langue ni choix d'après le téléphone, et les notifications
-  système sont fabriquées en français **côté base** — hors de portée d'un
-  fichier ARB. Traduire est l'étape suivante.
+- **L'application est en quatre langues** — français, anglais, espagnol,
+  allemand —, elle suit celle du téléphone, retombe sur l'anglais, et le
+  choix se règle dans les paramètres et se mémorise sur l'appareil. 857 clés
+  dans quatre fichiers, 150 paramétrées, 22 pluriels ICU ;
+  `tool/verifier_textes.py` fait échouer la CI si un texte en dur revient, et
+  `test/langues_test.dart` si les quatre fichiers divergent.
+
+  **Ce qui reste en français : les notifications fabriquées côté base.** Les
+  titres et les corps sont composés en SQL, et la base ne sait pas la langue
+  du destinataire — le réglage vit sur l'appareil. C'est la **tranche 14**,
+  décrite sous « Ce qui reste en français » : `push_outbox` portera une clé et
+  des paramètres, et `web/jelvo_push_sw.js` fera le rendu. Rien n'est cassé
+  entre-temps ; c'est du français servi à qui lit l'allemand.
+
+  Trois réserves de plus : les traductions n'ont été relues **que par
+  l'auteur**, pas par un locuteur natif ; le balayage des débordements porte
+  sur 27 écrans à 360 dp, et non sur tous les états de chacun — une liste
+  très longue ou un nom de groupe inhabituel peut encore déborder ailleurs ;
+  et l'espagnol et l'allemand n'ont été vus que sur un **rendu de test**,
+  jamais sur un appareil.
 - Tâches et événements ont leur écran de détail (`/taches/:id`,
   `/evenements/:id`), leur formulaire en feuille et leur liste (`/taches`).
   Restent hors périmètre : les notifications système, et la modification d'une

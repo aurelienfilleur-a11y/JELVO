@@ -43,7 +43,7 @@ class HomeScreen extends ConsumerWidget {
       // emoji installée, le glyphe manquant s'affiche en carré « tofu » au
       // tout premier écran.
       title: _salutation(ref, profil, t),
-      subtitle: AppDates.dayAndMonth(now),
+      subtitle: AppDates.dayAndMonth(now, t),
       leading: _Avatar(profil: profil),
       headerAction: Row(
         mainAxisSize: MainAxisSize.min,
@@ -184,7 +184,7 @@ class HomeScreen extends ConsumerWidget {
   /// lecture réseau donne l'impression d'une application lente, alors que la
   /// salutation seule est déjà juste.
   static String _salutation(WidgetRef ref, Profile? profil, AppTexts t) {
-    final String base = ref.watch(greetingProvider).salutation(t);
+    final String base = ref.watch(greetingProvider(t)).salutation(t);
     final String prenom = profil?.firstName.trim() ?? '';
     return prenom.isEmpty ? base : t.homeBasePrenom(base, prenom);
   }
@@ -223,7 +223,7 @@ class _Avatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: 'Profil',
+      message: AppTexts.of(context).coreProfil,
       child: InkWell(
         onTap: () => context.pushNamed(AppRoutes.profile),
         customBorder: const CircleBorder(),

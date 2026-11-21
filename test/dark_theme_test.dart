@@ -35,6 +35,7 @@ import 'fakes/fake_pont_navigateur.dart';
 import 'fakes/fake_push.dart';
 import 'fakes/fake_task_repository.dart';
 import 'fakes/fake_voice.dart';
+import 'package:jelvo/data/language_storage.dart';
 
 final DateTime _testNow = DateTime(2026, 8, 3, 9);
 
@@ -73,6 +74,12 @@ Future<ThemeStorage> _pumpApp(
     ProviderScope(
       overrides: [
         clockProvider.overrideWithValue(FixedClock(_testNow)),
+        // **La langue est épinglée au français.** Ces tests affirment des
+        // phrases exactes ; sans cela, ils liraient la langue de la machine
+        // — `en_US` sur le harnais — et échoueraient sur du bon anglais.
+        languageStorageProvider.overrideWithValue(
+          EphemeralLanguageStorage(langue: const Locale('fr')),
+        ),
         themeStorageProvider.overrideWithValue(apparence),
         authRepositoryProvider.overrideWithValue(auth),
         profileRepositoryProvider.overrideWithValue(FakeProfileRepository()),
@@ -113,7 +120,7 @@ Brightness _luminosite(WidgetTester tester) =>
     Theme.of(tester.element(find.byType(Scaffold).first)).brightness;
 
 void main() {
-  setUpAll(() => initializeDateFormatting(AppDates.locale));
+  setUpAll(() => initializeDateFormatting());
 
   group('La palette sombre est lisible', () {
     const JelvoColors sombre = JelvoColors.sombre;

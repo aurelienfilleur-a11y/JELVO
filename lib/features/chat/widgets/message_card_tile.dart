@@ -64,7 +64,7 @@ class _MessageCardTileState extends ConsumerState<MessageCardTile> {
         _Entete(
           icone: Icons.task_alt_rounded,
           couleur: context.couleurs.primary,
-          libelle: 'Tâche',
+          libelle: t.createTache,
           titre: carte.titre,
           barre: carte.supprimee || carte.terminee,
         ),
@@ -74,8 +74,8 @@ class _MessageCardTileState extends ConsumerState<MessageCardTile> {
           _Ligne(
             icone: Icons.event_outlined,
             texte: t.chatEcheanceDateHeure(
-              AppDates.shortDate(carte.dueAt!),
-              AppDates.time(carte.dueAt!),
+              AppDates.shortDate(carte.dueAt!, t),
+              AppDates.time(carte.dueAt!, t),
             ),
           ),
         ],
@@ -141,7 +141,7 @@ class _MessageCardTileState extends ConsumerState<MessageCardTile> {
         _Entete(
           icone: Icons.event_rounded,
           couleur: context.couleurs.warning,
-          libelle: 'Événement',
+          libelle: t.createEvenement,
           titre: carte.titre,
           barre: carte.supprimee,
         ),
@@ -154,8 +154,8 @@ class _MessageCardTileState extends ConsumerState<MessageCardTile> {
           _Ligne(
             icone: Icons.schedule_rounded,
             texte: t.coreJourEtHeure(
-              AppDates.shortDate(carte.debut),
-              AppDates.timeRange(carte.debut, carte.fin),
+              AppDates.shortDate(carte.debut, t),
+              AppDates.timeRange(carte.debut, carte.fin, t),
             ),
           ),
           if (carte.lieu != null && carte.lieu!.isNotEmpty) ...<Widget>[

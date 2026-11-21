@@ -160,7 +160,7 @@ class MessageBubble extends StatelessWidget {
               child: TextButton.icon(
                 onPressed: onRetry,
                 icon: const Icon(Icons.refresh_rounded, size: 14),
-                label: const Text('Non envoyé — réessayer'),
+                label: Text(AppTexts.of(context).chatNonEnvoyeReessayer),
                 style: TextButton.styleFrom(
                   foregroundColor: context.couleurs.danger,
                   textStyle: context.typo.caption,
@@ -219,7 +219,7 @@ class MessageBubble extends StatelessWidget {
         ),
         AppSpacing.hGapSm,
         Text(
-          'Message supprimé',
+          AppTexts.of(context).chatMessageSupprime2,
           style: context.typo.caption.copyWith(
             color: context.couleurs.textSecondary,
             fontStyle: FontStyle.italic,
@@ -295,6 +295,7 @@ class MessageBubble extends StatelessWidget {
                   border: Border.all(color: context.couleurs.border),
                 ),
                 child: EmojiText(
+                  // texte-en-dur-autorise: un emoji et un nombre, sans mot.
                   entree.value.length > 1
                       ? '${entree.key} ${entree.value.length}'
                       : entree.key,

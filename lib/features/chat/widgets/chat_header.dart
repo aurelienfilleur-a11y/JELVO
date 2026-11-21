@@ -71,7 +71,7 @@ class ChatHeader extends StatelessWidget implements PreferredSizeWidget {
                             ),
                             if (g != null)
                               Text(
-                                g.memberLabel,
+                                g.memberLabel(AppTexts.of(context)),
                                 style: context.typo.caption,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -179,7 +179,7 @@ class ChatShortcutBar extends StatelessWidget {
             if (taches == 0 && evenements == 0)
               Expanded(
                 child: Text(
-                  'Rien de prévu pour l’instant',
+                  AppTexts.of(context).chatRienPrevuInstant,
                   style: context.typo.bodyMuted,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

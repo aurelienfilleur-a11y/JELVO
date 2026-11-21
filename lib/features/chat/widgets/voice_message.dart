@@ -98,6 +98,8 @@ class VoiceMessage extends ConsumerWidget {
   }
 
   /// « 0:07 », « 1:42 ». Jamais d'heures : la durée est bornée à deux minutes.
+  // texte-en-dur-autorise: « 1:07 » — chiffres et deux-points, le même
+  // dans les quatre langues.
   static String _minutage(Duration? duree) {
     if (duree == null) return '--:--';
     final int secondes = duree.inSeconds;
@@ -130,7 +132,7 @@ class _Bouton extends StatelessWidget {
           customBorder: const CircleBorder(),
           onTap: chargement ? null : onPressed,
           child: Tooltip(
-            message: joue ? 'Mettre en pause' : 'Écouter',
+            message: joue ? AppTexts.of(context).chatMettrePause : 'Écouter',
             child: Center(
               child: chargement
                   ? SizedBox(

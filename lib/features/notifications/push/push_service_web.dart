@@ -115,6 +115,7 @@ class PushServiceWeb implements PushService {
       !_estInstallee && _navigator.serviceWorker != null;
 
   bool get _estInstallee =>
+      // texte-en-dur-autorise: requête de média CSS, pas une phrase.
       _window.matchMedia('(display-mode: standalone)').matches ||
       (_navigator.standalone?.toDart ?? false);
 

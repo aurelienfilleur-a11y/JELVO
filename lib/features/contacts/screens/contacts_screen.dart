@@ -59,10 +59,10 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
     return Stack(
       children: <Widget>[
         AppScreen(
-          title: 'Mes contacts',
+          title: AppTexts.of(context).contactsContacts,
           headerAction: AppScreenAction(
             icon: Icons.add_rounded,
-            tooltip: 'Ajouter un contact',
+            tooltip: AppTexts.of(context).createAddContact,
             accented: true,
             onPressed: () => AddContactSheet.ouvrir(context),
           ),
@@ -72,7 +72,7 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
               sliver: SliverToBoxAdapter(
                 child: AppTextField(
                   controller: _searchController,
-                  hint: 'Rechercher un contact',
+                  hint: AppTexts.of(context).contactsRechercherContact,
                   prefixIcon: Icons.search_rounded,
                   textInputAction: TextInputAction.search,
                   onChanged: ref.read(contactQueryProvider.notifier).update,
@@ -106,11 +106,10 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
 
             if (requests.isNotEmpty && query.isEmpty) ...<Widget>[
               _entete(
-                titre: 'Demandes reçues',
-                sousTitre:
-                    '${requests.length} personne'
-                    '${requests.length > 1 ? 's' : ''} souhaite'
-                    '${requests.length > 1 ? 'nt' : ''} vous ajouter',
+                titre: AppTexts.of(context).contactsDemandesRecues,
+                sousTitre: AppTexts.of(
+                  context,
+                ).contactsPersonnesSouhaitentVousAjouter(requests.length),
               ),
               SliverPadding(
                 padding: AppSpacing.screenHorizontal,
@@ -167,8 +166,10 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
               SliverToBoxAdapter(
                 child: EmptyState(
                   icon: Icons.cloud_off_rounded,
-                  title: 'Carnet indisponible',
-                  message: AuthFailure.from(contactsAsync.error!).message,
+                  title: AppTexts.of(context).contactsCarnetIndisponible,
+                  message: AuthFailure.from(
+                    contactsAsync.error!,
+                  ).message(AppTexts.of(context)),
                   actionLabel: 'Réessayer',
                   onActionPressed: () =>
                       ref.read(contactsProvider.notifier).refresh(),
@@ -178,12 +179,17 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
               SliverToBoxAdapter(
                 child: EmptyState(
                   icon: Icons.person_search_rounded,
-                  title: query.isEmpty ? 'Carnet vide' : 'Aucun résultat',
+                  title: query.isEmpty
+                      ? AppTexts.of(context).contactsCarnetVide
+                      : AppTexts.of(context).contactsAucunResultat,
                   message: query.isEmpty
-                      ? 'Ajoutez vos proches par leur pseudo ou en scannant '
-                            'leur QR code pour planifier ensemble.'
-                      : 'Aucun contact ne correspond à « $query ».',
-                  actionLabel: query.isEmpty ? 'Ajouter un contact' : null,
+                      ? AppTexts.of(context).contactsAjoutezProchesLeurPseudo
+                      : AppTexts.of(
+                          context,
+                        ).contactsAucunContactCorrespondQuery(query),
+                  actionLabel: query.isEmpty
+                      ? AppTexts.of(context).createAddContact
+                      : null,
                   onActionPressed: query.isEmpty
                       ? () => AddContactSheet.ouvrir(context)
                       : null,
@@ -321,28 +327,33 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
 
   Future<void> _accept(Contact contact) => _run(
     () => ref.read(contactActionsProvider).accept(contact.id),
-    success: '${contact.shortName} fait maintenant partie de vos contacts.',
+    success: (AppTexts t) => t.contactsFaitMaintenantPartie(contact.shortName),
   );
 
   Future<void> _decline(Contact contact) => _run(
     () => ref.read(contactActionsProvider).decline(contact.id),
-    success: 'Demande refusée.',
+    success: (AppTexts t) => t.contactsDemandeRefusee,
   );
 
   Future<void> _toggleFavorite(Contact contact) =>
       _run(() => ref.read(contactActionsProvider).toggleFavorite(contact));
 
   /// Exécute une écriture et traduit toute erreur en message français.
-  Future<void> _run(Future<void> Function() action, {String? success}) async {
+  Future<void> _run(
+    Future<void> Function() action, {
+    String Function(AppTexts)? success,
+  }) async {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     try {
       await action();
       if (success != null) {
-        messenger.showSnackBar(SnackBar(content: Text(success)));
+        messenger.showSnackBar(SnackBar(content: Text(success(t))));
       }
     } catch (error) {
       messenger.showSnackBar(
-        SnackBar(content: Text(AuthFailure.from(error).message)),
+        SnackBar(content: Text(AuthFailure.from(error).message(t))),
       );
     }
   }

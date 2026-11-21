@@ -4,6 +4,11 @@
 /// fichier individuellement.
 library;
 
+// `AppTexts` est exporté ici pour la même raison que la palette : un écran
+// lit ses mots au contexte comme il y lit ses couleurs, et un seul import
+// doit suffire. `core/utils/date_formatting.dart` en dépend déjà.
+export '../l10n/app_localizations.dart';
+
 export 'theme/jelvo_colors.dart';
 export 'theme/app_radii.dart';
 export 'theme/app_shadows.dart';

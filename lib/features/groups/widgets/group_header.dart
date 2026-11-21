@@ -119,7 +119,7 @@ class GroupHeader extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                           Text(
-                            group.memberLabel,
+                            group.memberLabel(AppTexts.of(context)),
                             style: context.typo.body.copyWith(
                               color: Colors.white.withValues(alpha: 0.9),
                             ),

@@ -74,7 +74,11 @@ class _GroupFormScreenState extends ConsumerState<GroupFormScreen> {
     return Scaffold(
       backgroundColor: context.couleurs.background,
       appBar: AppBar(
-        title: Text(_isEditing ? 'Modifier le groupe' : 'Nouveau groupe'),
+        title: Text(
+          _isEditing
+              ? AppTexts.of(context).groupsModifierGroupe
+              : AppTexts.of(context).createNewGroup,
+        ),
         leading: IconButton(
           icon: const Icon(Icons.close_rounded),
           tooltip: 'Fermer',
@@ -99,7 +103,7 @@ class _GroupFormScreenState extends ConsumerState<GroupFormScreen> {
 
             if (!_isEditing) ...<Widget>[
               Text(
-                'Créez votre groupe et invitez les premiers membres.',
+                AppTexts.of(context).groupsCreezGroupeInvitezPremiers,
                 style: context.typo.bodyMuted,
                 textAlign: TextAlign.center,
               ),
@@ -107,7 +111,7 @@ class _GroupFormScreenState extends ConsumerState<GroupFormScreen> {
             ],
 
             Text(
-              'Photo du groupe',
+              AppTexts.of(context).groupsPhotoGroupe,
               style: context.typo.caption.copyWith(
                 fontWeight: AppTypography.medium,
                 color: context.couleurs.encre,
@@ -130,8 +134,8 @@ class _GroupFormScreenState extends ConsumerState<GroupFormScreen> {
             AppSpacing.gapXl,
 
             AppTextField(
-              label: 'Nom du groupe *',
-              hint: 'Ex. : Famille Rousseau',
+              label: AppTexts.of(context).groupsNomGroupe,
+              hint: AppTexts.of(context).groupsExFamilleRousseau,
               controller: _nameController,
               errorText: _nameError,
               maxLength: _nameMaxLength,
@@ -146,8 +150,8 @@ class _GroupFormScreenState extends ConsumerState<GroupFormScreen> {
             AppSpacing.gapLg,
 
             AppTextField(
-              label: 'Description (optionnelle)',
-              hint: 'Décrivez brièvement le but de ce groupe',
+              label: AppTexts.of(context).groupsDescriptionOptionnelle,
+              hint: AppTexts.of(context).groupsDecrivezBrievementButGroupe,
               controller: _descriptionController,
               maxLength: _descriptionMaxLength,
               showCounter: true,
@@ -175,7 +179,9 @@ class _GroupFormScreenState extends ConsumerState<GroupFormScreen> {
 
             AppSpacing.gapXl,
             PrimaryButton(
-              label: _isEditing ? 'Enregistrer' : 'Créer le groupe',
+              label: _isEditing
+                  ? 'Enregistrer'
+                  : AppTexts.of(context).groupsCreerGroupe,
               icon: _isEditing ? null : Icons.group_add_rounded,
               isLoading: _submitting,
               onPressed: _submit,
@@ -202,14 +208,16 @@ class _GroupFormScreenState extends ConsumerState<GroupFormScreen> {
   }
 
   Future<void> _submit() async {
+    final AppTexts t = AppTexts.of(context);
     final String name = _nameController.text.trim();
     final String description = _descriptionController.text.trim();
 
     setState(() {
       _nameError = switch (name) {
-        '' => 'Donnez un nom à votre groupe.',
-        final String n when n.length > _nameMaxLength =>
-          'Le nom ne doit pas dépasser $_nameMaxLength caractères.',
+        '' => AppTexts.of(context).groupsDonnezNomGroupe,
+        final String n when n.length > _nameMaxLength => AppTexts.of(
+          context,
+        ).groupsNomDoitDepasserNameMaxLength(_nameMaxLength),
         _ => null,
       };
       _errorMessage = null;
@@ -270,13 +278,17 @@ class _GroupFormScreenState extends ConsumerState<GroupFormScreen> {
         final int envoyees = _invites.length - echecs;
         if (_invites.isNotEmpty) {
           messenger.showSnackBar(
-            SnackBar(content: Text(_bilanInvitations(envoyees, echecs))),
+            SnackBar(content: Text(_bilanInvitations(envoyees, echecs, t))),
           );
         }
       }
     } catch (error) {
       if (!mounted) return;
-      setState(() => _errorMessage = AuthFailure.from(error).message);
+      setState(
+        () => _errorMessage = AuthFailure.from(
+          error,
+        ).message(AppTexts.of(context)),
+      );
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -287,19 +299,18 @@ class _GroupFormScreenState extends ConsumerState<GroupFormScreen> {
 ///
 /// Un échec partiel doit être **nommé** : sans cela, on croit avoir invité
 /// cinq personnes alors que deux n'ont rien reçu, et rien ne le signale.
-String _bilanInvitations(int envoyees, int echecs) {
+String _bilanInvitations(int envoyees, int echecs, AppTexts t) {
   if (echecs == 0) {
     return envoyees == 1
-        ? 'Groupe créé, 1 invitation envoyée.'
-        : 'Groupe créé, $envoyees invitations envoyées.';
+        ? t.groupsGroupeCree1Invitation
+        : t.groupsGroupeCreeEnvoyeesInvitations(envoyees);
   }
   if (envoyees == 0) {
     return echecs == 1
-        ? 'Groupe créé, mais l’invitation n’a pas pu partir.'
-        : 'Groupe créé, mais aucune des $echecs invitations n’a pu partir.';
+        ? t.groupsGroupeCreeMaisInvitation
+        : t.groupsGroupeCreeMaisAucune(echecs);
   }
-  return 'Groupe créé, $envoyees invitation(s) envoyée(s), '
-      '$echecs non parties.';
+  return t.groupsGroupeCreeEnvoyeesInvitation(envoyees, echecs);
 }
 
 /// « Groupe privé » — un constat, et non un interrupteur.
@@ -335,15 +346,14 @@ class _ConfidentialiteCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(
-                  'Groupe privé',
+                  AppTexts.of(context).groupsGroupePrive,
                   style: context.typo.body.copyWith(
                     fontWeight: AppTypography.medium,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Seuls les membres invités pourront le rejoindre et voir '
-                  'son contenu. Tous les groupes Jelvo le sont.',
+                  AppTexts.of(context).groupsSeulsMembresInvitesPourront,
                   style: context.typo.caption,
                 ),
               ],

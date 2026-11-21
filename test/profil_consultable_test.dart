@@ -350,7 +350,7 @@ void main() {
     testWidgets('zéro se dit', (WidgetTester tester) async {
       await _ouvrir(tester, ligne: _ligne());
 
-      expect(find.text('0 groupes en commun'), findsOneWidget);
+      expect(find.text('0 groupe en commun'), findsOneWidget);
       expect(find.textContaining('rien ensemble'), findsOneWidget);
     });
 

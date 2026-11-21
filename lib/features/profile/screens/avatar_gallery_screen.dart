@@ -41,7 +41,7 @@ class _AvatarGalleryScreenState extends ConsumerState<AvatarGalleryScreen> {
     return Scaffold(
       backgroundColor: context.couleurs.background,
       appBar: AppBar(
-        title: const Text('Choisir un avatar'),
+        title: Text(AppTexts.of(context).profileChoisirAvatar),
         leading: IconButton(
           icon: const Icon(Icons.close_rounded),
           tooltip: 'Fermer',
@@ -113,7 +113,7 @@ class _AvatarGalleryScreenState extends ConsumerState<AvatarGalleryScreen> {
                 boxShadow: context.ombres.overlay,
               ),
               child: PrimaryButton(
-                label: 'Utiliser cet avatar',
+                label: AppTexts.of(context).profileUtiliserCetAvatar,
                 icon: Icons.check_rounded,
                 isLoading: _enregistrement,
                 onPressed: _choisi == null ? null : _enregistrer,
@@ -139,7 +139,9 @@ class _AvatarGalleryScreenState extends ConsumerState<AvatarGalleryScreen> {
       navigateur.maybePop();
     } catch (error) {
       if (!mounted) return;
-      setState(() => _erreur = AuthFailure.from(error).message);
+      setState(
+        () => _erreur = AuthFailure.from(error).message(AppTexts.of(context)),
+      );
     } finally {
       if (mounted) setState(() => _enregistrement = false);
     }
@@ -163,7 +165,7 @@ class _Vignette extends StatelessWidget {
     return Semantics(
       button: true,
       selected: choisi,
-      label: 'Avatar $id',
+      label: AppTexts.of(context).profileAvatarId(id),
       child: GestureDetector(
         onTap: onTap,
         child: DecoratedBox(

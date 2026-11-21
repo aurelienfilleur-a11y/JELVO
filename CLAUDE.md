@@ -4066,8 +4066,137 @@ Les délégués de Material et de Cupertino ne sont pas décoratifs : sans eux, 
 `showDatePicker(locale: Locale('fr'))` reste en anglais quand il ne lève pas.
 
 **Ajouter une langue = déposer `app_<code>.arb` à côté et le remplir.** Aucun
-code à modifier. La migration des chaînes est **partielle** : voir les limites
-connues.
+code à modifier.
+
+**La migration est terminée** : il n'y a plus un seul texte affiché écrit en
+dur dans `lib/`. Le fichier compte **795 clés**, dont 150 portent un paramètre
+et 22 un pluriel ICU.
+
+`core/core.dart` **exporte `AppTexts`**, pour la même raison qu'il exporte la
+palette : un écran lit ses mots au contexte comme il y lit ses couleurs, et un
+seul import doit suffire.
+
+### Le contrôle est dans la CI, et il échoue sur un texte en dur
+
+`tool/verifier_textes.py` est la cinquième étape de `tool/verifier.sh` et de
+`deploy-web.yml`, posée **avant** l'analyse parce qu'elle est instantanée.
+
+**Aucune règle de `flutter analyze` ne dit « cette chaîne atteint l'écran ».**
+Un texte écrit en dur compile, passe l'analyse, passe les tests, et ne se
+constate qu'à l'écran de quelqu'un qui a choisi une autre langue. Sans ce
+contrôle, la migration se déferait à la prochaine fonctionnalité — c'est le
+même genre de panne silencieuse que la publication `supabase_realtime`
+manquante.
+
+**La détection se fait par la position, pas par le contenu.** Une chaîne est
+suspecte parce qu'elle occupe un emplacement de texte — premier argument d'un
+`Text(`, `EmojiText(`, `SelectableText(`, ou valeur d'un paramètre nommé dont
+le nom dit qu'il s'affiche (`label`, `titre`, `message`, `tooltip`,
+`semanticsLabel`, `hint`…). Le contraire — chercher ce qui *ressemble* à du
+français — attrape les noms de colonnes SQL, les clés de stockage et les trois
+mots du contrat d'apparence (`clair`, `sombre`, `systeme`), qui doivent
+précisément rester en dur.
+
+Une seconde règle rattrape ce que la position ne voit pas : **une chaîne de
+deux mots dont l'un fait au moins deux lettres** est une phrase, où qu'elle
+soit. C'est ce qui a trouvé les libellés rendus par un modèle ou un provider,
+loin de tout widget. La première version du détecteur n'exigeait qu'un accent,
+et laissait donc passer toute phrase française sans accent.
+
+### Un modèle ne choisit pas ses mots
+
+**C'est la règle des couleurs, étendue au vocabulaire.** Un modèle dit *ce que
+la chose est* ; l'appelant en tire le libellé. Conséquences portées par le
+code :
+
+| Avant | Après |
+| --- | --- |
+| `AuthFailure` portait son message | il porte un `AuthFailureKind`, et `message(AppTexts t)` en déduit la phrase |
+| neuf énumérations portaient leur libellé en `const` | elles rendent `label(AppTexts t)` — une valeur d'énumération est constante par construction, un mot ne l'est pas |
+| `Group.memberLabel` était un getter | c'est `memberLabel(AppTexts t)`, qui appelle le pluriel ICU |
+| `greetingProvider` rendait « Bonjour » | il rend un `MomentDuJour`, dont `salutation(t)` tire le mot |
+| `groupActivityProvider` composait « 3 tâches en cours » | il a disparu : l'écran lit les deux nombres de `groupOngoingProvider` et bâtit la phrase |
+| `CredentialsRules.pseudoError` rendait un message | il y a d'abord `pseudoProbleme`, pur, puis `pseudoError(value, t)` |
+
+Le bénéfice est immédiat sur les tests : `test/credentials_rules_test.dart`
+éprouve les conditions **sans aucun `AppTexts`**, là où un message en dur
+l'aurait obligé à en fabriquer un.
+
+### Un provider qui assemble du texte prend la langue en argument de famille
+
+`dayAgendaProvider` bâtit des lignes qui portent des phrases — « Personnel »,
+« Terminée », « Journée », « X fête son anniversaire ». Un provider n'a pas de
+`BuildContext` d'où les tirer, et `AgendaEntry` ne peut pas les porter sans
+redevenir un sac de dix champs descriptifs.
+
+La clé de famille devient donc `(DateTime, AppTexts)` — **exactement comme
+`nowProvider` pour l'heure courante** : la dépendance est explicite, le
+résultat reste mis en cache, et un changement de langue reconstruit les lignes
+au lieu de les laisser dans l'ancienne. `agendaForSelectedDayProvider`,
+`calendarCountersProvider`, `todayAgendaProvider` et `homeTaskRowsProvider`
+suivent.
+
+L'instance d'`AppTexts` est stable pour une locale donnée : `Localizations` la
+met en cache, et la clé de famille ne change donc qu'au changement de langue.
+
+### Une valeur par défaut ne peut pas lire le contexte
+
+`PasswordField.label`, `GroupSelector.label`, `MembershipTermPicker.label` et
+`AssigneePicker.titre` passent à `null`, résolu au `build`. C'est le même
+arbitrage que pour `AppCard`, `EventCard` et `NavBadge`, dont les couleurs par
+défaut avaient dû quitter la liste de paramètres : **le contexte n'y existe
+pas.**
+
+### `AppTexts.of` se lit avant l'attente, jamais après
+
+Après un `await`, le `BuildContext` peut avoir disparu — la garde du routeur a
+pu quitter l'écran. C'est la règle déjà tenue pour `ScaffoldMessenger`, et
+`use_build_context_synchronously` la signale : 38 membres déclarent donc
+`final AppTexts t = AppTexts.of(context);` **en tête**, avant tout `await`.
+
+### Les tests doivent brancher les délégués
+
+Deux fichiers montent leur propre `MaterialApp.router` plutôt que `JelvoApp` :
+sans `localizationsDelegates`, `AppTexts.of` n'a rien à rendre et **tout écran
+qui lit un mot lève sur un `null`**. Hors widget, `AppTexts.delegate.load(const
+Locale('fr'))` donne une instance.
+
+### Ce qui reste en dur, et pourquoi
+
+Vingt-huit chaînes portent `// texte-en-dur-autorise: <raison>`, dans dix-huit
+fichiers. Le marqueur vaut pour sa ligne et les six qui la précèdent — une
+longue chaîne est coupée en morceaux, et la raison s'écrit **une fois**,
+au-dessus de l'instruction. Il demande une raison écrite : c'est ce qui
+distingue une exception d'un oubli.
+
+| Famille | Exemples |
+| --- | --- |
+| détail technique du mode diagnostic | `AuthException code=… — …`, `PostgrestException code=…` |
+| console de développement | le bandeau `[jelvo:diagnostic]` |
+| `toString()` de débogage | `AuthFailure`, `Anniversaire`, `EmojiRun` |
+| état impossible | le `StateError` d'un profil absent |
+| filtre ou colonnes PostgREST | `expires_at.is.null,expires_at.gt.…`, les listes de `select` |
+| chemin dans un bucket | `$userId/avatar_….jpg` — le premier segment porte l'autorisation |
+| clé de stockage | `sb-<hôte>-auth-token`, dont changer déconnecterait tout le monde |
+| requête de média CSS | `(display-mode: standalone)` |
+| chiffres sans mot | « 1:07 » d'un message vocal, « 09:00 – 12:00 » d'un créneau, un emoji suivi de son compte |
+
+Trois recopies de plus vivent dans `web/index.html`, inévitables puisqu'elle
+est servie avant tout Dart : la clé de stockage, les trois mots d'apparence et
+les deux fonds. `test/launch_screen_test.dart` les confronte au Dart — voir
+« Le thème sombre ».
+
+### Deux incohérences que l'extraction a mises au jour
+
+Elles portaient sur **zéro**, et le CLDR français met le singulier après « 0 » :
+
+- la carte « Mes tâches » de l'accueil disait « 0 tâches », là où `/taches`
+  disait « 0 tâche » pour le même compte ;
+- la carte des groupes communs disait « 0 groupes en commun », là où la
+  pastille du carnet disait « 0 groupe ».
+
+Un pluriel ICU ne peut pas dire deux choses du même nombre : le singulier
+l'emporte, et deux tests ont changé d'attente.
 
 ---
 
@@ -4796,12 +4925,14 @@ sûr d'éprouver son caractère contextuel.
   rafraîchit à l'ouverture de l'écran, au geste de traction et après chaque
   action. Le temps réel et les notifications système (`push_tokens`) ne sont pas
   au périmètre.
-- **La migration des chaînes vers l'ARB est partielle.** L'infrastructure est
-  complète et `app_fr.arb` couvre la navigation, l'accueil, l'écran de groupe,
-  la création, les statuts et les erreurs. Les écrans d'authentification, de
-  contacts, de notifications et d'invitation portent encore leurs chaînes en
-  ligne : elles restent à déplacer, sans changement de code autre que
-  l'appel à `AppTexts.of(context)`.
+- **La migration des chaînes vers l'ARB est terminée** : plus un seul texte
+  affiché n'est écrit en dur dans `lib/`, et `tool/verifier_textes.py` fait
+  échouer la CI si un seul revient. 795 clés, 150 paramétrées, 22 pluriels
+  ICU. Ce qui reste : **l'application n'a toujours qu'une locale.**
+  `app_fr.arb` est seul, `AppDates.locale` vaut `'fr_FR'` en dur, il n'y a ni
+  réglage de langue ni choix d'après le téléphone, et les notifications
+  système sont fabriquées en français **côté base** — hors de portée d'un
+  fichier ARB. Traduire est l'étape suivante.
 - Tâches et événements ont leur écran de détail (`/taches/:id`,
   `/evenements/:id`), leur formulaire en feuille et leur liste (`/taches`).
   Restent hors périmètre : les notifications système, et la modification d'une

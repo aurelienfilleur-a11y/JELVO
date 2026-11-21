@@ -53,7 +53,7 @@ class CalendarCountersRow extends StatelessWidget {
           Expanded(
             child: _Compteur(
               icon: Icons.hourglass_bottom_rounded,
-              value: counters.freeLabel,
+              value: counters.freeLabel(AppTexts.of(context)),
               label: 'Disponible',
               tint: context.couleurs.warning,
               onPressed: onAvailabilityPressed,

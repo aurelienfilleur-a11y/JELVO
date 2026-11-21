@@ -49,14 +49,14 @@ class EventDetailScreen extends ConsumerWidget {
           if (jePeuxModifier)
             IconButton(
               icon: const Icon(Icons.edit_outlined),
-              tooltip: 'Modifier l’événement',
+              tooltip: AppTexts.of(context).calendarModifierEvenement,
               onPressed: () =>
                   ouvrirFormulaireDEvenement(context, event: event),
             ),
           if (jePeuxModifier)
             IconButton(
               icon: const Icon(Icons.delete_outline_rounded),
-              tooltip: 'Supprimer l’événement',
+              tooltip: AppTexts.of(context).calendarSupprimerEvenement,
               onPressed: () => _confirmerSuppression(context, ref, event),
             ),
         ],
@@ -65,8 +65,8 @@ class EventDetailScreen extends ConsumerWidget {
           ? SafeArea(
               child: EmptyState(
                 icon: Icons.event_busy_rounded,
-                title: 'Événement introuvable',
-                message: 'Il a été supprimé, ou vous n’y avez plus accès.',
+                title: AppTexts.of(context).calendarEvenementIntrouvable,
+                message: AppTexts.of(context).calendarEteSupprimeAvezAcces,
                 actionLabel: 'Retour',
                 onActionPressed: () => context.canPop()
                     ? context.pop()
@@ -82,15 +82,16 @@ class EventDetailScreen extends ConsumerWidget {
     WidgetRef ref,
     CalendarEvent event,
   ) async {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     final NavigatorState navigator = Navigator.of(context);
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     final bool? confirme = await showDialog<bool>(
       context: context,
       builder: (BuildContext dialogContext) => AlertDialog(
-        title: const Text('Supprimer l’événement'),
+        title: Text(AppTexts.of(context).calendarSupprimerEvenement),
         content: Text(
-          '« ${event.title} » disparaîtra pour tous les participants. Cette '
-          'action ne peut pas être annulée depuis l’application.',
+          AppTexts.of(context).calendarSupprimerConfirmation(event.title),
         ),
         actions: <Widget>[
           TextButton(
@@ -112,12 +113,12 @@ class EventDetailScreen extends ConsumerWidget {
     try {
       await ref.read(eventActionsProvider).remove(event.id);
       messenger.showSnackBar(
-        SnackBar(content: Text('« ${event.title} » a été supprimé.')),
+        SnackBar(content: Text(t.calendarEvenementSupprime(event.title))),
       );
       if (navigator.canPop()) navigator.pop();
     } catch (error) {
       messenger.showSnackBar(
-        SnackBar(content: Text(AuthFailure.from(error).message)),
+        SnackBar(content: Text(AuthFailure.from(error).message(t))),
       );
     }
   }
@@ -132,6 +133,7 @@ class _Corps extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final AppTexts t = AppTexts.of(context);
     return ListView(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.screenMargin,
@@ -147,8 +149,10 @@ class _Corps extends ConsumerWidget {
               EmojiText(event.title, style: context.typo.h2),
               AppSpacing.gapSm,
               Text(
-                '${AppDates.fullDate(event.start)} · '
-                '${AppDates.timeRange(event.start, event.end)}',
+                t.coreJourEtHeure(
+                  AppDates.fullDate(event.start),
+                  AppDates.timeRange(event.start, event.end),
+                ),
                 style: context.typo.bodyMuted,
               ),
               if (event.notes != null && event.notes!.isNotEmpty) ...<Widget>[
@@ -170,7 +174,8 @@ class _Corps extends ConsumerWidget {
               _Ligne(
                 icon: Icons.place_outlined,
                 label: 'Lieu',
-                value: event.location ?? 'Non précisé',
+                value:
+                    event.location ?? AppTexts.of(context).calendarNonPrecise,
               ),
               _Ligne(
                 icon: Icons.groups_outlined,
@@ -183,13 +188,15 @@ class _Corps extends ConsumerWidget {
                   label: 'Rappel',
                   value: ReminderOffset.fromMinutes(
                     event.reminderMinutes,
-                  ).label,
+                  ).label(AppTexts.of(context)),
                 ),
               if (event.isRecurring)
                 _Ligne(
                   icon: Icons.repeat_rounded,
                   label: 'Répétition',
-                  value: Recurrence.fromRrule(event.rrule).label,
+                  value: Recurrence.fromRrule(
+                    event.rrule,
+                  ).label(AppTexts.of(context)),
                   dernier: true,
                 ),
             ],
@@ -204,7 +211,10 @@ class _Corps extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text('Votre réponse', style: context.typo.h3),
+                Text(
+                  AppTexts.of(context).calendarReponse,
+                  style: context.typo.h3,
+                ),
                 AppSpacing.gapMd,
                 ResponseButtons(
                   courante: event.myResponse,
@@ -223,15 +233,21 @@ class _Corps extends ConsumerWidget {
                 Row(
                   children: <Widget>[
                     Expanded(
-                      child: Text('Participants', style: context.typo.h3),
+                      child: Text(
+                        t.calendarParticipants,
+                        style: context.typo.h3,
+                      ),
                     ),
-                    Text('${event.yesCount} oui', style: context.typo.caption),
+                    Text(
+                      t.calendarOuiCount(event.yesCount),
+                      style: context.typo.caption,
+                    ),
                   ],
                 ),
                 AppSpacing.gapMd,
                 if (event.participants.isEmpty)
                   Text(
-                    'Personne n’a encore été convié.',
+                    AppTexts.of(context).calendarPersonneEncoreEteConvie,
                     style: context.typo.bodyMuted,
                   )
                 else
@@ -260,7 +276,7 @@ class _Corps extends ConsumerWidget {
                               onTap: () => context.ouvrirProfilDe(p.userId),
                               child: EmojiText(
                                 p.userId == moi
-                                    ? '${p.displayName} (vous)'
+                                    ? t.coreVous(p.displayName)
                                     : p.displayName,
                                 style: context.typo.body,
                                 maxLines: 1,
@@ -271,7 +287,7 @@ class _Corps extends ConsumerWidget {
                           AppSpacing.hGapSm,
                           StatusDot(
                             tone: p.response.tone,
-                            label: p.response.label,
+                            label: p.response.label(AppTexts.of(context)),
                           ),
                         ],
                       ),
@@ -289,12 +305,14 @@ class _Corps extends ConsumerWidget {
     WidgetRef ref,
     EventResponse reponse,
   ) async {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     try {
       await ref.read(eventActionsProvider).respond(event.id, reponse);
     } catch (error) {
       messenger.showSnackBar(
-        SnackBar(content: Text(AuthFailure.from(error).message)),
+        SnackBar(content: Text(AuthFailure.from(error).message(t))),
       );
     }
   }

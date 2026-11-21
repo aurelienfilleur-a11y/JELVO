@@ -446,9 +446,11 @@ class _RouteErrorScreen extends StatelessWidget {
       body: SafeArea(
         child: EmptyState(
           icon: Icons.explore_off_rounded,
-          title: 'Page introuvable',
-          message: 'Aucun écran ne correspond à « $location ».',
-          actionLabel: "Revenir à l'accueil",
+          title: AppTexts.of(context).routerPageIntrouvable,
+          message: AppTexts.of(
+            context,
+          ).routerAucunEcranCorrespondLocation(location),
+          actionLabel: AppTexts.of(context).groupsRevenirAccueil,
           onActionPressed: () => context.goNamed(AppRoutes.home),
         ),
       ),

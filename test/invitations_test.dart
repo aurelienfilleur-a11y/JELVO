@@ -159,7 +159,14 @@ Future<GoRouter> _pump(
           FakeAvailabilityRepository(),
         ),
       ],
-      child: MaterialApp.router(routerConfig: routeur, theme: AppTheme.light),
+      // Les délégués sont indispensables : sans eux, `AppTexts.of` n'a rien
+      // à rendre et tout écran qui lit un mot lève sur un `null`.
+      child: MaterialApp.router(
+        routerConfig: routeur,
+        theme: AppTheme.light,
+        localizationsDelegates: AppTexts.localizationsDelegates,
+        supportedLocales: AppTexts.supportedLocales,
+      ),
     ),
   );
   await tester.pumpAndSettle();

@@ -5,7 +5,6 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/core.dart';
-import 'l10n/app_localizations.dart';
 import 'data/app_config.dart';
 import 'data/data_providers.dart';
 import 'data/onboarding_storage.dart';

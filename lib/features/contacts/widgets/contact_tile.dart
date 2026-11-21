@@ -102,8 +102,8 @@ class ContactTile extends StatelessWidget {
               onPressed: onFavoriteToggled,
               visualDensity: VisualDensity.compact,
               tooltip: contact.isFavorite
-                  ? 'Retirer des favoris'
-                  : 'Ajouter aux favoris',
+                  ? AppTexts.of(context).contactsRetirerFavoris
+                  : AppTexts.of(context).contactsAjouterFavoris,
               icon: Icon(
                 contact.isFavorite
                     ? Icons.star_rounded

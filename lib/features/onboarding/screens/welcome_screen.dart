@@ -45,14 +45,15 @@ class WelcomeScreen extends ConsumerWidget {
                       child: Column(
                         children: <Widget>[
                           Text(
-                            'Bienvenue sur Jelvo',
+                            AppTexts.of(context).onboardingBienvenueJelvo,
                             style: context.typo.h1,
                             textAlign: TextAlign.center,
                           ),
                           AppSpacing.gapSm,
                           Text(
-                            'L’app qui rassemble vos groupes, vos projets et '
-                            'vos proches.',
+                            AppTexts.of(
+                              context,
+                            ).onboardingAppRassembleGroupesProjets,
                             style: context.typo.bodyMuted,
                             textAlign: TextAlign.center,
                           ),
@@ -165,28 +166,28 @@ class _ArgumentsCard extends StatelessWidget {
   /// Les trois teintes viennent du design system — `primary`, `success`,
   /// `warning` — et non des couleurs de la maquette : violet, vert et orange
   /// y tombent exactement. Aucune couleur nouvelle n'a été introduite.
-  static List<_Argument> arguments(JelvoColors c) => <_Argument>[
+  static List<_Argument> arguments(JelvoColors c, AppTexts t) => <_Argument>[
     _Argument(
       icon: Icons.groups_2_rounded,
       color: c.primary,
       background: c.primarySoft,
       // La maquette écrit « Tout vos groupes » ; c'est une faute d'accord.
-      titre: 'Tous vos groupes au même endroit',
-      texte: 'Organisez vos projets, activités et échanges facilement.',
+      titre: t.onboardingGroupesMemeEndroit,
+      texte: t.onboardingOrganisezProjetsActivitesEchanges,
     ),
     _Argument(
       icon: Icons.calendar_month_rounded,
       color: c.success,
       background: c.successSoft,
-      titre: 'Un agenda partagé et synchronisé',
-      texte: 'Ne manquez plus aucun événement important.',
+      titre: t.onboardingAgendaPartageSynchronise,
+      texte: t.onboardingManquezAucunEvenementImportant,
     ),
     _Argument(
       icon: Icons.task_alt_rounded,
       color: c.warning,
       background: c.warningSoft,
-      titre: 'Des tâches claires et efficaces',
-      texte: 'Attribuez, suivez et accomplissez ensemble vos objectifs.',
+      titre: t.onboardingTachesClairesEfficaces,
+      texte: t.onboardingAttribuezSuivezAccomplissezEnsemble,
     ),
   ];
 
@@ -198,6 +199,7 @@ class _ArgumentsCard extends StatelessWidget {
         children: <Widget>[
           for (final (int index, _Argument argument) in arguments(
             context.couleurs,
+            AppTexts.of(context),
           ).indexed) ...[
             if (index > 0) Divider(height: 1, color: context.couleurs.border),
             _ArgumentRow(argument: argument),

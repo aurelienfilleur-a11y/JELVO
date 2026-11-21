@@ -151,20 +151,13 @@ class SupabaseAuthRepository implements AuthRepository {
       );
       final String? email = result is String ? result : null;
       if (email == null || email.isEmpty) {
-        throw const AuthFailure(
-          'Identifiants incorrects. Vérifiez votre saisie, puis réessayez.',
-          kind: AuthFailureKind.invalidCredentials,
-        );
+        throw AuthFailure(AuthFailureKind.invalidCredentials);
       }
       return email;
     } on PostgrestException catch (error) {
       // PGRST202 : la fonction n'est pas déployée sur ce projet.
       if (error.code == 'PGRST202' || error.code == '404') {
-        throw const AuthFailure(
-          'La connexion par pseudo n’est pas encore disponible. Utilisez '
-          'votre adresse e-mail.',
-          kind: AuthFailureKind.invalidCredentials,
-        );
+        throw AuthFailure(AuthFailureKind.pseudoInconnu);
       }
       throw AuthFailure.from(error);
     } catch (error) {
@@ -293,10 +286,7 @@ class SupabaseAuthRepository implements AuthRepository {
   }) async {
     final String? userId = currentUserId;
     if (userId == null) {
-      throw const AuthFailure(
-        'Votre session a expiré. Reconnectez-vous.',
-        kind: AuthFailureKind.sessionExpired,
-      );
+      throw AuthFailure(AuthFailureKind.sessionExpired);
     }
 
     String? avatarUrl;
@@ -330,6 +320,8 @@ class SupabaseAuthRepository implements AuthRepository {
     required Uint8List bytes,
     required String fileExtension,
   }) async {
+    // texte-en-dur-autorise: chemin dans le bucket, dont le premier segment
+    // porte l'autorisation. Ce n'est pas une phrase.
     final String path =
         '$userId/avatar_${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
     try {

@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../../auth/models/auth_failure.dart';
 import '../models/contact.dart';
 import '../models/contact_birthday.dart';
@@ -11,13 +12,11 @@ enum ContactRequestOutcome {
   dejaDemandee,
   soiMeme;
 
-  String get message => switch (this) {
-    ContactRequestOutcome.envoyee => 'Demande envoyée.',
-    ContactRequestOutcome.dejaContact =>
-      'Cette personne fait déjà partie de vos contacts.',
-    ContactRequestOutcome.dejaDemandee => 'Une demande est déjà en attente.',
-    ContactRequestOutcome.soiMeme =>
-      'Vous ne pouvez pas vous ajouter vous-même.',
+  String message(AppTexts t) => switch (this) {
+    ContactRequestOutcome.envoyee => t.contactsDemandeEnvoyee,
+    ContactRequestOutcome.dejaContact => t.contactsPersonneFaitDejaPartie,
+    ContactRequestOutcome.dejaDemandee => t.contactsDemandeDejaAttente,
+    ContactRequestOutcome.soiMeme => t.contactsPouvezAjouterMeme,
   };
 }
 
@@ -114,10 +113,7 @@ class SupabaseContactRepository implements ContactRepository {
   Future<ContactRequestOutcome> sendRequest(String userId) async {
     final String? me = _userId;
     if (me == null) {
-      throw const AuthFailure(
-        'Votre session a expiré. Reconnectez-vous.',
-        kind: AuthFailureKind.sessionExpired,
-      );
+      throw AuthFailure(AuthFailureKind.sessionExpired);
     }
     if (me == userId) return ContactRequestOutcome.soiMeme;
 
@@ -127,6 +123,7 @@ class SupabaseContactRepository implements ContactRepository {
           .from('contacts')
           .select('status, requester_id')
           .or(
+            // texte-en-dur-autorise: filtre PostgREST, pas une phrase.
             'and(requester_id.eq.$me,addressee_id.eq.$userId),'
             'and(requester_id.eq.$userId,addressee_id.eq.$me)',
           );
@@ -175,6 +172,7 @@ class SupabaseContactRepository implements ContactRepository {
           .from('contacts')
           .delete()
           .or(
+            // texte-en-dur-autorise: filtre PostgREST, pas une phrase.
             'and(requester_id.eq.$me,addressee_id.eq.$userId),'
             'and(requester_id.eq.$userId,addressee_id.eq.$me)',
           );

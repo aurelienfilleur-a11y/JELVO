@@ -64,10 +64,10 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
     final bool canResend = _secondsLeft <= 0 && !_resending && !_submitting;
 
     return AuthScaffold(
-      title: 'Vérifiez votre e-mail',
+      title: AppTexts.of(context).authVerifiezEMail,
       subtitle: draft.email.isEmpty
-          ? 'Saisissez le code à six chiffres que nous venons de vous envoyer.'
-          : 'Nous avons envoyé un code à six chiffres à ${draft.email}.',
+          ? AppTexts.of(context).authSaisissezCodeSixChiffres
+          : AppTexts.of(context).authCodeEnvoyeA(draft.email),
       onBack: _submitting ? null : () => context.pop(),
       children: <Widget>[
         if (_errorMessage != null) ...<Widget>[
@@ -101,12 +101,14 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
           child: canResend
               ? TextButton(
                   onPressed: _resend,
-                  child: const Text('Renvoyer le code'),
+                  child: Text(AppTexts.of(context).authRenvoyerCode),
                 )
               : Text(
                   _resending
-                      ? 'Envoi en cours…'
-                      : 'Nouveau code possible dans $_secondsLeft s',
+                      ? AppTexts.of(context).authEnvoiCours
+                      : AppTexts.of(
+                          context,
+                        ).authNouveauCodePossibleSecondsLeft(_secondsLeft),
                   style: context.typo.caption,
                 ),
         ),
@@ -115,11 +117,15 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
   }
 
   Future<void> _submit() async {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     final String code = _codeController.text;
     final SignUpDraft draft = ref.read(signUpDraftProvider);
 
     if (!CredentialsRules.isCodeComplete(code)) {
-      setState(() => _errorMessage = 'Saisissez les six chiffres du code.');
+      setState(
+        () => _errorMessage = AppTexts.of(context).authSaisissezSixChiffresCode,
+      );
       return;
     }
 
@@ -142,21 +148,20 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
       // photo.
       final String? warning = await ref
           .read(signUpActionsProvider)
-          .completeProfile();
+          .completeProfile(t);
       if (warning != null) {
         messenger.showSnackBar(
-          SnackBar(
-            content: Text(
-              'Compte créé, mais le profil n’a pas pu être enregistré : '
-              '$warning',
-            ),
-          ),
+          SnackBar(content: Text(t.authCompteCreeMaisProfil(warning))),
         );
       }
       // La garde du routeur bascule vers l'accueil dès que la session est là.
     } catch (error) {
       if (!mounted) return;
-      setState(() => _errorMessage = AuthFailure.from(error).message);
+      setState(
+        () => _errorMessage = AuthFailure.from(
+          error,
+        ).message(AppTexts.of(context)),
+      );
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -173,11 +178,17 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
           .read(authRepositoryProvider)
           .resendSignUpCode(ref.read(signUpDraftProvider).email);
       if (!mounted) return;
-      setState(() => _infoMessage = 'Un nouveau code vient d’être envoyé.');
+      setState(
+        () => _infoMessage = AppTexts.of(context).authNouveauCodeVientEtre,
+      );
       _startResendCountdown();
     } catch (error) {
       if (!mounted) return;
-      setState(() => _errorMessage = AuthFailure.from(error).message);
+      setState(
+        () => _errorMessage = AuthFailure.from(
+          error,
+        ).message(AppTexts.of(context)),
+      );
     } finally {
       if (mounted) setState(() => _resending = false);
     }

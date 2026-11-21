@@ -55,6 +55,7 @@ class _MessageCardTileState extends ConsumerState<MessageCardTile> {
   // — Tâche ——————————————————————————————————————————————————————————————
 
   Widget _tache(TaskCard carte) {
+    final AppTexts t = AppTexts.of(context);
     final CardPerson? titulaire = carte.titulaire;
 
     return Column(
@@ -72,34 +73,36 @@ class _MessageCardTileState extends ConsumerState<MessageCardTile> {
           AppSpacing.gapSm,
           _Ligne(
             icone: Icons.event_outlined,
-            texte:
-                'Échéance ${AppDates.shortDate(carte.dueAt!)} à '
-                '${AppDates.time(carte.dueAt!)}',
+            texte: t.chatEcheanceDateHeure(
+              AppDates.shortDate(carte.dueAt!),
+              AppDates.time(carte.dueAt!),
+            ),
           ),
         ],
 
         if (carte.supprimee) ...<Widget>[
           AppSpacing.gapSm,
-          const _Etat(texte: 'Cette tâche a été supprimée.'),
+          _Etat(texte: AppTexts.of(context).chatTacheEteSupprimee),
         ] else if (titulaire != null) ...<Widget>[
           AppSpacing.gapSm,
-          _Titulaire(personne: titulaire, phrase: _phrase(carte, titulaire)),
+          _Titulaire(
+            personne: titulaire,
+            phrase: _phrase(carte, titulaire, AppTexts.of(context)),
+          ),
           // Seul celui qui l'a prise peut la rendre. Une tâche **confiée** se
           // refuse depuis son écran d'attribution : le refus reste visible
           // pour qui l'a confiée, la disparition non.
           if (carte.priseParMoi) ...<Widget>[
             AppSpacing.gapMd,
             SecondaryButton(
-              label: 'Me désister',
+              label: AppTexts.of(context).chatDesister,
               isDestructive: true,
               onPressed: _enCours ? null : _seDesister,
             ),
           ],
         ] else ...<Widget>[
           AppSpacing.gapSm,
-          const _Etat(
-            texte: 'Proposée au groupe — personne ne l’a encore prise.',
-          ),
+          _Etat(texte: AppTexts.of(context).chatProposeeGroupePersonneEncore),
           AppSpacing.gapMd,
           InvitationActions(
             refuser: 'Non',
@@ -117,19 +120,21 @@ class _MessageCardTileState extends ConsumerState<MessageCardTile> {
   ///
   /// La même ligne de `task_assignees` se lit de deux façons opposées selon
   /// qu'on s'est proposé ou qu'on vous l'a confiée — d'où `tache_prise`.
-  String _phrase(TaskCard carte, CardPerson titulaire) {
-    if (carte.prise) return '${titulaire.name} a pris la tâche';
+  String _phrase(TaskCard carte, CardPerson titulaire, AppTexts t) {
+    final String nom = titulaire.displayName(t);
+    if (carte.prise) return t.chatAPrisLaTache(nom);
     return switch (titulaire.status) {
-      AssigneeStatus.accepted => '${titulaire.name} a accepté la tâche',
-      AssigneeStatus.declined => '${titulaire.name} a refusé la tâche',
-      AssigneeStatus.done => '${titulaire.name} a terminé la tâche',
-      AssigneeStatus.pending || null => 'Tâche attribuée à ${titulaire.name}',
+      AssigneeStatus.accepted => t.chatAAccepteLaTache(nom),
+      AssigneeStatus.declined => t.chatARefuseLaTache(nom),
+      AssigneeStatus.done => t.chatATermineLaTache(nom),
+      AssigneeStatus.pending || null => t.chatTacheAttribueeA(nom),
     };
   }
 
   // — Événement ——————————————————————————————————————————————————————————
 
   Widget _evenement(EventCardData carte) {
+    final AppTexts t = AppTexts.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
@@ -143,21 +148,25 @@ class _MessageCardTileState extends ConsumerState<MessageCardTile> {
 
         if (carte.supprimee) ...<Widget>[
           AppSpacing.gapSm,
-          const _Etat(texte: 'Cet événement a été supprimé.'),
+          _Etat(texte: AppTexts.of(context).chatCetEvenementEteSupprime),
         ] else ...<Widget>[
           AppSpacing.gapSm,
           _Ligne(
             icone: Icons.schedule_rounded,
-            texte:
-                '${AppDates.shortDate(carte.debut)} · '
-                '${AppDates.timeRange(carte.debut, carte.fin)}',
+            texte: t.coreJourEtHeure(
+              AppDates.shortDate(carte.debut),
+              AppDates.timeRange(carte.debut, carte.fin),
+            ),
           ),
           if (carte.lieu != null && carte.lieu!.isNotEmpty) ...<Widget>[
             const SizedBox(height: 2),
             _Ligne(icone: Icons.place_outlined, texte: carte.lieu!),
           ],
           AppSpacing.gapSm,
-          _Ligne(icone: Icons.how_to_reg_rounded, texte: carte.decompte),
+          _Ligne(
+            icone: Icons.how_to_reg_rounded,
+            texte: carte.decompte(AppTexts.of(context)),
+          ),
           AppSpacing.gapMd,
           ResponseButtons(
             compact: true,
@@ -195,9 +204,7 @@ class _MessageCardTileState extends ConsumerState<MessageCardTile> {
   /// effet.
   void _passerSonTour() {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Très bien — la tâche reste proposée au groupe.'),
-      ),
+      SnackBar(content: Text(AppTexts.of(context).chatTresBienTacheReste)),
     );
   }
 
@@ -217,14 +224,16 @@ class _MessageCardTileState extends ConsumerState<MessageCardTile> {
   /// lui qui distingue « prise » de « quelqu'un vient de la prendre avant
   /// vous », les deux répondant sans erreur.
   Future<void> _agir(Future<TakeOutcome> Function() action) async {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     final ScaffoldMessengerState messager = ScaffoldMessenger.of(context);
     setState(() => _enCours = true);
     try {
       final TakeOutcome resultat = await action();
-      messager.showSnackBar(SnackBar(content: Text(resultat.message)));
+      messager.showSnackBar(SnackBar(content: Text(resultat.message(t))));
     } catch (error) {
       messager.showSnackBar(
-        SnackBar(content: Text(AuthFailure.from(error).message)),
+        SnackBar(content: Text(AuthFailure.from(error).message(t))),
       );
     } finally {
       if (mounted) setState(() => _enCours = false);
@@ -232,6 +241,8 @@ class _MessageCardTileState extends ConsumerState<MessageCardTile> {
   }
 
   Future<void> _repondreEvenement(EventResponse reponse) async {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     final String? evenement = widget.message.eventId;
     if (evenement == null) return;
     final ScaffoldMessengerState messager = ScaffoldMessenger.of(context);
@@ -241,7 +252,7 @@ class _MessageCardTileState extends ConsumerState<MessageCardTile> {
       await ref.read(eventActionsProvider).respond(evenement, reponse);
     } catch (error) {
       messager.showSnackBar(
-        SnackBar(content: Text(AuthFailure.from(error).message)),
+        SnackBar(content: Text(AuthFailure.from(error).message(t))),
       );
     } finally {
       if (mounted) setState(() => _enCours = false);
@@ -362,7 +373,10 @@ class _Titulaire extends StatelessWidget {
     return Row(
       children: <Widget>[
         AvatarImage(
-          data: AvatarData(name: personne.name, imageUrl: personne.avatarUrl),
+          data: AvatarData(
+            name: personne.displayName(AppTexts.of(context)),
+            imageUrl: personne.avatarUrl,
+          ),
           size: 28,
         ),
         AppSpacing.hGapSm,

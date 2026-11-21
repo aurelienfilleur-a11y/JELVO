@@ -35,10 +35,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return AuthScaffold(
-      title: 'Mot de passe oublié',
-      subtitle:
-          'Indiquez votre adresse e-mail : nous vous enverrons un code à six '
-          'chiffres pour en choisir un nouveau.',
+      title: AppTexts.of(context).authMotPasseOublie,
+      subtitle: AppTexts.of(context).authIndiquezAdresseEMail,
       onBack: _submitting ? null : () => context.pop(),
       children: <Widget>[
         if (_errorMessage != null) ...<Widget>[
@@ -47,7 +45,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
         ],
 
         AppTextField(
-          label: 'Adresse e-mail',
+          label: AppTexts.of(context).authAdresseEMail,
           hint: 'camille.rousseau@example.com',
           controller: _emailController,
           errorText: _emailError,
@@ -68,7 +66,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
         AppSpacing.gapXl,
         PrimaryButton(
-          label: 'Envoyer le code',
+          label: AppTexts.of(context).authEnvoyerCode,
           isLoading: _submitting,
           onPressed: _submit,
         ),
@@ -80,7 +78,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     final String email = _emailController.text.trim();
 
     setState(() {
-      _emailError = CredentialsRules.emailError(email);
+      _emailError = CredentialsRules.emailError(email, AppTexts.of(context));
       _errorMessage = null;
     });
     if (_emailError != null) return;
@@ -93,7 +91,11 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       context.pushNamed(AppRoutes.resetPassword);
     } catch (error) {
       if (!mounted) return;
-      setState(() => _errorMessage = AuthFailure.from(error).message);
+      setState(
+        () => _errorMessage = AuthFailure.from(
+          error,
+        ).message(AppTexts.of(context)),
+      );
     } finally {
       if (mounted) setState(() => _submitting = false);
     }

@@ -1,9 +1,19 @@
+import '../../../l10n/app_localizations.dart';
+
 /// Règles de validation des identifiants, partagées par l'inscription et la
 /// réinitialisation du mot de passe.
 ///
 /// Elles vivent dans le domaine plutôt que dans les écrans pour rester
 /// testables sans widget, et pour que les mêmes contraintes s'appliquent
 /// partout où un mot de passe est saisi.
+///
+/// **Les conditions sont pures, les mots ne le sont pas**, et les deux sont
+/// désormais séparés. Une règle de validation ne connaît pas la langue de
+/// l'appareil : elle dit *ce qui ne va pas* — un [PseudoProbleme], un
+/// [MotDePasseProbleme] —, et c'est l'écran qui le met en phrase. C'est la
+/// même règle que pour les couleurs, et elle a un bénéfice immédiat :
+/// `test/credentials_rules_test.dart` éprouve les conditions **sans aucun
+/// `AppTexts`**, là où un message en dur l'aurait obligé à en fabriquer un.
 abstract final class CredentialsRules {
   static const int pseudoMinLength = 3;
   static const int pseudoMaxLength = 20;
@@ -14,34 +24,51 @@ abstract final class CredentialsRules {
 
   static final RegExp _emailPattern = RegExp(r'^[^@\s]+@[^@\s.]+\.[^@\s]+$');
 
-  /// Message d'erreur du pseudo, ou `null` s'il est valide.
-  static String? pseudoError(String value) {
+  /// Ce qui ne va pas avec le pseudo, ou `null` s'il est valide.
+  static PseudoProbleme? pseudoProbleme(String value) {
     final String pseudo = value.trim();
-    if (pseudo.isEmpty) return 'Choisissez un pseudo.';
-    if (pseudo.length < pseudoMinLength) {
-      return 'Le pseudo doit contenir au moins $pseudoMinLength caractères.';
-    }
-    if (pseudo.length > pseudoMaxLength) {
-      return 'Le pseudo ne doit pas dépasser $pseudoMaxLength caractères.';
-    }
+    if (pseudo.isEmpty) return PseudoProbleme.vide;
+    if (pseudo.length < pseudoMinLength) return PseudoProbleme.tropCourt;
+    if (pseudo.length > pseudoMaxLength) return PseudoProbleme.tropLong;
     if (!_pseudoPattern.hasMatch(pseudo)) {
-      return 'Uniquement des minuscules, des chiffres et des points.';
+      return PseudoProbleme.caracteresInterdits;
     }
     return null;
   }
 
-  static bool isPseudoValid(String value) => pseudoError(value) == null;
+  /// Message d'erreur du pseudo, ou `null` s'il est valide.
+  static String? pseudoError(String value, AppTexts t) =>
+      switch (pseudoProbleme(value)) {
+        null => null,
+        PseudoProbleme.vide => t.authChoisissezPseudo,
+        PseudoProbleme.tropCourt => t.authPseudoDoitContenirMoins(
+          pseudoMinLength,
+        ),
+        PseudoProbleme.tropLong => t.authPseudoDoitDepasserPseudoMaxLength(
+          pseudoMaxLength,
+        ),
+        PseudoProbleme.caracteresInterdits =>
+          t.authUniquementMinusculesChiffresPoints,
+      };
 
-  static String? emailError(String value) {
+  static bool isPseudoValid(String value) => pseudoProbleme(value) == null;
+
+  /// Ce qui ne va pas avec l'adresse, ou `null` si elle est valide.
+  static EmailProbleme? emailProbleme(String value) {
     final String email = value.trim();
-    if (email.isEmpty) return 'Renseignez votre adresse e-mail.';
-    if (!_emailPattern.hasMatch(email)) {
-      return 'Cette adresse e-mail semble incomplète.';
-    }
+    if (email.isEmpty) return EmailProbleme.vide;
+    if (!_emailPattern.hasMatch(email)) return EmailProbleme.malFormee;
     return null;
   }
 
-  static bool isEmailValid(String value) => emailError(value) == null;
+  static String? emailError(String value, AppTexts t) =>
+      switch (emailProbleme(value)) {
+        null => null,
+        EmailProbleme.vide => t.authRenseignezAdresseEMail,
+        EmailProbleme.malFormee => t.authAdresseEMailSemble,
+      };
+
+  static bool isEmailValid(String value) => emailProbleme(value) == null;
 
   // Les trois contraintes du mot de passe sont exposées séparément : l'écran
   // d'inscription les affiche sous forme de liste cochée au fil de la saisie.
@@ -51,19 +78,35 @@ abstract final class CredentialsRules {
 
   static bool hasDigit(String value) => RegExp('[0-9]').hasMatch(value);
 
-  static String? passwordError(String value) {
-    if (value.isEmpty) return 'Choisissez un mot de passe.';
-    if (!hasMinLength(value)) {
-      return 'Au moins $passwordMinLength caractères sont nécessaires.';
-    }
-    if (!hasUppercase(value)) return 'Ajoutez au moins une majuscule.';
-    if (!hasDigit(value)) return 'Ajoutez au moins un chiffre.';
+  /// Ce qui manque au mot de passe, ou `null` s'il est valide.
+  static MotDePasseProbleme? motDePasseProbleme(String value) {
+    if (value.isEmpty) return MotDePasseProbleme.vide;
+    if (!hasMinLength(value)) return MotDePasseProbleme.tropCourt;
+    if (!hasUppercase(value)) return MotDePasseProbleme.sansMajuscule;
+    if (!hasDigit(value)) return MotDePasseProbleme.sansChiffre;
     return null;
   }
 
-  static bool isPasswordValid(String value) => passwordError(value) == null;
+  static String? passwordError(String value, AppTexts t) =>
+      switch (motDePasseProbleme(value)) {
+        null => null,
+        MotDePasseProbleme.vide => t.authChoisissezMotPasse,
+        MotDePasseProbleme.tropCourt =>
+          t.authMoinsPasswordMinLengthCaracteresNecessaires(passwordMinLength),
+        MotDePasseProbleme.sansMajuscule => t.authAjoutezMoinsMajuscule,
+        MotDePasseProbleme.sansChiffre => t.authAjoutezMoinsChiffre,
+      };
+
+  static bool isPasswordValid(String value) =>
+      motDePasseProbleme(value) == null;
 
   /// Vrai si le code de vérification a la forme attendue (six chiffres).
   static bool isCodeComplete(String value) =>
       RegExp(r'^[0-9]{6}$').hasMatch(value);
 }
+
+enum PseudoProbleme { vide, tropCourt, tropLong, caracteresInterdits }
+
+enum EmailProbleme { vide, malFormee }
+
+enum MotDePasseProbleme { vide, tropCourt, sansMajuscule, sansChiffre }

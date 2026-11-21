@@ -69,6 +69,7 @@ class EmojiRun {
   int get hashCode => Object.hash(text, isEmoji);
 
   @override
+  // texte-en-dur-autorise: représentation de débogage, jamais affichée.
   String toString() => '${isEmoji ? 'emoji' : 'texte'}("$text")';
 }
 

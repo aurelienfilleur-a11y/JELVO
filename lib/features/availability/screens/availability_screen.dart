@@ -33,7 +33,7 @@ class AvailabilityScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: context.couleurs.background,
       appBar: AppBar(
-        title: const Text('Mes disponibilités'),
+        title: Text(AppTexts.of(context).availabilityDisponibilites),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           tooltip: 'Retour',
@@ -42,7 +42,7 @@ class AvailabilityScreen extends ConsumerWidget {
         actions: <Widget>[
           IconButton(
             icon: const Icon(Icons.add_rounded),
-            tooltip: 'Nouveau créneau',
+            tooltip: AppTexts.of(context).availabilityNouveauCreneau,
             onPressed: () => ouvrirFormulaireDeCreneau(context),
           ),
         ],
@@ -51,8 +51,12 @@ class AvailabilityScreen extends ConsumerWidget {
           ? SafeArea(
               child: EmptyState(
                 icon: Icons.cloud_off_rounded,
-                title: 'Disponibilités indisponibles',
-                message: AuthFailure.from(tout.error!).message,
+                title: AppTexts.of(
+                  context,
+                ).availabilityDisponibilitesIndisponibles,
+                message: AuthFailure.from(
+                  tout.error!,
+                ).message(AppTexts.of(context)),
                 actionLabel: 'Réessayer',
                 onActionPressed: () =>
                     ref.read(myAvailabilityProvider.notifier).refresh(),
@@ -73,14 +77,17 @@ class AvailabilityScreen extends ConsumerWidget {
                   AppSpacing.gapXl,
 
                   SectionHeader(
-                    title: 'Ma semaine type',
-                    subtitle: 'Créneaux qui reviennent chaque semaine',
+                    title: AppTexts.of(context).availabilitySemaineType,
+                    subtitle: AppTexts.of(
+                      context,
+                    ).availabilityCreneauxReviennentChaqueSemaine,
                   ),
                   AppSpacing.gapMd,
                   if (parJour.isEmpty)
                     Text(
-                      'Aucun créneau récurrent. Sans rien de déclaré, les '
-                      'autres vous voient « Inconnu ».',
+                      AppTexts.of(
+                        context,
+                      ).availabilityAucunCreneauRecurrentRien,
                       style: context.typo.bodyMuted,
                     )
                   else
@@ -94,13 +101,14 @@ class AvailabilityScreen extends ConsumerWidget {
                   AppSpacing.gapXl,
                   SectionHeader(
                     title: 'Exceptions',
-                    subtitle: 'Une date précise, qui prime sur la semaine type',
+                    subtitle: AppTexts.of(
+                      context,
+                    ).availabilityDatePrecisePrimeSemaine,
                   ),
                   AppSpacing.gapMd,
                   if (exceptions.isEmpty)
                     Text(
-                      'Aucune exception. Un jour de congé ou un déplacement se '
-                      'pose ici.',
+                      AppTexts.of(context).availabilityAucuneExceptionJourConge,
                       style: context.typo.bodyMuted,
                     )
                   else
@@ -108,7 +116,7 @@ class AvailabilityScreen extends ConsumerWidget {
 
                   AppSpacing.gapXl,
                   PrimaryButton(
-                    label: 'Ajouter un créneau',
+                    label: AppTexts.of(context).availabilityAjouterCreneau,
                     icon: Icons.add_rounded,
                     onPressed: () => ouvrirFormulaireDeCreneau(context),
                   ),
@@ -139,9 +147,7 @@ class _BandeauConfidentialite extends StatelessWidget {
           AppSpacing.hGapMd,
           Expanded(
             child: Text(
-              'Vos contacts et les membres de vos groupes voient seulement '
-              '« Disponible », « Indisponible » ou « Inconnu ». Jamais vos '
-              'horaires, jamais la raison.',
+              AppTexts.of(context).availabilityContactsMembresGroupesVoient,
               style: context.typo.caption.copyWith(
                 color: context.couleurs.encre,
               ),
@@ -191,6 +197,7 @@ class _LigneCreneau extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final AppTexts t = AppTexts.of(context);
     final DateTime? date = creneau.onDate;
 
     return Padding(
@@ -199,7 +206,7 @@ class _LigneCreneau extends ConsumerWidget {
         children: <Widget>[
           StatusDot(
             tone: creneau.status.tone,
-            label: creneau.status.label,
+            label: creneau.status.label(AppTexts.of(context)),
             filled: true,
           ),
           AppSpacing.hGapMd,
@@ -207,7 +214,10 @@ class _LigneCreneau extends ConsumerWidget {
             child: Text(
               date == null
                   ? creneau.plage
-                  : '${AppDates.shortDate(date)} · ${creneau.plage}',
+                  : t.availabilityDateEtPlage(
+                      AppDates.shortDate(date),
+                      creneau.plage,
+                    ),
               style: context.typo.body,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -215,14 +225,14 @@ class _LigneCreneau extends ConsumerWidget {
           ),
           IconButton(
             icon: const Icon(Icons.edit_outlined, size: 18),
-            tooltip: 'Modifier le créneau',
+            tooltip: AppTexts.of(context).availabilityModifierCreneau,
             color: context.couleurs.textSecondary,
             onPressed: () =>
                 ouvrirFormulaireDeCreneau(context, creneau: creneau),
           ),
           IconButton(
             icon: const Icon(Icons.delete_outline_rounded, size: 18),
-            tooltip: 'Supprimer le créneau',
+            tooltip: AppTexts.of(context).availabilitySupprimerCreneau,
             color: context.couleurs.textSecondary,
             onPressed: () => _supprimer(context, ref),
           ),
@@ -232,6 +242,8 @@ class _LigneCreneau extends ConsumerWidget {
   }
 
   Future<void> _supprimer(BuildContext context, WidgetRef ref) async {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     try {
       // Le booléen vient de la fonction SQL : c'est lui qui dit si quelque
@@ -243,8 +255,8 @@ class _LigneCreneau extends ConsumerWidget {
         SnackBar(
           content: Text(
             retire
-                ? 'Créneau supprimé.'
-                : 'Ce créneau n’existe plus. La liste va se rafraîchir.',
+                ? t.availabilityCreneauSupprime
+                : t.availabilityCreneauExisteListeVa,
           ),
         ),
       );
@@ -253,7 +265,7 @@ class _LigneCreneau extends ConsumerWidget {
       }
     } catch (error) {
       messenger.showSnackBar(
-        SnackBar(content: Text(AuthFailure.from(error).message)),
+        SnackBar(content: Text(AuthFailure.from(error).message(t))),
       );
     }
   }

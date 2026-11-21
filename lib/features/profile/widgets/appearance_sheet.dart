@@ -9,31 +9,28 @@ import '../../../data/data_providers.dart';
 /// « Automatique » est en tête parce que c'est le défaut, et parce que c'est
 /// le seul choix qui n'en est pas vraiment un : il délègue au téléphone.
 enum Apparence {
-  automatique(
-    ThemeMode.system,
-    'Automatique',
-    'Suit le réglage de votre téléphone',
-    Icons.brightness_auto_rounded,
-  ),
-  clair(
-    ThemeMode.light,
-    'Clair',
-    'Fond blanc, texte sombre',
-    Icons.light_mode_rounded,
-  ),
-  sombre(
-    ThemeMode.dark,
-    'Sombre',
-    'Fond sombre, texte clair',
-    Icons.dark_mode_rounded,
-  );
+  automatique(ThemeMode.system, Icons.brightness_auto_rounded),
+  clair(ThemeMode.light, Icons.light_mode_rounded),
+  sombre(ThemeMode.dark, Icons.dark_mode_rounded);
 
-  const Apparence(this.mode, this.libelle, this.aide, this.icone);
+  const Apparence(this.mode, this.icone);
 
   final ThemeMode mode;
-  final String libelle;
-  final String aide;
   final IconData icone;
+
+  /// Libellé et aide dépendent de la langue : une donnée d'énumération est
+  /// constante par construction, elle ne peut pas les porter.
+  String libelle(AppTexts t) => switch (this) {
+    Apparence.automatique => t.profileApparenceAutomatique,
+    Apparence.clair => t.profileApparenceClair,
+    Apparence.sombre => t.profileApparenceSombre,
+  };
+
+  String aide(AppTexts t) => switch (this) {
+    Apparence.automatique => t.profileSuitReglageTelephone,
+    Apparence.clair => t.profileFondBlancTexteSombre,
+    Apparence.sombre => t.profileFondSombreTexteClair,
+  };
 
   static Apparence depuis(ThemeMode mode) =>
       Apparence.values.firstWhere((Apparence a) => a.mode == mode);
@@ -73,7 +70,10 @@ class AppearanceSheet extends ConsumerWidget {
               AppSpacing.lg,
               AppSpacing.xs,
             ),
-            child: Text('Apparence', style: context.typo.h2),
+            child: Text(
+              AppTexts.of(context).profileApparence,
+              style: context.typo.h2,
+            ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(
@@ -86,7 +86,7 @@ class AppearanceSheet extends ConsumerWidget {
               // Le réglage est celui de cet appareil : le dire évite de
               // chercher pourquoi le téléphone est sombre et l'ordinateur
               // clair.
-              'Ce choix ne vaut que sur cet appareil.',
+              AppTexts.of(context).profileChoixVautCetAppareil,
               style: context.typo.caption,
             ),
           ),
@@ -137,10 +137,13 @@ class _Ligne extends StatelessWidget {
         ),
       ),
       title: Text(
-        apparence.libelle,
+        apparence.libelle(AppTexts.of(context)),
         style: context.typo.body.copyWith(fontWeight: AppTypography.medium),
       ),
-      subtitle: Text(apparence.aide, style: context.typo.caption),
+      subtitle: Text(
+        apparence.aide(AppTexts.of(context)),
+        style: context.typo.caption,
+      ),
       trailing: choisie
           ? Icon(Icons.check_rounded, color: context.couleurs.primaryInk)
           : null,

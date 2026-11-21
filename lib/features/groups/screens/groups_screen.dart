@@ -37,10 +37,10 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen> {
         ref.watch(invitationsProvider).value ?? const <GroupInvitation>[];
 
     return AppScreen(
-      title: 'Mes groupes',
+      title: AppTexts.of(context).homeMyGroups,
       headerAction: AppScreenAction(
         icon: Icons.add_rounded,
-        tooltip: 'Nouveau groupe',
+        tooltip: AppTexts.of(context).createNewGroup,
         accented: true,
         onPressed: () => context.pushNamed(AppRoutes.groupCreate),
       ),
@@ -57,7 +57,7 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen> {
             ),
             sliver: SliverToBoxAdapter(
               child: AppTextField(
-                hint: 'Rechercher un groupe',
+                hint: AppTexts.of(context).groupsRechercherGroupe,
                 controller: _recherche,
                 prefixIcon: Icons.search_rounded,
                 suffixIcon: terme.isEmpty
@@ -65,7 +65,7 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen> {
                     : IconButton(
                         icon: const Icon(Icons.cancel_rounded, size: 20),
                         color: context.couleurs.textSecondary,
-                        tooltip: 'Effacer la recherche',
+                        tooltip: AppTexts.of(context).groupsEffacerRecherche,
                         onPressed: () {
                           _recherche.clear();
                           ref.read(groupQueryProvider.notifier).set('');
@@ -100,8 +100,10 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen> {
             hasScrollBody: false,
             child: EmptyState(
               icon: Icons.cloud_off_rounded,
-              title: 'Groupes indisponibles',
-              message: AuthFailure.from(groupsAsync.error!).message,
+              title: AppTexts.of(context).groupsGroupesIndisponibles,
+              message: AuthFailure.from(
+                groupsAsync.error!,
+              ).message(AppTexts.of(context)),
               actionLabel: 'Réessayer',
               onActionPressed: () =>
                   ref.read(myGroupsProvider.notifier).refresh(),
@@ -115,11 +117,9 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen> {
             hasScrollBody: false,
             child: EmptyState(
               icon: Icons.groups_rounded,
-              title: 'Aucun groupe pour le moment',
-              message:
-                  'Créez un groupe pour partager un agenda et répartir les '
-                  'tâches avec vos proches.',
-              actionLabel: 'Créer un groupe',
+              title: AppTexts.of(context).groupsAucunGroupeMoment,
+              message: AppTexts.of(context).groupsCreezGroupePartagerAgenda,
+              actionLabel: AppTexts.of(context).groupsCreerGroupe2,
               onActionPressed: () => context.pushNamed(AppRoutes.groupCreate),
             ),
           )
@@ -128,9 +128,11 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen> {
             hasScrollBody: false,
             child: EmptyState(
               icon: Icons.search_off_rounded,
-              title: 'Aucun groupe à ce nom',
-              message: 'Aucun de vos groupes ne correspond à « $terme ».',
-              actionLabel: 'Effacer la recherche',
+              title: AppTexts.of(context).groupsAucunGroupeNom,
+              message: AppTexts.of(
+                context,
+              ).groupsAucunGroupesCorrespondTerme(terme),
+              actionLabel: AppTexts.of(context).groupsEffacerRecherche,
               onActionPressed: () {
                 _recherche.clear();
                 ref.read(groupQueryProvider.notifier).set('');
@@ -144,6 +146,7 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen> {
               itemCount: groups.length,
               separatorBuilder: (_, _) => AppSpacing.gapLg,
               itemBuilder: (BuildContext context, int index) {
+                final AppTexts t = AppTexts.of(context);
                 final Group group = groups[index];
                 return GroupCard(
                   name: group.name,
@@ -152,8 +155,16 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen> {
                   photoUrl: group.photoUrl,
                   members: group.memberPreviews,
                   hiddenMembers: group.hiddenMemberCount,
-                  memberLabel: group.memberLabel,
-                  activityLabel: ref.watch(groupActivityProvider(group.id)),
+                  memberLabel: group.memberLabel(t),
+                  // **Zéro ne se dit pas**, et une moitié vide s'efface :
+                  // « 0 tâche · 0 événement » est vrai, inutile, et se lit
+                  // comme un défaut de chargement. Le provider rend les deux
+                  // nombres, la phrase se bâtit ici — un provider n'a pas de
+                  // contexte, donc pas de langue.
+                  activityLabel: _activite(
+                    t,
+                    ref.watch(groupOngoingProvider(group.id)),
+                  ),
                   // Savoir *lequel* est actif, pas seulement qu'il se passe
                   // quelque chose quelque part.
                   unreadCount: ref.watch(unreadForGroupProvider(group.id)),
@@ -201,7 +212,7 @@ class _InvitationsBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(
-                  '$count invitation${count > 1 ? 's' : ''} en attente',
+                  AppTexts.of(context).groupsInvitationEnAttenteCount(count),
                   style: context.typo.body.copyWith(
                     fontWeight: AppTypography.semiBold,
                   ),
@@ -210,7 +221,7 @@ class _InvitationsBanner extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'On vous a invité à rejoindre un groupe.',
+                  AppTexts.of(context).groupsInviteRejoindreGroupe,
                   style: context.typo.caption,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -227,4 +238,14 @@ class _InvitationsBanner extends StatelessWidget {
       ),
     );
   }
+}
+
+/// La ligne d'activité d'une carte : « 3 tâches en cours · 2 événements à
+/// venir », ou l'aveu qu'il ne se passe rien.
+String _activite(AppTexts t, GroupActivity activite) {
+  final List<String> morceaux = <String>[
+    if (activite.taches > 0) t.groupsTachesEnCours(activite.taches),
+    if (activite.evenements > 0) t.groupsEvenementsAVenir(activite.evenements),
+  ];
+  return morceaux.isEmpty ? t.chatRienPrevuInstant : morceaux.join(' · ');
 }

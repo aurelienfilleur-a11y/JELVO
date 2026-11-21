@@ -51,7 +51,7 @@ class _AvatarChoiceSheetState extends ConsumerState<AvatarChoiceSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text('Photo de profil', style: context.typo.h2),
+          Text(AppTexts.of(context).profilePhotoProfil, style: context.typo.h2),
 
           if (_erreur != null) ...<Widget>[
             AppSpacing.gapLg,
@@ -73,14 +73,14 @@ class _AvatarChoiceSheetState extends ConsumerState<AvatarChoiceSheet> {
           AppSpacing.gapLg,
           _Choix(
             icon: Icons.photo_library_outlined,
-            label: 'Choisir une photo',
-            detail: 'Depuis les photos de votre appareil',
+            label: AppTexts.of(context).profileChoisirPhoto,
+            detail: AppTexts.of(context).profileDepuisPhotosAppareil,
             onTap: _travail ? null : _choisirPhoto,
           ),
           _Choix(
             icon: Icons.face_retouching_natural_rounded,
-            label: 'Choisir un avatar Jelvo',
-            detail: 'Quatre-vingt-treize illustrations au choix',
+            label: AppTexts.of(context).profileChoisirAvatarJelvo,
+            detail: AppTexts.of(context).profileQuatreVingtTreizeIllustrations,
             onTap: _travail
                 ? null
                 : () {
@@ -92,7 +92,7 @@ class _AvatarChoiceSheetState extends ConsumerState<AvatarChoiceSheet> {
             _Choix(
               icon: Icons.delete_outline_rounded,
               label: 'Retirer',
-              detail: 'Vos initiales prendront la place',
+              detail: AppTexts.of(context).profileInitialesPrendrontPlace,
               destructive: true,
               onTap: _travail ? null : _retirer,
             ),
@@ -127,7 +127,7 @@ class _AvatarChoiceSheetState extends ConsumerState<AvatarChoiceSheet> {
       if (!mounted) return;
       setState(() {
         _travail = false;
-        _erreur = AuthFailure.from(error).message;
+        _erreur = AuthFailure.from(error).message(AppTexts.of(context));
       });
     }
   }
@@ -145,7 +145,7 @@ class _AvatarChoiceSheetState extends ConsumerState<AvatarChoiceSheet> {
       if (!mounted) return;
       setState(() {
         _travail = false;
-        _erreur = AuthFailure.from(error).message;
+        _erreur = AuthFailure.from(error).message(AppTexts.of(context));
       });
     }
   }

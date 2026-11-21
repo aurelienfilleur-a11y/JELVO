@@ -20,12 +20,14 @@ class GroupSelector extends ConsumerWidget {
     super.key,
     required this.groupId,
     required this.onChanged,
-    this.label = 'Dans quel groupe ? *',
+    this.label,
   });
 
   final String? groupId;
   final ValueChanged<String?> onChanged;
-  final String label;
+
+  /// `null` → « Quel groupe ? », résolu au `build`.
+  final String? label;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -38,7 +40,7 @@ class GroupSelector extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Text(
-          label,
+          label ?? AppTexts.of(context).calendarQuelGroupe,
           style: context.typo.caption.copyWith(
             fontWeight: AppTypography.medium,
             color: context.couleurs.encre,
@@ -69,7 +71,8 @@ class GroupSelector extends ConsumerWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      choisi?.memberLabel ?? 'Vous seul le verrez',
+                      choisi?.memberLabel(AppTexts.of(context)) ??
+                          AppTexts.of(context).calendarSeulVerrez,
                       style: context.typo.caption,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -101,7 +104,10 @@ class GroupSelector extends ConsumerWidget {
           children: <Widget>[
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-              child: Text('Dans quel groupe ?', style: context.typo.h2),
+              child: Text(
+                AppTexts.of(context).calendarQuelGroupe2,
+                style: context.typo.h2,
+              ),
             ),
             AppSpacing.gapMd,
             Flexible(
@@ -205,7 +211,8 @@ class _Ligne extends StatelessWidget {
       leading: _Vignette(groupe: groupe),
       title: EmojiText(groupe?.name ?? 'Personnel', style: context.typo.body),
       subtitle: Text(
-        groupe?.memberLabel ?? 'Vous seul le verrez',
+        groupe?.memberLabel(AppTexts.of(context)) ??
+            AppTexts.of(context).calendarSeulVerrez,
         style: context.typo.caption,
       ),
       trailing: choisi

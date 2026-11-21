@@ -73,10 +73,10 @@ class _KindCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(kind.label, style: context.typo.h3),
+                Text(kind.label(AppTexts.of(context)), style: context.typo.h3),
                 const SizedBox(height: 2),
                 Text(
-                  kind.description,
+                  kind.description(AppTexts.of(context)),
                   style: context.typo.caption,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,

@@ -141,7 +141,14 @@ Future<void> _pumpJoinScreen(
           FakeAvailabilityRepository(),
         ),
       ],
-      child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+      // Les délégués sont indispensables : sans eux, `AppTexts.of` n'a rien
+      // à rendre et tout écran qui lit un mot lève sur un `null`.
+      child: MaterialApp.router(
+        theme: AppTheme.light,
+        routerConfig: router,
+        localizationsDelegates: AppTexts.localizationsDelegates,
+        supportedLocales: AppTexts.supportedLocales,
+      ),
     ),
   );
   await tester.pumpAndSettle();

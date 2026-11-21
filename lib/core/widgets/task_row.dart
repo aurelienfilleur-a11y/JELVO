@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../theme/jelvo_colors.dart';
 import '../theme/app_radii.dart';
 import '../theme/app_spacing.dart';
@@ -174,7 +175,7 @@ class _Checkbox extends StatelessWidget {
     return Semantics(
       checked: done,
       button: true,
-      label: 'Marquer la tâche comme terminée',
+      label: AppTexts.of(context).coreMarquerTacheCommeTerminee,
       child: GestureDetector(
         onTap: onTap,
         behavior: HitTestBehavior.opaque,

@@ -44,18 +44,16 @@ class InvitationsScreen extends ConsumerWidget {
               when invitations.isEmpty =>
             EmptyState(
               icon: Icons.cloud_off_rounded,
-              title: 'Invitations indisponibles',
-              message: AuthFailure.from(error!).message,
+              title: AppTexts.of(context).groupsInvitationsIndisponibles,
+              message: AuthFailure.from(error!).message(AppTexts.of(context)),
               actionLabel: 'Réessayer',
               onActionPressed: () =>
                   ref.read(invitationsProvider.notifier).refresh(),
             ),
-          _ when invitations.isEmpty => const EmptyState(
+          _ when invitations.isEmpty => EmptyState(
             icon: Icons.mark_email_read_outlined,
-            title: 'Aucune invitation',
-            message:
-                'Quand un proche vous invitera dans un groupe, l’invitation '
-                'apparaîtra ici.',
+            title: AppTexts.of(context).groupsAucuneInvitation,
+            message: AppTexts.of(context).groupsQuandProcheInviteraGroupe,
           ),
           _ => ListView.separated(
             padding: const EdgeInsets.fromLTRB(
@@ -67,11 +65,14 @@ class InvitationsScreen extends ConsumerWidget {
             itemCount: invitations.length,
             separatorBuilder: (_, _) => AppSpacing.gapMd,
             itemBuilder: (BuildContext context, int index) {
+              final AppTexts t = AppTexts.of(context);
               final GroupInvitation invitation = invitations[index];
               return GroupCard(
-                name: invitation.groupName,
-                memberLabel: invitation.memberLabel,
-                activityLabel: 'Invitation de ${invitation.senderName}',
+                name: invitation.displayGroupName(t),
+                memberLabel: invitation.memberLabel(t),
+                activityLabel: t.groupsInvitationDe(
+                  invitation.displaySender(t),
+                ),
                 onTap: () => context.pushNamed(
                   AppRoutes.invitation,
                   pathParameters: <String, String>{'id': invitation.id},
@@ -134,8 +135,8 @@ class _InvitationScreenState extends ConsumerState<InvitationScreen> {
           ) =>
             EmptyState(
               icon: Icons.cloud_off_rounded,
-              title: 'Invitation indisponible',
-              message: AuthFailure.from(error!).message,
+              title: AppTexts.of(context).groupsInvitationIndisponible,
+              message: AuthFailure.from(error!).message(AppTexts.of(context)),
               actionLabel: 'Réessayer',
               onActionPressed: () =>
                   ref.invalidate(invitationDetailProvider(widget.invitationId)),
@@ -150,15 +151,16 @@ class _InvitationScreenState extends ConsumerState<InvitationScreen> {
   }
 
   Widget _corps(GroupInvitationDetail invitation) {
+    final AppTexts t = AppTexts.of(context);
     final DateTime now = ref.watch(nowProvider);
 
     // Ni contexte ni groupe : il n'y a rien à montrer sous le message.
     if (!invitation.status.gardeLeContexte) {
       return EmptyState(
         icon: invitation.status.icone,
-        title: invitation.status.titre,
-        message: invitation.status.message,
-        actionLabel: 'Revenir aux groupes',
+        title: invitation.status.titre(AppTexts.of(context)),
+        message: invitation.status.message(AppTexts.of(context)),
+        actionLabel: AppTexts.of(context).groupsRevenirGroupes,
         onActionPressed: () => context.goNamed(AppRoutes.groups),
       );
     }
@@ -175,8 +177,8 @@ class _InvitationScreenState extends ConsumerState<InvitationScreen> {
             bottom: Radius.circular(AppSpacing.lg),
           ),
           child: CoverBanner(
-            name: invitation.displayGroupName,
-            subtitle: invitation.memberLabel,
+            name: invitation.displayGroupName(AppTexts.of(context)),
+            subtitle: invitation.memberLabel(t),
             accentColor: accent,
             icon: Icons.groups_rounded,
             photoUrl: invitation.photoUrl,
@@ -195,10 +197,10 @@ class _InvitationScreenState extends ConsumerState<InvitationScreen> {
             children: <Widget>[
               InvitationHeader(
                 author: AvatarData(
-                  name: invitation.displaySender,
+                  name: invitation.displaySender(AppTexts.of(context)),
                   imageUrl: invitation.senderAvatarUrl,
                 ),
-                action: 'vous invite à rejoindre un groupe',
+                action: AppTexts.of(context).groupsInviteRejoindreGroupe2,
                 since: invitation.createdAt,
                 now: now,
               ),
@@ -222,13 +224,13 @@ class _InvitationScreenState extends ConsumerState<InvitationScreen> {
                     InvitationDetailRow(
                       icon: Icons.group_outlined,
                       label: 'Membres',
-                      value: invitation.memberLabel,
+                      value: invitation.memberLabel(t),
                       dernier: invitation.groupCreatedAt == null,
                     ),
                     if (invitation.groupCreatedAt != null)
                       InvitationDetailRow(
                         icon: Icons.cake_outlined,
-                        label: 'Créé le',
+                        label: AppTexts.of(context).groupsCree,
                         value: AppDates.fullDate(invitation.groupCreatedAt!),
                         dernier: true,
                       ),
@@ -239,8 +241,8 @@ class _InvitationScreenState extends ConsumerState<InvitationScreen> {
               if (invitation.members.isNotEmpty) ...<Widget>[
                 AppSpacing.gapXl,
                 SectionHeader(
-                  title: 'Déjà dans le groupe',
-                  subtitle: invitation.memberLabel,
+                  title: AppTexts.of(context).groupsDejaGroupe,
+                  subtitle: invitation.memberLabel(t),
                 ),
                 AppSpacing.gapMd,
                 Row(
@@ -277,9 +279,9 @@ class _InvitationScreenState extends ConsumerState<InvitationScreen> {
                   icone: Icons.schedule_rounded,
                   couleur: context.couleurs.warning,
                   fond: context.couleurs.warningSoft,
-                  texte:
-                      'Adhésion temporaire : jusqu’au '
-                      '${AppDates.fullDate(invitation.membershipExpiresAt!)}.',
+                  texte: t.groupsAdhesionTemporaireJusquAu(
+                    AppDates.fullDate(invitation.membershipExpiresAt!),
+                  ),
                 ),
               ],
 
@@ -312,6 +314,8 @@ class _InvitationScreenState extends ConsumerState<InvitationScreen> {
   }
 
   Future<void> _accepter(GroupInvitationDetail invitation) async {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     final ScaffoldMessengerState messager = ScaffoldMessenger.of(context);
     final GoRouter routeur = GoRouter.of(context);
     final String? id = invitation.id;
@@ -322,7 +326,7 @@ class _InvitationScreenState extends ConsumerState<InvitationScreen> {
       final JoinOutcome resultat = await ref
           .read(groupActionsProvider)
           .acceptInvitation(id);
-      messager.showSnackBar(SnackBar(content: Text(resultat.message)));
+      messager.showSnackBar(SnackBar(content: Text(resultat.message(t))));
 
       if (resultat.isSuccess && invitation.groupId != null) {
         routeur.goNamed(
@@ -336,7 +340,7 @@ class _InvitationScreenState extends ConsumerState<InvitationScreen> {
       }
     } catch (error) {
       messager.showSnackBar(
-        SnackBar(content: Text(AuthFailure.from(error).message)),
+        SnackBar(content: Text(AuthFailure.from(error).message(t))),
       );
     } finally {
       if (mounted) setState(() => _enCours = false);
@@ -344,6 +348,8 @@ class _InvitationScreenState extends ConsumerState<InvitationScreen> {
   }
 
   Future<void> _refuser(GroupInvitationDetail invitation) async {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     final ScaffoldMessengerState messager = ScaffoldMessenger.of(context);
     final NavigatorState navigateur = Navigator.of(context);
     final String? id = invitation.id;
@@ -352,13 +358,11 @@ class _InvitationScreenState extends ConsumerState<InvitationScreen> {
     setState(() => _enCours = true);
     try {
       await ref.read(groupActionsProvider).declineInvitation(id);
-      messager.showSnackBar(
-        const SnackBar(content: Text('Invitation refusée.')),
-      );
+      messager.showSnackBar(SnackBar(content: Text(t.groupsInvitationRefusee)));
       navigateur.maybePop();
     } catch (error) {
       messager.showSnackBar(
-        SnackBar(content: Text(AuthFailure.from(error).message)),
+        SnackBar(content: Text(AuthFailure.from(error).message(t))),
       );
     } finally {
       if (mounted) setState(() => _enCours = false);
@@ -392,12 +396,15 @@ class _Denouement extends StatelessWidget {
               ? context.couleurs.success
               : context.couleurs.textSecondary,
           fond: membre ? context.couleurs.successSoft : context.couleurs.border,
-          titre: statut.titre,
-          texte: statut.message,
+          titre: statut.titre(AppTexts.of(context)),
+          texte: statut.message(AppTexts.of(context)),
         ),
         if (membre && onOuvrirLeGroupe != null) ...<Widget>[
           AppSpacing.gapLg,
-          PrimaryButton(label: 'Ouvrir le groupe', onPressed: onOuvrirLeGroupe),
+          PrimaryButton(
+            label: AppTexts.of(context).groupsOuvrirGroupe,
+            onPressed: onOuvrirLeGroupe,
+          ),
         ],
       ],
     );

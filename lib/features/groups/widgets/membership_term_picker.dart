@@ -19,7 +19,7 @@ class MembershipTermPicker extends StatelessWidget {
     required this.value,
     required this.onChanged,
     this.enabled = true,
-    this.label = 'Durée de l’adhésion',
+    this.label,
   });
 
   /// Instant de référence, pris de `nowProvider` : jamais `DateTime.now()`.
@@ -28,7 +28,9 @@ class MembershipTermPicker extends StatelessWidget {
   final DateTime? value;
   final ValueChanged<DateTime?> onChanged;
   final bool enabled;
-  final String label;
+
+  /// `null` → « Durée de l'adhésion », résolu au `build`.
+  final String? label;
 
   /// Fin de journée du jour visé — 23 h 59.
   ///
@@ -46,7 +48,7 @@ class MembershipTermPicker extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Text(
-          label,
+          label ?? AppTexts.of(context).groupsDureeAdhesion,
           style: context.typo.caption.copyWith(
             fontWeight: AppTypography.semiBold,
             color: context.couleurs.encre,
@@ -58,7 +60,7 @@ class MembershipTermPicker extends StatelessWidget {
           runSpacing: AppSpacing.sm,
           children: <Widget>[
             _Choix(
-              label: 'Sans terme',
+              label: AppTexts.of(context).groupsTerme,
               selected: choisi == null,
               onTap: enabled ? () => onChanged(null) : null,
             ),
@@ -83,8 +85,9 @@ class MembershipTermPicker extends StatelessWidget {
         if (choisi != null) ...<Widget>[
           AppSpacing.gapSm,
           Text(
-            'Adhésion jusqu’au ${AppDates.fullDate(choisi)}, puis le groupe '
-            'disparaîtra de son application.',
+            AppTexts.of(
+              context,
+            ).groupsAdhesionJusquAuPuisDisparait(AppDates.fullDate(choisi)),
             style: context.typo.caption,
           ),
         ],
@@ -120,7 +123,7 @@ class MembershipTermPicker extends StatelessWidget {
       // vaut ne pas laisser la date se choisir.
       firstDate: now.add(const Duration(days: 1)),
       lastDate: DateTime(now.year + 5, now.month, now.day),
-      helpText: 'Fin de l’adhésion',
+      helpText: AppTexts.of(context).groupsFinAdhesion,
       cancelText: 'Annuler',
       confirmText: 'Choisir',
     );

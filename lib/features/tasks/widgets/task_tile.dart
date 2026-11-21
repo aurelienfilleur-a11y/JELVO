@@ -43,7 +43,9 @@ class TaskTile extends ConsumerWidget {
     return TaskRow(
       title: task.title,
       subtitle: task.hasList
-          ? '${task.checkedCount} sur ${task.itemCount} articles'
+          ? AppTexts.of(
+              context,
+            ).tasksArticlesCoches(task.checkedCount, task.itemCount)
           : (groupName ?? task.notes),
       done: task.isDone,
       // La priorité normale ne se dit pas : c'est le défaut de `creer_tache`,
@@ -54,7 +56,7 @@ class TaskTile extends ConsumerWidget {
           : null,
       dueLabel: task.dueDate == null
           ? null
-          : AppDates.relativeDay(task.dueDate!, now: now),
+          : AppDates.relativeDay(task.dueDate!, now: now, AppTexts.of(context)),
       dueTone: task.toneFor(now),
       assignee: task.assignees.isEmpty && !task.isPersonal
           ? 'Libre'
@@ -71,6 +73,8 @@ class TaskTile extends ConsumerWidget {
   }
 
   Future<void> _menu(BuildContext context, WidgetRef ref) async {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     final _ChoixCase? choix = await showModalBottomSheet<_ChoixCase>(
       context: context,
       showDragHandle: true,
@@ -124,11 +128,11 @@ class TaskTile extends ConsumerWidget {
       if (!confirme) return;
       await ref.read(taskActionsProvider).remove(task.id);
       messenger.showSnackBar(
-        SnackBar(content: Text('« ${task.title} » a été supprimée.')),
+        SnackBar(content: Text(t.tasksTacheSupprimee(task.title))),
       );
     } catch (error) {
       messenger.showSnackBar(
-        SnackBar(content: Text(AuthFailure.from(error).message)),
+        SnackBar(content: Text(AuthFailure.from(error).message(t))),
       );
     }
   }
@@ -171,7 +175,9 @@ class _PastillePriorite extends StatelessWidget {
       ),
       decoration: BoxDecoration(color: fond, borderRadius: AppRadii.pillRadius),
       child: Text(
-        '${priority.label} priorité',
+        AppTexts.of(
+          context,
+        ).tasksPrioriteLabel(priority.label(AppTexts.of(context))),
         style: context.typo.caption.copyWith(
           color: teinte,
           fontWeight: AppTypography.medium,

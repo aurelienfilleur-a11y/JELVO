@@ -313,7 +313,7 @@ void main() {
       // Les compteurs restent, à zéro : les masquer donnerait à croire que la
       // carte est en cours de chargement.
       expect(find.text('À faire'), findsOneWidget);
-      expect(find.text('0 tâches'), findsOneWidget);
+      expect(find.text('0 tâche'), findsOneWidget);
     });
   });
 

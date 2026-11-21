@@ -42,13 +42,13 @@ class TaskDetailScreen extends ConsumerWidget {
           if (task != null)
             IconButton(
               icon: const Icon(Icons.edit_outlined),
-              tooltip: 'Modifier la tâche',
+              tooltip: AppTexts.of(context).tasksModifierTache,
               onPressed: () => ouvrirFormulaireDeTache(context, task: task),
             ),
           if (task != null)
             IconButton(
               icon: const Icon(Icons.delete_outline_rounded),
-              tooltip: 'Supprimer la tâche',
+              tooltip: AppTexts.of(context).tasksSupprimerTache,
               onPressed: () => _confirmerSuppression(context, ref, task),
             ),
         ],
@@ -57,8 +57,8 @@ class TaskDetailScreen extends ConsumerWidget {
           ? SafeArea(
               child: EmptyState(
                 icon: Icons.task_alt_rounded,
-                title: 'Tâche introuvable',
-                message: 'Elle a été supprimée, ou vous n’y avez plus accès.',
+                title: AppTexts.of(context).tasksTacheIntrouvable,
+                message: AppTexts.of(context).tasksEteSupprimeeAvezAcces2,
                 actionLabel: 'Retour',
                 onActionPressed: () => _revenir(context),
               ),
@@ -80,6 +80,8 @@ class TaskDetailScreen extends ConsumerWidget {
     WidgetRef ref,
     Task task,
   ) async {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     final NavigatorState navigator = Navigator.of(context);
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     final bool confirme = await confirmerSuppressionDeTache(context, task);
@@ -88,12 +90,12 @@ class TaskDetailScreen extends ConsumerWidget {
     try {
       await ref.read(taskActionsProvider).remove(task.id);
       messenger.showSnackBar(
-        SnackBar(content: Text('« ${task.title} » a été supprimée.')),
+        SnackBar(content: Text(t.tasksTacheSupprimee(task.title))),
       );
       if (navigator.canPop()) navigator.pop();
     } catch (error) {
       messenger.showSnackBar(
-        SnackBar(content: Text(AuthFailure.from(error).message)),
+        SnackBar(content: Text(AuthFailure.from(error).message(t))),
       );
     }
   }
@@ -108,10 +110,9 @@ Future<bool> confirmerSuppressionDeTache(
   final bool? reponse = await showDialog<bool>(
     context: context,
     builder: (BuildContext dialogContext) => AlertDialog(
-      title: const Text('Supprimer la tâche'),
+      title: Text(AppTexts.of(context).tasksSupprimerTache),
       content: Text(
-        '« ${task.title} » disparaîtra pour tout le monde. Cette action ne '
-        'peut pas être annulée depuis l’application.',
+        AppTexts.of(context).tasksSupprimerConfirmation(task.title),
       ),
       actions: <Widget>[
         TextButton(
@@ -194,7 +195,7 @@ class _Entete extends StatelessWidget {
               AppSpacing.hGapMd,
               StatusDot(
                 tone: task.toneFor(now),
-                label: task.statusLabel(now),
+                label: task.statusLabel(now, AppTexts.of(context)),
                 filled: true,
               ),
             ],
@@ -223,6 +224,7 @@ class _Caracteristiques extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AppTexts t = AppTexts.of(context);
     return AppCard(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.lg,
@@ -232,17 +234,19 @@ class _Caracteristiques extends StatelessWidget {
         children: <Widget>[
           _Ligne(
             icon: Icons.event_outlined,
-            label: 'Échéance',
+            label: t.tasksEcheance,
             value: task.dueDate == null
-                ? 'Aucune'
-                : '${AppDates.fullDate(task.dueDate!)} · '
-                      '${AppDates.time(task.dueDate!)}',
+                ? t.tasksAucune
+                : t.coreJourEtHeure(
+                    AppDates.fullDate(task.dueDate!),
+                    AppDates.time(task.dueDate!),
+                  ),
             tone: task.isOverdue(now) ? context.couleurs.danger : null,
           ),
           _Ligne(
             icon: Icons.flag_outlined,
             label: 'Priorité',
-            value: task.priority.label,
+            value: task.priority.label(AppTexts.of(context)),
           ),
           _Ligne(
             icon: Icons.groups_outlined,
@@ -252,16 +256,19 @@ class _Caracteristiques extends StatelessWidget {
           if (task.reminderAt != null)
             _Ligne(
               icon: Icons.notifications_none_rounded,
-              label: 'Rappel',
-              value:
-                  '${AppDates.shortDate(task.reminderAt!)} · '
-                  '${AppDates.time(task.reminderAt!)}',
+              label: t.calendarRappel,
+              value: t.coreJourEtHeure(
+                AppDates.shortDate(task.reminderAt!),
+                AppDates.time(task.reminderAt!),
+              ),
             ),
           if (task.isRecurring)
             _Ligne(
               icon: Icons.repeat_rounded,
               label: 'Répétition',
-              value: Recurrence.fromRrule(task.rrule).label,
+              value: Recurrence.fromRrule(
+                task.rrule,
+              ).label(AppTexts.of(context)),
               dernier: true,
             ),
         ],
@@ -327,6 +334,7 @@ class _Assignes extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final AppTexts t = AppTexts.of(context);
     final String? moi = ref.watch(currentUserIdProvider);
     final bool jeSuisAssigne = task.assignees.any(
       (TaskAssignee a) => a.userId == moi,
@@ -337,12 +345,11 @@ class _Assignes extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text('Assignée à', style: context.typo.h3),
+          Text(AppTexts.of(context).tasksAssignee, style: context.typo.h3),
           AppSpacing.gapMd,
           if (libre)
             Text(
-              'Personne pour l’instant. N’importe quel membre du groupe peut '
-              's’en charger.',
+              AppTexts.of(context).tasksPersonneInstantImporteQuel,
               style: context.typo.bodyMuted,
             )
           else
@@ -371,7 +378,7 @@ class _Assignes extends ConsumerWidget {
                             onTap: () => context.ouvrirProfilDe(assigne.userId),
                             child: Text(
                               assigne.userId == moi
-                                  ? '${assigne.displayName} (vous)'
+                                  ? t.coreVous(assigne.displayName)
                                   : assigne.displayName,
                               style: context.typo.body,
                               maxLines: 1,
@@ -382,7 +389,7 @@ class _Assignes extends ConsumerWidget {
                         AppSpacing.hGapSm,
                         StatusDot(
                           tone: _tonePour(assigne.status),
-                          label: assigne.status.label,
+                          label: assigne.status.label(AppTexts.of(context)),
                         ),
                       ],
                     ),
@@ -394,7 +401,9 @@ class _Assignes extends ConsumerWidget {
           if (!task.isPersonal && (libre || jeSuisAssigne)) ...<Widget>[
             AppSpacing.gapMd,
             SecondaryButton(
-              label: jeSuisAssigne ? 'Me retirer' : 'Je m’en charge',
+              label: jeSuisAssigne
+                  ? AppTexts.of(context).tasksRetirer
+                  : AppTexts.of(context).tasksJeMCharge,
               icon: jeSuisAssigne
                   ? Icons.person_remove_alt_1_outlined
                   : Icons.pan_tool_alt_outlined,
@@ -419,27 +428,26 @@ class _Assignes extends ConsumerWidget {
     required bool take,
   }) async {
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    final AppTexts t = AppTexts.of(context);
     try {
       final String outcome = await ref
           .read(taskActionsProvider)
           .claim(task.id, take: take);
-      messenger.showSnackBar(SnackBar(content: Text(_messagePour(outcome))));
+      messenger.showSnackBar(SnackBar(content: Text(_messagePour(outcome, t))));
     } catch (error) {
       messenger.showSnackBar(
-        SnackBar(content: Text(AuthFailure.from(error).message)),
+        SnackBar(content: Text(AuthFailure.from(error).message(t))),
       );
     }
   }
 
-  static String _messagePour(String outcome) => switch (outcome) {
-    'pris' => 'Vous vous chargez de cette tâche.',
-    'deja_pris' => 'Vous vous en chargiez déjà.',
-    'lache' => 'Vous ne vous en chargez plus.',
-    'non_assigne' => 'Vous n’étiez pas assigné à cette tâche.',
-    'deja_assignee' =>
-      'Quelqu’un s’en charge déjà. Passez par « Modifier » pour changer les '
-          'assignés.',
-    _ => 'L’action n’a pas abouti. Réessayez dans un instant.',
+  static String _messagePour(String outcome, AppTexts t) => switch (outcome) {
+    'pris' => t.tasksChargezTache,
+    'deja_pris' => t.tasksChargiezDeja,
+    'lache' => t.tasksChargez,
+    'non_assigne' => t.tasksEtiezAssigneTache,
+    'deja_assignee' => t.tasksQuelquChargeDejaPassez,
+    _ => t.groupsActionAboutiReessayezInstant,
   };
 }
 
@@ -465,6 +473,7 @@ class _ListeDeCoursesState extends ConsumerState<_ListeDeCourses> {
 
   @override
   Widget build(BuildContext context) {
+    final AppTexts t = AppTexts.of(context);
     final AsyncValue<List<TaskListItem>> articles = ref.watch(
       taskItemsProvider(widget.task.id),
     );
@@ -477,10 +486,10 @@ class _ListeDeCoursesState extends ConsumerState<_ListeDeCourses> {
         children: <Widget>[
           Row(
             children: <Widget>[
-              Expanded(child: Text('Liste', style: context.typo.h3)),
+              Expanded(child: Text(t.tasksListe, style: context.typo.h3)),
               if (liste.isNotEmpty)
                 Text(
-                  '$coches sur ${liste.length}',
+                  t.coreSurTotal(coches, liste.length),
                   style: context.typo.caption,
                 ),
             ],
@@ -493,8 +502,7 @@ class _ListeDeCoursesState extends ConsumerState<_ListeDeCourses> {
             )
           else if (liste.isEmpty)
             Text(
-              'Rien à cocher. Ajoutez ce qu’il faut prendre : chacun verra ce '
-              'qui reste.',
+              AppTexts.of(context).tasksRienCocherAjoutezQu,
               style: context.typo.bodyMuted,
             )
           else
@@ -507,7 +515,7 @@ class _ListeDeCoursesState extends ConsumerState<_ListeDeCourses> {
               Expanded(
                 child: AppTextField(
                   controller: _controller,
-                  hint: 'Ajouter un article',
+                  hint: AppTexts.of(context).tasksAjouterArticle,
                   textInputAction: TextInputAction.done,
                   onSubmitted: (_) => _ajouter(),
                 ),
@@ -521,7 +529,7 @@ class _ListeDeCoursesState extends ConsumerState<_ListeDeCourses> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.add_rounded),
-                tooltip: 'Ajouter à la liste',
+                tooltip: AppTexts.of(context).tasksAjouterListe,
                 color: context.couleurs.primary,
                 onPressed: _envoi ? null : _ajouter,
               ),
@@ -533,6 +541,8 @@ class _ListeDeCoursesState extends ConsumerState<_ListeDeCourses> {
   }
 
   Future<void> _ajouter() async {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     final String libelle = _controller.text.trim();
     if (libelle.isEmpty) return;
 
@@ -543,7 +553,7 @@ class _ListeDeCoursesState extends ConsumerState<_ListeDeCourses> {
       _controller.clear();
     } catch (error) {
       messenger.showSnackBar(
-        SnackBar(content: Text(AuthFailure.from(error).message)),
+        SnackBar(content: Text(AuthFailure.from(error).message(t))),
       );
     } finally {
       if (mounted) setState(() => _envoi = false);
@@ -562,7 +572,7 @@ class _ArticleRow extends ConsumerWidget {
     return TaskRow(
       title: article.label,
       subtitle: article.isChecked && article.checkedByName != null
-          ? 'Coché par ${article.checkedByName}'
+          ? AppTexts.of(context).tasksCochePar(article.checkedByName!)
           : null,
       done: article.isChecked,
       showDivider: false,
@@ -571,7 +581,7 @@ class _ArticleRow extends ConsumerWidget {
           .checkItem(taskId, article.id, checked: value),
       trailing: IconButton(
         icon: const Icon(Icons.close_rounded, size: 18),
-        tooltip: 'Retirer de la liste',
+        tooltip: AppTexts.of(context).tasksRetirerListe,
         color: context.couleurs.textSecondary,
         onPressed: () =>
             ref.read(taskActionsProvider).removeItem(taskId, article.id),
@@ -588,8 +598,12 @@ class _ActionPrincipale extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     return PrimaryButton(
-      label: task.isDone ? 'Rouvrir la tâche' : 'Marquer comme terminée',
+      label: task.isDone
+          ? AppTexts.of(context).tasksRouvrirTache
+          : AppTexts.of(context).tasksMarquerCommeTerminee,
       icon: task.isDone ? Icons.undo_rounded : Icons.check_rounded,
       onPressed: () async {
         final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
@@ -599,7 +613,7 @@ class _ActionPrincipale extends ConsumerWidget {
               .toggleDone(task.id, done: !task.isDone);
         } catch (error) {
           messenger.showSnackBar(
-            SnackBar(content: Text(AuthFailure.from(error).message)),
+            SnackBar(content: Text(AuthFailure.from(error).message(t))),
           );
         }
       },

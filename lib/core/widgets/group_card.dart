@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../theme/jelvo_colors.dart';
 import '../theme/app_radii.dart';
 import '../theme/app_spacing.dart';
@@ -167,9 +168,7 @@ class _PastilleNonLus extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label:
-          '$count message${count > 1 ? 's' : ''} non lu'
-          '${count > 1 ? 's' : ''}',
+      label: AppTexts.of(context).coreMessageNonLuCount(count),
       child: Container(
         constraints: const BoxConstraints(minWidth: 26),
         height: 26,

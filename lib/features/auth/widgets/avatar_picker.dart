@@ -70,7 +70,7 @@ class _AvatarPickerState extends State<AvatarPicker> {
       children: <Widget>[
         Semantics(
           button: true,
-          label: 'Choisir une photo de profil',
+          label: AppTexts.of(context).authChoisirPhotoProfil,
           child: GestureDetector(
             onTap: _picking ? null : _pick,
             child: Stack(
@@ -114,7 +114,10 @@ class _AvatarPickerState extends State<AvatarPicker> {
         ),
         AppSpacing.gapMd,
         if (_picking)
-          Text('Ouverture de la galerie…', style: context.typo.caption)
+          Text(
+            AppTexts.of(context).authOuvertureGalerie,
+            style: context.typo.caption,
+          )
         else if (_hasImage)
           TextButton(
             onPressed: widget.onRemoved,
@@ -124,11 +127,14 @@ class _AvatarPickerState extends State<AvatarPicker> {
             child: Text(
               AvatarData.assetPourAvatar(widget.imageUrl) != null
                   ? 'Retirer l’avatar'
-                  : 'Retirer la photo',
+                  : AppTexts.of(context).authRetirerPhoto,
             ),
           )
         else
-          Text('Ajouter une photo (facultatif)', style: context.typo.caption),
+          Text(
+            AppTexts.of(context).authAjouterPhotoFacultatif,
+            style: context.typo.caption,
+          ),
         if (_error != null) ...<Widget>[
           AppSpacing.gapXs,
           Text(
@@ -193,7 +199,7 @@ class _AvatarPickerState extends State<AvatarPicker> {
       widget.onPicked(choix.bytes, choix.extension);
     } catch (_) {
       if (mounted) {
-        setState(() => _error = "La photo n'a pas pu être ouverte. Réessayez.");
+        setState(() => _error = AppTexts.of(context).authPhotoPuEtreOuverte);
       }
     } finally {
       if (mounted) setState(() => _picking = false);

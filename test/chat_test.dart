@@ -580,13 +580,16 @@ void main() {
       expect(MediaSelection.extensionOf(null, MediaKind.video), 'mp4');
     });
 
-    test('le poids se lit en ko ou en Mo', () {
+    test('le poids se lit en ko ou en Mo', () async {
+      // L'unité est un mot : « Mo » devient « MB » en anglais. Le modèle
+      // porte les octets, la langue écrit l'unité — d'où le `t`.
+      final AppTexts t = await AppTexts.delegate.load(const Locale('fr'));
       expect(
         MediaSelection(
           bytes: Uint8List(500 * 1024),
           extension: 'jpg',
           kind: MediaKind.image,
-        ).sizeLabel,
+        ).sizeLabel(t),
         '500 ko',
       );
       expect(
@@ -594,7 +597,7 @@ void main() {
           bytes: Uint8List(3 * 1024 * 1024 + 200 * 1024),
           extension: 'mp4',
           kind: MediaKind.video,
-        ).sizeLabel,
+        ).sizeLabel(t),
         '3,2 Mo',
       );
     });

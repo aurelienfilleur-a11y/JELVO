@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../theme/jelvo_colors.dart';
 import '../theme/app_radii.dart';
 import '../theme/app_spacing.dart';
@@ -174,7 +175,7 @@ class _Autre extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: 'Voir tous les membres',
+      label: AppTexts.of(context).coreVoirMembres,
       child: InkWell(
         onTap: onTap,
         borderRadius: AppRadii.cardRadius,
@@ -322,7 +323,7 @@ class _PersonPickerSheetState extends State<PersonPickerSheet> {
                   ? Padding(
                       padding: const EdgeInsets.all(AppSpacing.lg),
                       child: Text(
-                        'Personne à ce nom.',
+                        AppTexts.of(context).corePersonneNom,
                         style: context.typo.bodyMuted,
                       ),
                     )

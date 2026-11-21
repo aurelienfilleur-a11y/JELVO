@@ -78,6 +78,7 @@ class SupabaseAvailabilityRepository implements AvailabilityRepository {
           'p_weekday': AvailabilitySlot.jourBaseDepuisIso(weekday),
           // `date` et non `timestamptz` : envoyer un instant ferait glisser le
           // jour d'un fuseau à l'autre.
+          // texte-en-dur-autorise: date ISO pour la base, pas une phrase.
           'p_on_date': onDate == null
               ? null
               : '${onDate.year.toString().padLeft(4, '0')}-'
@@ -87,9 +88,7 @@ class SupabaseAvailabilityRepository implements AvailabilityRepository {
       );
       final List<Map<String, dynamic>> rows = _rows(result);
       if (rows.isEmpty) {
-        throw const AuthFailure(
-          'Le créneau n’a pas pu être enregistré. Réessayez dans un instant.',
-        );
+        throw AuthFailure(AuthFailureKind.creneauNonEnregistre);
       }
       return AvailabilitySlot.fromRow(rows.first);
     } catch (error) {

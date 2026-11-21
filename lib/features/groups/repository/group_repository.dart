@@ -131,6 +131,7 @@ class SupabaseGroupRepository implements GroupRepository {
   /// `expires_at` est nullable et prépare l'adhésion temporaire : `null`
   /// signifie « sans terme ». Toute lecture de `group_members` doit l'écarter
   /// une fois la date passée, sans quoi un membre expiré resterait visible.
+  // texte-en-dur-autorise: filtre PostgREST, pas une phrase.
   static String get _activeMembership =>
       'expires_at.is.null,expires_at.gt.${DateTime.now().toUtc().toIso8601String()}';
 
@@ -146,6 +147,7 @@ class SupabaseGroupRepository implements GroupRepository {
       final List<Map<String, dynamic>> rows = await _client
           .from('group_members')
           .select(
+            // texte-en-dur-autorise: colonnes PostgREST, pas une phrase.
             'role, joined_at, expires_at, '
             'groups!inner(id, name, description, photo_url, is_private, '
             'created_by, created_at, deleted_at)',
@@ -244,6 +246,7 @@ class SupabaseGroupRepository implements GroupRepository {
       final Map<String, dynamic>? row = await _client
           .from('groups')
           .select(
+            // texte-en-dur-autorise: colonnes PostgREST, pas une phrase.
             'id, name, description, photo_url, is_private, created_by, '
             'created_at, deleted_at',
           )
@@ -302,10 +305,7 @@ class SupabaseGroupRepository implements GroupRepository {
   }) async {
     final String? userId = _userId;
     if (userId == null) {
-      throw const AuthFailure(
-        'Votre session a expiré. Reconnectez-vous.',
-        kind: AuthFailureKind.sessionExpired,
-      );
+      throw AuthFailure(AuthFailureKind.sessionExpired);
     }
 
     try {
@@ -326,9 +326,7 @@ class SupabaseGroupRepository implements GroupRepository {
 
       final List<Map<String, dynamic>> rows = _asRows(result);
       if (rows.isEmpty) {
-        throw const AuthFailure(
-          'Le groupe n’a pas pu être créé. Réessayez dans un instant.',
-        );
+        throw AuthFailure(AuthFailureKind.groupeNonCree);
       }
       final Map<String, dynamic> created = rows.first;
       final String groupId = created['id'] as String;
@@ -495,10 +493,7 @@ class SupabaseGroupRepository implements GroupRepository {
   }) async {
     final String? userId = _userId;
     if (userId == null) {
-      throw const AuthFailure(
-        'Votre session a expiré. Reconnectez-vous.',
-        kind: AuthFailureKind.sessionExpired,
-      );
+      throw AuthFailure(AuthFailureKind.sessionExpired);
     }
 
     try {
@@ -666,6 +661,7 @@ class SupabaseGroupRepository implements GroupRepository {
     required Uint8List bytes,
     required String fileExtension,
   }) async {
+    // texte-en-dur-autorise: chemin dans le bucket, pas une phrase.
     final String path =
         '$groupId/photo_${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
     await _client.storage

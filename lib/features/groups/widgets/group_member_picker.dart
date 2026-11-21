@@ -61,7 +61,7 @@ class _GroupMemberPickerState extends ConsumerState<GroupMemberPicker> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Text(
-          'Ajouter des membres',
+          AppTexts.of(context).groupsAjouterMembres,
           style: context.typo.caption.copyWith(
             fontWeight: AppTypography.medium,
             color: context.couleurs.encre,
@@ -73,7 +73,7 @@ class _GroupMemberPickerState extends ConsumerState<GroupMemberPicker> {
           _SansContact()
         else ...<Widget>[
           AppTextField(
-            hint: 'Rechercher un contact',
+            hint: AppTexts.of(context).contactsRechercherContact,
             controller: _recherche,
             enabled: widget.enabled,
             prefixIcon: Icons.search_rounded,
@@ -88,8 +88,8 @@ class _GroupMemberPickerState extends ConsumerState<GroupMemberPicker> {
                 Expanded(
                   child: _ActionCard(
                     icon: Icons.groups_2_outlined,
-                    titre: 'Choisir dans mes contacts',
-                    sousTitre: 'Parcourir mon carnet Jelvo',
+                    titre: AppTexts.of(context).groupsChoisirContacts,
+                    sousTitre: AppTexts.of(context).groupsParcourirCarnetJelvo,
                     onTap: widget.enabled
                         ? () => _ouvrirCarnet(contacts)
                         : null,
@@ -99,10 +99,10 @@ class _GroupMemberPickerState extends ConsumerState<GroupMemberPicker> {
                 Expanded(
                   child: _ActionCard(
                     icon: Icons.link_rounded,
-                    titre: 'Inviter par lien',
+                    titre: AppTexts.of(context).groupsInviterLien,
                     sousTitre: widget.lienDemande
-                        ? 'Proposé après la création'
-                        : 'Partager un lien d’invitation',
+                        ? AppTexts.of(context).groupsProposeApresCreation
+                        : AppTexts.of(context).groupsPartagerLienInvitation,
                     actif: widget.lienDemande,
                     onTap: widget.enabled
                         ? () => widget.onLienChanged(!widget.lienDemande)
@@ -143,8 +143,8 @@ class _GroupMemberPickerState extends ConsumerState<GroupMemberPicker> {
   Future<void> _ouvrirCarnet(List<Contact> contacts) {
     return PersonPickerSheet.ouvrir(
       context,
-      titre: 'Mes contacts',
-      aide: 'Les invitations partent à la création du groupe.',
+      titre: AppTexts.of(context).contactsContacts,
+      aide: AppTexts.of(context).groupsInvitationsPartentCreationGroupe,
       personnes: <PickablePerson>[
         for (final Contact contact in contacts)
           PickablePerson(
@@ -412,7 +412,10 @@ class _Resultats extends StatelessWidget {
     if (contacts.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-        child: Text('Aucun contact à ce nom.', style: context.typo.bodyMuted),
+        child: Text(
+          AppTexts.of(context).groupsAucunContactNom,
+          style: context.typo.bodyMuted,
+        ),
       );
     }
 
@@ -466,9 +469,11 @@ class _Compteur extends StatelessWidget {
         Expanded(
           child: Text(
             switch (nombre) {
-              0 => 'Personne n’est invité pour l’instant.',
-              1 => '1 personne sera invitée.',
-              _ => '$nombre personnes seront invitées.',
+              0 => AppTexts.of(context).groupsPersonneInviteInstant,
+              1 => AppTexts.of(context).groups1PersonneSeraInvitee,
+              _ => AppTexts.of(
+                context,
+              ).groupsNombrePersonnesSerontInvitees(nombre),
             },
             style: context.typo.caption.copyWith(
               color: nombre == 0
@@ -479,7 +484,10 @@ class _Compteur extends StatelessWidget {
           ),
         ),
         if (onClear != null)
-          TextButton(onPressed: onClear, child: const Text('Tout retirer')),
+          TextButton(
+            onPressed: onClear,
+            child: Text(AppTexts.of(context).groupsRetirer),
+          ),
       ],
     );
   }
@@ -497,8 +505,7 @@ class _SansContact extends StatelessWidget {
         borderRadius: AppRadii.fieldRadius,
       ),
       child: Text(
-        'Votre carnet est vide pour l’instant. Vous pourrez inviter depuis '
-        'l’écran du groupe, par lien de partage ou par pseudo.',
+        AppTexts.of(context).groupsCarnetVideInstantPourrez,
         style: context.typo.caption.copyWith(color: context.couleurs.encre),
       ),
     );

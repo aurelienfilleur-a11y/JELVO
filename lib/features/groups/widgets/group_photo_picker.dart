@@ -51,7 +51,7 @@ class _GroupPhotoPickerState extends State<GroupPhotoPicker> {
       children: <Widget>[
         Semantics(
           button: true,
-          label: 'Choisir une photo de groupe',
+          label: AppTexts.of(context).groupsChoisirPhotoGroupe,
           child: GestureDetector(
             onTap: _picking ? null : _pick,
             child: Stack(
@@ -101,8 +101,10 @@ class _GroupPhotoPickerState extends State<GroupPhotoPicker> {
           onPressed: _picking ? null : _pick,
           child: Text(
             _picking
-                ? 'Ouverture de la galerie…'
-                : (_hasImage ? 'Changer la photo' : 'Ajouter une photo'),
+                ? AppTexts.of(context).authOuvertureGalerie
+                : (_hasImage
+                      ? AppTexts.of(context).groupsChangerPhoto
+                      : AppTexts.of(context).groupsAjouterPhoto),
           ),
         ),
         if (_hasImage)
@@ -172,7 +174,7 @@ class _GroupPhotoPickerState extends State<GroupPhotoPicker> {
       widget.onPicked(bytes, _extensionOf(file.name));
     } catch (_) {
       if (mounted) {
-        setState(() => _error = "La photo n'a pas pu être ouverte. Réessayez.");
+        setState(() => _error = AppTexts.of(context).authPhotoPuEtreOuverte);
       }
     } finally {
       if (mounted) setState(() => _picking = false);

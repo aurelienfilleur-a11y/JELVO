@@ -189,10 +189,7 @@ void main() {
     WidgetTester tester,
   ) async {
     final FakeAuthRepository auth = await _pumpApp(tester, signedIn: false);
-    auth.signInFailure = const AuthFailure(
-      'Identifiants incorrects. Vérifiez votre saisie, puis réessayez.',
-      kind: AuthFailureKind.invalidCredentials,
-    );
+    auth.signInFailure = const AuthFailure(AuthFailureKind.invalidCredentials);
 
     await tester.enterText(find.byType(TextField).first, 'camille.rousseau');
     await tester.enterText(find.byType(TextField).at(1), 'MauvaisMotDePasse1');

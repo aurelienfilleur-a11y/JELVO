@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# Rejoue localement les quatre commandes de `deploy-web.yml`, dans le même
-# ordre et avec les mêmes options, et **lit le vrai code de sortie de chacune**.
+# Rejoue localement les commandes de `deploy-web.yml`, dans le même ordre et
+# avec les mêmes options, et **lit le vrai code de sortie de chacune**.
 #
 # C'est tout l'objet du script. Le piège a été payé deux fois :
 #
@@ -26,7 +26,7 @@
 # longue des quatre et ne dépend d'aucune des trois autres : la sauter pendant
 # qu'on corrige, puis la lancer une fois à la fin, est un compromis utile — et
 # le résumé dit alors explicitement qu'elle n'a pas été tentée, plutôt que de
-# laisser croire à quatre feux verts.
+# laisser croire à une rangée de feux verts.
 set -u -o pipefail
 
 racine="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -55,6 +55,10 @@ lancer() {
 
 lancer 'Installer les dépendances' flutter pub get
 lancer 'Vérifier le formatage' dart format --output=none --set-exit-if-changed .
+# **Avant l'analyse, parce qu'elle est instantanée** : un texte en dur ne
+# casse rien à la compilation, et c'est précisément ce qui le rend invisible.
+# Aucune règle de `flutter analyze` ne dit « cette chaîne atteint l'écran ».
+lancer 'Vérifier les textes' python3 tool/verifier_textes.py
 lancer 'Analyser le code' flutter analyze
 lancer 'Lancer les tests' flutter test
 
@@ -93,4 +97,4 @@ if ((sans_build)); then
   printf '\n\033[33mLa compilation web n'"'"'a pas été tentée.\033[0m\n'
   exit 0
 fi
-printf '\n\033[32mLes quatre commandes passent.\033[0m\n'
+printf '\n\033[32mLes cinq commandes passent.\033[0m\n'

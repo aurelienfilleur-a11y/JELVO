@@ -21,7 +21,7 @@ class AssigneePicker extends StatelessWidget {
     required this.selection,
     required this.onToggle,
     required this.mention,
-    this.titre = 'Assigner à',
+    this.titre,
   });
 
   final List<GroupMember> membres;
@@ -31,7 +31,8 @@ class AssigneePicker extends StatelessWidget {
   /// Ce que la sélection courante veut dire, en une phrase.
   final String mention;
 
-  final String titre;
+  /// `null` → « Assigner à », résolu au `build`.
+  final String? titre;
 
   /// Au-delà, la rangée n'en montre qu'une partie et « Autre » ouvre le reste.
   ///
@@ -56,11 +57,14 @@ class AssigneePicker extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text(titre, style: context.typo.h3),
+          Text(
+            titre ?? AppTexts.of(context).tasksAssigner,
+            style: context.typo.h3,
+          ),
           AppSpacing.gapMd,
           if (personnes.isEmpty)
             Text(
-              'Les membres du groupe n’ont pas encore été chargés.',
+              AppTexts.of(context).tasksMembresGroupeOntEncore,
               style: context.typo.bodyMuted,
             )
           else ...<Widget>[
@@ -73,7 +77,7 @@ class AssigneePicker extends StatelessWidget {
               onAutre: tropNombreux
                   ? () => PersonPickerSheet.ouvrir(
                       context,
-                      titre: titre,
+                      titre: titre ?? AppTexts.of(context).tasksAssigner,
                       personnes: personnes,
                       selection: selection,
                       onToggle: onToggle,

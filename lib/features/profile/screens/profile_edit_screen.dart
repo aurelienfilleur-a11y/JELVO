@@ -46,7 +46,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     return Scaffold(
       backgroundColor: context.couleurs.background,
       appBar: AppBar(
-        title: const Text('Modifier le profil'),
+        title: Text(AppTexts.of(context).profileModifierProfil),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           tooltip: 'Retour',
@@ -122,6 +122,8 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   }
 
   Future<void> _enregistrer() async {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     final NavigatorState navigateur = Navigator.of(context);
     final ScaffoldMessengerState messager = ScaffoldMessenger.of(context);
 
@@ -141,14 +143,12 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       // La feuille se referme sur le profil, qui montre aussitôt la nouvelle
       // valeur : rester sur le formulaire laisserait douter de l'effet.
       navigateur.maybePop();
-      messager.showSnackBar(
-        const SnackBar(content: Text('Profil enregistré.')),
-      );
+      messager.showSnackBar(SnackBar(content: Text(t.profileProfilEnregistre)));
     } catch (error) {
       if (!mounted) return;
       setState(() {
         _enregistrement = false;
-        _erreur = AuthFailure.from(error).message;
+        _erreur = AuthFailure.from(error).message(AppTexts.of(context));
       });
     }
   }

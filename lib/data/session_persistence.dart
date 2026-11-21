@@ -60,6 +60,8 @@ class SessionPersistence extends LocalStorage {
   /// l'identique** : en choisir une autre ferait perdre les sessions déjà
   /// enregistrées par les versions précédentes, et déconnecterait tout le
   /// monde à la mise à jour. Le format vient de `Supabase.initialize`.
+  // texte-en-dur-autorise: clé de stockage, pas une phrase — en changer
+  // déconnecterait tout le monde à la mise à jour.
   static String cleDeSessionParDefaut() =>
       'sb-${Uri.parse(AppConfig.supabaseUrl).host.split('.').first}-auth-token';
 

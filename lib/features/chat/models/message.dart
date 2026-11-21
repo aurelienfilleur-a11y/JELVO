@@ -177,6 +177,8 @@ class Message {
     final Duration? duree = mediaDuration;
     if (duree == null) return null;
     final int secondes = duree.inSeconds;
+    // texte-en-dur-autorise: « 1:07 » — des chiffres et un deux-points, le
+    // même dans les quatre langues.
     return '${secondes ~/ 60}:${(secondes % 60).toString().padLeft(2, '0')}';
   }
 

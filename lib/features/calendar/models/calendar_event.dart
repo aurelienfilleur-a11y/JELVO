@@ -2,20 +2,19 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/widgets/avatar_stack.dart';
 import '../../../core/widgets/status_dot.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Réponse d'un participant à un événement.
 ///
 /// Reflète le type `event_response` de la base : `yes`, `no`, `maybe`,
 /// `pending`.
 enum EventResponse {
-  yes('Oui', StatusTone.success),
-  maybe('Peut-être', StatusTone.warning),
-  no('Non', StatusTone.danger),
-  pending('En attente', StatusTone.neutral);
+  yes(StatusTone.success),
+  maybe(StatusTone.warning),
+  no(StatusTone.danger),
+  pending(StatusTone.neutral);
 
-  const EventResponse(this.label, this.tone);
-
-  final String label;
+  const EventResponse(this.tone);
   final StatusTone tone;
 
   static EventResponse fromDb(String? value) => switch (value) {
@@ -26,6 +25,15 @@ enum EventResponse {
   };
 
   String get dbValue => name;
+
+  /// Le libellé est **demandé**, pas porté : une valeur d'énumération est
+  /// `const`, et ne peut donc pas contenir un texte qui dépend de la langue.
+  String label(AppTexts t) => switch (this) {
+    EventResponse.yes => 'Oui',
+    EventResponse.maybe => 'Peut-être',
+    EventResponse.no => 'Non',
+    EventResponse.pending => t.eventAnswerPending,
+  };
 }
 
 /// Un participant, avec son profil et sa réponse.

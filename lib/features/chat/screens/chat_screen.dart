@@ -92,7 +92,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final List<Message> messages = conversation.value ?? const <Message>[];
     final Group? groupe = ref.watch(groupByIdProvider(widget.groupId));
     final String? moi = ref.watch(currentUserIdProvider);
-    final List<String> ecrivent = ref.watch(typingProvider(widget.groupId));
+    final List<String?> ecrivent = ref.watch(typingProvider(widget.groupId));
 
     // Un message arrivé pendant qu'on regarde est lu : ne pas le marquer
     // laisserait la pastille allumée sur une conversation ouverte.
@@ -126,20 +126,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             child: conversation.hasError && messages.isEmpty
                 ? EmptyState(
                     icon: Icons.cloud_off_rounded,
-                    title: 'Conversation indisponible',
-                    message: AuthFailure.from(conversation.error!).message,
+                    title: AppTexts.of(context).chatConversationIndisponible,
+                    message: AuthFailure.from(
+                      conversation.error!,
+                    ).message(AppTexts.of(context)),
                     actionLabel: 'Réessayer',
                     onActionPressed: () => ref
                         .read(conversationProvider(widget.groupId).notifier)
                         .refresh(),
                   )
                 : messages.isEmpty
-                ? const EmptyState(
+                ? EmptyState(
                     icon: Icons.forum_outlined,
-                    title: 'Rien encore',
-                    message:
-                        'Lancez la conversation : personne n’a encore écrit '
-                        'ici.',
+                    title: AppTexts.of(context).chatRienEncore,
+                    message: AppTexts.of(
+                      context,
+                    ).chatLancezConversationPersonneEncore,
                   )
                 : _liste(messages, moi),
           ),
@@ -193,7 +195,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             ChatDayDivider(
-              label: AppDates.relativeDay(message.createdAt, now: maintenant),
+              label: AppDates.relativeDay(
+                message.createdAt,
+                now: maintenant,
+                AppTexts.of(context),
+              ),
             ),
             ligne,
           ],
@@ -250,12 +256,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _envoyer(String texte) async {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     try {
       await ref.read(chatActionsProvider).send(widget.groupId, content: texte);
     } catch (error) {
       messenger.showSnackBar(
-        SnackBar(content: Text(AuthFailure.from(error).message)),
+        SnackBar(content: Text(AuthFailure.from(error).message(t))),
       );
     }
   }
@@ -305,6 +313,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _envoyerVocal(VoiceRecording enregistrement) async {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     setState(() => _envoiMedia = true);
     try {
@@ -313,7 +323,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           .sendVoice(widget.groupId, enregistrement: enregistrement);
     } catch (error) {
       messenger.showSnackBar(
-        SnackBar(content: Text(AuthFailure.from(error).message)),
+        SnackBar(content: Text(AuthFailure.from(error).message(t))),
       );
     } finally {
       if (mounted) setState(() => _envoiMedia = false);
@@ -321,6 +331,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _joindre() async {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     final MediaSelection? choix = await choisirMedia(context);
     if (choix == null || !mounted) return;
 
@@ -337,7 +349,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           );
     } catch (error) {
       messenger.showSnackBar(
-        SnackBar(content: Text(AuthFailure.from(error).message)),
+        SnackBar(content: Text(AuthFailure.from(error).message(t))),
       );
     } finally {
       if (mounted) setState(() => _envoiMedia = false);
@@ -359,6 +371,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _reagir(Message message, String emoji) async {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     try {
       // La fonction SQL bascule : reposer le même emoji le retire. L'écran n'a
@@ -368,7 +382,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           .react(widget.groupId, message.id, emoji);
     } catch (error) {
       messenger.showSnackBar(
-        SnackBar(content: Text(AuthFailure.from(error).message)),
+        SnackBar(content: Text(AuthFailure.from(error).message(t))),
       );
     }
   }
@@ -400,7 +414,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         emoji,
                         style: const TextStyle(fontSize: 24),
                       ),
-                      tooltip: 'Réagir $emoji',
+                      tooltip: AppTexts.of(context).chatReagirEmoji(emoji),
                       isSelected: message.reactionOf(moi) == emoji,
                       onPressed: () {
                         Navigator.of(sheetContext).pop();
@@ -418,7 +432,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   color: context.couleurs.danger,
                 ),
                 title: Text(
-                  'Supprimer le message',
+                  AppTexts.of(context).chatSupprimerMessage,
                   style: context.typo.body.copyWith(
                     color: context.couleurs.danger,
                   ),
@@ -434,7 +448,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   Icons.lock_outline_rounded,
                   color: context.couleurs.textSecondary,
                 ),
-                title: Text('Vous ne pouvez supprimer que vos messages'),
+                title: Text(AppTexts.of(context).chatPouvezSupprimerMessages),
               ),
             AppSpacing.gapMd,
           ],
@@ -444,6 +458,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _supprimer(Message message) async {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     try {
       // Le booléen fait foi : `messages` n'a pas de politique DELETE, et une
@@ -455,15 +471,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-            retire
-                ? 'Message supprimé.'
-                : 'Ce message ne peut plus être supprimé.',
+            retire ? t.chatMessageSupprime : t.chatMessagePeutEtreSupprime,
           ),
         ),
       );
     } catch (error) {
       messenger.showSnackBar(
-        SnackBar(content: Text(AuthFailure.from(error).message)),
+        SnackBar(content: Text(AuthFailure.from(error).message(t))),
       );
     }
   }

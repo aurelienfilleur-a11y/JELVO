@@ -67,12 +67,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               lignes: <Widget>[
                 SettingsRow(
                   icone: Icons.person_outline_rounded,
-                  libelle: 'Informations personnelles',
+                  libelle: AppTexts.of(context).profileInformationsPersonnelles,
                   onTap: () => context.pushNamed(AppRoutes.profileEdit),
                 ),
                 SettingsRow(
                   icone: Icons.lock_outline_rounded,
-                  libelle: 'Changer de mot de passe',
+                  libelle: AppTexts.of(context).profileChangerMotPasse,
                   onTap: () => context.pushNamed(AppRoutes.changePassword),
                 ),
               ],
@@ -86,8 +86,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 // ne part, quel que soit son interrupteur.
                 SettingsRow(
                   icone: Icons.notifications_none_rounded,
-                  libelle: 'Notifications push',
-                  valeur: libellePush(statutPush),
+                  libelle: AppTexts.of(context).notificationsNotificationsPush,
+                  valeur: libellePush(statutPush, AppTexts.of(context)),
                   couleurValeur: statutPush == PushStatus.actif
                       ? context.couleurs.primary
                       : context.couleurs.textSecondary,
@@ -105,15 +105,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               lignes: <Widget>[
                 SettingsRow(
                   icone: Icons.contrast_rounded,
-                  libelle: 'Apparence',
+                  libelle: AppTexts.of(context).profileApparence,
                   valeur: Apparence.depuis(
                     ref.watch(themeModeProvider),
-                  ).libelle,
+                  ).libelle(AppTexts.of(context)),
                   onTap: () => AppearanceSheet.ouvrir(context),
                 ),
                 SettingsRow(
                   icone: Icons.info_outline_rounded,
-                  libelle: 'À propos de Jelvo',
+                  libelle: AppTexts.of(context).profileProposJelvo,
                   valeur: 'v${AppConfig.version}',
                   onTap: () => context.pushNamed(AppRoutes.about),
                 ),
@@ -159,8 +159,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
     return SettingsRow(
       icone: categorie.icon,
-      libelle: categorie.label,
-      valeur: etat.label,
+      libelle: categorie.label(AppTexts.of(context)),
+      valeur: etat.label(AppTexts.of(context)),
       couleurValeur: etat.color(context.couleurs),
       onTap: () => NotificationCategorySheet.ouvrir(context, categorie),
     );
@@ -171,9 +171,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         await showDialog<bool>(
           context: context,
           builder: (BuildContext dialogue) => AlertDialog(
-            title: const Text('Se déconnecter'),
-            content: const Text(
-              'Vous devrez saisir à nouveau vos identifiants pour revenir.',
+            title: Text(AppTexts.of(context).profileDeconnecter),
+            content: Text(
+              AppTexts.of(context).profileDevrezSaisirNouveauIdentifiants,
             ),
             actions: <Widget>[
               TextButton(
@@ -185,7 +185,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 style: TextButton.styleFrom(
                   foregroundColor: context.couleurs.danger,
                 ),
-                child: const Text('Se déconnecter'),
+                child: Text(AppTexts.of(context).profileDeconnecter),
               ),
             ],
           ),
@@ -200,9 +200,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       // La garde du routeur ramène à la connexion dès la session fermée.
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(AuthFailure.from(error).message)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AuthFailure.from(error).message(AppTexts.of(context))),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _deconnexion = false);
     }

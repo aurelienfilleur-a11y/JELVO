@@ -8,6 +8,7 @@ import '../../../core/widgets/status_dot.dart';
 import '../../../core/utils/date_formatting.dart';
 import '../../../data/data_providers.dart';
 import '../../../data/supabase_providers.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../availability/models/availability.dart';
 import '../../availability/providers/availability_providers.dart';
@@ -264,155 +265,169 @@ class CalendarGroupFilter extends Notifier<Set<String>> {
 ///
 /// L'agrégation vit ici et non dans l'écran : c'est elle qui alimente aussi
 /// les compteurs, et deux agrégations parallèles finiraient par diverger.
-final dayAgendaProvider = Provider.family<List<AgendaEntry>, DateTime>((
-  Ref ref,
-  DateTime jour,
-) {
-  final CalendarGroupFilter filtre = ref.watch(calendarFilterProvider.notifier);
-  ref.watch(calendarFilterProvider);
+///
+/// **La langue entre dans la clé, comme le jour.** Ces lignes portent des
+/// phrases — « Personnel », « Terminée », « Journée » —, et un provider n'a
+/// pas de `BuildContext` d'où les tirer. La passer en argument de famille est
+/// l'équivalent de `nowProvider` pour l'heure courante : la dépendance est
+/// explicite, le résultat reste mis en cache, et un changement de langue
+/// reconstruit les lignes au lieu de les laisser dans l'ancienne.
+final dayAgendaProvider =
+    Provider.family<List<AgendaEntry>, (DateTime, AppTexts)>((
+      Ref ref,
+      (DateTime, AppTexts) cle,
+    ) {
+      final (DateTime jour, AppTexts t) = cle;
+      final CalendarGroupFilter filtre = ref.watch(
+        calendarFilterProvider.notifier,
+      );
+      ref.watch(calendarFilterProvider);
 
-  final List<AgendaEntry> lignes = <AgendaEntry>[];
+      final List<AgendaEntry> lignes = <AgendaEntry>[];
 
-  for (final CalendarEvent event in ref.watch(eventsForDayProvider(jour))) {
-    if (!filtre.accepts(event.groupId)) continue;
-    final Group? groupe = event.groupId == null
-        ? null
-        : ref.watch(groupByIdProvider(event.groupId!));
-    lignes.add(
-      AgendaEntry(
-        id: event.id,
-        kind: event.isPersonal
-            ? AgendaEntryKind.personalEvent
-            : AgendaEntryKind.groupEvent,
-        title: event.title,
-        start: event.start,
-        end: event.end,
-        accent: AgendaAccent.evenement,
-        groupAccent: groupe?.accent,
-        subtitle: <String?>[
-          groupe?.name ?? (event.isPersonal ? 'Personnel' : null),
-          event.location,
-        ].whereType<String>().join(' · '),
-        timeLabel: AppDates.time(event.start),
-        // Une réponse « oui » n'a pas besoin d'être signalée : c'est le cas
-        // attendu.
-        statusTone: event.myResponse == EventResponse.yes
+      for (final CalendarEvent event in ref.watch(eventsForDayProvider(jour))) {
+        if (!filtre.accepts(event.groupId)) continue;
+        final Group? groupe = event.groupId == null
             ? null
-            : event.myResponse.tone,
-        statusLabel: event.myResponse.label,
-        groupId: event.groupId,
-        // Les convives ne sont montrés que sur un événement de groupe : un
-        // rendez-vous personnel n'a personne à convier.
-        avatars: event.isPersonal ? const <AvatarData>[] : event.avatars,
-        participantCount: event.isPersonal ? 0 : event.participants.length,
-      ),
-    );
-  }
+            : ref.watch(groupByIdProvider(event.groupId!));
+        lignes.add(
+          AgendaEntry(
+            id: event.id,
+            kind: event.isPersonal
+                ? AgendaEntryKind.personalEvent
+                : AgendaEntryKind.groupEvent,
+            title: event.title,
+            start: event.start,
+            end: event.end,
+            accent: AgendaAccent.evenement,
+            groupAccent: groupe?.accent,
+            subtitle: <String?>[
+              groupe?.name ?? (event.isPersonal ? t.calendarPersonnel : null),
+              event.location,
+            ].whereType<String>().join(' · '),
+            timeLabel: AppDates.time(event.start),
+            // Une réponse « oui » n'a pas besoin d'être signalée : c'est le cas
+            // attendu.
+            statusTone: event.myResponse == EventResponse.yes
+                ? null
+                : event.myResponse.tone,
+            statusLabel: event.myResponse.label(t),
+            groupId: event.groupId,
+            // Les convives ne sont montrés que sur un événement de groupe : un
+            // rendez-vous personnel n'a personne à convier.
+            avatars: event.isPersonal ? const <AvatarData>[] : event.avatars,
+            participantCount: event.isPersonal ? 0 : event.participants.length,
+          ),
+        );
+      }
 
-  for (final Task task in ref.watch(tasksProvider).value ?? const <Task>[]) {
-    final DateTime? echeance = task.dueDate;
-    if (echeance == null || !AppDates.isSameDay(echeance, jour)) continue;
-    if (!filtre.accepts(task.groupId)) continue;
-    final Group? groupe = task.groupId == null
-        ? null
-        : ref.watch(groupByIdProvider(task.groupId!));
-    lignes.add(
-      AgendaEntry(
-        id: task.id,
-        kind: AgendaEntryKind.task,
-        title: task.title,
-        start: echeance,
-        end: echeance,
-        accent: AgendaAccent.tache,
-        subtitle: groupe?.name ?? 'Personnel',
-        timeLabel: AppDates.time(echeance),
-        statusTone: task.isDone ? null : _tonDePriorite(task.priority),
-        statusLabel: task.isDone ? 'Terminée' : task.priority.label,
-        groupId: task.groupId,
-      ),
-    );
-  }
+      for (final Task task
+          in ref.watch(tasksProvider).value ?? const <Task>[]) {
+        final DateTime? echeance = task.dueDate;
+        if (echeance == null || !AppDates.isSameDay(echeance, jour)) continue;
+        if (!filtre.accepts(task.groupId)) continue;
+        final Group? groupe = task.groupId == null
+            ? null
+            : ref.watch(groupByIdProvider(task.groupId!));
+        lignes.add(
+          AgendaEntry(
+            id: task.id,
+            kind: AgendaEntryKind.task,
+            title: task.title,
+            start: echeance,
+            end: echeance,
+            accent: AgendaAccent.tache,
+            subtitle: groupe?.name ?? t.calendarPersonnel,
+            timeLabel: AppDates.time(echeance),
+            statusTone: task.isDone ? null : _tonDePriorite(task.priority),
+            statusLabel: task.isDone
+                ? t.taskStatusDone
+                : task.priority.label(t),
+            groupId: task.groupId,
+          ),
+        );
+      }
 
-  // Les disponibilités ne dépendent d'aucun groupe : les masquer sous un
-  // filtre de groupe reviendrait à faire disparaître le fond de la journée
-  // dès qu'on regarde un groupe en particulier.
-  for (final AvailabilitySlot creneau
-      in ref.watch(showAvailabilityProvider)
-          ? ref.watch(slotsForDayProvider(jour))
-          : const <AvailabilitySlot>[]) {
-    final DateTime debut = DateTime(
-      jour.year,
-      jour.month,
-      jour.day,
-    ).add(Duration(minutes: creneau.start));
-    lignes.add(
-      AgendaEntry(
-        id: creneau.id,
-        kind: AgendaEntryKind.availability,
-        title: creneau.status.label,
-        start: debut,
-        end: debut.add(Duration(minutes: creneau.end - creneau.start)),
-        accent: creneau.status == AvailabilityStatus.available
-            ? AgendaAccent.tache
-            : AgendaAccent.indisponible,
-        subtitle: creneau.plage,
-        timeLabel: AvailabilitySlot.formaterHeure(creneau.start),
-        statusTone: creneau.status.tone,
-        statusLabel: creneau.status.label,
-      ),
-    );
-  }
+      // Les disponibilités ne dépendent d'aucun groupe : les masquer sous un
+      // filtre de groupe reviendrait à faire disparaître le fond de la journée
+      // dès qu'on regarde un groupe en particulier.
+      for (final AvailabilitySlot creneau
+          in ref.watch(showAvailabilityProvider)
+              ? ref.watch(slotsForDayProvider(jour))
+              : const <AvailabilitySlot>[]) {
+        final DateTime debut = DateTime(
+          jour.year,
+          jour.month,
+          jour.day,
+        ).add(Duration(minutes: creneau.start));
+        lignes.add(
+          AgendaEntry(
+            id: creneau.id,
+            kind: AgendaEntryKind.availability,
+            title: creneau.status.label(t),
+            start: debut,
+            end: debut.add(Duration(minutes: creneau.end - creneau.start)),
+            accent: creneau.status == AvailabilityStatus.available
+                ? AgendaAccent.tache
+                : AgendaAccent.indisponible,
+            subtitle: creneau.plage,
+            timeLabel: AvailabilitySlot.formaterHeure(creneau.start),
+            statusTone: creneau.status.tone,
+            statusLabel: creneau.status.label(t),
+          ),
+        );
+      }
 
-  // Les anniversaires des contacts : **annuels et sur toute la journée**.
-  //
-  // Rien n'est lu de plus pour cela — `anniversaires_de_mes_contacts()` est
-  // chargée une fois, sans borne de dates, et filtrée en mémoire comme
-  // `mes_taches` et `mon_agenda`. C'est ce qui permet de faire défiler les
-  // jours sans une requête par jour.
-  //
-  // La règle du jour fêté est celle du modèle : ramenée au dernier jour du
-  // mois, de sorte qu'un 29 février tombe le 28 les années ordinaires.
-  for (final ContactBirthday anniv
-      in ref.watch(contactBirthdaysProvider).value ??
-          const <ContactBirthday>[]) {
-    if (!anniv.anniversaire.seFeteLe(jour)) continue;
-    // Un anniversaire n'appartient à aucun groupe : il passe par la clé du
-    // personnel, et un filtre de groupe le masque donc comme il masque un
-    // rendez-vous personnel. Les créneaux, eux, y échappent — mais ils
-    // décrivent le fond de la journée, pas quelque chose qui arrive.
-    if (!filtre.accepts(null)) continue;
-    final DateTime debut = DateTime(jour.year, jour.month, jour.day);
-    lignes.add(
-      AgendaEntry(
-        // L'année entre dans la clé : la ligne est reconstruite par jour
-        // affiché, et deux années différentes ne sont pas la même ligne.
-        id: 'anniversaire-${anniv.contactId}-${jour.year}',
-        kind: AgendaEntryKind.birthday,
-        title: '${anniv.fullName} fête son anniversaire',
-        start: debut,
-        // Toute la journée, et non un instant : la durée est ce qui dit
-        // qu'il n'y a pas d'heure à laquelle se présenter.
-        end: DateTime(jour.year, jour.month, jour.day, 23, 59),
-        accent: AgendaAccent.anniversaire,
-        subtitle: anniv.anniversaire.libelle,
-        // La gouttière porte une heure partout ailleurs ; ici elle dirait
-        // « 00:00 », ce qui serait faux.
-        timeLabel: 'Journée',
-        avatars: <AvatarData>[
-          AvatarData(name: anniv.fullName, imageUrl: anniv.avatarUrl),
-        ],
-      ),
-    );
-  }
+      // Les anniversaires des contacts : **annuels et sur toute la journée**.
+      //
+      // Rien n'est lu de plus pour cela — `anniversaires_de_mes_contacts()` est
+      // chargée une fois, sans borne de dates, et filtrée en mémoire comme
+      // `mes_taches` et `mon_agenda`. C'est ce qui permet de faire défiler les
+      // jours sans une requête par jour.
+      //
+      // La règle du jour fêté est celle du modèle : ramenée au dernier jour du
+      // mois, de sorte qu'un 29 février tombe le 28 les années ordinaires.
+      for (final ContactBirthday anniv
+          in ref.watch(contactBirthdaysProvider).value ??
+              const <ContactBirthday>[]) {
+        if (!anniv.anniversaire.seFeteLe(jour)) continue;
+        // Un anniversaire n'appartient à aucun groupe : il passe par la clé du
+        // personnel, et un filtre de groupe le masque donc comme il masque un
+        // rendez-vous personnel. Les créneaux, eux, y échappent — mais ils
+        // décrivent le fond de la journée, pas quelque chose qui arrive.
+        if (!filtre.accepts(null)) continue;
+        final DateTime debut = DateTime(jour.year, jour.month, jour.day);
+        lignes.add(
+          AgendaEntry(
+            // L'année entre dans la clé : la ligne est reconstruite par jour
+            // affiché, et deux années différentes ne sont pas la même ligne.
+            id: 'anniversaire-${anniv.contactId}-${jour.year}',
+            kind: AgendaEntryKind.birthday,
+            title: t.calendarFeteSonAnniversaire(anniv.fullName),
+            start: debut,
+            // Toute la journée, et non un instant : la durée est ce qui dit
+            // qu'il n'y a pas d'heure à laquelle se présenter.
+            end: DateTime(jour.year, jour.month, jour.day, 23, 59),
+            accent: AgendaAccent.anniversaire,
+            subtitle: anniv.anniversaire.libelle,
+            // La gouttière porte une heure partout ailleurs ; ici elle dirait
+            // « 00:00 », ce qui serait faux.
+            timeLabel: t.calendarJournee,
+            avatars: <AvatarData>[
+              AvatarData(name: anniv.fullName, imageUrl: anniv.avatarUrl),
+            ],
+          ),
+        );
+      }
 
-  lignes.sort((AgendaEntry a, AgendaEntry b) {
-    final int heure = a.start.compareTo(b.start);
-    if (heure != 0) return heure;
-    // À heure égale, le fond de journée passe devant ce qui s'y pose.
-    return a.kind.index.compareTo(b.kind.index);
-  });
-  return lignes;
-});
+      lignes.sort((AgendaEntry a, AgendaEntry b) {
+        final int heure = a.start.compareTo(b.start);
+        if (heure != 0) return heure;
+        // À heure égale, le fond de journée passe devant ce qui s'y pose.
+        return a.kind.index.compareTo(b.kind.index);
+      });
+      return lignes;
+    });
 
 /// `TaskPriority` ne porte pas de ton : il n'en a besoin qu'ici, et le lui
 /// ajouter ferait dépendre le modèle du design system pour un seul écran.
@@ -423,9 +438,10 @@ StatusTone _tonDePriorite(TaskPriority priorite) => switch (priorite) {
 };
 
 /// Agenda du jour sélectionné.
-final Provider<List<AgendaEntry>> agendaForSelectedDayProvider =
-    Provider<List<AgendaEntry>>(
-      (Ref ref) => ref.watch(dayAgendaProvider(ref.watch(selectedDayProvider))),
+final agendaForSelectedDayProvider =
+    Provider.family<List<AgendaEntry>, AppTexts>(
+      (Ref ref, AppTexts t) =>
+          ref.watch(dayAgendaProvider((ref.watch(selectedDayProvider), t))),
     );
 
 /// Les quatre compteurs de l'en-tête du calendrier.
@@ -451,39 +467,41 @@ class CalendarCounters {
   final int pendingInvitations;
 
   /// « 4 h 30 », « 45 min », « — » : la durée se lit à l'unité qui compte.
-  String get freeLabel {
+  String freeLabel(AppTexts t) {
     if (freeMinutes <= 0) return '—';
     final int heures = freeMinutes ~/ 60;
     final int minutes = freeMinutes % 60;
-    if (heures == 0) return '$minutes min';
-    if (minutes == 0) return '$heures h';
-    return '$heures h ${minutes.toString().padLeft(2, '0')}';
+    if (heures == 0) return t.calendarMinutesMin(minutes);
+    if (minutes == 0) return t.calendarHeures(heures);
+    return t.calendarHeuresMinutes(heures, minutes.toString().padLeft(2, '0'));
   }
 }
 
-final calendarCountersProvider = Provider.family<CalendarCounters, DateTime>((
-  Ref ref,
-  DateTime jour,
-) {
-  final List<AgendaEntry> agenda = ref.watch(dayAgendaProvider(jour));
-  return CalendarCounters(
-    events: agenda
-        .where(
-          (AgendaEntry e) =>
-              e.kind == AgendaEntryKind.groupEvent ||
-              e.kind == AgendaEntryKind.personalEvent,
-        )
-        .length,
-    tasks: agenda
-        .where((AgendaEntry e) => e.kind == AgendaEntryKind.task)
-        .length,
-    freeMinutes: ref.watch(availableMinutesForDayProvider(jour)),
-    pendingInvitations:
-        (ref.watch(invitationsProvider).value ?? const <Object>[]).length +
-        ref.watch(eventsAwaitingAnswerProvider).length +
-        ref.watch(tasksAwaitingAnswerProvider).length,
-  );
-});
+final calendarCountersProvider =
+    Provider.family<CalendarCounters, (DateTime, AppTexts)>((
+      Ref ref,
+      (DateTime, AppTexts) cle,
+    ) {
+      final (DateTime jour, AppTexts t) = cle;
+      final List<AgendaEntry> agenda = ref.watch(dayAgendaProvider((jour, t)));
+      return CalendarCounters(
+        events: agenda
+            .where(
+              (AgendaEntry e) =>
+                  e.kind == AgendaEntryKind.groupEvent ||
+                  e.kind == AgendaEntryKind.personalEvent,
+            )
+            .length,
+        tasks: agenda
+            .where((AgendaEntry e) => e.kind == AgendaEntryKind.task)
+            .length,
+        freeMinutes: ref.watch(availableMinutesForDayProvider(jour)),
+        pendingInvitations:
+            (ref.watch(invitationsProvider).value ?? const <Object>[]).length +
+            ref.watch(eventsAwaitingAnswerProvider).length +
+            ref.watch(tasksAwaitingAnswerProvider).length,
+      );
+    });
 
 /// Écritures sur l'agenda.
 final Provider<EventActions> eventActionsProvider = Provider<EventActions>(

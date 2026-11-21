@@ -50,7 +50,7 @@ class _ScanContactScreenState extends ConsumerState<ScanContactScreen> {
     return Scaffold(
       backgroundColor: context.couleurs.background,
       appBar: AppBar(
-        title: const Text('Scanner un QR code'),
+        title: Text(AppTexts.of(context).contactsScannerQRCode),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           tooltip: 'Retour',
@@ -61,9 +61,9 @@ class _ScanContactScreenState extends ConsumerState<ScanContactScreen> {
         child: _controller == null
             ? EmptyState(
                 icon: Icons.no_photography_outlined,
-                title: 'Scan indisponible ici',
-                message: QrScanSupport.unavailableMessage,
-                actionLabel: 'Chercher par pseudo',
+                title: AppTexts.of(context).contactsScanIndisponibleIci,
+                message: QrScanSupport.unavailableMessage(AppTexts.of(context)),
+                actionLabel: AppTexts.of(context).contactsChercherPseudo,
                 onActionPressed: () => Navigator.of(context).maybePop(),
               )
             : Column(
@@ -81,10 +81,12 @@ class _ScanContactScreenState extends ConsumerState<ScanContactScreen> {
                                 MobileScannerException e,
                               ) => EmptyState(
                                 icon: Icons.videocam_off_outlined,
-                                title: 'Caméra inaccessible',
-                                message:
-                                    'Autorisez l’accès à la caméra pour '
-                                    'scanner un QR code.',
+                                title: AppTexts.of(
+                                  context,
+                                ).contactsCameraInaccessible,
+                                message: AppTexts.of(
+                                  context,
+                                ).contactsAutorisezAccesCameraScanner,
                               ),
                         ),
                         const _ScannerFrame(),
@@ -95,8 +97,7 @@ class _ScanContactScreenState extends ConsumerState<ScanContactScreen> {
                     padding: const EdgeInsets.all(AppSpacing.screenMargin),
                     child: Text(
                       _message ??
-                          'Visez le QR code d’un proche pour lui envoyer une '
-                              'demande de contact.',
+                          AppTexts.of(context).contactsVisezQRCodeProche,
                       textAlign: TextAlign.center,
                       style: context.typo.caption,
                     ),
@@ -108,6 +109,7 @@ class _ScanContactScreenState extends ConsumerState<ScanContactScreen> {
   }
 
   Future<void> _onDetect(BarcodeCapture capture) async {
+    final AppTexts t = AppTexts.of(context);
     if (_handling) return;
 
     String? pseudo;
@@ -116,7 +118,7 @@ class _ScanContactScreenState extends ConsumerState<ScanContactScreen> {
     }
 
     if (pseudo == null) {
-      setState(() => _message = 'Ce QR code n’est pas un profil Jelvo.');
+      setState(() => _message = AppTexts.of(context).contactsQRCodeProfilJelvo);
       return;
     }
     if (pseudo == _lastPseudo) return;
@@ -135,7 +137,9 @@ class _ScanContactScreenState extends ConsumerState<ScanContactScreen> {
       if (profile == null) {
         if (mounted) {
           setState(
-            () => _message = 'Aucun compte ne porte le pseudo @$pseudo.',
+            () => _message = AppTexts.of(
+              context,
+            ).contactsAucunComptePortePseudo(pseudo!),
           );
         }
         return;
@@ -145,11 +149,19 @@ class _ScanContactScreenState extends ConsumerState<ScanContactScreen> {
           .read(contactActionsProvider)
           .sendRequest(profile.id);
       if (mounted) {
-        setState(() => _message = '${profile.fullName} — ${outcome.message}');
+        setState(
+          () => _message = t.contactsNomEtMessage(
+            profile.fullName,
+            outcome.message(t),
+          ),
+        );
       }
     } catch (error) {
       if (mounted) {
-        setState(() => _message = AuthFailure.from(error).message);
+        setState(
+          () =>
+              _message = AuthFailure.from(error).message(AppTexts.of(context)),
+        );
       }
     } finally {
       _handling = false;

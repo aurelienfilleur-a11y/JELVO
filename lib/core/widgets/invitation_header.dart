@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../theme/jelvo_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
@@ -70,7 +71,7 @@ class InvitationHeader extends StatelessWidget {
               if (since != null) ...<Widget>[
                 AppSpacing.gapXs,
                 Text(
-                  AppDates.timeAgo(since!, now: now),
+                  AppDates.timeAgo(since!, now: now, AppTexts.of(context)),
                   style: context.typo.caption.copyWith(
                     color: context.couleurs.textSecondary,
                   ),

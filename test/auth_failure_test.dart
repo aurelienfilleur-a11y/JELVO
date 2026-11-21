@@ -1,5 +1,7 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jelvo/features/auth/models/auth_failure.dart';
+import 'package:jelvo/l10n/app_localizations.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Traduction des erreurs serveur, sans widget.
@@ -9,6 +11,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// du mauvais côté — c'est arrivé sur `profiles.avatar_preset`, dont la
 /// migration n'était jamais passée.
 void main() {
+  // Le message n'est plus porté par l'échec : il se déduit du `kind`, dans la
+  // langue de l'appareil. Le test en charge donc une — le français, langue de
+  // référence — plutôt que de figer une phrase.
+  late AppTexts t;
+  setUpAll(() async => t = await AppTexts.delegate.load(const Locale('fr')));
+
   group('Colonne absente', () {
     test('PGRST204 ne dit pas de réessayer dans un instant', () {
       final AuthFailure echec = AuthFailure.from(
@@ -21,8 +29,8 @@ void main() {
       );
 
       expect(echec.kind, AuthFailureKind.schemaOutdated);
-      expect(echec.message, contains('mise à jour de la base'));
-      expect(echec.message, isNot(contains('dans un instant')));
+      expect(echec.message(t), contains('mise à jour de la base'));
+      expect(echec.message(t), isNot(contains('dans un instant')));
     });
 
     test('42703 — colonne inexistante — donne le même message', () {
@@ -65,12 +73,17 @@ void main() {
       expect(echec.kind, AuthFailureKind.forbidden);
     });
 
-    test('un code inconnu garde le repli générique', () {
+    // Le repli d'une écriture PostgREST dit « n'ont pas pu être
+    // enregistrées », et il porte désormais son propre `kind` : le message se
+    // déduisant du `kind`, le laisser tomber dans `unknown` aurait servi
+    // « une erreur est survenue » là où l'on sait que c'est une écriture.
+    test('un code inconnu garde le repli d’écriture', () {
       final AuthFailure echec = AuthFailure.from(
         const PostgrestException(message: 'inattendu', code: '99999'),
       );
-      expect(echec.kind, AuthFailureKind.unknown);
-      expect(echec.message, contains('dans un instant'));
+      expect(echec.kind, AuthFailureKind.notSaved);
+      expect(echec.message(t), contains('dans un instant'));
+      expect(echec.message(t), isNot(contains('mise à jour de la base')));
     });
   });
 }

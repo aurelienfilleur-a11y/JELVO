@@ -1,33 +1,35 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../core/widgets/status_dot.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Forme d'un créneau. Reflète le type `availability_kind` du schéma initial.
 enum AvailabilityKind {
-  recurring('Chaque semaine'),
-  exception('Une date précise');
-
-  const AvailabilityKind(this.label);
-
-  final String label;
+  recurring,
+  exception;
 
   String get dbValue => name;
 
   static AvailabilityKind fromDb(String? value) => value == 'exception'
       ? AvailabilityKind.exception
       : AvailabilityKind.recurring;
+
+  /// Le libellé est **demandé**, pas porté : une valeur d'énumération est
+  /// `const`, et ne peut donc pas contenir un texte qui dépend de la langue.
+  String label(AppTexts t) => switch (this) {
+    AvailabilityKind.recurring => t.availabilityChaqueSemaine,
+    AvailabilityKind.exception => t.availabilityDatePrecise,
+  };
 }
 
 /// Ce qu'un créneau déclare. Reflète `availability_status`, qui ne connaît que
 /// ces deux valeurs — « inconnu » n'est pas un état stocké mais l'absence de
 /// réponse, et n'existe donc que pour autrui.
 enum AvailabilityStatus {
-  available('Disponible', StatusTone.success),
-  unavailable('Indisponible', StatusTone.danger);
+  available(StatusTone.success),
+  unavailable(StatusTone.danger);
 
-  const AvailabilityStatus(this.label, this.tone);
-
-  final String label;
+  const AvailabilityStatus(this.tone);
   final StatusTone tone;
 
   String get dbValue => name;
@@ -35,6 +37,13 @@ enum AvailabilityStatus {
   static AvailabilityStatus fromDb(String? value) => value == 'unavailable'
       ? AvailabilityStatus.unavailable
       : AvailabilityStatus.available;
+
+  /// Le libellé est **demandé**, pas porté : une valeur d'énumération est
+  /// `const`, et ne peut donc pas contenir un texte qui dépend de la langue.
+  String label(AppTexts t) => switch (this) {
+    AvailabilityStatus.available => 'Disponible',
+    AvailabilityStatus.unavailable => 'Indisponible',
+  };
 }
 
 /// Ce que l'on sait de la disponibilité de **quelqu'un d'autre**.
@@ -151,6 +160,7 @@ class AvailabilitySlot {
     return h * 60 + m;
   }
 
+  // texte-en-dur-autorise: deux heures et un tiret, sans mot.
   String get plage => '${formaterHeure(start)} – ${formaterHeure(end)}';
 
   Duration get duree => Duration(minutes: end - start);

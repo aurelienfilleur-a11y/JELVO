@@ -56,7 +56,7 @@ class CalendarFilterSheet extends ConsumerWidget {
                   TextButton(
                     onPressed: () =>
                         ref.read(calendarFilterProvider.notifier).clear(),
-                    child: const Text('Tout voir'),
+                    child: Text(AppTexts.of(context).homeSeeAll),
                   ),
               ],
             ),
@@ -97,10 +97,12 @@ class CalendarFilterSheet extends ConsumerWidget {
               value: creneaux,
               onChanged: (_) =>
                   ref.read(showAvailabilityProvider.notifier).toggle(),
-              title: Text('Mes disponibilités', style: context.typo.body),
+              title: Text(
+                AppTexts.of(context).availabilityDisponibilites,
+                style: context.typo.body,
+              ),
               subtitle: Text(
-                'Les créneaux déclarés, en fond de journée. Ils ne dépendent '
-                'd’aucun groupe.',
+                AppTexts.of(context).calendarCreneauxDeclaresFondJournee,
                 style: context.typo.caption.copyWith(
                   color: context.couleurs.textSecondary,
                 ),
@@ -169,7 +171,7 @@ class _CalendarSearchSheetState extends ConsumerState<CalendarSearchSheet> {
             AppSpacing.gapLg,
             AppTextField(
               controller: _controleur,
-              hint: 'Un événement, une tâche…',
+              hint: AppTexts.of(context).calendarEvenementTache,
               prefixIcon: Icons.search_rounded,
               autofocus: true,
               onChanged: (String valeur) => setState(() => _terme = valeur),
@@ -178,12 +180,12 @@ class _CalendarSearchSheetState extends ConsumerState<CalendarSearchSheet> {
 
             if (_terme.trim().length < 2)
               Text(
-                'Deux lettres suffisent à chercher.',
+                AppTexts.of(context).calendarDeuxLettresSuffisentChercher,
                 style: context.typo.caption,
               )
             else if (resultats.isEmpty)
               Text(
-                'Rien ne correspond à « ${_terme.trim()} ».',
+                AppTexts.of(context).calendarRienNeCorrespond(_terme.trim()),
                 style: context.typo.caption,
               )
             else

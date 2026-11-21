@@ -71,26 +71,26 @@ class GroupCreationSheet extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text('Ajouter au groupe', style: context.typo.h2),
+            Text(AppTexts.of(context).groupAddToGroup, style: context.typo.h2),
             AppSpacing.gapSm,
             Text(
               group == null
-                  ? 'Ce que vous créez ici sera partagé avec le groupe.'
-                  : 'Ce que vous créez ici sera partagé avec « ${group.name} ».',
+                  ? AppTexts.of(context).groupsCreezIciSeraPartage
+                  : AppTexts.of(context).groupsCreezIciPartageAvec(group.name),
               style: context.typo.bodyMuted,
             ),
             AppSpacing.gapXl,
             _Choix(
               kind: CreationKind.event,
-              title: 'Nouvel événement',
-              subtitle: 'Une date à proposer aux membres',
+              title: AppTexts.of(context).createNewEvent,
+              subtitle: AppTexts.of(context).groupsDateProposerMembres,
               onTap: () => _choisir(context, CreationKind.event),
             ),
             AppSpacing.gapMd,
             _Choix(
               kind: CreationKind.task,
-              title: 'Nouvelle tâche',
-              subtitle: 'Quelque chose à faire, à répartir',
+              title: AppTexts.of(context).chatNouvelleTache,
+              subtitle: AppTexts.of(context).groupsQuelqueChoseFaireRepartir,
               onTap: () => _choisir(context, CreationKind.task),
             ),
           ],

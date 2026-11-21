@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/data_providers.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../calendar/models/agenda_entry.dart';
 import '../../calendar/models/calendar_event.dart';
 import '../../calendar/providers/calendar_providers.dart';
@@ -19,13 +20,17 @@ import '../widgets/week_overview.dart';
 /// **Les créneaux de disponibilité en restent écartés** : ils ne décrivent pas
 /// ce qui arrive mais ce qui se peut, et ils occuperaient la moitié d'une
 /// carte qui doit tenir en trois lignes.
-final Provider<List<AgendaEntry>> todayAgendaProvider =
-    Provider<List<AgendaEntry>>((Ref ref) {
-      return ref
-          .watch(dayAgendaProvider(ref.watch(nowProvider)))
-          .where((AgendaEntry e) => e.kind != AgendaEntryKind.availability)
-          .toList();
-    });
+/// La langue entre dans la clé, comme pour `dayAgendaProvider` : ces lignes
+/// portent des phrases, et un provider n'a pas de contexte d'où les tirer.
+final todayAgendaProvider = Provider.family<List<AgendaEntry>, AppTexts>((
+  Ref ref,
+  AppTexts t,
+) {
+  return ref
+      .watch(dayAgendaProvider((ref.watch(nowProvider), t)))
+      .where((AgendaEntry e) => e.kind != AgendaEntryKind.availability)
+      .toList();
+});
 
 /// Les tâches à lister **sous** les compteurs, une fois retirées celles que la
 /// chronologie montre déjà.
@@ -37,18 +42,19 @@ final Provider<List<AgendaEntry>> todayAgendaProvider =
 ///
 /// Le filtre passe par l'identifiant, et non par le titre : deux tâches
 /// peuvent porter le même nom dans deux groupes différents.
-final Provider<List<Task>> homeTaskRowsProvider = Provider<List<Task>>((
+final homeTaskRowsProvider = Provider.family<List<Task>, AppTexts>((
   Ref ref,
+  AppTexts t,
 ) {
   final Set<String> dejaDansLAgenda = ref
-      .watch(todayAgendaProvider)
+      .watch(todayAgendaProvider(t))
       .where((AgendaEntry e) => e.kind == AgendaEntryKind.task)
       .map((AgendaEntry e) => e.id)
       .toSet();
 
   return ref
       .watch(focusTasksProvider)
-      .where((Task t) => !dejaDansLAgenda.contains(t.id))
+      .where((Task tache) => !dejaDansLAgenda.contains(tache.id))
       .toList();
 });
 
@@ -83,12 +89,30 @@ final Provider<TaskCounts> taskCountsProvider = Provider<TaskCounts>((Ref ref) {
   );
 });
 
-/// Salutation dépendant de l'heure : « Bonjour » / « Bon après-midi » / « Bonsoir ».
-final Provider<String> greetingProvider = Provider<String>((Ref ref) {
+/// Moment de la journée, dont dépend la salutation.
+///
+/// **Le provider dit l'heure qu'il est, pas le mot qui va avec.** C'est la
+/// même règle que pour les couleurs : « Bonsoir » n'est juste qu'en français,
+/// et un provider n'a pas de contexte d'où tirer la langue.
+enum MomentDuJour {
+  matin,
+  apresMidi,
+  soir;
+
+  String salutation(AppTexts t) => switch (this) {
+    MomentDuJour.matin => t.homeBonjour,
+    MomentDuJour.apresMidi => t.homeBonApresMidi,
+    MomentDuJour.soir => t.homeBonsoir,
+  };
+}
+
+final Provider<MomentDuJour> greetingProvider = Provider<MomentDuJour>((
+  Ref ref,
+) {
   final int hour = ref.watch(nowProvider).hour;
-  if (hour < 12) return 'Bonjour';
-  if (hour < 18) return 'Bon après-midi';
-  return 'Bonsoir';
+  if (hour < 12) return MomentDuJour.matin;
+  if (hour < 18) return MomentDuJour.apresMidi;
+  return MomentDuJour.soir;
 });
 
 /// Les sept jours de la semaine en cours, avec ce que chacun porte.

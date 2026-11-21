@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../theme/jelvo_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
@@ -73,6 +74,7 @@ class StatusDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AppTexts t = AppTexts.of(context);
     final Widget dot = Container(
       width: size,
       height: size,
@@ -83,7 +85,7 @@ class StatusDot extends StatelessWidget {
     );
 
     if (label == null) {
-      return Semantics(label: _semanticsLabel, child: dot);
+      return Semantics(label: _semanticsLabel(t), child: dot);
     }
 
     final Widget content = Row(
@@ -120,11 +122,13 @@ class StatusDot extends StatelessWidget {
     );
   }
 
-  String get _semanticsLabel => switch (tone) {
-    StatusTone.info => 'Information',
-    StatusTone.success => 'Confirmé',
-    StatusTone.warning => 'En attente',
-    StatusTone.danger => 'Conflit',
-    StatusTone.neutral => 'Inactif',
+  /// Ce qu'un lecteur d'écran annonce : une pastille de couleur ne dit rien
+  /// toute seule.
+  String _semanticsLabel(AppTexts t) => switch (tone) {
+    StatusTone.info => t.coreStatutInformation,
+    StatusTone.success => t.coreStatutConfirme,
+    StatusTone.warning => t.coreStatutEnAttente,
+    StatusTone.danger => t.coreStatutConflit,
+    StatusTone.neutral => t.coreStatutInactif,
   };
 }

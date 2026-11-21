@@ -55,17 +55,17 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
         child: switch (lecture) {
           AsyncValue<ProfilConsultable?>(hasError: true) => _Message(
             icon: Icons.cloud_off_rounded,
-            titre: 'Profil indisponible',
-            message: 'La lecture n’a pas abouti. Réessayez dans un instant.',
+            titre: AppTexts.of(context).profileProfilIndisponible,
+            message: AppTexts.of(context).profileLectureAboutiReessayezInstant,
           ),
           // Zéro ligne : l'identifiant n'existe pas. C'est le seul état
           // dégradé d'un profil — contrairement à une invitation, qui en a
           // quatre et porte donc un mot d'état.
           AsyncValue<ProfilConsultable?>(value: null, isLoading: false) =>
-            const _Message(
+            _Message(
               icon: Icons.person_off_outlined,
-              titre: 'Profil introuvable',
-              message: 'Cette personne n’a plus de compte Jelvo.',
+              titre: AppTexts.of(context).profileProfilIntrouvable,
+              message: AppTexts.of(context).profilePersonneCompteJelvo,
             ),
           AsyncValue<ProfilConsultable?>(value: final ProfilConsultable p) =>
             _Contenu(
@@ -95,7 +95,7 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
       return <ProfileAction>[
         ProfileAction(
           icon: Icons.person_outline_rounded,
-          label: 'Mon profil',
+          label: AppTexts.of(context).profileProfil,
           accented: true,
           onTap: () => context.goNamed(AppRoutes.profile),
         ),
@@ -126,7 +126,7 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
       return <ProfileAction>[
         ProfileAction(
           icon: Icons.schedule_rounded,
-          label: 'Annuler la demande',
+          label: AppTexts.of(context).profileAnnulerDemande,
           onTap: () => _agir(() => _actionsContact.remove(widget.userId)),
         ),
       ];
@@ -155,7 +155,7 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
     return <ProfileAction>[
       ProfileAction(
         icon: Icons.person_add_alt_1_rounded,
-        label: 'Ajouter en contact',
+        label: AppTexts.of(context).profileAjouterContact,
         accented: true,
         onTap: () => _agir(() => _actionsContact.sendRequest(widget.userId)),
       ),
@@ -167,14 +167,14 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
   /// Retirer quelqu'un se confirme : c'est la seule action de cet écran qui
   /// défait quelque chose sans moyen de le refaire d'un geste.
   Future<void> _retirer(ProfilConsultable p) async {
+    final AppTexts t = AppTexts.of(context);
     final bool confirme =
         await showDialog<bool>(
           context: context,
           builder: (BuildContext c) => AlertDialog(
-            title: const Text('Retirer ce contact ?'),
+            title: Text(AppTexts.of(context).profileRetirerContact),
             content: Text(
-              '${p.profil.displayName} ne figurera plus dans votre carnet. '
-              'Vos groupes communs ne changent pas.',
+              t.profileRetraitCarnetConfirmation(p.profil.displayName),
             ),
             actions: <Widget>[
               TextButton(
@@ -202,6 +202,8 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
   /// elle l'écran continuerait d'offrir « Ajouter en contact » à quelqu'un
   /// qu'on vient d'ajouter.
   Future<void> _agir(Future<void> Function() action) async {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     if (_enCours) return;
     setState(() => _enCours = true);
     // Capturé avant l'`await` : la garde du routeur peut avoir quitté l'écran
@@ -211,9 +213,7 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
       await action();
       ref.invalidate(profilConsultableProvider(widget.userId));
     } catch (error) {
-      messager.showSnackBar(
-        const SnackBar(content: Text('L’action n’a pas abouti.')),
-      );
+      messager.showSnackBar(SnackBar(content: Text(t.profileActionAbouti)));
     } finally {
       if (mounted) setState(() => _enCours = false);
     }

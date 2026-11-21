@@ -41,8 +41,8 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (Object error, _) => EmptyState(
             icon: Icons.cloud_off_rounded,
-            title: 'Invitation indisponible',
-            message: AuthFailure.from(error).message,
+            title: AppTexts.of(context).groupsInvitationIndisponible,
+            message: AuthFailure.from(error).message(AppTexts.of(context)),
             actionLabel: 'Réessayer',
             onActionPressed: () =>
                 ref.invalidate(groupInvitePreviewProvider(widget.token)),
@@ -55,12 +55,15 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
   }
 
   Widget _content(GroupInvitePreview preview, {required bool signedIn}) {
+    final AppTexts t = AppTexts.of(context);
     if (!preview.isJoinable) {
       return EmptyState(
         icon: Icons.link_off_rounded,
-        title: 'Lien inutilisable',
-        message: preview.status.message,
-        actionLabel: signedIn ? "Revenir à l'accueil" : 'Se connecter',
+        title: AppTexts.of(context).groupsLienInutilisable,
+        message: preview.status.message(AppTexts.of(context)),
+        actionLabel: signedIn
+            ? AppTexts.of(context).groupsRevenirAccueil
+            : AppTexts.of(context).authConnecter,
         onActionPressed: () =>
             context.goNamed(signedIn ? AppRoutes.home : AppRoutes.login),
       );
@@ -75,9 +78,7 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
           ),
           child: CoverBanner(
             name: preview.name ?? 'Groupe',
-            subtitle:
-                '${preview.memberCount} membre'
-                '${preview.memberCount > 1 ? 's' : ''}',
+            subtitle: t.groupsMembreCount(preview.memberCount),
             accentColor: context.couleurs.primary,
             icon: Icons.groups_rounded,
             photoUrl: preview.photoUrl,
@@ -95,7 +96,7 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Text(
-                'Vous êtes invité à rejoindre ce groupe sur Jelvo.',
+                AppTexts.of(context).groupsEtesInviteRejoindreGroupe,
                 style: context.typo.h3,
               ),
               if (preview.description != null &&
@@ -125,9 +126,9 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
                       AppSpacing.hGapSm,
                       Expanded(
                         child: Text(
-                          'Adhésion temporaire : vous ferez partie du groupe '
-                          'jusqu’au '
-                          '${AppDates.fullDate(preview.membershipExpiresAt!)}.',
+                          t.groupsAdhesionTemporaireVousFerezPartie(
+                            AppDates.fullDate(preview.membershipExpiresAt!),
+                          ),
                           style: context.typo.caption.copyWith(
                             color: context.couleurs.encre,
                           ),
@@ -158,26 +159,25 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
               AppSpacing.gapXxl,
               if (signedIn)
                 PrimaryButton(
-                  label: 'Rejoindre le groupe',
+                  label: AppTexts.of(context).groupsRejoindreGroupe,
                   icon: Icons.group_add_rounded,
                   isLoading: _working,
                   onPressed: _join,
                 )
               else ...<Widget>[
                 PrimaryButton(
-                  label: 'Créer un compte pour rejoindre',
+                  label: AppTexts.of(context).groupsCreerCompteRejoindre,
                   icon: Icons.person_add_alt_rounded,
                   onPressed: () => _rememberThen(AppRoutes.signUp),
                 ),
                 AppSpacing.gapMd,
                 SecondaryButton(
-                  label: "J'ai déjà un compte",
+                  label: AppTexts.of(context).groupsAiDejaCompte,
                   onPressed: () => _rememberThen(AppRoutes.login),
                 ),
                 AppSpacing.gapMd,
                 Text(
-                  'Le groupe sera rejoint automatiquement une fois votre '
-                  'compte créé.',
+                  AppTexts.of(context).groupsGroupeSeraRejointAutomatiquement,
                   style: context.typo.caption,
                 ),
               ],
@@ -195,6 +195,8 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
   }
 
   Future<void> _join() async {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     final GoRouter router = GoRouter.of(context);
 
@@ -208,11 +210,13 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
           .joinByToken(widget.token);
 
       if (!outcome.isSuccess) {
-        if (mounted) setState(() => _resultMessage = outcome.message);
+        if (mounted) {
+          setState(() => _resultMessage = outcome.message(t));
+        }
         return;
       }
 
-      messenger.showSnackBar(SnackBar(content: Text(outcome.message)));
+      messenger.showSnackBar(SnackBar(content: Text(outcome.message(t))));
       final String? groupId = ref
           .read(groupInvitePreviewProvider(widget.token))
           .value
@@ -227,7 +231,11 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
       }
     } catch (error) {
       if (mounted) {
-        setState(() => _resultMessage = AuthFailure.from(error).message);
+        setState(
+          () => _resultMessage = AuthFailure.from(
+            error,
+          ).message(AppTexts.of(context)),
+        );
       }
     } finally {
       if (mounted) setState(() => _working = false);

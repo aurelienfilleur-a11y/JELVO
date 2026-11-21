@@ -145,7 +145,10 @@ class PublicAboutCard extends StatelessWidget {
         children: <Widget>[
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-            child: Text('À propos', style: context.typo.h3),
+            child: Text(
+              AppTexts.of(context).calendarPropos,
+              style: context.typo.h3,
+            ),
           ),
           AppSpacing.gapMd,
           if (aBio)
@@ -211,9 +214,7 @@ class CommonGroupsCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
             child: Text(
-              groupes.length == 1
-                  ? '1 groupe en commun'
-                  : '${groupes.length} groupes en commun',
+              AppTexts.of(context).profileGroupesCommunsCount(groupes.length),
               style: context.typo.h3,
             ),
           ),
@@ -222,7 +223,7 @@ class CommonGroupsCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
               child: Text(
-                'Vous n’organisez rien ensemble pour l’instant.',
+                AppTexts.of(context).profileOrganisezRienEnsembleInstant,
                 style: context.typo.bodyMuted,
               ),
             ),

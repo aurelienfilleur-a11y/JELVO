@@ -1,25 +1,32 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../core/widgets/status_dot.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Priorité d'une tâche.
 ///
 /// Reflète le type `task_priority` de la base, qui ne connaît que ces trois
 /// valeurs — d'où `medium` et non `normal`.
 enum TaskPriority {
-  low('Basse', 'low'),
-  medium('Normale', 'medium'),
-  high('Haute', 'high');
+  low('low'),
+  medium('medium'),
+  high('high');
 
-  const TaskPriority(this.label, this.dbValue);
-
-  final String label;
+  const TaskPriority(this.dbValue);
   final String dbValue;
 
   static TaskPriority fromDb(String? value) => switch (value) {
     'low' => TaskPriority.low,
     'high' => TaskPriority.high,
     _ => TaskPriority.medium,
+  };
+
+  /// Le libellé est **demandé**, pas porté : une valeur d'énumération est
+  /// `const`, et ne peut donc pas contenir un texte qui dépend de la langue.
+  String label(AppTexts t) => switch (this) {
+    TaskPriority.low => 'Basse',
+    TaskPriority.medium => 'Normale',
+    TaskPriority.high => 'Haute',
   };
 }
 
@@ -28,14 +35,10 @@ enum TaskPriority {
 /// Reflète le type `assignee_status`. `done` marque la part de cette personne
 /// comme faite, sans préjuger de la tâche entière.
 enum AssigneeStatus {
-  pending('En attente'),
-  accepted('Acceptée'),
-  declined('Refusée'),
-  done('Terminée');
-
-  const AssigneeStatus(this.label);
-
-  final String label;
+  pending,
+  accepted,
+  declined,
+  done;
 
   static AssigneeStatus fromDb(String? value) => switch (value) {
     'accepted' => AssigneeStatus.accepted,
@@ -45,6 +48,15 @@ enum AssigneeStatus {
   };
 
   String get dbValue => name;
+
+  /// Le libellé est **demandé**, pas porté : une valeur d'énumération est
+  /// `const`, et ne peut donc pas contenir un texte qui dépend de la langue.
+  String label(AppTexts t) => switch (this) {
+    AssigneeStatus.pending => t.eventAnswerPending,
+    AssigneeStatus.accepted => 'Acceptée',
+    AssigneeStatus.declined => 'Refusée',
+    AssigneeStatus.done => 'Terminée',
+  };
 }
 
 /// Ce que la base a fait quand on a touché « Oui » sur une carte.
@@ -77,17 +89,15 @@ enum TakeOutcome {
   bool get isSuccess =>
       this == TakeOutcome.prise || this == TakeOutcome.desiste;
 
-  String get message => switch (this) {
-    TakeOutcome.prise => 'Vous avez pris cette tâche.',
-    TakeOutcome.desiste => 'Vous avez rendu cette tâche au groupe.',
-    TakeOutcome.dejaPrise => 'Quelqu’un vient de la prendre avant vous.',
-    TakeOutcome.nonAssigne => 'Cette tâche n’est pas la vôtre.',
-    TakeOutcome.nonDesistable =>
-      'Cette tâche vous a été confiée : refusez-la plutôt que de la rendre.',
-    TakeOutcome.supprimee => 'Cette tâche a été supprimée.',
-    TakeOutcome.nonMembre => 'Vous ne faites plus partie de ce groupe.',
-    TakeOutcome.inconnu =>
-      'L’action n’a pas abouti. Réessayez dans un instant.',
+  String message(AppTexts t) => switch (this) {
+    TakeOutcome.prise => t.tasksAvezPrisTache,
+    TakeOutcome.desiste => t.tasksAvezRenduTacheGroupe,
+    TakeOutcome.dejaPrise => t.tasksQuelquVientPrendreAvant,
+    TakeOutcome.nonAssigne => t.tasksTache,
+    TakeOutcome.nonDesistable => t.tasksTacheEteConfieeRefusez,
+    TakeOutcome.supprimee => t.chatTacheEteSupprimee,
+    TakeOutcome.nonMembre => t.tasksFaitesPartieGroupe,
+    TakeOutcome.inconnu => t.groupsActionAboutiReessayezInstant,
   };
 }
 
@@ -285,10 +295,10 @@ class Task {
       !isDone && dueDate != null && dueDate!.isBefore(now);
 
   /// Libellé du statut, tel qu'affiché.
-  String statusLabel(DateTime now) {
+  String statusLabel(DateTime now, AppTexts t) {
     if (isDone) return 'Terminée';
-    if (isOverdue(now)) return 'En retard';
-    return 'À faire';
+    if (isOverdue(now)) return t.taskStatusOverdue;
+    return t.taskStatusTodo;
   }
 
   /// Teinte de la pastille d'échéance : rouge si en retard, orange si due

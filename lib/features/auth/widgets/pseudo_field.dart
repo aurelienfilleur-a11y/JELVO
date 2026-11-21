@@ -32,7 +32,7 @@ class PseudoField extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final String? formatError = pseudo.isEmpty
         ? null
-        : CredentialsRules.pseudoError(pseudo);
+        : CredentialsRules.pseudoError(pseudo, AppTexts.of(context));
 
     final bool canCheck =
         showAvailability && CredentialsRules.isPseudoValid(pseudo);
@@ -54,11 +54,13 @@ class PseudoField extends ConsumerWidget {
           textInputAction: TextInputAction.next,
           maxLength: CredentialsRules.pseudoMaxLength,
           errorText:
-              formatError ?? (isTaken ? 'Ce pseudo est déjà pris.' : null),
+              formatError ??
+              (isTaken ? AppTexts.of(context).authPseudoDejaPris : null),
           helperText: formatError == null && !isTaken
-              ? 'Minuscules, chiffres et points, de '
-                    '${CredentialsRules.pseudoMinLength} à '
-                    '${CredentialsRules.pseudoMaxLength} caractères.'
+              ? AppTexts.of(context).authFormatPseudo(
+                  CredentialsRules.pseudoMinLength,
+                  CredentialsRules.pseudoMaxLength,
+                )
               : null,
           suffixIcon: availability == null
               ? null
@@ -79,7 +81,7 @@ class PseudoField extends ConsumerWidget {
               ),
               AppSpacing.hGapXs,
               Text(
-                'Ce pseudo est disponible.',
+                AppTexts.of(context).authPseudoDisponible,
                 style: context.typo.caption.copyWith(
                   color: context.couleurs.success,
                 ),

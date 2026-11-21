@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// État d'une relation, reflétant le type `contact_status` de la base.
 ///
@@ -77,8 +78,9 @@ class Contact {
   /// l'autre.
   final int sharedGroups;
 
-  String get sharedGroupsLabel =>
-      '$sharedGroups groupe${sharedGroups > 1 ? 's' : ''}';
+  /// « 3 groupes ». Le pluriel dépend de la langue : le modèle porte le
+  /// nombre, l'appelant en tire la phrase.
+  String sharedGroupsLabel(AppTexts t) => t.contactsGroupeCount(sharedGroups);
 
   /// Lettre de section dans le carnet. `#` pour tout ce qui ne commence pas
   /// par une lettre — un pseudo numérique, un nom vide.

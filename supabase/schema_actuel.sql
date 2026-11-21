@@ -177,6 +177,8 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 --   sent_at              timestamp with time zone     
 --   attempts             integer                      NOT NULL, défaut 0
 --   last_error           text                         
+--   cle                  text                         
+--   params               jsonb                        
 
 -- push_reminders_sent [RLS activée]
 --   kind                 text                         NOT NULL, sans défaut
@@ -192,6 +194,7 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 --   updated_at           timestamp with time zone     NOT NULL, défaut now()
 --   p256dh               text                         
 --   auth_key             text                         
+--   langue               text                         
 
 -- task_assignees [RLS activée]
 --   task_id              uuid                         NOT NULL, sans défaut
@@ -379,6 +382,9 @@ END)))))
 -- messages                 msg_select                   SELECT {public}
 --   using       : is_group_member(group_id)
 --   with check  : —
+-- notification_preferences np_all                       ALL    {authenticated}
+--   using       : (user_id = auth.uid())
+--   with check  : (user_id = auth.uid())
 -- notification_preferences np_select                    SELECT {authenticated}
 --   using       : (user_id = auth.uid())
 --   with check  : —
@@ -448,9 +454,9 @@ END)))))
 -- deposer_carte_tache() → trigger   [security definer, postgres]
 -- email_pour_pseudo(pseudo_recherche text) → text   [security definer, postgres]
 -- empiler_anniversaires() → integer   [security definer, postgres]
--- empiler_push(p_user_id uuid, p_type text, p_title text, p_body text, p_url text DEFAULT NULL::text) → boolean   [security definer, postgres]
+-- empiler_push(p_user_id uuid, p_type text, p_title text, p_body text, p_url text DEFAULT NULL::text, p_cle text DEFAULT NULL::text, p_params jsonb DEFAULT NULL::jsonb) → boolean   [security definer, postgres]
 -- empiler_rappels(p_fenetre interval DEFAULT '00:10:00'::interval) → integer   [security definer, postgres]
--- enregistrer_push(p_token text, p_platform text DEFAULT 'web'::text, p_p256dh text DEFAULT NULL::text, p_auth text DEFAULT NULL::text) → boolean   [security definer, postgres]
+-- enregistrer_push(p_token text, p_platform text DEFAULT 'web'::text, p_p256dh text DEFAULT NULL::text, p_auth text DEFAULT NULL::text, p_langue text DEFAULT NULL::text) → boolean   [security definer, postgres]
 -- envoyer_message(p_group_id uuid, p_content text DEFAULT NULL::text, p_media_url text DEFAULT NULL::text, p_media_kind text DEFAULT NULL::text, p_media_duree_s integer DEFAULT NULL::integer) → uuid   [security definer, postgres]
 -- est_admin_du_groupe(p_group_id uuid, p_user_id uuid) → boolean   [security definer, postgres]
 -- est_membre_du_groupe(p_group_id uuid, p_user_id uuid) → boolean   [security definer, postgres]
@@ -491,7 +497,7 @@ END)))))
 -- promouvoir_membre(p_group_id uuid, p_user_id uuid) → text   [security definer, postgres]
 -- pseudo_disponible(p_pseudo text) → boolean   [security definer, postgres]
 -- purger_push(p_token text) → integer   [security definer, postgres]
--- push_a_envoyer(p_limite integer DEFAULT 50) → TABLE(id uuid, user_id uuid, type text, title text, body text, url text, token text, platform text, p256dh text, auth_key text)   [security definer, postgres]
+-- push_a_envoyer(p_limite integer DEFAULT 50) → TABLE(id uuid, user_id uuid, type text, title text, body text, url text, cle text, params jsonb, token text, platform text, p256dh text, auth_key text, langue text)   [security definer, postgres]
 -- push_date_changee() → trigger   [security definer, postgres]
 -- push_invitation() → trigger   [security definer, postgres]
 -- push_invitation_evenement() → trigger   [security definer, postgres]
@@ -568,7 +574,7 @@ END)))))
 -- messages                 anon             SELECT
 -- messages                 authenticated    SELECT
 -- notification_preferences anon             SELECT
--- notification_preferences authenticated    SELECT
+-- notification_preferences authenticated    DELETE, INSERT, SELECT, UPDATE
 -- notifications            anon             DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE
 -- notifications            authenticated    DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE
 -- profiles                 anon             DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE

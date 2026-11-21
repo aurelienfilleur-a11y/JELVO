@@ -91,7 +91,7 @@ class _AvatarChoiceSheetState extends ConsumerState<AvatarChoiceSheet> {
           if (widget.aUnAvatar)
             _Choix(
               icon: Icons.delete_outline_rounded,
-              label: 'Retirer',
+              label: AppTexts.of(context).coreRetirer,
               detail: AppTexts.of(context).profileInitialesPrendrontPlace,
               destructive: true,
               onTap: _travail ? null : _retirer,

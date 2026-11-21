@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../theme/jelvo_colors.dart';
 import '../theme/app_radii.dart';
 import '../theme/app_spacing.dart';
@@ -118,7 +119,7 @@ class ExpandableOptions extends StatelessWidget {
     required this.expanded,
     required this.onToggle,
     required this.children,
-    this.title = 'Plus d’options',
+    this.title,
     this.hint,
     this.icon = Icons.tune_rounded,
   });
@@ -126,7 +127,10 @@ class ExpandableOptions extends StatelessWidget {
   final bool expanded;
   final VoidCallback onToggle;
   final List<Widget> children;
-  final String title;
+
+  /// `null` plutôt qu'un libellé par défaut : **une valeur par défaut ne peut
+  /// pas lire le contexte**. Même arbitrage que les couleurs d'`AppCard`.
+  final String? title;
   final String? hint;
   final IconData icon;
 
@@ -149,7 +153,7 @@ class ExpandableOptions extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
                         Text(
-                          title,
+                          title ?? AppTexts.of(context).corePlusDOptions,
                           style: context.typo.body.copyWith(
                             fontWeight: AppTypography.medium,
                           ),

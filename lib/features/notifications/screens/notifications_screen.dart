@@ -52,17 +52,29 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     return Scaffold(
       backgroundColor: context.couleurs.background,
       appBar: AppBar(
-        title: const Text('Notifications'),
+        title: Text(AppTexts.of(context).navNotifications),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Retour',
+          tooltip: AppTexts.of(context).commonBack,
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         actions: <Widget>[
           if (unread > 0)
-            TextButton(
-              onPressed: () => _markAllRead(context),
-              child: Text(AppTexts.of(context).notificationsMarquerCommeLu),
+            // **Une action de barre de titre n'est pas élastique** : les
+            // `actions` d'un `AppBar` prennent leur largeur naturelle, et
+            // « Alle als gelesen markieren » débordait de 79 px à 360 dp.
+            // Les libellés ont été raccourcis, et cette borne est le filet :
+            // une traduction plus longue tronque, elle ne casse pas la barre.
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 150),
+              child: TextButton(
+                onPressed: () => _markAllRead(context),
+                child: Text(
+                  AppTexts.of(context).notificationsMarquerCommeLu,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ),
         ],
       ),
@@ -90,7 +102,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           icon: Icons.cloud_off_rounded,
           title: AppTexts.of(context).notificationsNotificationsIndisponibles,
           message: AuthFailure.from(async.error!).message(AppTexts.of(context)),
-          actionLabel: 'Réessayer',
+          actionLabel: AppTexts.of(context).commonRetry,
           onActionPressed: () =>
               ref.read(notificationsProvider.notifier).refresh(),
         ),

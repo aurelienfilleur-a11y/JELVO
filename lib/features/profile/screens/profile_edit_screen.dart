@@ -49,7 +49,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
         title: Text(AppTexts.of(context).profileModifierProfil),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Retour',
+          tooltip: AppTexts.of(context).commonBack,
           onPressed: () => Navigator.of(context).maybePop(),
         ),
       ),
@@ -82,7 +82,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                   ],
 
                   AppTextField(
-                    label: 'Prénom',
+                    label: AppTexts.of(context).corePrenom,
                     controller: _prenom,
                     textCapitalization: TextCapitalization.words,
                     prefixIcon: Icons.badge_outlined,
@@ -91,7 +91,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                   ),
                   AppSpacing.gapLg,
                   AppTextField(
-                    label: 'Nom',
+                    label: AppTexts.of(context).coreNom,
                     controller: _nom,
                     textCapitalization: TextCapitalization.words,
                     prefixIcon: Icons.badge_outlined,
@@ -100,7 +100,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                   ),
                   AppSpacing.gapXl,
                   PrimaryButton(
-                    label: 'Enregistrer',
+                    label: AppTexts.of(context).commonSave,
                     isLoading: _enregistrement,
                     onPressed: _enregistrer,
                   ),

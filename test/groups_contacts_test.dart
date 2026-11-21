@@ -40,6 +40,7 @@ import 'fakes/fake_event_repository.dart';
 import 'fakes/fake_group_repository.dart';
 import 'fakes/fake_push.dart';
 import 'fakes/fake_task_repository.dart';
+import 'package:jelvo/data/language_storage.dart';
 
 final DateTime _testNow = DateTime(2026, 8, 3, 9);
 
@@ -66,6 +67,12 @@ Future<({FakeGroupRepository groups, FakeContactRepository contacts})> _pumpApp(
     ProviderScope(
       overrides: [
         clockProvider.overrideWithValue(FixedClock(_testNow)),
+        // **La langue est épinglée au français.** Ces tests affirment des
+        // phrases exactes ; sans cela, ils liraient la langue de la machine
+        // — `en_US` sur le harnais — et échoueraient sur du bon anglais.
+        languageStorageProvider.overrideWithValue(
+          EphemeralLanguageStorage(langue: const Locale('fr')),
+        ),
         authRepositoryProvider.overrideWithValue(auth),
         profileRepositoryProvider.overrideWithValue(FakeProfileRepository()),
         groupRepositoryProvider.overrideWithValue(groups),
@@ -128,6 +135,12 @@ Future<void> _pumpJoinScreen(
     ProviderScope(
       overrides: [
         clockProvider.overrideWithValue(FixedClock(_testNow)),
+        // **La langue est épinglée au français.** Ces tests affirment des
+        // phrases exactes ; sans cela, ils liraient la langue de la machine
+        // — `en_US` sur le harnais — et échoueraient sur du bon anglais.
+        languageStorageProvider.overrideWithValue(
+          EphemeralLanguageStorage(langue: const Locale('fr')),
+        ),
         authRepositoryProvider.overrideWithValue(auth),
         profileRepositoryProvider.overrideWithValue(FakeProfileRepository()),
         groupRepositoryProvider.overrideWithValue(groups),
@@ -148,6 +161,8 @@ Future<void> _pumpJoinScreen(
         routerConfig: router,
         localizationsDelegates: AppTexts.localizationsDelegates,
         supportedLocales: AppTexts.supportedLocales,
+        // Épinglée : ces tests affirment des phrases françaises exactes.
+        locale: const Locale('fr'),
       ),
     ),
   );
@@ -163,7 +178,7 @@ FakeGroupRepository _troisGroupes() => FakeGroupRepository(
 );
 
 void main() {
-  setUpAll(() => initializeDateFormatting(AppDates.locale));
+  setUpAll(() => initializeDateFormatting());
 
   group('Groupes', () {
     testWidgets('la liste affiche les groupes de l’utilisateur', (

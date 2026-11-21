@@ -37,7 +37,7 @@ class _AddContactScreenState extends ConsumerState<AddContactScreen> {
         title: Text(AppTexts.of(context).createAddContact),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Retour',
+          tooltip: AppTexts.of(context).commonBack,
           onPressed: () => Navigator.of(context).maybePop(),
         ),
       ),
@@ -51,7 +51,7 @@ class _AddContactScreenState extends ConsumerState<AddContactScreen> {
           ),
           children: <Widget>[
             AppTextField(
-              label: 'Pseudo',
+              label: AppTexts.of(context).corePseudo,
               hint: 'camille.rousseau',
               controller: _controller,
               prefixIcon: Icons.alternate_email_rounded,
@@ -76,7 +76,7 @@ class _AddContactScreenState extends ConsumerState<AddContactScreen> {
                 AppSpacing.hGapMd,
                 Expanded(
                   child: SecondaryButton(
-                    label: 'Scanner',
+                    label: AppTexts.of(context).coreScanner,
                     icon: Icons.qr_code_scanner_rounded,
                     onPressed: QrScanSupport.isAvailable
                         ? () => context.pushNamed(AppRoutes.scanContact)
@@ -111,7 +111,7 @@ class _AddContactScreenState extends ConsumerState<AddContactScreen> {
             ],
 
             AppSpacing.gapXl,
-            const SectionHeader(title: 'Résultats'),
+            SectionHeader(title: AppTexts.of(context).coreResultats),
             AppSpacing.gapMd,
             _Results(term: _term, onPick: sendRequest),
           ],
@@ -227,7 +227,7 @@ class _Results extends ConsumerWidget {
                     else
                       TextButton(
                         onPressed: () => onPick(profile),
-                        child: const Text('Ajouter'),
+                        child: Text(AppTexts.of(context).groupAdd),
                       ),
                   ],
                 ),

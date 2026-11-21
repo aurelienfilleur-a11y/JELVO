@@ -77,13 +77,13 @@ class GroupHeader extends StatelessWidget {
               children: <Widget>[
                 _Pastille(
                   icon: Icons.arrow_back_rounded,
-                  tooltip: 'Retour',
+                  tooltip: AppTexts.of(context).commonBack,
                   onPressed: onBack,
                 ),
                 const Spacer(),
                 _Pastille(
                   icon: Icons.notifications_none_rounded,
-                  tooltip: 'Notifications',
+                  tooltip: AppTexts.of(context).navNotifications,
                   badge: notificationsNonLues,
                   onPressed: onNotifications,
                 ),

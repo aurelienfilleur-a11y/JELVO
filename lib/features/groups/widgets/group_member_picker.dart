@@ -112,7 +112,10 @@ class _GroupMemberPickerState extends ConsumerState<GroupMemberPicker> {
               ],
             ),
             AppSpacing.gapLg,
-            Text('Suggestions', style: context.typo.caption),
+            Text(
+              AppTexts.of(context).coreSuggestions,
+              style: context.typo.caption,
+            ),
             AppSpacing.gapSm,
             _Rangee(
               contacts: contacts.take(_suggestions).toList(),

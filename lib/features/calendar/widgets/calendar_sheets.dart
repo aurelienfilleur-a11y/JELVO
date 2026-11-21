@@ -51,7 +51,12 @@ class CalendarFilterSheet extends ConsumerWidget {
           children: <Widget>[
             Row(
               children: <Widget>[
-                Expanded(child: Text('Filtres', style: context.typo.h2)),
+                Expanded(
+                  child: Text(
+                    AppTexts.of(context).coreFiltres,
+                    style: context.typo.h2,
+                  ),
+                ),
                 if (selection.isNotEmpty)
                   TextButton(
                     onPressed: () =>
@@ -62,14 +67,14 @@ class CalendarFilterSheet extends ConsumerWidget {
             ),
             AppSpacing.gapLg,
 
-            Text('Afficher', style: context.typo.h3),
+            Text(AppTexts.of(context).coreAfficher, style: context.typo.h3),
             AppSpacing.gapSm,
             Wrap(
               spacing: AppSpacing.sm,
               runSpacing: AppSpacing.sm,
               children: <Widget>[
                 _Puce(
-                  label: 'Personnel',
+                  label: AppTexts.of(context).calendarPersonnel,
                   couleur: context.couleurs.primary,
                   choisie:
                       selection.isEmpty ||
@@ -167,7 +172,7 @@ class _CalendarSearchSheetState extends ConsumerState<CalendarSearchSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text('Rechercher', style: context.typo.h2),
+            Text(AppTexts.of(context).coreRechercher, style: context.typo.h2),
             AppSpacing.gapLg,
             AppTextField(
               controller: _controleur,
@@ -196,6 +201,7 @@ class _CalendarSearchSheetState extends ConsumerState<CalendarSearchSheet> {
                   separatorBuilder: (_, _) =>
                       Divider(height: 1, color: context.couleurs.border),
                   itemBuilder: (BuildContext context, int index) {
+                    final AppTexts t = AppTexts.of(context);
                     final _Resultat r = resultats[index];
                     return ListTile(
                       contentPadding: EdgeInsets.zero,
@@ -207,7 +213,7 @@ class _CalendarSearchSheetState extends ConsumerState<CalendarSearchSheet> {
                         overflow: TextOverflow.ellipsis,
                       ),
                       subtitle: Text(
-                        AppDates.fullDate(r.jour),
+                        AppDates.fullDate(r.jour, t),
                         style: context.typo.caption,
                       ),
                       onTap: () {

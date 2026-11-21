@@ -97,22 +97,53 @@ final Provider<TaskCounts> taskCountsProvider = Provider<TaskCounts>((Ref ref) {
 enum MomentDuJour {
   matin,
   apresMidi,
-  soir;
+  soir,
+
+  /// Le samedi et le dimanche, à toute heure sauf le soir.
+  ///
+  /// **Le week-end est le seul repère de calendrier que Jelvo souhaite**, et
+  /// c'est délibéré. Une fête nationale dépend du *pays* et non de la langue
+  /// — l'espagnol couvre vingt pays, l'allemand trois, l'anglais aucun en
+  /// particulier —, et Jelvo ne sait pas où vous êtes : ni localisation, ni
+  /// numéro, et `profiles.timezone` que personne ne lit. Déduire le pays de
+  /// la langue serait la devinette qu'on écarte partout ailleurs. Samedi et
+  /// dimanche, eux, sont les mêmes dans les quatre langues.
+  weekEnd;
 
   String salutation(AppTexts t) => switch (this) {
     MomentDuJour.matin => t.homeBonjour,
     MomentDuJour.apresMidi => t.homeBonApresMidi,
     MomentDuJour.soir => t.homeBonsoir,
+    MomentDuJour.weekEnd => t.homeBonWeekEnd,
   };
 }
 
-final Provider<MomentDuJour> greetingProvider = Provider<MomentDuJour>((
+/// Le moment de la journée, dont dépend la salutation.
+///
+/// **Les bornes horaires sont une donnée de langue, pas une constante.** En
+/// espagnol, *buenas tardes* commence après le déjeuner — vers 14 h —, et
+/// servir « buenas tardes » à midi est quelque chose qu'aucun hispanophone
+/// n'écrit. Les deux bornes vivent donc dans l'ARB, au même titre qu'un
+/// format de date, et c'est la seule raison pour laquelle ce provider prend
+/// la langue.
+///
+/// **Le soir l'emporte sur le week-end** : « Bon week-end » à 23 h un samedi
+/// serait étrange, alors que « Bonsoir » est juste tous les jours.
+final greetingProvider = Provider.family<MomentDuJour, AppTexts>((
   Ref ref,
+  AppTexts t,
 ) {
-  final int hour = ref.watch(nowProvider).hour;
-  if (hour < 12) return MomentDuJour.matin;
-  if (hour < 18) return MomentDuJour.apresMidi;
-  return MomentDuJour.soir;
+  final DateTime maintenant = ref.watch(nowProvider);
+  final int heure = maintenant.hour;
+  final int debutSoiree = int.parse(t.coreDebutSoiree);
+  if (heure >= debutSoiree) return MomentDuJour.soir;
+  if (maintenant.weekday == DateTime.saturday ||
+      maintenant.weekday == DateTime.sunday) {
+    return MomentDuJour.weekEnd;
+  }
+  return heure < int.parse(t.coreDebutApresMidi)
+      ? MomentDuJour.matin
+      : MomentDuJour.apresMidi;
 });
 
 /// Les sept jours de la semaine en cours, avec ce que chacun porte.

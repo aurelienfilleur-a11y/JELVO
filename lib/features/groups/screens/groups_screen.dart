@@ -104,7 +104,7 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen> {
               message: AuthFailure.from(
                 groupsAsync.error!,
               ).message(AppTexts.of(context)),
-              actionLabel: 'Réessayer',
+              actionLabel: AppTexts.of(context).commonRetry,
               onActionPressed: () =>
                   ref.read(myGroupsProvider.notifier).refresh(),
             ),

@@ -43,7 +43,7 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
             icon: Icons.cloud_off_rounded,
             title: AppTexts.of(context).groupsInvitationIndisponible,
             message: AuthFailure.from(error).message(AppTexts.of(context)),
-            actionLabel: 'Réessayer',
+            actionLabel: AppTexts.of(context).commonRetry,
             onActionPressed: () =>
                 ref.invalidate(groupInvitePreviewProvider(widget.token)),
           ),
@@ -127,7 +127,7 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
                       Expanded(
                         child: Text(
                           t.groupsAdhesionTemporaireVousFerezPartie(
-                            AppDates.fullDate(preview.membershipExpiresAt!),
+                            AppDates.fullDate(preview.membershipExpiresAt!, t),
                           ),
                           style: context.typo.caption.copyWith(
                             color: context.couleurs.encre,

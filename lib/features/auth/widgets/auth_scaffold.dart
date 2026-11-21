@@ -46,7 +46,7 @@ class AuthScaffold extends StatelessWidget {
                     alignment: Alignment.centerLeft,
                     child: IconButton(
                       onPressed: onBack,
-                      tooltip: 'Retour',
+                      tooltip: AppTexts.of(context).commonBack,
                       icon: const Icon(Icons.arrow_back_rounded),
                       style: IconButton.styleFrom(
                         foregroundColor: context.couleurs.encre,
@@ -113,7 +113,7 @@ class _JelvoMark extends StatelessWidget {
           ),
         ),
         AppSpacing.hGapMd,
-        Text('Jelvo', style: context.typo.h3),
+        Text(AppTexts.of(context).appTitle, style: context.typo.h3),
       ],
     );
   }

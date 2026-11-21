@@ -47,7 +47,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
         title: Text(AppTexts.of(context).profileChangerMotPasse),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Retour',
+          tooltip: AppTexts.of(context).commonBack,
           onPressed: _enCours ? null : () => Navigator.of(context).maybePop(),
         ),
       ),

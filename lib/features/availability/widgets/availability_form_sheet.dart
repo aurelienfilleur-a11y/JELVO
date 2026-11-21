@@ -106,7 +106,7 @@ class _AvailabilityFormSheetState extends ConsumerState<AvailabilityFormSheet> {
               SecondaryButton(
                 label: _date == null
                     ? AppTexts.of(context).createPickDate
-                    : AppDates.fullDate(_date!),
+                    : AppDates.fullDate(_date!, t),
                 icon: Icons.calendar_today_rounded,
                 onPressed: _choisirDate,
               ),

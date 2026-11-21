@@ -80,7 +80,7 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
                       ? null
                       : IconButton(
                           icon: const Icon(Icons.close_rounded, size: 18),
-                          tooltip: 'Effacer',
+                          tooltip: AppTexts.of(context).coreEffacer,
                           onPressed: () {
                             _searchController.clear();
                             ref.read(contactQueryProvider.notifier).clear();
@@ -170,7 +170,7 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
                   message: AuthFailure.from(
                     contactsAsync.error!,
                   ).message(AppTexts.of(context)),
-                  actionLabel: 'Réessayer',
+                  actionLabel: AppTexts.of(context).commonRetry,
                   onActionPressed: () =>
                       ref.read(contactsProvider.notifier).refresh(),
                 ),
@@ -288,7 +288,7 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
         children: <Widget>[
           IconButton(
             onPressed: () => _decline(request),
-            tooltip: 'Refuser',
+            tooltip: AppTexts.of(context).taskDecline,
             visualDensity: VisualDensity.compact,
             icon: Icon(
               Icons.close_rounded,
@@ -298,7 +298,7 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
           ),
           IconButton(
             onPressed: () => _accept(request),
-            tooltip: 'Accepter',
+            tooltip: AppTexts.of(context).taskAccept,
             visualDensity: VisualDensity.compact,
             icon: Icon(
               Icons.check_circle_rounded,

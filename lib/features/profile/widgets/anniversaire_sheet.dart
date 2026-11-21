@@ -69,7 +69,7 @@ class _AnniversaireSheetState extends ConsumerState<AnniversaireSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text('Anniversaire', style: context.typo.h3),
+          Text(AppTexts.of(context).coreAnniversaire, style: context.typo.h3),
           AppSpacing.gapXs,
           Text(
             AppTexts.of(context).profileJourMoisSeulementJelvo,
@@ -89,7 +89,7 @@ class _AnniversaireSheetState extends ConsumerState<AnniversaireSheet> {
               Expanded(
                 flex: 2,
                 child: _Choix<int>(
-                  libelle: 'Jour',
+                  libelle: AppTexts.of(context).coreJour,
                   valeur: _jour,
                   valeurs: <int>[
                     for (
@@ -107,7 +107,7 @@ class _AnniversaireSheetState extends ConsumerState<AnniversaireSheet> {
               Expanded(
                 flex: 3,
                 child: _Choix<int>(
-                  libelle: 'Mois',
+                  libelle: AppTexts.of(context).coreMois,
                   valeur: _mois,
                   valeurs: <int>[for (int m = 1; m <= 12; m++) m],
                   texte: _nomDuMois,
@@ -141,7 +141,7 @@ class _AnniversaireSheetState extends ConsumerState<AnniversaireSheet> {
               if (widget.actuel != null) ...<Widget>[
                 Expanded(
                   child: SecondaryButton(
-                    label: 'Retirer',
+                    label: AppTexts.of(context).coreRetirer,
                     onPressed: _enregistrement ? null : () => _ecrire(null),
                     isDestructive: true,
                   ),
@@ -150,7 +150,7 @@ class _AnniversaireSheetState extends ConsumerState<AnniversaireSheet> {
               ],
               Expanded(
                 child: PrimaryButton(
-                  label: 'Enregistrer',
+                  label: AppTexts.of(context).commonSave,
                   isLoading: _enregistrement,
                   // Une moitié de date ne s'enregistre pas : la base la
                   // refuserait, et le bouton grisé le dit avant l'erreur.

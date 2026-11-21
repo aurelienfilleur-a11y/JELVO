@@ -32,10 +32,10 @@ class TaskDetailScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: context.couleurs.background,
       appBar: AppBar(
-        title: const Text('Tâche'),
+        title: Text(AppTexts.of(context).createTache),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Retour',
+          tooltip: AppTexts.of(context).commonBack,
           onPressed: () => _revenir(context),
         ),
         actions: <Widget>[
@@ -59,7 +59,7 @@ class TaskDetailScreen extends ConsumerWidget {
                 icon: Icons.task_alt_rounded,
                 title: AppTexts.of(context).tasksTacheIntrouvable,
                 message: AppTexts.of(context).tasksEteSupprimeeAvezAcces2,
-                actionLabel: 'Retour',
+                actionLabel: AppTexts.of(context).commonBack,
                 onActionPressed: () => _revenir(context),
               ),
             )
@@ -117,12 +117,12 @@ Future<bool> confirmerSuppressionDeTache(
       actions: <Widget>[
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: const Text('Annuler'),
+          child: Text(AppTexts.of(dialogContext).commonCancel),
         ),
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(true),
           style: TextButton.styleFrom(foregroundColor: context.couleurs.danger),
-          child: const Text('Supprimer'),
+          child: Text(AppTexts.of(dialogContext).commonDelete),
         ),
       ],
     ),
@@ -238,19 +238,19 @@ class _Caracteristiques extends StatelessWidget {
             value: task.dueDate == null
                 ? t.tasksAucune
                 : t.coreJourEtHeure(
-                    AppDates.fullDate(task.dueDate!),
-                    AppDates.time(task.dueDate!),
+                    AppDates.fullDate(task.dueDate!, t),
+                    AppDates.time(task.dueDate!, t),
                   ),
             tone: task.isOverdue(now) ? context.couleurs.danger : null,
           ),
           _Ligne(
             icon: Icons.flag_outlined,
-            label: 'Priorité',
+            label: t.corePriorite,
             value: task.priority.label(AppTexts.of(context)),
           ),
           _Ligne(
             icon: Icons.groups_outlined,
-            label: 'Groupe',
+            label: t.createGroupField,
             value: group?.name ?? (task.isPersonal ? 'Personnelle' : '—'),
           ),
           if (task.reminderAt != null)
@@ -258,14 +258,14 @@ class _Caracteristiques extends StatelessWidget {
               icon: Icons.notifications_none_rounded,
               label: t.calendarRappel,
               value: t.coreJourEtHeure(
-                AppDates.shortDate(task.reminderAt!),
-                AppDates.time(task.reminderAt!),
+                AppDates.shortDate(task.reminderAt!, t),
+                AppDates.time(task.reminderAt!, t),
               ),
             ),
           if (task.isRecurring)
             _Ligne(
               icon: Icons.repeat_rounded,
-              label: 'Répétition',
+              label: t.coreRepetition,
               value: Recurrence.fromRrule(
                 task.rrule,
               ).label(AppTexts.of(context)),

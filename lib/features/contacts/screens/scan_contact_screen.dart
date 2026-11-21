@@ -53,7 +53,7 @@ class _ScanContactScreenState extends ConsumerState<ScanContactScreen> {
         title: Text(AppTexts.of(context).contactsScannerQRCode),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Retour',
+          tooltip: AppTexts.of(context).commonBack,
           onPressed: () => Navigator.of(context).maybePop(),
         ),
       ),

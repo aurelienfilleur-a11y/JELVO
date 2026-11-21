@@ -41,8 +41,16 @@ class FavoritesStrip extends StatelessWidget {
                 color: context.couleurs.primary,
               ),
               AppSpacing.hGapSm,
-              Expanded(child: Text('Favoris', style: context.typo.h3)),
-              TextButton(onPressed: onGerer, child: const Text('Gérer')),
+              Expanded(
+                child: Text(
+                  AppTexts.of(context).coreFavoris,
+                  style: context.typo.h3,
+                ),
+              ),
+              TextButton(
+                onPressed: onGerer,
+                child: Text(AppTexts.of(context).coreGerer),
+              ),
             ],
           ),
         ),

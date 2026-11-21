@@ -91,7 +91,7 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
 
         AppSpacing.gapXl,
         PrimaryButton(
-          label: 'Vérifier',
+          label: AppTexts.of(context).coreVerifier,
           isLoading: _submitting,
           onPressed: _submit,
         ),

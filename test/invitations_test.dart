@@ -34,6 +34,7 @@ import 'fakes/fake_group_repository.dart';
 import 'fakes/fake_notification_repository.dart';
 import 'fakes/fake_push.dart';
 import 'fakes/fake_task_repository.dart';
+import 'package:jelvo/data/language_storage.dart';
 
 final DateTime _maintenant = DateTime(2026, 8, 3, 9);
 
@@ -139,6 +140,12 @@ Future<GoRouter> _pump(
     ProviderScope(
       overrides: [
         clockProvider.overrideWithValue(FixedClock(_maintenant)),
+        // **La langue est épinglée au français.** Ces tests affirment des
+        // phrases exactes ; sans cela, ils liraient la langue de la machine
+        // — `en_US` sur le harnais — et échoueraient sur du bon anglais.
+        languageStorageProvider.overrideWithValue(
+          EphemeralLanguageStorage(langue: const Locale('fr')),
+        ),
         authRepositoryProvider.overrideWithValue(auth),
         profileRepositoryProvider.overrideWithValue(FakeProfileRepository()),
         groupRepositoryProvider.overrideWithValue(
@@ -166,6 +173,8 @@ Future<GoRouter> _pump(
         theme: AppTheme.light,
         localizationsDelegates: AppTexts.localizationsDelegates,
         supportedLocales: AppTexts.supportedLocales,
+        // Épinglée : ces tests affirment des phrases françaises exactes.
+        locale: const Locale('fr'),
       ),
     ),
   );

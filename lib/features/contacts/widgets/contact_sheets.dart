@@ -185,7 +185,7 @@ class ContactActionsSheet extends ConsumerWidget {
                               ),
                               AppSpacing.hGapXs,
                               Text(
-                                date.libelle,
+                                date.libelle(AppTexts.of(context)),
                                 style: context.typo.caption.copyWith(
                                   color: context.couleurs.warningInk,
                                 ),
@@ -244,14 +244,14 @@ class ContactActionsSheet extends ConsumerWidget {
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.of(dialogue).pop(false),
-            child: const Text('Annuler'),
+            child: Text(t.commonCancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogue).pop(true),
             style: TextButton.styleFrom(
               foregroundColor: context.couleurs.danger,
             ),
-            child: const Text('Retirer'),
+            child: Text(t.coreRetirer),
           ),
         ],
       ),

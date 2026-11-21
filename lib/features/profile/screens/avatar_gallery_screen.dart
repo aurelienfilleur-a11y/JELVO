@@ -44,7 +44,7 @@ class _AvatarGalleryScreenState extends ConsumerState<AvatarGalleryScreen> {
         title: Text(AppTexts.of(context).profileChoisirAvatar),
         leading: IconButton(
           icon: const Icon(Icons.close_rounded),
-          tooltip: 'Fermer',
+          tooltip: AppTexts.of(context).commonClose,
           onPressed: _enregistrement
               ? null
               : () => Navigator.of(context).maybePop(),

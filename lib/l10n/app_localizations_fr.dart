@@ -3036,4 +3036,191 @@ class AppTextsFr extends AppTexts {
     );
     return '$destination, $_temp0';
   }
+
+  @override
+  String get profileLangue => 'Langue';
+
+  @override
+  String get profileLangueDuTelephone => 'Celle du téléphone';
+
+  @override
+  String get profileLangueDuTelephoneAide =>
+      'Suit le réglage de l’appareil, et l’anglais si la langue n’est pas proposée';
+
+  @override
+  String get profileLangueFrancais => 'Français';
+
+  @override
+  String get profileLangueAllemand => 'Allemand';
+
+  @override
+  String get profileLangueAnglais => 'Anglais';
+
+  @override
+  String get profileLangueEspagnol => 'Espagnol';
+
+  @override
+  String get homeBonWeekEnd => 'Bon week-end';
+
+  @override
+  String get coreDebutApresMidi => '12';
+
+  @override
+  String get coreDebutSoiree => '18';
+
+  @override
+  String get coreDescription => 'Description';
+
+  @override
+  String get coreRechercher => 'Rechercher';
+
+  @override
+  String get coreProfil => 'Profil';
+
+  @override
+  String get coreLieu => 'Lieu';
+
+  @override
+  String get coreAnniversaire => 'Anniversaire';
+
+  @override
+  String get coreAutre => 'Autre';
+
+  @override
+  String get corePrenom => 'Prénom';
+
+  @override
+  String get coreNom => 'Nom';
+
+  @override
+  String get corePseudo => 'Pseudo';
+
+  @override
+  String get coreHintPseudo => 'pseudo';
+
+  @override
+  String get coreFiltres => 'Filtres';
+
+  @override
+  String get coreRepetition => 'Répétition';
+
+  @override
+  String get coreInvitation => 'Invitation';
+
+  @override
+  String get coreInvitations => 'Invitations';
+
+  @override
+  String get coreChoisir => 'Choisir';
+
+  @override
+  String get corePriorite => 'Priorité';
+
+  @override
+  String get coreDate => 'Date';
+
+  @override
+  String get coreHoraires => 'Horaires';
+
+  @override
+  String get coreDisponible => 'Disponible';
+
+  @override
+  String get coreTout => 'Tout';
+
+  @override
+  String get coreAfficher => 'Afficher';
+
+  @override
+  String get coreFin => 'Fin';
+
+  @override
+  String get coreVideo => 'Vidéo';
+
+  @override
+  String get coreJoindre => 'Joindre';
+
+  @override
+  String get coreFilmer => 'Filmer';
+
+  @override
+  String get coreScanner => 'Scanner';
+
+  @override
+  String get coreResultats => 'Résultats';
+
+  @override
+  String get coreEffacer => 'Effacer';
+
+  @override
+  String get coreFavoris => 'Favoris';
+
+  @override
+  String get coreGerer => 'Gérer';
+
+  @override
+  String get coreActions => 'Actions';
+
+  @override
+  String get coreDiscussion => 'Discussion';
+
+  @override
+  String get coreInviter => 'Inviter';
+
+  @override
+  String get coreSuggestions => 'Suggestions';
+
+  @override
+  String get corePartager => 'Partager';
+
+  @override
+  String get coreAdmin => 'Admin';
+
+  @override
+  String get coreCommencer => 'Commencer';
+
+  @override
+  String get coreCompte => 'Compte';
+
+  @override
+  String get coreDeconnexion => 'Déconnexion';
+
+  @override
+  String get coreJour => 'Jour';
+
+  @override
+  String get coreMois => 'Mois';
+
+  @override
+  String get coreEmail => 'Email';
+
+  @override
+  String get coreBio => 'Bio';
+
+  @override
+  String get coreModifier => 'Modifier';
+
+  @override
+  String get coreContinuer => 'Continuer';
+
+  @override
+  String get coreVerifier => 'Vérifier';
+
+  @override
+  String get coreExceptions => 'Exceptions';
+
+  @override
+  String get coreEvenements => 'Événements';
+
+  @override
+  String get coreTaches => 'Tâches';
+
+  @override
+  String get coreExemplePrenom => 'Camille';
+
+  @override
+  String get coreExempleNom => 'Rousseau';
+
+  @override
+  String get corePlusDOptions => 'Plus d’options';
 }

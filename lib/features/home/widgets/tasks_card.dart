@@ -92,7 +92,7 @@ class TasksCard extends StatelessWidget {
                 Expanded(
                   child: _Compteur(
                     valeur: counts.doneThisWeek,
-                    libelle: 'Terminées',
+                    libelle: t.tasksTerminees,
                     detail: AppTexts.of(context).homeSemaine,
                     couleur: context.couleurs.success,
                     icone: Icons.check_rounded,

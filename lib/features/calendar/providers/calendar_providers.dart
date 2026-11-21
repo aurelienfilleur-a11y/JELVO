@@ -305,7 +305,7 @@ final dayAgendaProvider =
               groupe?.name ?? (event.isPersonal ? t.calendarPersonnel : null),
               event.location,
             ].whereType<String>().join(' · '),
-            timeLabel: AppDates.time(event.start),
+            timeLabel: AppDates.time(event.start, t),
             // Une réponse « oui » n'a pas besoin d'être signalée : c'est le cas
             // attendu.
             statusTone: event.myResponse == EventResponse.yes
@@ -338,7 +338,7 @@ final dayAgendaProvider =
             end: echeance,
             accent: AgendaAccent.tache,
             subtitle: groupe?.name ?? t.calendarPersonnel,
-            timeLabel: AppDates.time(echeance),
+            timeLabel: AppDates.time(echeance, t),
             statusTone: task.isDone ? null : _tonDePriorite(task.priority),
             statusLabel: task.isDone
                 ? t.taskStatusDone
@@ -409,7 +409,7 @@ final dayAgendaProvider =
             // qu'il n'y a pas d'heure à laquelle se présenter.
             end: DateTime(jour.year, jour.month, jour.day, 23, 59),
             accent: AgendaAccent.anniversaire,
-            subtitle: anniv.anniversaire.libelle,
+            subtitle: anniv.anniversaire.libelle(t),
             // La gouttière porte une heure partout ailleurs ; ici elle dirait
             // « 00:00 », ce qui serait faux.
             timeLabel: t.calendarJournee,

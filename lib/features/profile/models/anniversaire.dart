@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../core/utils/date_formatting.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Un jour et un mois, **sans année**.
 ///
@@ -81,7 +82,8 @@ class Anniversaire {
   /// `DateTime` que le formateur sait lire, et elle est **bissextile** à
   /// dessein — avec 2025, `DateTime` ramènerait le 29 février au 1er mars et
   /// le libellé mentirait sur la date saisie.
-  String get libelle => AppDates.dateSansAnnee(DateTime(2024, mois, jour));
+  String libelle(AppTexts t) =>
+      AppDates.dateSansAnnee(DateTime(2024, mois, jour), t);
 
   Map<String, dynamic> get versLigne => <String, dynamic>{
     'anniversaire_jour': jour,

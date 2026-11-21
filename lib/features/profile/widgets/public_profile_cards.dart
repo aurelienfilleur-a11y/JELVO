@@ -135,7 +135,9 @@ class PublicAboutCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final String? bio = profil.profil.bio?.trim();
     final bool aBio = bio != null && bio.isNotEmpty;
-    final String? anniversaire = profil.profil.anniversaire?.libelle;
+    final String? anniversaire = profil.profil.anniversaire?.libelle(
+      AppTexts.of(context),
+    );
     if (!aBio && anniversaire == null) return const SizedBox.shrink();
 
     return AppCard(
@@ -166,7 +168,10 @@ class PublicAboutCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Text('Anniversaire', style: context.typo.bodyMuted),
+                      Text(
+                        AppTexts.of(context).coreAnniversaire,
+                        style: context.typo.bodyMuted,
+                      ),
                       Text(
                         anniversaire,
                         style: context.typo.body.copyWith(

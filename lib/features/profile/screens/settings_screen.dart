@@ -14,6 +14,7 @@ import '../../notifications/push/push_service.dart';
 import '../../notifications/repository/push_repository.dart';
 import '../../notifications/widgets/notification_sheets.dart';
 import '../widgets/appearance_sheet.dart';
+import '../widgets/language_sheet.dart';
 import '../widgets/settings_card.dart';
 
 /// Écran Paramètres : trois cartes titrées, puis la déconnexion.
@@ -46,10 +47,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return Scaffold(
       backgroundColor: context.couleurs.background,
       appBar: AppBar(
-        title: const Text('Paramètres'),
+        title: Text(AppTexts.of(context).navParametres),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Retour',
+          tooltip: AppTexts.of(context).commonBack,
           onPressed: () => Navigator.of(context).maybePop(),
         ),
       ),
@@ -63,7 +64,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           children: <Widget>[
             SettingsCard(
-              titre: 'Compte',
+              titre: AppTexts.of(context).coreCompte,
               lignes: <Widget>[
                 SettingsRow(
                   icone: Icons.person_outline_rounded,
@@ -80,7 +81,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
             AppSpacing.gapLg,
             SettingsCard(
-              titre: 'Notifications',
+              titre: AppTexts.of(context).navNotifications,
               lignes: <Widget>[
                 // La ligne du haut coupe tout : sans autorisation, aucun type
                 // ne part, quel que soit son interrupteur.
@@ -101,7 +102,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
             AppSpacing.gapLg,
             SettingsCard(
-              titre: 'Autre',
+              titre: AppTexts.of(context).coreAutre,
               lignes: <Widget>[
                 SettingsRow(
                   icone: Icons.contrast_rounded,
@@ -110,6 +111,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ref.watch(themeModeProvider),
                   ).libelle(AppTexts.of(context)),
                   onTap: () => AppearanceSheet.ouvrir(context),
+                ),
+                SettingsRow(
+                  icone: Icons.translate_rounded,
+                  libelle: AppTexts.of(context).profileLangue,
+                  valeur: _langueCourante(context, ref),
+                  onTap: () => LanguageSheet.ouvrir(context),
                 ),
                 SettingsRow(
                   icone: Icons.info_outline_rounded,
@@ -139,7 +146,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     )
                   : SettingsRow(
                       icone: Icons.logout_rounded,
-                      libelle: 'Déconnexion',
+                      libelle: AppTexts.of(context).coreDeconnexion,
                       destructif: true,
                       onTap: _confirmerDeconnexion,
                     ),
@@ -178,7 +185,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             actions: <Widget>[
               TextButton(
                 onPressed: () => Navigator.of(dialogue).pop(false),
-                child: const Text('Annuler'),
+                child: Text(AppTexts.of(context).commonCancel),
               ),
               TextButton(
                 onPressed: () => Navigator.of(dialogue).pop(true),
@@ -208,5 +215,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     } finally {
       if (mounted) setState(() => _deconnexion = false);
     }
+  }
+
+  /// Ce que la ligne annonce : la langue choisie, ou celle du téléphone.
+  ///
+  /// **Pas le code `fr` ni le drapeau d'un pays** : un drapeau désigne un
+  /// État et non une langue — l'espagnol est parlé dans vingt pays, et aucun
+  /// ne peut raisonnablement le représenter.
+  String _langueCourante(BuildContext context, WidgetRef ref) {
+    final AppTexts t = AppTexts.of(context);
+    final Locale? choix = ref.watch(localeProvider);
+    return choix == null
+        ? t.profileLangueDuTelephone
+        : LanguageSheet.nomNatif(choix);
   }
 }

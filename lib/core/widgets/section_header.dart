@@ -50,21 +50,33 @@ class SectionHeader extends StatelessWidget {
           ),
           if (showAction) ...<Widget>[
             AppSpacing.hGapMd,
-            TextButton(
-              onPressed: onActionPressed,
-              style: TextButton.styleFrom(
-                foregroundColor: context.couleurs.primary,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.sm,
-                  vertical: AppSpacing.xs,
+            // **Le libellé d'action doit pouvoir se réduire.** Posé nu dans
+            // la `Row`, il prend sa largeur naturelle et déborde : 18 px en
+            // français à 360 dp — le défaut était là avant la traduction —,
+            // 83 px en allemand, où « Alle anzeigen » est plus long que
+            // « Tout voir ». C'est la règle du projet sur les `Row`, et c'est
+            // l'écran le plus étroit qui la rend visible.
+            Flexible(
+              child: TextButton(
+                onPressed: onActionPressed,
+                style: TextButton.styleFrom(
+                  foregroundColor: context.couleurs.primary,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                    vertical: AppSpacing.xs,
+                  ),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  textStyle: context.typo.caption.copyWith(
+                    fontWeight: AppTypography.semiBold,
+                  ),
                 ),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                textStyle: context.typo.caption.copyWith(
-                  fontWeight: AppTypography.semiBold,
+                child: Text(
+                  actionLabel!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              child: Text(actionLabel!),
             ),
           ],
         ],

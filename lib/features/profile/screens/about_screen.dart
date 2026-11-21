@@ -20,7 +20,7 @@ class AboutScreen extends StatelessWidget {
         title: Text(AppTexts.of(context).profileProposJelvo),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Retour',
+          tooltip: AppTexts.of(context).commonBack,
           onPressed: () => Navigator.of(context).maybePop(),
         ),
       ),
@@ -54,7 +54,12 @@ class AboutScreen extends StatelessWidget {
               ),
             ),
             AppSpacing.gapLg,
-            Center(child: Text('Jelvo', style: context.typo.h2)),
+            Center(
+              child: Text(
+                AppTexts.of(context).appTitle,
+                style: context.typo.h2,
+              ),
+            ),
             const SizedBox(height: 2),
             Center(
               child: Text(

@@ -25,10 +25,10 @@ class InvitationsScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: context.couleurs.background,
       appBar: AppBar(
-        title: const Text('Invitations'),
+        title: Text(AppTexts.of(context).coreInvitations),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Retour',
+          tooltip: AppTexts.of(context).commonBack,
           onPressed: () => Navigator.of(context).maybePop(),
         ),
       ),
@@ -46,7 +46,7 @@ class InvitationsScreen extends ConsumerWidget {
               icon: Icons.cloud_off_rounded,
               title: AppTexts.of(context).groupsInvitationsIndisponibles,
               message: AuthFailure.from(error!).message(AppTexts.of(context)),
-              actionLabel: 'Réessayer',
+              actionLabel: AppTexts.of(context).commonRetry,
               onActionPressed: () =>
                   ref.read(invitationsProvider.notifier).refresh(),
             ),
@@ -117,10 +117,10 @@ class _InvitationScreenState extends ConsumerState<InvitationScreen> {
     return Scaffold(
       backgroundColor: context.couleurs.background,
       appBar: AppBar(
-        title: const Text('Invitation'),
+        title: Text(AppTexts.of(context).coreInvitation),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Retour',
+          tooltip: AppTexts.of(context).commonBack,
           onPressed: _enCours ? null : () => Navigator.of(context).maybePop(),
         ),
       ),
@@ -137,7 +137,7 @@ class _InvitationScreenState extends ConsumerState<InvitationScreen> {
               icon: Icons.cloud_off_rounded,
               title: AppTexts.of(context).groupsInvitationIndisponible,
               message: AuthFailure.from(error!).message(AppTexts.of(context)),
-              actionLabel: 'Réessayer',
+              actionLabel: AppTexts.of(context).commonRetry,
               onActionPressed: () =>
                   ref.invalidate(invitationDetailProvider(widget.invitationId)),
             ),
@@ -218,12 +218,12 @@ class _InvitationScreenState extends ConsumerState<InvitationScreen> {
                         invitation.description!.isNotEmpty)
                       InvitationDetailRow(
                         icon: Icons.notes_rounded,
-                        label: 'Description',
+                        label: t.coreDescription,
                         value: invitation.description!,
                       ),
                     InvitationDetailRow(
                       icon: Icons.group_outlined,
-                      label: 'Membres',
+                      label: t.groupMembers,
                       value: invitation.memberLabel(t),
                       dernier: invitation.groupCreatedAt == null,
                     ),
@@ -231,7 +231,7 @@ class _InvitationScreenState extends ConsumerState<InvitationScreen> {
                       InvitationDetailRow(
                         icon: Icons.cake_outlined,
                         label: AppTexts.of(context).groupsCree,
-                        value: AppDates.fullDate(invitation.groupCreatedAt!),
+                        value: AppDates.fullDate(invitation.groupCreatedAt!, t),
                         dernier: true,
                       ),
                   ],
@@ -280,7 +280,7 @@ class _InvitationScreenState extends ConsumerState<InvitationScreen> {
                   couleur: context.couleurs.warning,
                   fond: context.couleurs.warningSoft,
                   texte: t.groupsAdhesionTemporaireJusquAu(
-                    AppDates.fullDate(invitation.membershipExpiresAt!),
+                    AppDates.fullDate(invitation.membershipExpiresAt!, t),
                   ),
                 ),
               ],

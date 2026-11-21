@@ -42,6 +42,7 @@ class MembershipTermPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AppTexts t = AppTexts.of(context);
     final DateTime? choisi = value;
 
     return Column(
@@ -74,7 +75,7 @@ class MembershipTermPicker extends StatelessWidget {
               ),
             _Choix(
               label: choisi != null && !_estUnRaccourci(choisi)
-                  ? AppDates.shortDate(choisi)
+                  ? AppDates.shortDate(choisi, t)
                   : 'Date…',
               icon: Icons.event_rounded,
               selected: choisi != null && !_estUnRaccourci(choisi),
@@ -87,7 +88,7 @@ class MembershipTermPicker extends StatelessWidget {
           Text(
             AppTexts.of(
               context,
-            ).groupsAdhesionJusquAuPuisDisparait(AppDates.fullDate(choisi)),
+            ).groupsAdhesionJusquAuPuisDisparait(AppDates.fullDate(choisi, t)),
             style: context.typo.caption,
           ),
         ],

@@ -33,13 +33,13 @@ class ProfileScreen extends ConsumerWidget {
         title: Text(AppTexts.of(context).profileProfil),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Retour',
+          tooltip: AppTexts.of(context).commonBack,
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         actions: <Widget>[
           IconButton(
             icon: const Icon(Icons.settings_outlined),
-            tooltip: 'Paramètres',
+            tooltip: AppTexts.of(context).navParametres,
             onPressed: () => context.pushNamed(AppRoutes.settings),
           ),
         ],
@@ -51,7 +51,7 @@ class ProfileScreen extends ConsumerWidget {
             icon: Icons.cloud_off_rounded,
             title: AppTexts.of(context).profileProfilIndisponible,
             message: AuthFailure.from(error).message(AppTexts.of(context)),
-            actionLabel: 'Réessayer',
+            actionLabel: AppTexts.of(context).commonRetry,
             onActionPressed: () => ref.invalidate(currentProfileProvider),
           ),
           data: (Profile? profil) => profil == null

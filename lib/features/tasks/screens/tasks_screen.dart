@@ -53,7 +53,7 @@ class TasksScreen extends ConsumerWidget {
         title: EmojiText(groupe?.name ?? 'Tâches'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Retour',
+          tooltip: t.commonBack,
           onPressed: () => context.canPop()
               ? context.pop()
               : context.goNamed(AppRoutes.home),
@@ -74,7 +74,7 @@ class TasksScreen extends ConsumerWidget {
                 message: AuthFailure.from(
                   toutes.error!,
                 ).message(AppTexts.of(context)),
-                actionLabel: 'Réessayer',
+                actionLabel: t.commonRetry,
                 onActionPressed: () =>
                     ref.read(tasksProvider.notifier).refresh(),
               ),

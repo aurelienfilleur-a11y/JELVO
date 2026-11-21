@@ -46,6 +46,7 @@ import 'fakes/fake_notification_repository.dart';
 import 'fakes/fake_push.dart';
 import 'fakes/fake_task_repository.dart';
 import 'fakes/fake_voice.dart';
+import 'package:jelvo/data/language_storage.dart';
 
 final DateTime _testNow = DateTime(2026, 8, 3, 9);
 
@@ -76,6 +77,12 @@ Future<FakeChatRepository> _pumpApp(
     ProviderScope(
       overrides: [
         clockProvider.overrideWithValue(FixedClock(_testNow)),
+        // **La langue est épinglée au français.** Ces tests affirment des
+        // phrases exactes ; sans cela, ils liraient la langue de la machine
+        // — `en_US` sur le harnais — et échoueraient sur du bon anglais.
+        languageStorageProvider.overrideWithValue(
+          EphemeralLanguageStorage(langue: const Locale('fr')),
+        ),
         authRepositoryProvider.overrideWithValue(auth),
         profileRepositoryProvider.overrideWithValue(FakeProfileRepository()),
         groupRepositoryProvider.overrideWithValue(FakeGroupRepository()),
@@ -139,7 +146,7 @@ int _pastilleGroupes(WidgetTester tester) {
 }
 
 void main() {
-  setUpAll(() => initializeDateFormatting(AppDates.locale));
+  setUpAll(() => initializeDateFormatting());
 
   group('Savoir qu’on a reçu un message', () {
     testWidgets('l’onglet Groupes porte une pastille sans y entrer', (

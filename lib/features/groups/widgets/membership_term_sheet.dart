@@ -61,7 +61,7 @@ class _MembershipTermSheetState extends ConsumerState<MembershipTermSheet> {
             membre.isTemporary
                 ? t.groupsMembreJusquAu(
                     membre.displayName,
-                    AppDates.fullDate(membre.expiresAt!),
+                    AppDates.fullDate(membre.expiresAt!, t),
                   )
                 : t.groupsMembreSansTerme(membre.displayName),
             style: context.typo.bodyMuted,
@@ -98,7 +98,7 @@ class _MembershipTermSheetState extends ConsumerState<MembershipTermSheet> {
 
           AppSpacing.gapXl,
           PrimaryButton(
-            label: 'Enregistrer',
+            label: t.commonSave,
             icon: Icons.check_rounded,
             isLoading: _enregistrement,
             onPressed: _enregistrer,
@@ -144,7 +144,7 @@ class _MembershipTermSheetState extends ConsumerState<MembershipTermSheet> {
             issue.message(
               widget.member.shortName,
               t,
-              terme: _terme == null ? null : AppDates.fullDate(_terme!),
+              terme: _terme == null ? null : AppDates.fullDate(_terme!, t),
             ),
           ),
         ),

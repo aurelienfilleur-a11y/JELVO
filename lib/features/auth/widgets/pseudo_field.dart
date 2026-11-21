@@ -46,7 +46,7 @@ class PseudoField extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         AppTextField(
-          label: 'Pseudo',
+          label: AppTexts.of(context).corePseudo,
           hint: 'camille.rousseau',
           controller: controller,
           onChanged: onChanged,

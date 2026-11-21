@@ -73,6 +73,7 @@ class _DayCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AppTexts t = AppTexts.of(context);
     final bool isSelected = AppDates.isSameDay(day, selectedDay);
     final bool isToday = AppDates.isSameDay(day, today);
 
@@ -91,7 +92,7 @@ class _DayCell extends StatelessWidget {
         child: Column(
           children: <Widget>[
             Text(
-              AppDates.weekdayInitial(day),
+              AppDates.weekdayInitial(day, t),
               style: context.typo.caption.copyWith(
                 color: isSelected
                     ? context.couleurs.primary

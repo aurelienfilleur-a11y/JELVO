@@ -203,6 +203,7 @@ class _Carte extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AppTexts t = AppTexts.of(context);
     final Widget contenu = InkWell(
       onTap: onTap,
       borderRadius: AppRadii.cardRadius,
@@ -254,10 +255,20 @@ class _Carte extends StatelessWidget {
             // début, et « 09:00 – 10:30 » dit ce qu'elle ne dit pas.
             if (dansUneCarte && entry.kind != AgendaEntryKind.task) ...<Widget>[
               AppSpacing.hGapSm,
-              Text(
-                AppDates.timeRange(entry.start, entry.end),
-                style: context.typo.caption.copyWith(
-                  color: context.couleurs.textSecondary,
+              // **Une plage horaire n'a pas la même longueur partout** : en
+              // anglais, « 9:00 – 10:30 AM » prend la moitié d'une ligne de
+              // 204 dp, et un intervalle qui change de demi-journée porte
+              // les deux marqueurs. Posée nue dans la `Row`, elle débordait
+              // — la règle du projet sur les `Row` vaut aussi pour un texte
+              // dont c'est la *langue* qui fait varier la longueur.
+              Flexible(
+                child: Text(
+                  AppDates.timeRange(entry.start, entry.end, t),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.typo.caption.copyWith(
+                    color: context.couleurs.textSecondary,
+                  ),
                 ),
               ),
             ] else if (!dansUneCarte && entry.avatars.isNotEmpty) ...<Widget>[

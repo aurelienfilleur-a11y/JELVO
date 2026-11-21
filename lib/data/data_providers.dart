@@ -1,10 +1,11 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter/material.dart' show ThemeMode;
+import 'package:flutter/material.dart' show Locale, ThemeMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'clock.dart';
 import 'onboarding_storage.dart';
 import 'pont_navigateur.dart';
+import 'language_storage.dart';
 import 'theme_storage.dart';
 import 'session_persistence.dart';
 
@@ -71,6 +72,34 @@ class ThemeModeNotifier extends Notifier<ThemeMode> {
     if (state == mode) return;
     state = mode;
     await ref.read(themeStorageProvider).enregistrer(mode);
+  }
+}
+
+/// Le réglage de langue, chargé avant `runApp` pour la même raison que
+/// l'apparence : s'ouvrir en français pour basculer en espagnol à la première
+/// image serait le même clignotement, et il ne se rattrape pas.
+final Provider<LanguageStorage> languageStorageProvider =
+    Provider<LanguageStorage>((Ref ref) => EphemeralLanguageStorage());
+
+/// La langue choisie, ou `null` pour « celle du téléphone ».
+///
+/// **`null` n'est pas une absence de valeur, c'est un choix** : celui de
+/// déléguer au système. C'est ce que `MaterialApp.locale` attend aussi — un
+/// `null` y signifie « résous toi-même », et c'est
+/// `LanguageStorage.resoudre` qui dit alors quoi servir.
+final NotifierProvider<LocaleNotifier, Locale?> localeProvider =
+    NotifierProvider<LocaleNotifier, Locale?>(LocaleNotifier.new);
+
+class LocaleNotifier extends Notifier<Locale?> {
+  @override
+  Locale? build() => ref.watch(languageStorageProvider).choix;
+
+  /// L'état change **avant** l'écriture, comme pour l'apparence : l'écran suit
+  /// le doigt, et un stockage lent ne doit pas retarder la langue.
+  Future<void> choisir(Locale? langue) async {
+    if (state == langue) return;
+    state = langue;
+    await ref.read(languageStorageProvider).enregistrer(langue);
   }
 }
 

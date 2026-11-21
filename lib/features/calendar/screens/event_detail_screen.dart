@@ -37,10 +37,10 @@ class EventDetailScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: context.couleurs.background,
       appBar: AppBar(
-        title: const Text('Événement'),
+        title: Text(AppTexts.of(context).createEvenement),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Retour',
+          tooltip: AppTexts.of(context).commonBack,
           onPressed: () => context.canPop()
               ? context.pop()
               : context.goNamed(AppRoutes.calendar),
@@ -67,7 +67,7 @@ class EventDetailScreen extends ConsumerWidget {
                 icon: Icons.event_busy_rounded,
                 title: AppTexts.of(context).calendarEvenementIntrouvable,
                 message: AppTexts.of(context).calendarEteSupprimeAvezAcces,
-                actionLabel: 'Retour',
+                actionLabel: AppTexts.of(context).commonBack,
                 onActionPressed: () => context.canPop()
                     ? context.pop()
                     : context.goNamed(AppRoutes.calendar),
@@ -96,14 +96,14 @@ class EventDetailScreen extends ConsumerWidget {
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Annuler'),
+            child: Text(t.commonCancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
             style: TextButton.styleFrom(
               foregroundColor: context.couleurs.danger,
             ),
-            child: const Text('Supprimer'),
+            child: Text(t.commonDelete),
           ),
         ],
       ),
@@ -150,8 +150,8 @@ class _Corps extends ConsumerWidget {
               AppSpacing.gapSm,
               Text(
                 t.coreJourEtHeure(
-                  AppDates.fullDate(event.start),
-                  AppDates.timeRange(event.start, event.end),
+                  AppDates.fullDate(event.start, t),
+                  AppDates.timeRange(event.start, event.end, t),
                 ),
                 style: context.typo.bodyMuted,
               ),
@@ -173,19 +173,19 @@ class _Corps extends ConsumerWidget {
             children: <Widget>[
               _Ligne(
                 icon: Icons.place_outlined,
-                label: 'Lieu',
+                label: t.coreLieu,
                 value:
                     event.location ?? AppTexts.of(context).calendarNonPrecise,
               ),
               _Ligne(
                 icon: Icons.groups_outlined,
-                label: 'Groupe',
+                label: t.createGroupField,
                 value: group?.name ?? (event.isPersonal ? 'Personnel' : '—'),
               ),
               if (event.reminderMinutes != null)
                 _Ligne(
                   icon: Icons.notifications_none_rounded,
-                  label: 'Rappel',
+                  label: t.calendarRappel,
                   value: ReminderOffset.fromMinutes(
                     event.reminderMinutes,
                   ).label(AppTexts.of(context)),
@@ -193,7 +193,7 @@ class _Corps extends ConsumerWidget {
               if (event.isRecurring)
                 _Ligne(
                   icon: Icons.repeat_rounded,
-                  label: 'Répétition',
+                  label: t.coreRepetition,
                   value: Recurrence.fromRrule(
                     event.rrule,
                   ).label(AppTexts.of(context)),

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:jelvo/core/core.dart';
 import 'package:jelvo/data/app_config.dart';
 import 'package:jelvo/data/clock.dart';
 import 'package:jelvo/data/data_providers.dart';
@@ -29,6 +28,7 @@ import 'fakes/fake_group_repository.dart';
 import 'fakes/fake_notification_repository.dart';
 import 'fakes/fake_push.dart';
 import 'fakes/fake_task_repository.dart';
+import 'package:jelvo/data/language_storage.dart';
 
 final DateTime _testNow = DateTime(2026, 8, 3, 9);
 
@@ -55,6 +55,12 @@ Future<({FakePushService service, FakePushRepository depot})> _pumpApp(
     ProviderScope(
       overrides: [
         clockProvider.overrideWithValue(FixedClock(_testNow)),
+        // **La langue est épinglée au français.** Ces tests affirment des
+        // phrases exactes ; sans cela, ils liraient la langue de la machine
+        // — `en_US` sur le harnais — et échoueraient sur du bon anglais.
+        languageStorageProvider.overrideWithValue(
+          EphemeralLanguageStorage(langue: const Locale('fr')),
+        ),
         authRepositoryProvider.overrideWithValue(auth),
         profileRepositoryProvider.overrideWithValue(FakeProfileRepository()),
         groupRepositoryProvider.overrideWithValue(FakeGroupRepository()),
@@ -102,7 +108,7 @@ Future<void> _ouvrirFamille(WidgetTester tester, String libelle) async {
 }
 
 void main() {
-  setUpAll(() => initializeDateFormatting(AppDates.locale));
+  setUpAll(() => initializeDateFormatting());
 
   group('Autorisation', () {
     testWidgets('un bouton propose d’activer, et l’abonnement part en base', (
@@ -355,7 +361,6 @@ void main() {
       for (final String absente in const <String>[
         'Sécurité et confidentialité',
         'Sessions actives',
-        'Langue',
         'Fuseau horaire',
         'Aide et support',
         'Préférences',
@@ -363,8 +368,10 @@ void main() {
         expect(find.text(absente), findsNothing, reason: absente);
       }
 
-      // « Apparence » a quitté cette liste : elle mène désormais quelque part.
+      // « Apparence » et « Langue » ont quitté cette liste : toutes deux
+      // mènent désormais quelque part.
       expect(find.text('Apparence'), findsOneWidget);
+      expect(find.text('Langue'), findsOneWidget);
     });
 
     testWidgets('changer de mot de passe est enfin atteignable', (

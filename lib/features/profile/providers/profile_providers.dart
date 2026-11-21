@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/supabase_providers.dart';
 import '../../auth/providers/auth_providers.dart';
+import '../../auth/repository/auth_repository.dart';
 import '../../calendar/models/calendar_event.dart';
 import '../../calendar/providers/calendar_providers.dart';
 import '../../groups/providers/group_providers.dart';
@@ -11,6 +12,7 @@ import '../../tasks/providers/task_providers.dart';
 import '../models/anniversaire.dart';
 import '../models/profil_consultable.dart';
 import '../models/profile.dart';
+import '../models/resultat_suppression.dart';
 import '../repository/profile_repository.dart';
 
 final Provider<ProfileRepository> profileRepositoryProvider =
@@ -197,5 +199,34 @@ class ProfileActions {
   Future<void> effacerAvatar() async {
     await _ref.read(profileRepositoryProvider).effacerAvatar(_userId);
     _ref.invalidate(currentProfileProvider);
+  }
+
+  /// Supprime définitivement le compte, après avoir vérifié le mot de passe.
+  ///
+  /// La vérification est **réelle** : elle passe par une connexion, là où
+  /// `updateUser` ne contrôle rien. C'est la raison pour laquelle le champ
+  /// existe ici alors qu'il a été écarté du changement de mot de passe.
+  ///
+  /// `deja_supprime` compte comme un succès : le réseau peut avoir perdu la
+  /// réponse d'un premier appel, et il faut dans tous les cas refermer la
+  /// session.
+  Future<ResultatSuppression> supprimerLeCompte(String motDePasse) async {
+    final AuthRepository authentification = _ref.read(authRepositoryProvider);
+
+    if (!await authentification.verifierMotDePasse(motDePasse)) {
+      return ResultatSuppression.motDePasseIncorrect;
+    }
+
+    final String etat = await _ref
+        .read(profileRepositoryProvider)
+        .supprimerMonCompte(_userId);
+
+    // texte-en-dur-autorise: mots d'état de la fonction SQL, jamais affichés.
+    if (etat != 'supprime' && etat != 'deja_supprime') {
+      return ResultatSuppression.echec;
+    }
+
+    await authentification.signOut();
+    return ResultatSuppression.supprime;
   }
 }

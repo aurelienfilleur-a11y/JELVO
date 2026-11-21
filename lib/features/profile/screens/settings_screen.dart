@@ -151,6 +151,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       onTap: _confirmerDeconnexion,
                     ),
             ),
+
+            // Dans sa propre carte, et non sous la déconnexion : les deux sont
+            // rouges, et se quitter pour un moment ne se range pas à un doigt
+            // d'écart de se quitter pour de bon. La ligne **ouvre un écran**,
+            // elle ne supprime rien — un doigt qui glisse n'efface aucun
+            // compte.
+            AppSpacing.gapLg,
+            AppCard(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.xs,
+              ),
+              child: SettingsRow(
+                icone: Icons.delete_outline_rounded,
+                libelle: AppTexts.of(context).profileSupprimerCompte,
+                destructif: true,
+                chevron: true,
+                onTap: () => context.pushNamed(AppRoutes.deleteAccount),
+              ),
+            ),
           ],
         ),
       ),

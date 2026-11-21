@@ -133,6 +133,14 @@ abstract final class AppRoutes {
   static const String changePassword = 'changePassword';
   static const String changePasswordPath = '/parametres/mot-de-passe';
 
+  /// Suppression de son propre compte, obligation légale.
+  ///
+  /// Un écran, et non une feuille : ce qui disparaît et ce qui reste doit
+  /// pouvoir être lu jusqu'au bout. La ligne des paramètres ouvre cet
+  /// écran — elle ne supprime rien.
+  static const String deleteAccount = 'deleteAccount';
+  static const String deleteAccountPath = '/parametres/supprimer-mon-compte';
+
   static const String about = 'about';
   static const String aboutPath = '/parametres/a-propos';
 

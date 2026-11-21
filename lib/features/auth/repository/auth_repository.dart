@@ -85,6 +85,19 @@ abstract interface class AuthRepository {
   /// Remplace le mot de passe de l'utilisateur connecté.
   Future<void> updatePassword(String password);
 
+  /// Vrai si [motDePasse] est bien celui du compte connecté.
+  ///
+  /// **Celui-ci contrôle réellement quelque chose**, et c'est ce qui le
+  /// distingue du champ « mot de passe actuel » écarté du changement de mot de
+  /// passe : `updateUser` s'appuie sur la session et ne vérifie rien, alors
+  /// qu'ici la vérification est faite par une connexion. Un champ qui ne
+  /// contrôle rien donne un faux sentiment de sécurité ; celui-ci est demandé
+  /// parce que la suppression d'un compte ne se défait pas.
+  ///
+  /// La session est remplacée par une session équivalente — même personne,
+  /// même compte — et rien à l'écran n'en dépend.
+  Future<bool> verifierMotDePasse(String motDePasse);
+
   /// Vrai si le pseudo n'est pas déjà porté par un autre compte.
   Future<PseudoAvailability> checkPseudoAvailability(String pseudo);
 
@@ -249,6 +262,24 @@ class SupabaseAuthRepository implements AuthRepository {
   Future<void> updatePassword(String password) async {
     try {
       await _auth.updateUser(UserAttributes(password: password));
+    } catch (error) {
+      throw AuthFailure.from(error);
+    }
+  }
+
+  @override
+  Future<bool> verifierMotDePasse(String motDePasse) async {
+    final String? adresse = currentEmail;
+    if (adresse == null) return false;
+    try {
+      await _auth.signInWithPassword(email: adresse, password: motDePasse);
+      return true;
+    } on AuthException {
+      // Un mot de passe refusé n'est pas une panne : c'est la réponse à la
+      // question posée. Tout autre échec, lui, doit remonter — annoncer
+      // « mot de passe incorrect » pour une coupure réseau enverrait
+      // chercher le défaut du mauvais côté.
+      return false;
     } catch (error) {
       throw AuthFailure.from(error);
     }

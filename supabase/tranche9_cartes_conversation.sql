@@ -244,6 +244,12 @@ grant execute on function public.se_desister(uuid) to authenticated;
 -- Quatre colonnes de sortie de plus imposent un `drop function` — `create or
 -- replace` refuse de changer la signature d'un `returns table`. Même arbitrage
 -- qu'en tranche 6 et 8.
+--
+-- **C'est ici que vit la fonction, et non dans la tranche 5a** qui la crée
+-- d'abord : ce fichier s'applique après et fait foi. `supprime`, ajoutée par
+-- la tranche 14, est donc posée ici — l'avoir d'abord mise dans la 5a n'avait
+-- eu aucun effet, et le rejeu l'a dit par « column m.supprime does not
+-- exist ».
 
 drop function if exists public.messages_du_groupe(uuid, timestamptz, integer);
 
@@ -270,7 +276,8 @@ returns table (
   lu_par integer,
   task_id uuid,
   event_id uuid,
-  carte jsonb
+  carte jsonb,
+  supprime boolean
 )
 language sql
 security definer
@@ -288,10 +295,15 @@ as $$
     case when m.deleted_at is null then m.media_duree_s end,
     m.created_at,
     m.deleted_at,
-    p.pseudo,
-    p.first_name,
-    p.last_name,
-    coalesce('preset:' || p.avatar_preset, p.avatar_url),
+    -- Un compte supprimé ne sort **rien** de son identité : ni pseudo, ni
+    -- nom, ni avatar. Comme pour un message supprimé, il ne s'agit pas de le
+    -- masquer à l'écran — ce qui n'est pas renvoyé n'est pas non plus lisible
+    -- dans la réponse réseau.
+    case when p.supprime_le is null then p.pseudo end,
+    case when p.supprime_le is null then p.first_name end,
+    case when p.supprime_le is null then p.last_name end,
+    case when p.supprime_le is null
+         then coalesce('preset:' || p.avatar_preset, p.avatar_url) end,
     coalesce(
       (select jsonb_agg(jsonb_build_object(
                 'user_id', r.user_id, 'emoji', r.emoji) order by r.emoji)
@@ -356,7 +368,14 @@ as $$
                            from public.event_participants pr
                           where pr.event_id = e.id and pr.response = 'no'))
         from public.events e where e.id = m.event_id)
-    end
+    end,
+    -- Le drapeau, et non une phrase : l'écran écrit « Compte supprimé » dans
+    -- la langue de l'appareil, un profil ne choisissant pas ses mots. Et un
+    -- drapeau explicite plutôt qu'une identité nulle devinée — un profil
+    -- absent et un compte supprimé seraient alors indiscernables, et s'en
+    -- remettre à cette coïncidence est ce que ce projet appelle une
+    -- devinette.
+    p.supprime_le is not null
   from public.messages m
   join public.profiles p on p.id = m.sender_id
   where m.group_id = p_group_id

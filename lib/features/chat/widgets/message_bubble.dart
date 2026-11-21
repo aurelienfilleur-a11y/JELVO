@@ -84,9 +84,11 @@ class MessageBubble extends StatelessWidget {
               // bas : c'est le geste qu'on cherche quand on lit un message de
               // quelqu'un qu'on ne replace pas.
               child: GestureDetector(
-                onTap: () => context.ouvrirProfilDe(message.senderId),
+                onTap: message.senderSupprime
+                    ? null
+                    : () => context.ouvrirProfilDe(message.senderId),
                 child: EmojiText(
-                  message.senderName ?? 'Membre',
+                  _nomExpediteur(context),
                   style: context.typo.caption.copyWith(
                     // Une couleur par personne, dérivée de son identifiant :
                     // dans un groupe de huit, le gris uniforme obligeait à lire
@@ -188,10 +190,16 @@ class MessageBubble extends StatelessWidget {
                   // Aligné sur la bulle, pas sur la marge basse qui la suit.
                   padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                   child: GestureDetector(
-                    onTap: () => context.ouvrirProfilDe(message.senderId),
+                    // Un compte supprimé n'a plus de profil à ouvrir :
+                    // `profil_consultable` ne rend plus de ligne, et le geste
+                    // mènerait à « introuvable ». Mieux vaut qu'il ne mène
+                    // nulle part que quelque part en erreur.
+                    onTap: message.senderSupprime
+                        ? null
+                        : () => context.ouvrirProfilDe(message.senderId),
                     child: AvatarImage(
                       data: AvatarData(
-                        name: message.senderName ?? 'Membre',
+                        name: _nomExpediteur(context),
                         imageUrl: message.senderAvatarUrl,
                       ),
                       size: _tailleAvatar,
@@ -204,6 +212,18 @@ class MessageBubble extends StatelessWidget {
         Flexible(child: contenu),
       ],
     );
+  }
+
+  /// Le nom à afficher au-dessus des bulles, et sous l'avatar.
+  ///
+  /// Trois cas, dans cet ordre : un compte supprimé se signe « Compte
+  /// supprimé », un profil sans nom retombe sur « Membre », et le reste porte
+  /// son nom. Les deux libellés viennent de l'ARB — ils étaient en dur, et
+  /// « Membre » s'affichait en français dans les quatre langues.
+  String _nomExpediteur(BuildContext context) {
+    final AppTexts t = AppTexts.of(context);
+    if (message.senderSupprime) return t.coreCompteSupprime;
+    return message.senderName ?? t.coreMembre;
   }
 
   /// Un message supprimé ne montre plus rien de son contenu — et n'en reçoit

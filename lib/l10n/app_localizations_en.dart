@@ -3198,4 +3198,82 @@ class AppTextsEn extends AppTexts {
 
   @override
   String get corePlusDOptions => 'More options';
+
+  @override
+  String get profileSupprimerCompte => 'Delete my account';
+
+  @override
+  String get profileSuppressionDefinitive =>
+      'This deletion is permanent: it cannot be undone.';
+
+  @override
+  String get profileSuppressionCeQuiDisparait => 'What disappears';
+
+  @override
+  String get profileSuppressionIdentite =>
+      'Your name, your username, your email address and your photo';
+
+  @override
+  String get profileSuppressionProfil =>
+      'Your bio, your birthday and your availability';
+
+  @override
+  String get profileSuppressionContacts =>
+      'Your contacts, and your pending requests';
+
+  @override
+  String get profileSuppressionGroupes =>
+      'Your group memberships. If you are the only person administering a group, the longest-standing member takes over.';
+
+  @override
+  String get profileSuppressionNotifications =>
+      'Your notifications and your subscriptions';
+
+  @override
+  String get profileSuppressionVocaux =>
+      'Your voice messages, which carry your voice';
+
+  @override
+  String get profileSuppressionCeQuiReste => 'What stays';
+
+  @override
+  String get profileSuppressionMessages =>
+      'Your written messages, signed “Deleted account”, so as not to punch holes in other people’s conversations';
+
+  @override
+  String get profileSuppressionMedias =>
+      'The photos and videos you have shared';
+
+  @override
+  String get profileSuppressionGroupeContenu =>
+      'The tasks and events you have created in a group';
+
+  @override
+  String get profileSuppressionReinscription =>
+      'You will be able to sign up again later with the same address.';
+
+  @override
+  String get profileSuppressionMotDePasse => 'Password';
+
+  @override
+  String get profileSuppressionMotDePasseAide => 'To confirm it is really you';
+
+  @override
+  String get profileSuppressionConfirmer => 'Delete permanently';
+
+  @override
+  String get profileSuppressionMotDePasseIncorrect => 'Incorrect password.';
+
+  @override
+  String get profileSuppressionEchec =>
+      'The deletion did not go through. Your account is intact: try again in a moment.';
+
+  @override
+  String get profileSuppressionFaite => 'Your account has been deleted.';
+
+  @override
+  String get coreCompteSupprime => 'Deleted account';
+
+  @override
+  String get coreMembre => 'Member';
 }

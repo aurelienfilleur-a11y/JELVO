@@ -393,6 +393,10 @@ declare
     -- nom ici, l'écran se rendrait vide et le défaut ne se verrait qu'à
     -- l'usage.
     'profil_consultable',
+    -- Tranche 14. Supprimer son compte sans écrire à personne est une
+    -- obligation légale : fermée, la ligne des paramètres mènerait à un
+    -- refus, et il n'y a aucun autre chemin.
+    'supprimer_mon_compte', 'mes_medias_a_effacer',
     -- Tâches
     'creer_tache', 'modifier_tache', 'supprimer_tache', 'mes_taches',
     'terminer_tache', 'repondre_tache', 's_attribuer_tache',

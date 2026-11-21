@@ -108,6 +108,13 @@ class FakeAuthRepository implements AuthRepository {
   Future<void> updatePassword(String password) async =>
       lastUpdatedPassword = password;
 
+  /// Mot de passe que [verifierMotDePasse] accepte. Tout autre est refusé.
+  String motDePasseValide = 'Secret123';
+
+  @override
+  Future<bool> verifierMotDePasse(String motDePasse) async =>
+      _signedIn && motDePasse == motDePasseValide;
+
   @override
   Future<PseudoAvailability> checkPseudoAvailability(String pseudo) async {
     return pseudosTaken.contains(pseudo)
@@ -259,6 +266,24 @@ class FakeProfileRepository implements ProfileRepository {
   Future<Profile> effacerAvatar(String userId) async {
     _profile = _remplacerAvatar(url: null, preset: null);
     return _profile;
+  }
+
+  /// Vrai dès que la suppression de compte a été demandée.
+  ///
+  /// Un drapeau et non un compteur : ce qui s'éprouve, c'est qu'elle part — ou
+  /// qu'elle ne part pas quand le mot de passe est refusé, et c'est là le
+  /// contrôle qui compte.
+  bool suppressionDemandee = false;
+
+  /// Mot d'état que rend [supprimerMonCompte]. À passer à autre chose que
+  /// `supprime` pour éprouver le refus côté base.
+  // texte-en-dur-autorise: mot d'état de la fonction SQL, jamais affiché.
+  String etatSuppression = 'supprime';
+
+  @override
+  Future<String> supprimerMonCompte(String userId) async {
+    suppressionDemandee = true;
+    return etatSuppression;
   }
 
   /// `copyWith` ne sait pas remettre un champ à `null` : on reconstruit.

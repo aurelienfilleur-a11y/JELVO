@@ -3222,4 +3222,83 @@ class AppTextsDe extends AppTexts {
 
   @override
   String get corePlusDOptions => 'Weitere Optionen';
+
+  @override
+  String get profileSupprimerCompte => 'Mein Konto löschen';
+
+  @override
+  String get profileSuppressionDefinitive =>
+      'Diese Löschung ist endgültig: sie kann nicht widerrufen werden.';
+
+  @override
+  String get profileSuppressionCeQuiDisparait => 'Was verschwindet';
+
+  @override
+  String get profileSuppressionIdentite =>
+      'Dein Name, dein Benutzername, deine E-Mail-Adresse und dein Foto';
+
+  @override
+  String get profileSuppressionProfil =>
+      'Deine Bio, dein Geburtstag und deine Verfügbarkeiten';
+
+  @override
+  String get profileSuppressionContacts =>
+      'Deine Kontakte und deine offenen Anfragen';
+
+  @override
+  String get profileSuppressionGroupes =>
+      'Deine Gruppenmitgliedschaften. Wenn du eine Gruppe allein verwaltest, übernimmt das älteste Mitglied deine Rolle.';
+
+  @override
+  String get profileSuppressionNotifications =>
+      'Deine Benachrichtigungen und deine Abos';
+
+  @override
+  String get profileSuppressionVocaux =>
+      'Deine Sprachnachrichten, die deine Stimme tragen';
+
+  @override
+  String get profileSuppressionCeQuiReste => 'Was bleibt';
+
+  @override
+  String get profileSuppressionMessages =>
+      'Deine geschriebenen Nachrichten, mit „Gelöschtes Konto“ gezeichnet, damit die Gespräche der anderen keine Lücken bekommen';
+
+  @override
+  String get profileSuppressionMedias =>
+      'Die Fotos und Videos, die du geteilt hast';
+
+  @override
+  String get profileSuppressionGroupeContenu =>
+      'Die Aufgaben und Termine, die du in einer Gruppe erstellt hast';
+
+  @override
+  String get profileSuppressionReinscription =>
+      'Du kannst dich später mit derselben Adresse neu anmelden.';
+
+  @override
+  String get profileSuppressionMotDePasse => 'Passwort';
+
+  @override
+  String get profileSuppressionMotDePasseAide =>
+      'Um zu bestätigen, dass du es bist';
+
+  @override
+  String get profileSuppressionConfirmer => 'Endgültig löschen';
+
+  @override
+  String get profileSuppressionMotDePasseIncorrect => 'Falsches Passwort.';
+
+  @override
+  String get profileSuppressionEchec =>
+      'Die Löschung ist nicht durchgegangen. Dein Konto ist unverändert: versuche es gleich noch einmal.';
+
+  @override
+  String get profileSuppressionFaite => 'Dein Konto wurde gelöscht.';
+
+  @override
+  String get coreCompteSupprime => 'Gelöschtes Konto';
+
+  @override
+  String get coreMembre => 'Mitglied';
 }

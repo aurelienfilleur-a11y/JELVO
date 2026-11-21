@@ -3212,4 +3212,82 @@ class AppTextsEs extends AppTexts {
 
   @override
   String get corePlusDOptions => 'Más opciones';
+
+  @override
+  String get profileSupprimerCompte => 'Eliminar mi cuenta';
+
+  @override
+  String get profileSuppressionDefinitive =>
+      'Esta eliminación es definitiva: no se puede deshacer.';
+
+  @override
+  String get profileSuppressionCeQuiDisparait => 'Lo que desaparece';
+
+  @override
+  String get profileSuppressionIdentite =>
+      'Tu nombre, tu usuario, tu correo electrónico y tu foto';
+
+  @override
+  String get profileSuppressionProfil =>
+      'Tu biografía, tu cumpleaños y tu disponibilidad';
+
+  @override
+  String get profileSuppressionContacts =>
+      'Tus contactos y tus solicitudes pendientes';
+
+  @override
+  String get profileSuppressionGroupes =>
+      'Tus pertenencias a grupos. Si eres la única persona que administra un grupo, el miembro más antiguo ocupa tu lugar.';
+
+  @override
+  String get profileSuppressionNotifications =>
+      'Tus notificaciones y tus suscripciones';
+
+  @override
+  String get profileSuppressionVocaux =>
+      'Tus mensajes de voz, que llevan tu voz';
+
+  @override
+  String get profileSuppressionCeQuiReste => 'Lo que se queda';
+
+  @override
+  String get profileSuppressionMessages =>
+      'Tus mensajes escritos, firmados «Cuenta eliminada», para no dejar huecos en las conversaciones de los demás';
+
+  @override
+  String get profileSuppressionMedias =>
+      'Las fotos y los vídeos que has compartido';
+
+  @override
+  String get profileSuppressionGroupeContenu =>
+      'Las tareas y los eventos que has creado en un grupo';
+
+  @override
+  String get profileSuppressionReinscription =>
+      'Podrás registrarte de nuevo más adelante con la misma dirección.';
+
+  @override
+  String get profileSuppressionMotDePasse => 'Contraseña';
+
+  @override
+  String get profileSuppressionMotDePasseAide => 'Para confirmar que eres tú';
+
+  @override
+  String get profileSuppressionConfirmer => 'Eliminar definitivamente';
+
+  @override
+  String get profileSuppressionMotDePasseIncorrect => 'Contraseña incorrecta.';
+
+  @override
+  String get profileSuppressionEchec =>
+      'La eliminación no se ha completado. Tu cuenta está intacta: inténtalo de nuevo en un momento.';
+
+  @override
+  String get profileSuppressionFaite => 'Tu cuenta ha sido eliminada.';
+
+  @override
+  String get coreCompteSupprime => 'Cuenta eliminada';
+
+  @override
+  String get coreMembre => 'Miembro';
 }

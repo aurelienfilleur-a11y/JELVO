@@ -120,6 +120,17 @@ alter table public.messages replica identity full;
 -- La durée du média est une colonne de sortie de plus : `create or replace`
 -- refuse de changer un `returns table`, d'où le `drop function`. Même
 -- arbitrage qu'en tranches 6, 8 et 9.
+--
+-- ⚠ **Cette définition n'est pas celle qui tourne.** La tranche 9 redéfinit
+-- `messages_du_groupe` pour y ajouter les cartes de la conversation, et elle
+-- s'applique après : c'est elle qui fait foi. Modifier la version ci-dessous
+-- est donc **silencieusement sans effet** — éprouvé, et c'est ainsi que le
+-- drapeau des comptes supprimés a d'abord été posé au mauvais endroit.
+--
+-- Conséquence à connaître : rejouer ce fichier **seul** réinstallerait une
+-- fonction sans `task_id`, `event_id`, `carte` ni `supprime`, et la tranche 9,
+-- inchangée, ne serait pas rejouée derrière. Une fonction qui vit dans deux
+-- fichiers n'a qu'un seul propriétaire, et ce n'est pas le premier.
 
 drop function if exists public.messages_du_groupe(uuid, timestamptz, integer);
 

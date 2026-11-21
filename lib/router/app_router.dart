@@ -33,6 +33,7 @@ import '../features/onboarding/screens/welcome_screen.dart';
 import '../features/profile/screens/avatar_gallery_screen.dart';
 import '../features/profile/screens/about_screen.dart';
 import '../features/profile/screens/change_password_screen.dart';
+import '../features/profile/screens/delete_account_screen.dart';
 import '../features/profile/screens/profile_edit_screen.dart';
 import '../features/profile/screens/public_profile_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
@@ -312,6 +313,13 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
         parentNavigatorKey: _rootNavigatorKey,
         builder: (BuildContext context, GoRouterState state) =>
             const ChangePasswordScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.deleteAccountPath,
+        name: AppRoutes.deleteAccount,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (BuildContext context, GoRouterState state) =>
+            const DeleteAccountScreen(),
       ),
       GoRoute(
         path: AppRoutes.aboutPath,

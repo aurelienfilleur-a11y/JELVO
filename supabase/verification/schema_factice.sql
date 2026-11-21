@@ -149,10 +149,49 @@ create function public.has_social_link(other uuid)
 returns boolean language sql stable as $$ select true $$;
 
 -- Complément pour rejouer aussi les fichiers des tranches précédentes.
+--
+-- Les colonnes au-delà de `(id, email)` sont celles que la tranche 14 vide :
+-- un décor plus pauvre que la vraie base ne vérifierait pas que l'adresse
+-- part, et c'est la moitié de la suppression de compte qui compte le plus.
+-- Relevées sur le projet, pas devinées.
 create table auth.users (
-  id    uuid primary key,
-  email text
+  id                 uuid primary key,
+  email              text,
+  phone              text,
+  email_change       text,
+  encrypted_password text,
+  raw_user_meta_data jsonb default '{}'::jsonb
 );
+
+-- Les quatre tables de `auth` que la suppression vide. Le vrai schéma en
+-- porte vingt-sept et bien plus de colonnes ; celles-ci suffisent à ce que
+-- les `delete` s'exécutent et à ce que le rejeu constate qu'ils ont porté.
+--
+-- `identities` est la seconde adresse : gotrue en garde une copie dans
+-- `identity_data`, et la vider n'aurait servi à rien si on l'avait oubliée.
+create table auth.identities (
+  id            text primary key default gen_random_uuid()::text,
+  user_id       uuid not null,
+  identity_data jsonb not null default '{}'::jsonb,
+  email         text
+);
+
+create table auth.sessions        (id uuid primary key default gen_random_uuid(),
+                                   user_id uuid not null);
+
+-- **`refresh_tokens.user_id` est un `character varying`, pas un `uuid`.**
+-- C'est gotrue qui en décide, et le relever importait : comparer la colonne à
+-- `auth.uid()` sans conversion donne un `42883` — « operator does not exist:
+-- character varying = uuid » — et la suppression entière échouerait. Un décor
+-- qui aurait écrit `uuid` ici l'aurait laissé passer, puis la vraie base
+-- l'aurait refusé après fusion. C'est la règle du dimanche de la tranche 4,
+-- sur un type au lieu d'une contrainte.
+create table auth.refresh_tokens  (id bigserial primary key,
+                                   user_id character varying not null);
+create table auth.mfa_factors     (id uuid primary key default gen_random_uuid(),
+                                   user_id uuid not null);
+create table auth.one_time_tokens (id uuid primary key default gen_random_uuid(),
+                                   user_id uuid not null);
 
 create type public.contact_status    as enum ('pending', 'accepted');
 create type public.invitation_status as enum ('pending', 'accepted', 'declined', 'expired');

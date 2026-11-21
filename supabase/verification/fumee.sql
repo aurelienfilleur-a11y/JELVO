@@ -2008,4 +2008,320 @@ begin
 end;
 $profil$;
 
+
+-- ===========================================================================
+-- Tranche 14 — suppression de compte
+-- ===========================================================================
+-- Deux choses sont éprouvées, et la première est la plus utile.
+--
+-- 1. **Le catalogue est confronté au code.** Toute clé étrangère pointant
+--    vers `profiles(id)` doit figurer dans la liste des sorts décidés
+--    ci-dessous. Une table ajoutée demain et oubliée dans
+--    `tranche14_suppression_compte.sql` fait donc échouer le rejeu, au lieu
+--    de laisser une donnée identifiante derrière elle sans que rien ne le
+--    dise. C'est la méthode de la requête A0 : partir de la base et lui
+--    confronter le code, jamais l'inverse — une liste de tables auxquelles on
+--    a pensé ne voit pas celle à laquelle personne n'a pensé.
+--
+-- 2. Le comportement : ce qui doit partir est parti, ce qui doit rester est
+--    resté, et l'adresse e-mail a bien quitté ses **deux** emplacements.
+
+do $suppression$
+declare
+  camille  constant uuid := '11111111-1111-1111-1111-111111111111';
+  lea      constant uuid := '33333333-3333-3333-3333-333333333333';
+  groupe   constant uuid := '22222222-2222-2222-2222-222222222222';
+  -- Les dix-huit sites relevés dans le catalogue, et leur sort. Toute entrée
+  -- de `pg_constraint` absente d'ici fait échouer le contrôle 1.
+  decides  constant text[] := array[
+    -- supprimés
+    'availabilities.user_id',
+    'contacts.requester_id', 'contacts.addressee_id',
+    'event_participants.user_id',
+    'group_members.user_id',
+    'invitations.invitee_id', 'invitations.inviter_id',
+    'message_reactions.user_id',
+    'message_reads.user_id',
+    'notification_preferences.user_id',
+    'notifications.user_id',
+    'push_outbox.user_id',
+    'push_reminders_sent.user_id',
+    'push_tokens.user_id',
+    'task_assignees.user_id',
+    -- gardés : c'est l'échange des autres
+    'messages.sender_id',
+    'tasks.created_by',
+    'groups.created_by',
+    'task_list_items.checked_by',
+    -- gardé pour un groupe, supprimé pour un rendez-vous personnel
+    'events.owner_id'
+  ];
+  oublie   text;
+  etat     text;
+  ligne    record;
+  lignes   bigint;
+  profil   public.profiles%rowtype;
+  tache_a_elle uuid := gen_random_uuid();
+  message_vocal uuid := gen_random_uuid();
+  message_texte uuid := gen_random_uuid();
+  drapeau  boolean;
+  v_pseudo text;
+  v_prenom text;
+  v_avatar text;
+begin
+  -- 1. Catalogue contre code -------------------------------------------------
+  reset role;
+  select string_agg(format('%s.%s', c.relname, a.attname), ', ')
+    into oublie
+    from pg_constraint k
+    join pg_class c on c.oid = k.conrelid
+    join pg_namespace n on n.oid = c.relnamespace
+    join unnest(k.conkey) with ordinality as cols(attnum, ord) on true
+    join pg_attribute a on a.attrelid = k.conrelid and a.attnum = cols.attnum
+   where k.contype = 'f'
+     and n.nspname = 'public'
+     and k.confrelid = 'public.profiles'::regclass
+     and format('%s.%s', c.relname, a.attname) <> all (decides);
+
+  assert oublie is null,
+         format('ces colonnes référencent profiles et la suppression de '
+                'compte ne dit pas ce qu''elles deviennent : %s', oublie);
+
+  -- 2. Un décor qui touche ce qui doit partir et ce qui doit rester ----------
+  -- Reposé explicitement : treize blocs ont précédé, et la promotion du plus
+  -- ancien ne se vérifie que si l'on sait qui est là. Camille administratrice,
+  -- Léa simple membre, personne d'autre.
+  delete from public.group_members
+   where group_id = groupe and user_id not in (camille, lea);
+
+  insert into public.group_members (group_id, user_id, role, joined_at)
+  values (groupe, camille, 'admin', now() - interval '2 day'),
+         (groupe, lea,     'member', now() - interval '1 day')
+  on conflict (group_id, user_id) do update
+    set role = excluded.role,
+        joined_at = excluded.joined_at,
+        expires_at = null;
+
+  update public.groups set deleted_at = null where id = groupe;
+
+  insert into public.tasks (id, group_id, created_by, title)
+  values (tache_a_elle, groupe, camille, 'Réserver le restaurant');
+
+  insert into public.task_assignees (task_id, user_id, status)
+  values (tache_a_elle, camille, 'accepted'::public.assignee_status);
+
+  -- La carte de la conversation se dit prise : elle doit redonner ses boutons.
+  insert into public.messages (group_id, sender_id, content, task_id,
+                               tache_prise)
+  values (groupe, camille, 'Réserver le restaurant', tache_a_elle, true);
+
+  -- Un message vocal : sa voix part, la bulle reste en « message supprimé ».
+  insert into public.messages (id, group_id, sender_id, media_url, media_kind,
+                               media_duree_s)
+  values (message_vocal, groupe, camille,
+          groupe::text || '/vocal.m4a', 'audio'::public.media_type, 7);
+
+  -- Un message ordinaire : il doit survivre intact, c'est toute la règle.
+  insert into public.messages (id, group_id, sender_id, content)
+  values (message_texte, groupe, camille, 'On fait un barbecue ?');
+
+  insert into public.availabilities
+    (user_id, kind, status, weekday, start_time, end_time)
+  values (camille, 'recurring'::public.availability_kind,
+          'available'::public.availability_status, 1, '09:00', '12:00');
+
+  -- `on conflict` : un bloc précédent a déjà lié ces deux-là. Ce qui compte
+  -- ici est que la ligne existe avant l'appel, pas qui l'a posée.
+  insert into public.contacts (requester_id, addressee_id, status)
+  values (camille, lea, 'accepted'::public.contact_status)
+  on conflict (requester_id, addressee_id) do nothing;
+
+  insert into public.push_tokens (user_id, token, platform)
+  values (camille, 'https://exemple.test/push/camille', 'web');
+
+  -- Une notification **de Léa** qui nomme Camille : elle doit être purgée, et
+  -- c'est la valeur du payload qui la désigne, pas le nom de la clé.
+  insert into public.notifications (user_id, type, payload)
+  values (lea, 'contact_request',
+          jsonb_build_object('requester_id', camille::text,
+                             'name', 'Camille Rousseau'));
+
+  -- Et une qui ne la nomme pas : elle doit survivre. Sans ce second dépôt, la
+  -- purge pourrait vider la boîte de Léa en entier sans que rien ne proteste.
+  insert into public.notifications (user_id, type, payload)
+  values (lea, 'contact_request',
+          jsonb_build_object('requester_id', gen_random_uuid()::text,
+                             'name', 'Quelqu''un d''autre'));
+
+  -- 3. L'appel, sous son propre jeton ----------------------------------------
+  -- Le jeton est posé **explicitement**. S'en remettre à celui que le bloc
+  -- précédent a laissé marcherait par coïncidence, et un jour supprimerait le
+  -- compte de quelqu'un d'autre sans que le rejeu y voie rien à redire.
+  set local role authenticated;
+  set local request.jwt.claims =
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+  select public.supprimer_mon_compte() into etat;
+  assert etat = 'supprime',
+         format('la suppression devait répondre « supprime », reçu « %s »',
+                etat);
+
+  reset role;
+
+  -- 4. Ce qui l'identifie a disparu ------------------------------------------
+  select * into profil from public.profiles where id = camille;
+  assert profil.supprime_le is not null, 'le compte doit être marqué supprimé';
+  assert profil.first_name = '' and profil.last_name = '',
+         'le nom doit être vidé';
+  assert profil.pseudo = 'supprime.' || substr(replace(camille::text, '-', ''), 1, 11),
+         format('pseudo de pierre tombale inattendu : %s', profil.pseudo);
+  assert profil.pseudo ~ '^[a-z0-9.]{3,20}$',
+         format('le pseudo de pierre tombale viole profiles_pseudo_check : %s',
+                profil.pseudo);
+  assert profil.bio is null and profil.avatar_url is null
+         and profil.avatar_preset is null,
+         'bio et avatar doivent être vidés';
+
+  -- L'adresse vit à deux endroits à notre portée. Les deux sont contrôlés :
+  -- vider `auth.users` en laissant `auth.identities` n'aurait rien effacé.
+  select count(*) into lignes
+    from auth.users where id = camille and email is not null;
+  assert lignes = 0, 'auth.users garde encore une adresse e-mail';
+
+  select count(*) into lignes from auth.identities where user_id = camille;
+  assert lignes = 0, 'auth.identities garde encore une copie de l''adresse';
+
+  select count(*) into lignes
+    from auth.refresh_tokens where user_id = camille::text;
+  assert lignes = 0, 'les jetons de rafraîchissement n''ont pas été révoqués';
+
+  -- 5. Contrôle négatif : ses messages restent -------------------------------
+  select count(*) into lignes
+    from public.messages
+   where id = message_texte and deleted_at is null
+     and content = 'On fait un barbecue ?';
+  assert lignes = 1,
+         'un message ordinaire ne doit pas disparaître avec le compte';
+
+  -- 6. Son message vocal, lui, est refermé -----------------------------------
+  select * into ligne from public.messages where id = message_vocal;
+  assert ligne.deleted_at is not null,
+         'le message vocal devait devenir un message supprimé';
+  assert ligne.media_url is null and ligne.media_duree_s is null,
+         'le message vocal garde une référence à son fichier';
+  assert ligne.content = '',
+         'la suppression douce doit vider le contenu sans le mettre à null : '
+         'messages_check exige un contenu ou un média';
+
+  -- 7. La tâche qui n'avait qu'elle retourne au groupe -----------------------
+  select count(*) into lignes
+    from public.task_assignees where task_id = tache_a_elle;
+  assert lignes = 0, 'son assignation devait partir';
+
+  select count(*) into lignes
+    from public.messages
+   where task_id = tache_a_elle and tache_prise;
+  assert lignes = 0,
+         'la carte se dit encore prise alors que plus personne ne l''a : '
+         'ses boutons ne reviendraient pas';
+
+  select count(*) into lignes
+    from public.tasks where id = tache_a_elle and deleted_at is null;
+  assert lignes = 1, 'la tâche elle-même ne devait pas être supprimée';
+
+  -- 8. Le reste de ce qui est à elle -----------------------------------------
+  select count(*) into lignes from public.availabilities where user_id = camille;
+  assert lignes = 0, 'ses disponibilités devaient partir';
+
+  select count(*) into lignes from public.contacts
+   where requester_id = camille or addressee_id = camille;
+  assert lignes = 0, 'ses contacts devaient partir des deux bouts';
+
+  select count(*) into lignes from public.push_tokens where user_id = camille;
+  assert lignes = 0, 'son abonnement push devait partir';
+
+  select count(*) into lignes from public.group_members where user_id = camille;
+  assert lignes = 0, 'ses adhésions devaient partir';
+
+  -- 9. La notification **de Léa** qui la nommait -----------------------------
+  select count(*) into lignes
+    from public.notifications n
+   where n.user_id = lea
+     and exists (select 1 from jsonb_each_text(n.payload) kv
+                  where kv.value = camille::text);
+  assert lignes = 0,
+         'une notification qui nomme un compte supprimé doit être purgée, '
+         'et elle se reconnaît à la valeur de son payload';
+
+  -- Contrôle négatif : la purge ne vide pas la boîte de Léa en entier.
+  select count(*) into lignes
+    from public.notifications n
+   where n.user_id = lea
+     and n.payload->>'name' = 'Quelqu''un d''autre';
+  assert lignes = 1,
+         'la purge a emporté une notification qui ne nommait pas le compte '
+         'supprimé';
+
+  -- 10. Le groupe : Léa était simple membre, elle reprend le rôle -----------
+  select m.role::text into etat
+    from public.group_members m
+   where m.group_id = groupe and m.user_id = lea;
+  assert etat = 'admin',
+         format('plus aucun admin : le plus ancien membre devait être promu, '
+                'rôle trouvé « %s »', etat);
+
+  select count(*) into lignes
+    from public.groups where id = groupe and deleted_at is null;
+  assert lignes = 1,
+         'le groupe gardait un membre actif : il ne devait pas être fermé';
+
+  -- 11. Ce que les autres voient d'elle désormais ----------------------------
+  -- `nom_affiche` rend `null`, chemin qui existe déjà et que les écrans
+  -- savent reformuler sans sujet. Et `profil_consultable` ne rend plus rien.
+  assert public.nom_affiche(camille) is null,
+         'un compte supprimé ne doit plus avoir de nom à écrire';
+
+  set local role authenticated;
+  set local request.jwt.claims =
+    '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}';
+  select count(*) into lignes from public.profil_consultable(camille);
+  assert lignes = 0,
+         'le profil d''un compte supprimé ne doit plus être consultable';
+
+  select count(*) into lignes
+    from public.chercher_profils_par_pseudo('supprime');
+  assert lignes = 0,
+         'un compte supprimé ne doit pas ressortir d''une recherche de pseudo';
+
+  -- 12. La conversation le dit, et par un drapeau ----------------------------
+  select count(*) into lignes
+    from public.messages_du_groupe(groupe) m where m.id = message_texte;
+  assert lignes = 1,
+         'la lecture de la conversation ne rend pas le message attendu : '
+         'le contrôle du drapeau ne prouverait rien';
+
+  -- Des variables scalaires plutôt qu'un `record` : une variable `record`
+  -- garde la structure de son affectation précédente, et l'assertion échoue
+  -- alors sur « has no field », ce qui désigne le test et non la fonction.
+  select m.supprime, m.pseudo, m.first_name, m.avatar_url
+    into drapeau, v_pseudo, v_prenom, v_avatar
+    from public.messages_du_groupe(groupe) m where m.id = message_texte;
+
+  assert drapeau, 'la lecture doit signaler un compte supprimé';
+  assert v_pseudo is null and v_prenom is null and v_avatar is null,
+         'aucune identité ne doit sortir d''un compte supprimé';
+
+  -- 13. Rejouable : un second appel ne refait pas le travail ----------------
+  reset role;
+  set local role authenticated;
+  set local request.jwt.claims =
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+  select public.supprimer_mon_compte() into etat;
+  assert etat = 'deja_supprime',
+         format('un second appel devait répondre « deja_supprime », reçu « %s »',
+                etat);
+
+  raise notice 'Fumée : la suppression de compte de la tranche 14 répond.';
+end;
+$suppression$;
+
 rollback;

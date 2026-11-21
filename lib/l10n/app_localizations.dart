@@ -5247,6 +5247,138 @@ abstract class AppTexts {
   /// In fr, this message translates to:
   /// **'Plus d’options'**
   String get corePlusDOptions;
+
+  /// No description provided for @profileSupprimerCompte.
+  ///
+  /// In fr, this message translates to:
+  /// **'Supprimer mon compte'**
+  String get profileSupprimerCompte;
+
+  /// No description provided for @profileSuppressionDefinitive.
+  ///
+  /// In fr, this message translates to:
+  /// **'Cette suppression est définitive : elle ne peut pas être annulée.'**
+  String get profileSuppressionDefinitive;
+
+  /// No description provided for @profileSuppressionCeQuiDisparait.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ce qui disparaît'**
+  String get profileSuppressionCeQuiDisparait;
+
+  /// No description provided for @profileSuppressionIdentite.
+  ///
+  /// In fr, this message translates to:
+  /// **'Votre nom, votre pseudo, votre adresse e-mail et votre photo'**
+  String get profileSuppressionIdentite;
+
+  /// No description provided for @profileSuppressionProfil.
+  ///
+  /// In fr, this message translates to:
+  /// **'Votre bio, votre anniversaire et vos disponibilités'**
+  String get profileSuppressionProfil;
+
+  /// No description provided for @profileSuppressionContacts.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vos contacts, et vos demandes en attente'**
+  String get profileSuppressionContacts;
+
+  /// No description provided for @profileSuppressionGroupes.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vos adhésions aux groupes. Si vous êtes la seule personne à administrer un groupe, le plus ancien membre prend votre place.'**
+  String get profileSuppressionGroupes;
+
+  /// No description provided for @profileSuppressionNotifications.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vos notifications et vos abonnements'**
+  String get profileSuppressionNotifications;
+
+  /// No description provided for @profileSuppressionVocaux.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vos messages vocaux, qui portent votre voix'**
+  String get profileSuppressionVocaux;
+
+  /// No description provided for @profileSuppressionCeQuiReste.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ce qui reste'**
+  String get profileSuppressionCeQuiReste;
+
+  /// No description provided for @profileSuppressionMessages.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vos messages écrits, signés « Compte supprimé », pour ne pas trouer les échanges des autres'**
+  String get profileSuppressionMessages;
+
+  /// No description provided for @profileSuppressionMedias.
+  ///
+  /// In fr, this message translates to:
+  /// **'Les photos et les vidéos que vous avez partagées'**
+  String get profileSuppressionMedias;
+
+  /// No description provided for @profileSuppressionGroupeContenu.
+  ///
+  /// In fr, this message translates to:
+  /// **'Les tâches et les événements que vous avez créés dans un groupe'**
+  String get profileSuppressionGroupeContenu;
+
+  /// No description provided for @profileSuppressionReinscription.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vous pourrez vous réinscrire plus tard avec la même adresse.'**
+  String get profileSuppressionReinscription;
+
+  /// No description provided for @profileSuppressionMotDePasse.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mot de passe'**
+  String get profileSuppressionMotDePasse;
+
+  /// No description provided for @profileSuppressionMotDePasseAide.
+  ///
+  /// In fr, this message translates to:
+  /// **'Pour confirmer que c’est bien vous'**
+  String get profileSuppressionMotDePasseAide;
+
+  /// No description provided for @profileSuppressionConfirmer.
+  ///
+  /// In fr, this message translates to:
+  /// **'Supprimer définitivement'**
+  String get profileSuppressionConfirmer;
+
+  /// No description provided for @profileSuppressionMotDePasseIncorrect.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mot de passe incorrect.'**
+  String get profileSuppressionMotDePasseIncorrect;
+
+  /// No description provided for @profileSuppressionEchec.
+  ///
+  /// In fr, this message translates to:
+  /// **'La suppression n’a pas abouti. Votre compte est intact : réessayez dans un instant.'**
+  String get profileSuppressionEchec;
+
+  /// No description provided for @profileSuppressionFaite.
+  ///
+  /// In fr, this message translates to:
+  /// **'Votre compte a été supprimé.'**
+  String get profileSuppressionFaite;
+
+  /// No description provided for @coreCompteSupprime.
+  ///
+  /// In fr, this message translates to:
+  /// **'Compte supprimé'**
+  String get coreCompteSupprime;
+
+  /// No description provided for @coreMembre.
+  ///
+  /// In fr, this message translates to:
+  /// **'Membre'**
+  String get coreMembre;
 }
 
 class _AppTextsDelegate extends LocalizationsDelegate<AppTexts> {

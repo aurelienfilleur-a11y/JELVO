@@ -67,6 +67,7 @@ class Message {
     this.deletedAt,
     this.senderName,
     this.senderAvatarUrl,
+    this.senderSupprime = false,
     this.reactions = const <MessageReaction>[],
     this.readCount = 0,
     this.pending = false,
@@ -94,6 +95,7 @@ class Message {
       )?.toLocal(),
       senderName: _nomAffiche(row),
       senderAvatarUrl: row['avatar_url'] as String?,
+      senderSupprime: row['supprime'] as bool? ?? false,
       reactions: brutes is List
           ? <MessageReaction>[
               for (final Object? brute in brutes)
@@ -129,6 +131,17 @@ class Message {
 
   final String? senderName;
   final String? senderAvatarUrl;
+
+  /// Vrai si l'expéditeur a supprimé son compte.
+  ///
+  /// **Un drapeau, et non la phrase « Compte supprimé » stockée en base** :
+  /// l'application est en quatre langues, et un nom écrit côté serveur
+  /// s'afficherait en français sur un téléphone allemand. C'est la règle du
+  /// projet — un modèle dit ce que la chose est, le widget en tire le mot.
+  ///
+  /// Et un drapeau explicite plutôt qu'une identité nulle devinée : un profil
+  /// absent et un compte supprimé seraient alors indiscernables.
+  final bool senderSupprime;
 
   final List<MessageReaction> reactions;
 
@@ -222,6 +235,7 @@ class Message {
       deletedAt: deletedAt ?? this.deletedAt,
       senderName: senderName,
       senderAvatarUrl: senderAvatarUrl,
+      senderSupprime: senderSupprime,
       reactions: reactions ?? this.reactions,
       readCount: readCount ?? this.readCount,
       pending: pending ?? this.pending,

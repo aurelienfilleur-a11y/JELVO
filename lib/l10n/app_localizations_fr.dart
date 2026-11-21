@@ -3223,4 +3223,83 @@ class AppTextsFr extends AppTexts {
 
   @override
   String get corePlusDOptions => 'Plus d’options';
+
+  @override
+  String get profileSupprimerCompte => 'Supprimer mon compte';
+
+  @override
+  String get profileSuppressionDefinitive =>
+      'Cette suppression est définitive : elle ne peut pas être annulée.';
+
+  @override
+  String get profileSuppressionCeQuiDisparait => 'Ce qui disparaît';
+
+  @override
+  String get profileSuppressionIdentite =>
+      'Votre nom, votre pseudo, votre adresse e-mail et votre photo';
+
+  @override
+  String get profileSuppressionProfil =>
+      'Votre bio, votre anniversaire et vos disponibilités';
+
+  @override
+  String get profileSuppressionContacts =>
+      'Vos contacts, et vos demandes en attente';
+
+  @override
+  String get profileSuppressionGroupes =>
+      'Vos adhésions aux groupes. Si vous êtes la seule personne à administrer un groupe, le plus ancien membre prend votre place.';
+
+  @override
+  String get profileSuppressionNotifications =>
+      'Vos notifications et vos abonnements';
+
+  @override
+  String get profileSuppressionVocaux =>
+      'Vos messages vocaux, qui portent votre voix';
+
+  @override
+  String get profileSuppressionCeQuiReste => 'Ce qui reste';
+
+  @override
+  String get profileSuppressionMessages =>
+      'Vos messages écrits, signés « Compte supprimé », pour ne pas trouer les échanges des autres';
+
+  @override
+  String get profileSuppressionMedias =>
+      'Les photos et les vidéos que vous avez partagées';
+
+  @override
+  String get profileSuppressionGroupeContenu =>
+      'Les tâches et les événements que vous avez créés dans un groupe';
+
+  @override
+  String get profileSuppressionReinscription =>
+      'Vous pourrez vous réinscrire plus tard avec la même adresse.';
+
+  @override
+  String get profileSuppressionMotDePasse => 'Mot de passe';
+
+  @override
+  String get profileSuppressionMotDePasseAide =>
+      'Pour confirmer que c’est bien vous';
+
+  @override
+  String get profileSuppressionConfirmer => 'Supprimer définitivement';
+
+  @override
+  String get profileSuppressionMotDePasseIncorrect => 'Mot de passe incorrect.';
+
+  @override
+  String get profileSuppressionEchec =>
+      'La suppression n’a pas abouti. Votre compte est intact : réessayez dans un instant.';
+
+  @override
+  String get profileSuppressionFaite => 'Votre compte a été supprimé.';
+
+  @override
+  String get coreCompteSupprime => 'Compte supprimé';
+
+  @override
+  String get coreMembre => 'Membre';
 }

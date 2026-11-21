@@ -63,6 +63,23 @@ abstract interface class ProfileRepository {
     required Uint8List bytes,
     required String fileExtension,
   });
+
+  /// Supprime définitivement le compte, et renvoie le mot d'état de
+  /// `supprimer_mon_compte` — `supprime`, `deja_supprime`, `introuvable`,
+  /// `non_connecte`.
+  ///
+  /// **L'ordre des étapes n'est pas interchangeable, et il est tenu ici plutôt
+  /// que dans l'écran.** Les fichiers partent d'abord, l'appel SQL ensuite :
+  /// après l'anonymisation, la session est révoquée et plus rien dans le
+  /// stockage n'est accessible. Si le retrait des fichiers échoue, l'appel SQL
+  /// n'a pas lieu — le compte reste entier et la personne peut réessayer, ce
+  /// qui vaut mieux que l'inverse : des fichiers qu'elle n'a plus le droit de
+  /// supprimer.
+  ///
+  /// **Le stockage ne peut pas être vidé depuis le SQL** : un `delete` sur
+  /// `storage.objects` retire la ligne et laisse les octets dans le bucket.
+  /// Seule l'API Storage efface l'objet, donc seul le client peut le faire.
+  Future<String> supprimerMonCompte(String userId);
 }
 
 class SupabaseProfileRepository implements ProfileRepository {
@@ -220,6 +237,44 @@ class SupabaseProfileRepository implements ProfileRepository {
           .select()
           .single();
       return Profile.fromMap(row);
+    } catch (error) {
+      throw AuthFailure.from(error);
+    }
+  }
+
+  @override
+  Future<String> supprimerMonCompte(String userId) async {
+    try {
+      // 1. Ses messages vocaux. Sa voix l'identifie directement, là où une
+      //    photo est le plus souvent photo de quelque chose : seuls les
+      //    vocaux sont retirés, et la fonction SQL dit lesquels.
+      final List<dynamic> lignes = await _client.rpc('mes_medias_a_effacer');
+      final List<String> vocaux = <String>[
+        for (final Object? ligne in lignes)
+          if (ligne is Map<String, dynamic> && ligne['chemin'] is String)
+            ligne['chemin'] as String,
+      ];
+      if (vocaux.isNotEmpty) {
+        await _client.storage.from(AppConfig.chatMediaBucket).remove(vocaux);
+      }
+
+      // 2. Son dossier d'avatars, vidé en entier. Il peut porter plusieurs
+      //    fichiers : rien n'a jamais retiré l'ancien à chaque changement de
+      //    photo, et ils sont tous à elle.
+      final List<FileObject> fichiers = await _client.storage
+          .from(AppConfig.avatarsBucket)
+          .list(path: userId);
+      if (fichiers.isNotEmpty) {
+        await _client.storage.from(AppConfig.avatarsBucket).remove(<String>[
+          for (final FileObject fichier in fichiers) '$userId/${fichier.name}',
+        ]);
+      }
+
+      // 3. Et seulement maintenant, l'anonymisation. Après elle, la session
+      //    est révoquée et plus rien de ce qui précède n'est possible.
+      final Object? etat = await _client.rpc('supprimer_mon_compte');
+      // texte-en-dur-autorise: mot d'état de la fonction SQL, jamais affiché.
+      return (etat as String?) ?? 'inconnu';
     } catch (error) {
       throw AuthFailure.from(error);
     }

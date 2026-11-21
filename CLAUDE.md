@@ -1488,12 +1488,14 @@ diagnostic à l'écart.
 **L'ordre du fichier n'est pas celui des numéros**, et ne peut pas l'être :
 `tranche7_durcissement.sql` referme l'exécution de toute fonction absente de sa
 liste et **lève si un nom de sa liste n'existe pas en base**. Il reste donc le
-dernier passage, et les tranches 8 à 13 s'insèrent avant lui.
+dernier passage, et les tranches 8 à 14 s'insèrent avant lui.
 
-Deux fichiers **précèdent** au contraire tout le reste, et pour la même
+Trois fichiers **précèdent** au contraire tout le reste, et pour la même
 raison : ils ajoutent une colonne ou une valeur d'énumération que des fonctions
 en `language sql` — dont PostgreSQL valide le corps à la création —
 mentionnent. `colonne_avatar_predefini.sql` ouvre le manifeste,
+`colonne_compte_supprime.sql` le suit — `messages_du_groupe`, `nom_affiche` et
+`chercher_profils_par_pseudo` lisent `supprime_le` —, et
 `colonne_media_audio.sql` se place juste avant `tranche5a_chat.sql`.
 
 Trois entrées de `supabase/` ne sont **pas** des migrations : elles n'écrivent
@@ -4020,6 +4022,174 @@ consultée que son absence.
 
 ---
 
+## Suppression de compte
+
+Obligation légale, livrée par `supabase/tranche14_suppression_compte.sql` et
+l'écran `/parametres/supprimer-mon-compte`. Depuis les paramètres, sans écrire
+à personne.
+
+La règle : **tout ce qui l'identifie disparaît, ses messages restent**, signés
+« Compte supprimé », pour ne pas trouer les échanges des autres.
+
+### Le schéma impose la forme, elle n'a pas été choisie
+
+`profiles.id` référence `auth.users(id)` **on delete cascade**, et
+`messages.sender_id` référence `profiles(id)` **sans cascade**. Supprimer la
+ligne d'authentification entraîne donc la suppression du profil, que
+PostgreSQL refuse en `23503` tant qu'un seul message subsiste.
+
+« Ses messages restent » et « sa ligne est supprimée » sont **incompatibles
+par construction**. Et la voie officielle ne s'en sort pas mieux :
+`auth.admin.deleteUser` depuis une fonction Edge échouerait sur exactement la
+même contrainte. Ce n'est donc pas un contournement en attendant mieux.
+
+D'où une **pierre tombale** : la ligne survit, son contenu est détruit — y
+compris dans `auth`, où `postgres` a `update` et `delete` (vérifié sur le
+projet, le propriétaire étant pourtant `supabase_auth_admin`).
+
+### Rien ne cascade, et c'est le piège
+
+Douze tables référencent `profiles(id)` en `on delete cascade`. Il serait
+facile d'en conclure qu'elles se vident d'elles-mêmes : **elles ne se vident
+pas**, la ligne `profiles` ne partant pas. Tout est donc supprimé
+explicitement.
+
+La liste des dix-huit sites vient du **catalogue** — `pg_constraint`, toutes
+les clés étrangères pointant vers `profiles` —, pas de mémoire. Et
+`verification/fumee.sql` refait cette confrontation à chaque rejeu : une table
+ajoutée demain et oubliée dans la migration fait **échouer le rejeu**, au lieu
+de laisser une donnée identifiante derrière elle. C'est la méthode de la
+requête A0, appliquée à une suppression.
+
+### Ce que chaque cas devient
+
+| Cas | Sort |
+| --- | --- |
+| nom, prénom, bio, anniversaire, intérêts, fuseau, dernière vue | vidés |
+| pseudo | `supprime.<11 hex>` — vingt caractères, ce qui respecte `profiles_pseudo_check`. Son vrai pseudo **redevient libre** |
+| e-mail | `auth.users.email` à `null`, ligne `auth.identities` supprimée, mot de passe brouillé, sessions et jetons révoqués. L'adresse **redevient disponible** : elle peut se réinscrire avec |
+| avatar | colonnes vidées **et fichiers retirés du bucket** |
+| disponibilités, contacts, réactions, accusés de lecture, invitations | supprimés |
+| abonnements push, préférences, sa boîte, sa file, sa mémoire de rappels | supprimés |
+| notifications **des autres** qui la nomment | purgées |
+| adhésions aux groupes | supprimées, **avec les deux garde-fous de `quitter_groupe`** : plus aucun membre actif referme le groupe, plus aucun administrateur promeut le plus ancien |
+| ses liens d'invitation | **révoqués** — sinon un lien d'un compte supprimé continuerait d'ouvrir le groupe |
+| tâches assignées | l'assignation part ; une tâche qui n'avait qu'elle **retourne au groupe**, et `tache_prise` repasse à faux pour que la carte redonne ses boutons |
+| tâches et événements **de groupe** qu'elle a créés | **restent, sans transfert de propriété** : `modifier_evenement` et `supprimer_evenement` acceptent déjà un administrateur du groupe autant que l'auteur |
+| événements **personnels** | supprimés — personne d'autre ne les voit |
+| ses messages écrits | **restent** |
+| ses photos et vidéos de conversation | **restent** : une photo est le plus souvent photo de quelque chose, et l'effacer trouerait l'échange |
+| ses **messages vocaux** | fichier retiré, bulle refermée en « message supprimé ». Sa voix l'identifie directement, et ce n'est pas une mémoire partagée |
+
+**La purge des notifications d'autrui part des valeurs du `payload`**, et non
+d'une liste de noms de clés : `inviter_id` ici, `requester_id` là, et demain un
+troisième auquel personne n'aurait pensé. Un `jsonb_each_text` compare donc
+toutes les valeurs à son identifiant. Le contrôle négatif est dans le test de
+fumée : une notification qui ne la nomme pas doit survivre.
+
+### Le libellé ne peut pas être stocké
+
+Écrire « Compte supprimé » dans `first_name` était la voie courte, et elle est
+fausse : **l'application est en quatre langues**, et un nom écrit côté serveur
+s'afficherait en français sur un téléphone allemand. C'est la règle du projet,
+celle des couleurs étendue au vocabulaire.
+
+La base porte donc un **drapeau** — `profiles.supprime_le`, et la colonne
+`supprime` de `messages_du_groupe` —, et `AppTexts` écrit la phrase.
+
+Un drapeau explicite, et non une identité nulle devinée : un profil absent et
+un compte supprimé seraient alors indiscernables, et s'en remettre à cette
+coïncidence est exactement ce que ce projet appelle une devinette.
+
+#### `messages_du_groupe` vit dans deux fichiers, et le second gagne
+
+La tranche 5a la crée, **la tranche 9 la redéfinit** pour y ajouter les cartes
+de la conversation — et c'est elle qui fait foi, s'appliquant après. Poser
+`supprime` dans la 5a a donc été **silencieusement sans effet**, jusqu'à ce
+que le rejeu réponde « column m.supprime does not exist ».
+
+Conséquence à connaître, antérieure à cette tranche : rejouer la 5a **seule**
+réinstallerait une fonction sans `task_id`, `event_id`, `carte` ni `supprime`,
+et la tranche 9, inchangée, ne serait pas rejouée derrière. La 5a porte
+désormais un avertissement en tête de sa définition.
+
+**Règle** : une fonction modifiée doit l'être dans le fichier qui la possède —
+et le possesseur est le **dernier** fichier qui la crée, pas le premier. Le
+filtre de `nom_affiche` vit ainsi dans la tranche 5c,
+celui de `profil_consultable` dans la 13, celui de
+`chercher_profils_par_pseudo` dans la 2.
+
+### Le stockage ne peut pas être vidé depuis le SQL
+
+Un `delete` sur `storage.objects` retire la ligne et **laisse les octets dans
+le bucket** : le fichier devient introuvable, il n'est pas effacé. Seule l'API
+Storage supprime l'objet, donc seul le client peut le faire — et **avant**
+l'anonymisation, après laquelle la session est révoquée.
+
+L'ordre est donc : les fichiers, puis l'appel SQL. Si le retrait échoue,
+l'appel n'a pas lieu : le compte reste entier et la personne peut réessayer,
+ce qui vaut mieux que l'inverse — des fichiers qu'elle n'a plus le droit de
+supprimer. L'opération n'est donc **pas atomique**, et c'est le prix de cette
+contrainte.
+
+C'est la **première suppression de fichier de l'application** : rien n'avait
+jamais retiré un ancien avatar. Le dossier `avatars/<id>/` est donc vidé en
+entier, et non fichier par fichier.
+
+### `refresh_tokens.user_id` est un `character varying`
+
+Les quatre autres tables de `auth` que la suppression vide portent un `uuid` ;
+celle-là non, et c'est gotrue qui en décide. Sans conversion explicite,
+PostgreSQL répond « operator does not exist: character varying = uuid »
+(`42883`) et la suppression entière échoue.
+
+Le décor de `verification/` le recopie désormais à l'identique. Un décor en
+`uuid` aurait laissé passer le défaut, que la vraie base aurait refusé après
+fusion : c'est la règle du dimanche de la tranche 4, sur un type au lieu d'une
+contrainte.
+
+### Le mot de passe est redemandé, et il contrôle vraiment
+
+`verifierMotDePasse` passe par `signInWithPassword`. **C'est ce qui le
+distingue** du champ « mot de passe actuel » écarté du changement de mot de
+passe : là, gotrue ne vérifie rien, et un champ qui ne contrôle rien donne un
+faux sentiment de sécurité. Ici la vérification est réelle, et la suppression
+ne se défait pas.
+
+Un mot de passe refusé **n'est pas une panne** : c'est la réponse à la
+question. Tout autre échec remonte — annoncer « mot de passe incorrect » pour
+une coupure réseau enverrait chercher le défaut du mauvais côté.
+
+### Immédiate, sans délai de grâce
+
+Un sursis de trente jours signifierait que les données **ne sont pas
+effacées**, et elle ne pourrait pas l'annuler : la session est fermée et
+l'adresse libérée, donc il n'y a plus de porte pour revenir. Le choix est donc
+l'effacement immédiat, et la réinscription comme seul retour — annoncée sur
+l'écran.
+
+`deja_supprime` compte comme un succès : le réseau peut avoir perdu la réponse
+d'un premier appel, et il faut dans tous les cas refermer la session.
+
+### L'écran, et la ligne qui y mène
+
+Un écran et non une feuille : ce qui disparaît et ce qui reste tient en deux
+listes qui doivent pouvoir être lues jusqu'au bout, et une feuille se referme
+d'un glissement.
+
+**La ligne des paramètres ouvre cet écran, elle ne supprime rien** — un doigt
+qui glisse n'efface donc aucun compte. Elle vit dans sa **propre carte**, et
+non sous la déconnexion : les deux sont rouges, et se quitter pour un moment
+ne se range pas à un doigt d'écart de se quitter pour de bon. Elle garde son
+chevron malgré `destructif`, par `SettingsRow.chevron` : sans lui, elle
+promettrait une suppression au premier contact.
+
+Aucune navigation après le succès : la session fermée, la garde du routeur
+emmène vers la connexion d'elle-même, et dépiler en plus se battrait avec
+elle.
+
+---
+
 ## Écran « Mes contacts »
 
 Quatre blocs : **en-tête**, **bande des favoris**, **carnet rangé par
@@ -4891,6 +5061,7 @@ Téléphone et Localisation écartées.
 | Langue | **ajoutée** | quatre langues, le choix mémorisé sur l'appareil, « Celle du téléphone » par défaut ; voir « Internationalisation » |
 | Fuseau horaire | écartée | `profiles.timezone` **existe** et vaut `Europe/Paris`, mais **rien ne le lit** : les rappels sont rendus en Europe/Paris en dur, côté SQL. L'afficher laisserait croire à un réglage sans effet |
 | Aide et support | écartée | il n'y a ni adresse de support ni page d'aide à ouvrir |
+| Supprimer mon compte | **ajoutée** | obligation légale — voir « Suppression de compte ». Dans sa propre carte, rouge, avec chevron : elle **ouvre un écran** et ne supprime rien |
 
 Les deux dernières se rejoignent : ce ne sont pas des chantiers techniques,
 ce sont des décisions produit — quelle adresse, quel contenu — qui ne se
@@ -5230,6 +5401,17 @@ sécurité.
   bon jour et sur toute la journée, son absence les autres jours, le 29 février
   fêté le 28 en 2026 et le 29 en 2028, **personne sans date qui ne produit
   aucune ligne**, et l'ambre de la palette plutôt qu'une teinte nouvelle.
+- `test/suppression_compte_test.dart` couvre la suppression de compte. Côté
+  chemin : la ligne existe dans les paramètres et **ouvre un écran sans rien
+  supprimer**, les deux listes y sont — l'adresse e-mail et les messages
+  vocaux du côté qui part, la signature « Compte supprimé » et les photos du
+  côté qui reste —, et la réinscription est annoncée. Côté confirmation : un
+  bouton sans mot de passe n'agit pas, **un mot de passe faux ne supprime
+  rien** — le contrôle qui dit que la vérification n'est pas décorative —, le
+  bon referme la session, et un refus de la base reste sur l'écran avec son
+  message, session intacte. Côté conversation : son message survit, signé
+  « Compte supprimé » et **non « Membre »**, et son nom n'ouvre plus de
+  profil.
 - `test/app_version_test.dart` confronte `AppConfig.version` au `pubspec.yaml`,
   sans widget : la version est recopiée à la main, et une version fausse est
   pire qu'une version absente.
@@ -5464,11 +5646,16 @@ sûr d'éprouver son caractère contextuel.
   appelle les fonctions, mais son décor est recopié de cette documentation, et
   ne dit donc rien des colonnes réelles. C'est `supabase/schema_actuel.sql`,
   relevé après coup, qui fait foi.
-- Le test de fumée couvre les tranches 3, 3b, 4, 5a, 5b, 5c, 5d, 6, 8 et 13 —
-  dont, pour la dernière, deux contrôles qui portent sur la **signature** de
+- Le test de fumée couvre les tranches 3, 3b, 4, 5a, 5b, 5c, 5d, 6, 8, 13 et
+  14 — dont, pour la 13, deux contrôles qui portent sur la **signature** de
   `profil_consultable` plutôt que sur une valeur : aucun appel ne révélerait
   une colonne de trop, qu'elle porte une adresse e-mail ou des compteurs
-  retirés. Plus
+  retirés. Pour la 14, c'est **la confrontation du catalogue au code** : toute
+  clé étrangère pointant vers `profiles` doit avoir un sort décidé, si bien
+  qu'une table ajoutée plus tard et oubliée fait échouer le rejeu ; plus les
+  deux contrôles négatifs qui comptent — un message ordinaire survit, et une
+  notification qui ne nomme pas le compte supprimé n'est pas purgée avec les
+  autres. Plus
   de trente fonctions réellement appelées, contrôles négatifs de l'accès au
   bucket, de la mémoire des rappels, du rangement des adhésions, de la portée
   d'`invitation_par_id` et de l'auto-attribution qui ne notifie pas. Le retour
@@ -5597,6 +5784,39 @@ sûr d'éprouver son caractère contextuel.
 - **Rien ne prévient que l'anniversaire d'un contact approche.** La
   notification part le jour même et pas la veille : ajouter une avance
   demanderait de choisir laquelle, et ce n'est pas une décision technique.
+- **La suppression de compte est livrée** — voir sa section. Quatre réserves.
+  D'abord l'**opération n'est pas atomique** : le stockage ne pouvant être
+  vidé que par l'API Storage, les fichiers partent avant l'appel SQL, et une
+  interruption entre les deux laisse un compte entier dont les vocaux sont
+  déjà partis. La personne peut réessayer, c'est le sens de cet ordre-là.
+  Ensuite une trace de l'adresse e-mail **subsiste dans le journal d'audit de
+  gotrue** (`auth.audit_log_entries.payload`, avec l'adresse IP) : c'est un
+  journal d'exploitation que Supabase fait tourner sur une fenêtre glissante,
+  il n'est pas réécrit, et c'est un choix — réécrire un journal
+  d'authentification est une intrusion, et il sert aussi à constater un accès
+  frauduleux. Puis les notifications **déjà empilées** qui la nomment peuvent
+  encore partir : la file se vide chaque minute, la fenêtre est donc d'au plus
+  une minute, et rien de ce qui est déjà délivré ne se rappelle. Enfin l'écran
+  n'a été éprouvé que par les tests et le rejeu sur base jetable : la **vraie**
+  base ne voit la migration qu'après fusion, comme toujours ici.
+- **`tool/verifier_textes.py` a un troisième trou, et il n'est pas refermé.**
+  `POSITIONS` exige que la position de texte soit **adjacente** à la chaîne :
+  `EmojiText(message.senderName ?? 'Membre', …)` ou `label: x ? 'Épinglé' :
+  'Épingler'` lui échappent, parce que la chaîne n'y est pas le premier jeton.
+  Un mot d'un seul tenant passe alors aussi la règle des deux mots, et celle
+  de l'accent demande une espace. **Dix-neuf chaînes françaises atteignent
+  donc l'écran dans les quatre langues** : `'Membre'` ×2 et `'Discussion'`
+  dans le chat, `'Tâche'` et `'Événement'` dans `message_card.dart`,
+  `'Tâches'` et `'Personnel'` ×2 côté tâches, `'Personnelle'`, `'Heure'`,
+  `'Rouvrir'`/`'Terminée'`, `'Épinglé'`/`'Épingler'`, `'Contacts'`/`'Résultats'`,
+  `'Personnel'` du détail d'événement, et deux pluriels écrits à la main
+  (`taches > 1 ? 'tâches' : 'tâche'`, `sharedGroups > 1 ? …`) qui sont faux
+  pour le zéro en anglais, en espagnol et en allemand. Les deux de la bulle de
+  conversation sont corrigées — la suppression de compte écrit dans cette
+  fente —, les dix-sept autres non : refermer le détecteur fait rougir la CI
+  sur toutes, et mêler un balayage de traduction à une livraison légale la
+  rendrait illisible à la revue. C'est le même genre d'écartement trop large
+  que les deux premiers trous, et il rend le vert.
 - **Les sessions actives ne sont pas listables depuis le client** : gotrue ne
   les expose qu'à la clé `service_role`. Il faudrait une fonction Edge.
 - `google_fonts` télécharge Inter au premier lancement. Pour un fonctionnement

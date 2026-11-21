@@ -428,7 +428,19 @@ as $$
              coalesce(p.first_name, '') || ' ' || coalesce(p.last_name, '')), ''),
            p.pseudo)
     from public.profiles p
-   where p.id = p_user_id;
+   where p.id = p_user_id
+     -- Un compte supprimé n'a plus de nom à écrire, et c'est déjà le cas
+     -- prévu : cette fonction rend `null` quand le profil manque, à charge de
+     -- l'appelant d'écrire « Quelqu'un » ou de reformuler sans sujet. Un
+     -- compte supprimé emprunte donc un chemin qui existe et qui est traduit,
+     -- au lieu d'en ouvrir un second.
+     --
+     -- **Le filtre est ici, dans le fichier qui possède la fonction.** Le
+     -- poser dans la tranche de la suppression de compte marcherait
+     -- aujourd'hui et se perdrait le jour où ce fichier-ci serait rejoué
+     -- seul : il réinstallerait sa version, et l'autre, inchangée, ne serait
+     -- pas rejouée derrière.
+     and p.supprime_le is null;
 $$;
 
 

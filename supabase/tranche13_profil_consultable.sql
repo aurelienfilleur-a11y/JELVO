@@ -205,7 +205,16 @@ begin
     end
     from public.profiles p
     left join relation r on true
-   where p.id = p_user_id;
+   where p.id = p_user_id
+     -- Un compte supprimé ne rend **aucune ligne**, exactement comme un
+     -- identifiant inconnu — et l'écran sait déjà le dire. C'est la règle de
+     -- cette tranche telle qu'elle est écrite plus haut : un profil n'a qu'un
+     -- état dégradé, il n'existe pas. Un avatar touché dans une conversation
+     -- mène donc à « introuvable », et non à une fiche vide.
+     --
+     -- Le filtre vit ici, dans le fichier qui possède la fonction : ailleurs,
+     -- il se perdrait au premier rejeu de celui-ci.
+     and p.supprime_le is null;
 end;
 $$;
 

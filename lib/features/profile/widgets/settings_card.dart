@@ -55,6 +55,7 @@ class SettingsRow extends StatelessWidget {
     this.valeur,
     this.couleurValeur,
     this.destructif = false,
+    this.chevron,
   });
 
   final IconData icone;
@@ -66,8 +67,16 @@ class SettingsRow extends StatelessWidget {
 
   final Color? couleurValeur;
 
-  /// Rouge, sans chevron : une action, pas un réglage.
+  /// Rouge, et sans chevron par défaut : une action, pas un réglage.
   final bool destructif;
+
+  /// Force la présence du chevron, indépendamment de [destructif].
+  ///
+  /// « Supprimer mon compte » est rouge **et** ouvre un écran : sans chevron,
+  /// la ligne promettrait une suppression au premier contact, ce qu'elle ne
+  /// fait pas — et la confirmation serait une surprise plutôt qu'une étape.
+  /// `null` garde la règle : chevron si la ligne n'est pas destructive.
+  final bool? chevron;
 
   @override
   Widget build(BuildContext context) {
@@ -116,7 +125,7 @@ class SettingsRow extends StatelessWidget {
                 ),
               ),
             ],
-            if (!destructif) ...<Widget>[
+            if (chevron ?? !destructif) ...<Widget>[
               AppSpacing.hGapSm,
               Icon(
                 Icons.chevron_right_rounded,

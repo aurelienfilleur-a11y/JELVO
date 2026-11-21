@@ -54,6 +54,60 @@
 
 
 -- ---------------------------------------------------------------------------
+-- 0. La recherche de pseudo écarte les comptes supprimés
+-- ---------------------------------------------------------------------------
+-- Le pseudo de pierre tombale commence par « supprime. », et une recherche
+-- sur ce début sortirait tous les comptes supprimés du service. Il n'y a
+-- personne à inviter derrière.
+--
+-- **Ce filtre a d'abord été posé dans la tranche 2, et cela a cassé la
+-- livraison.** Modifier un fichier le fait rejouer, et la tranche 2 n'est
+-- **plus rejouable** : la tranche 6 a redéfini `apercu_groupe_par_jeton` avec
+-- une colonne de sortie de plus, si bien que le `create or replace` de la
+-- tranche 2 tente de revenir en arrière et échoue net —
+--
+--     ERROR: cannot change return type of existing function
+--     HINT:  Use DROP FUNCTION apercu_groupe_par_jeton(text) first.
+--
+-- Chaque fichier étant appliqué dans sa propre transaction, la tranche 2 est
+-- restée intacte ; mais tout ce qui la suit dans le manifeste n'a jamais été
+-- appliqué, cette tranche-ci comprise. Le compte avait donc un bouton de
+-- suppression et la base n'avait pas la fonction.
+--
+-- `tool/pieges_migrations.py` liste les trois fichiers gelés. La signature de
+-- `chercher_profils_par_pseudo` ne change pas, donc un `create or replace`
+-- suffit ici — et ce fichier devient son dernier définisseur, c'est-à-dire
+-- son propriétaire.
+create or replace function public.chercher_profils_par_pseudo(terme text)
+returns table (
+  id          uuid,
+  pseudo      text,
+  first_name  text,
+  last_name   text,
+  avatar_url  text
+)
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select p.id, p.pseudo, p.first_name, p.last_name,
+         coalesce('preset:' || p.avatar_preset, p.avatar_url)
+  from public.profiles p
+  where auth.uid() is not null
+    and p.id <> auth.uid()
+    and length(trim(terme)) >= 2
+    and p.pseudo like lower(trim(terme)) || '%'
+    and p.supprime_le is null
+  order by p.pseudo
+  limit 20;
+$$;
+
+grant execute on function public.chercher_profils_par_pseudo(text)
+  to authenticated;
+
+
+-- ---------------------------------------------------------------------------
 -- 1. Les fichiers qu'il faut retirer avant d'appeler la suppression
 -- ---------------------------------------------------------------------------
 -- **Le stockage ne peut pas être vidé depuis le SQL.** Un `delete` sur

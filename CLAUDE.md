@@ -19,6 +19,8 @@ tool/verifier.sh                 # les quatre commandes de la CI, codes de sorti
 tool/verifier.sh --sans-build    # idem sans la compilation web
 node tool/preparer_ecrans_de_lancement.js   # écrans de lancement iOS — voir web/splash/
 
+tool/pieges_migrations.py        # quels fichiers de migration sont **gelés**
+                                 # — à lancer avant d'en modifier un
 supabase/verification/rejouer.sh # compile et appelle le SQL — voir plus bas
 supabase/verification/appliquer.sh --essai   # ce qui serait appliqué en base
 supabase/verification/essai_connexion.sh     # éprouve le nettoyage de l'URL
@@ -1484,6 +1486,56 @@ migrations s'appliquent toutes seules » en tête de document. L'ordre vit dans
 ajoutée à ce fichier — un `.sql` déposé dans `supabase/` sans y figurer ne
 sera jamais appliqué. C'est voulu : c'est ce qui tient les scripts de
 diagnostic à l'écart.
+
+#### Trois fichiers sont **gelés**, et les modifier casse la livraison
+
+`tranche2_groupes_et_invitations.sql`, `correctif_invitations_type.sql` et
+`tranche3_taches_et_evenements.sql` **ne sont plus rejouables**. Une tranche
+ultérieure a redéfini certaines de leurs fonctions avec une signature
+différente, précédée d'un `drop function` : leur `create or replace` tente
+donc de revenir en arrière, et PostgreSQL refuse.
+
+| Fichier gelé | Fonctions reprises plus tard |
+| --- | --- |
+| `tranche2_groupes_et_invitations.sql` | `apercu_groupe_par_jeton`, `inviter_dans_groupe`, `mes_invitations`, `mes_contacts` |
+| `correctif_invitations_type.sql` | `inviter_dans_groupe`, `mes_invitations` |
+| `tranche3_taches_et_evenements.sql` | `mes_taches`, `mon_agenda` |
+
+**Le rejeu par empreinte rend le piège silencieux jusqu'à la fusion.** Un
+fichier n'est rejoué que si son contenu change ; tant qu'on n'y touche pas,
+rien ne se produit. Le jour où on y ajoute une ligne — un filtre d'une ligne a
+suffi —, il est rejoué et échoue :
+
+```
+ERROR:  cannot change return type of existing function
+HINT:  Use DROP FUNCTION apercu_groupe_par_jeton(text) first.
+```
+
+Et comme **chaque fichier est appliqué dans sa propre transaction**, le
+fichier gelé reste intact : ce qui se perd, c'est **tout ce qui le suit dans
+le manifeste**. C'est arrivé le 21 novembre 2026, à la fusion de la
+tranche 14 : la colonne est passée, la tranche 2 a échoué, et les tranches 5c,
+9, 13, 14 et 7 n'ont jamais été appliquées. L'application, elle, était
+déployée — **un bouton de suppression de compte que la base ne servait pas**.
+
+Le rejeu local ne pouvait pas le voir, et ce n'est pas un oubli du décor :
+`rejouer.sh` part d'un catalogue **vide**, où la tranche 2 s'applique avant la
+tranche 6 et n'a donc rien à défaire. Le défaut n'existe que contre une base
+déjà à jour — c'est exactement la limite déjà écrite pour la traduction des
+notifications, rencontrée cette fois dans l'autre sens.
+
+**Règle** : pour changer une fonction d'un fichier gelé, la **redéfinir dans
+un fichier postérieur**. Le propriétaire d'une fonction est le **dernier**
+fichier qui la crée, pas le premier — c'est la même règle que pour
+`messages_du_groupe`, qui vit dans la tranche 5a et appartient à la tranche 9.
+Le filtre de `chercher_profils_par_pseudo` vit donc dans la tranche 14.
+
+`tool/pieges_migrations.py` tient la liste **en partant du code** : il relève
+les fonctions définies dans plusieurs fichiers et signale celles dont un
+définisseur postérieur porte un `drop`. À lancer avant de toucher à une
+migration. Il ne fait pas échouer la CI : ces fichiers sont gelés par
+construction, et le rester est l'état normal — un contrôle rouge en permanence
+ne serait plus lu.
 
 **L'ordre du fichier n'est pas celui des numéros**, et ne peut pas l'être :
 `tranche7_durcissement.sql` referme l'exécution de toute fonction absente de sa

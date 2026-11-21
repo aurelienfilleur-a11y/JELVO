@@ -442,10 +442,6 @@ as $$
     and p.id <> auth.uid()
     and length(trim(terme)) >= 2
     and p.pseudo like lower(trim(terme)) || '%'
-    -- Un compte supprimé ne se retrouve pas : son pseudo de pierre tombale
-    -- commence par « supprime. », et une recherche sur ce début le sortirait
-    -- en liste. Il n'y a personne à inviter derrière.
-    and p.supprime_le is null
   order by p.pseudo
   limit 20;
 $$;

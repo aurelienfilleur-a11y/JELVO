@@ -382,9 +382,6 @@ END)))))
 -- messages                 msg_select                   SELECT {public}
 --   using       : is_group_member(group_id)
 --   with check  : —
--- notification_preferences np_all                       ALL    {authenticated}
---   using       : (user_id = auth.uid())
---   with check  : (user_id = auth.uid())
 -- notification_preferences np_select                    SELECT {authenticated}
 --   using       : (user_id = auth.uid())
 --   with check  : —
@@ -574,7 +571,7 @@ END)))))
 -- messages                 anon             SELECT
 -- messages                 authenticated    SELECT
 -- notification_preferences anon             SELECT
--- notification_preferences authenticated    DELETE, INSERT, SELECT, UPDATE
+-- notification_preferences authenticated    SELECT
 -- notifications            anon             DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE
 -- notifications            authenticated    DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE
 -- profiles                 anon             DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE
@@ -591,3 +588,47 @@ END)))))
 -- task_list_items          authenticated    SELECT
 -- tasks                    anon             SELECT
 -- tasks                    authenticated    SELECT
+
+
+-- =========================================================
+-- STOCKAGE — buckets et politiques
+-- =========================================================
+-- avatars        public=t      poids=2097152    types=image/jpeg image/png image/webp image/heic image/heif
+-- chat-media     public=f      poids=26214400   types=image/jpeg image/png image/webp image/gif image/heic image/heif video/mp4 video/quicktime video/webm audio/mp4 audio/aac audio/mpeg audio/webm audio/ogg
+-- group-photos   public=t      poids=2097152    types=image/jpeg image/png image/webp image/heic image/heif
+-- avatars_retrait              DELETE {authenticated}
+--   using       : ((bucket_id = 'avatars'::text) AND ((string_to_array(name, '/'::text))[1] = (auth.uid())::text))
+--   with check  : —
+-- chat_media_retrait           DELETE {authenticated}
+--   using       : ((bucket_id = 'chat-media'::text) AND (owner = auth.uid()))
+--   with check  : —
+-- group_photos_retrait         DELETE {authenticated}
+--   using       : ((bucket_id = 'group-photos'::text) AND est_admin_du_groupe(groupe_du_chemin(name), auth.uid()))
+--   with check  : —
+-- avatars_depot                INSERT {authenticated}
+--   using       : —
+--   with check  : ((bucket_id = 'avatars'::text) AND ((string_to_array(name, '/'::text))[1] = (auth.uid())::text))
+-- chat_media_depot             INSERT {authenticated}
+--   using       : —
+--   with check  : ((bucket_id = 'chat-media'::text) AND (owner = auth.uid()) AND est_membre_du_groupe(groupe_du_chemin(name), auth.uid()))
+-- group_photos_depot           INSERT {authenticated}
+--   using       : —
+--   with check  : ((bucket_id = 'group-photos'::text) AND est_admin_du_groupe(groupe_du_chemin(name), auth.uid()))
+-- avatars_lecture              SELECT {anon,authenticated}
+--   using       : (bucket_id = 'avatars'::text)
+--   with check  : —
+-- chat_media_lecture           SELECT {authenticated}
+--   using       : ((bucket_id = 'chat-media'::text) AND est_membre_du_groupe(groupe_du_chemin(name), auth.uid()))
+--   with check  : —
+-- group_photos_lecture         SELECT {anon,authenticated}
+--   using       : (bucket_id = 'group-photos'::text)
+--   with check  : —
+-- avatars_maj                  UPDATE {authenticated}
+--   using       : ((bucket_id = 'avatars'::text) AND ((string_to_array(name, '/'::text))[1] = (auth.uid())::text))
+--   with check  : ((bucket_id = 'avatars'::text) AND ((string_to_array(name, '/'::text))[1] = (auth.uid())::text))
+-- chat_media_maj               UPDATE {authenticated}
+--   using       : ((bucket_id = 'chat-media'::text) AND (owner = auth.uid()))
+--   with check  : ((bucket_id = 'chat-media'::text) AND (owner = auth.uid()) AND est_membre_du_groupe(groupe_du_chemin(name), auth.uid()))
+-- group_photos_maj             UPDATE {authenticated}
+--   using       : ((bucket_id = 'group-photos'::text) AND est_admin_du_groupe(groupe_du_chemin(name), auth.uid()))
+--   with check  : ((bucket_id = 'group-photos'::text) AND est_admin_du_groupe(groupe_du_chemin(name), auth.uid()))

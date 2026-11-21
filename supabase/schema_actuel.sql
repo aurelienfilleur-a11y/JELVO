@@ -165,6 +165,7 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 --   avatar_preset        text                         
 --   anniversaire_jour    smallint                     
 --   anniversaire_mois    smallint                     
+--   supprime_le          timestamp with time zone     
 
 -- push_outbox [RLS activée]
 --   id                   uuid                         NOT NULL, défaut gen_random_uuid()
@@ -472,9 +473,10 @@ END)))))
 -- mes_disponibilites() → TABLE(id uuid, kind text, weekday integer, on_date date, start_time time without time zone, end_time time without time zone, status text, created_at timestamp with time zone)   [security definer, postgres]
 -- mes_groupes_apercu() → TABLE(group_id uuid, nombre_membres integer, membres jsonb)   [security definer, postgres]
 -- mes_invitations() → TABLE(id uuid, group_id uuid, nom text, description text, photo_url text, nombre_membres integer, membres_apercu text[], emetteur text, emetteur_avatar text, statut text, created_at timestamp with time zone, expires_at timestamp with time zone, membership_expires_at timestamp with time zone)   [security definer, postgres]
+-- mes_medias_a_effacer() → TABLE(chemin text)   [security definer, postgres]
 -- mes_preferences_notification() → TABLE(type text, libelle text, description text, enabled boolean)   [security definer, postgres]
 -- mes_taches(p_group_id uuid DEFAULT NULL::uuid) → TABLE(id uuid, group_id uuid, created_by uuid, title text, description text, due_at timestamp with time zone, priority text, reminder_at timestamp with time zone, rrule text, completed_at timestamp with time zone, created_at timestamp with time zone, mon_statut text, assignes jsonb, articles integer, articles_coches integer, auteur text, auteur_avatar text, groupe_nom text, groupe_photo text)   [security definer, postgres]
--- messages_du_groupe(p_group_id uuid, p_avant timestamp with time zone DEFAULT NULL::timestamp with time zone, p_limite integer DEFAULT 50) → TABLE(id uuid, group_id uuid, sender_id uuid, content text, media_url text, media_kind text, media_duree_s integer, created_at timestamp with time zone, deleted_at timestamp with time zone, pseudo text, first_name text, last_name text, avatar_url text, reactions jsonb, lu_par integer, task_id uuid, event_id uuid, carte jsonb)   [security definer, postgres]
+-- messages_du_groupe(p_group_id uuid, p_avant timestamp with time zone DEFAULT NULL::timestamp with time zone, p_limite integer DEFAULT 50) → TABLE(id uuid, group_id uuid, sender_id uuid, content text, media_url text, media_kind text, media_duree_s integer, created_at timestamp with time zone, deleted_at timestamp with time zone, pseudo text, first_name text, last_name text, avatar_url text, reactions jsonb, lu_par integer, task_id uuid, event_id uuid, carte jsonb, supprime boolean)   [security definer, postgres]
 -- messages_non_lus() → TABLE(group_id uuid, non_lus integer, dernier timestamp with time zone)   [security definer, postgres]
 -- modifier_evenement(p_event_id uuid, p_title text, p_starts_at timestamp with time zone, p_ends_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_description text DEFAULT NULL::text, p_location text DEFAULT NULL::text, p_rrule text DEFAULT NULL::text, p_image_url text DEFAULT NULL::text, p_reminder_minutes integer DEFAULT NULL::integer) → events   [security definer, postgres]
 -- modifier_tache(p_task_id uuid, p_title text, p_description text DEFAULT NULL::text, p_due_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_priority text DEFAULT 'medium'::text, p_reminder_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_rrule text DEFAULT NULL::text) → tasks   [security definer, postgres]
@@ -516,6 +518,7 @@ END)))))
 -- supprimer_disponibilite(p_id uuid) → boolean   [security definer, postgres]
 -- supprimer_evenement(p_event_id uuid) → boolean   [security definer, postgres]
 -- supprimer_message(p_message_id uuid) → boolean   [security definer, postgres]
+-- supprimer_mon_compte() → text   [security definer, postgres]
 -- supprimer_tache(p_task_id uuid) → boolean   [security definer, postgres]
 -- terminer_tache(p_task_id uuid, p_terminee boolean DEFAULT true) → timestamp with time zone   [security definer, postgres]
 -- types_de_notification() → TABLE(type text, libelle text, description text)   [security invoker, postgres]

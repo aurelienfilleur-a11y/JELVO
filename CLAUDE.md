@@ -3177,6 +3177,45 @@ Trois leçons, et la troisième est la seule qui se code :
   `--project-ref` est déjà déprécié au profit de `--remote=<ref>` et sera
   retiré en v4 : ce sera la prochaine, et elle aura la même tête.
 
+##### Et `--yes` n'a pas suffi : un second défaut attendait derrière
+
+**Constaté le 21 novembre 2026, et c'est la suite directe de l'histoire
+ci-dessus.** Le `--yes` posé la veille a bien réglé la confirmation
+interactive — et le job est resté rouge, pour une raison entièrement
+différente :
+
+```
+Confirmed by --yes: Deploy 1 Function on project ***
+unexpected list functions status 401: {"message":"Invalid access token"}
+```
+
+**`SUPABASE_ACCESS_TOKEN` existe mais est refusé** : il a expiré ou été
+révoqué. L'étape « Vérifier les secrets » ne contrôle que leur *présence*,
+ce qui est tout ce qu'un workflow peut faire sans appeler l'API — un jeton
+mort la passe donc sans bruit.
+
+Vérifié à la source plutôt que déduit : l'API Supabase donne toujours
+`version: 9`, `updated_at` au 19 août. **La fonction n'a jamais été déployée
+depuis**, et le correctif de la veille n'y a rien changé.
+
+Deux conséquences :
+
+- **la correction précédente a été annoncée trop vite.** « Le correctif tient
+  en un mot, `--yes` » était vrai de la première cause et faux du résultat :
+  un défaut réparé ne prouve pas que la chaîne marche, seule la **version
+  déployée** le prouve. C'est la même erreur de méthode que « migrations en
+  échec ne veut pas dire migrations non appliquées », dans l'autre sens ;
+- **le jeton ne se répare pas depuis le dépôt.** Seul le propriétaire du
+  projet peut le régénérer (Supabase → Account → Access Tokens), et le
+  reposer dans les secrets. Ce qui se code, c'est de **nommer le coupable** :
+  l'étape de déploiement distingue désormais ce 401, l'annonce en toutes
+  lettres dans le résumé du job, et dit que la fonction n'est pas déployée.
+
+Ce que cela coûte aujourd'hui : la traduction des notifications système est
+livrée côté base — les clés et les paramètres sont déposés — mais la fonction
+en place les ignore et sert le texte français. C'est exactement le repli prévu
+pour ce cas, et non une panne.
+
 ### Une base ne se réveille pas toute seule
 
 **La tranche 5c a livré une file que rien ne vidait.** `push_outbox` se
@@ -5317,9 +5356,10 @@ sûr d'éprouver son caractère contextuel.
   base dépose une clé et des paramètres, la langue voyage avec l'abonnement
   (`push_tokens.langue`), et le rendu se fait dans la fonction Edge — voir
   « Les notifications système aussi, mais pas par l'ARB ». Deux réserves :
-  **rien ne change tant que `fonctions-supabase.yml` n'a pas déployé** — d'ici
-  là la fonction en place ignore la clé et sert le texte français, qui reste
-  déposé exprès —, et ces phrases vivent dans
+  **rien ne change tant que `fonctions-supabase.yml` n'a pas déployé**, et il
+  ne le peut pas aujourd'hui — `SUPABASE_ACCESS_TOKEN` est refusé en `401`,
+  premier des prérequis manuels ci-dessous. D'ici là la fonction en place
+  ignore la clé et sert le texte français, qui reste déposé exprès ; et ces phrases vivent dans
   `supabase/functions/envoyer-push/traductions.ts`, hors de l'ARB, parce que
   l'application ne les affiche jamais. Un test confronte les quatre langues
   entre elles et aux clés que le SQL dépose réellement.
@@ -5335,7 +5375,15 @@ sûr d'éprouver son caractère contextuel.
   Restent hors périmètre : les notifications système, et la modification d'une
   seule occurrence d'un élément récurrent — la `rrule` vaut pour toute la
   série.
-- **Trois prérequis manuels subsistent, et rien ne les remplace :**
+- **Quatre prérequis manuels subsistent, et rien ne les remplace :**
+  0. **régénérer `SUPABASE_ACCESS_TOKEN`** — le secret existe mais est refusé
+     en `401`, et la fonction Edge n'a donc **pas été déployée depuis le
+     19 août** (API Supabase : `version: 9`). Supabase → Account → Access
+     Tokens, puis le reposer dans les secrets du dépôt. Tant qu'il n'est pas
+     refait, les notifications système partent en français quelle que soit la
+     langue de l'appareil, et `appliquer_adhesions_echues()` comme
+     `empiler_anniversaires()` ne sont pas appelées. Voir « Et `--yes` n'a pas
+     suffi » ;
   1. faire émettre `{{ .Token }}` au modèle d'e-mail de confirmation, pour le
      code à 6 chiffres ;
   2. ~~planifier `envoyer-push` toutes les minutes~~ — **c'est fait, et

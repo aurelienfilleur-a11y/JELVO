@@ -85,10 +85,54 @@ jobs:
           #
           # `--project-ref` est déprécié au profit de `--remote=<ref>` et sera
           # retiré en v4 : ce sera la prochaine rupture de la même famille.
-          supabase functions deploy envoyer-push \
-            --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}" \
-            --no-verify-jwt \
-            --yes
+          #
+          #
+          # UN SECRET PRÉSENT N'EST PAS UN SECRET VALABLE
+          #
+          # L'étape précédente ne contrôle que la **présence** des deux
+          # secrets, et c'est tout ce qu'un workflow peut contrôler sans
+          # appeler l'API. Un jeton expiré ou révoqué la passe donc, et la
+          # CLI ressort :
+          #
+          #     unexpected list functions status 401: {"message":"Invalid
+          #     access token"}
+          #
+          # **C'est ce qui s'est produit dès que `--yes` a été posé** : le
+          # correctif de la confirmation interactive a découvert un second
+          # défaut qui attendait derrière, et le job est resté rouge pour une
+          # raison entièrement différente. Même famille que les trois échecs
+          # du workflow des migrations : un seul rouge, trois causes, et le
+          # rouge ne dit pas laquelle.
+          #
+          # D'où la distinction ci-dessous. Elle ne répare rien — seul le
+          # propriétaire du projet peut régénérer le jeton — mais elle **nomme
+          # le coupable**, ce qui est la seule chose qui se code ici.
+          set -o pipefail
+          if ! supabase functions deploy envoyer-push \
+                 --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}" \
+                 --no-verify-jwt \
+                 --yes 2>&1 | tee /tmp/deploiement.log; then
+            if grep -q 'Invalid access token\|status 401' /tmp/deploiement.log; then
+              {
+                echo '## Fonctions Supabase — jeton refusé'
+                echo
+                echo 'Le secret `SUPABASE_ACCESS_TOKEN` **existe mais est'
+                echo 'refusé** (401). Il a expiré ou été révoqué.'
+                echo
+                echo '**`envoyer-push` n’est donc pas déployée**, et la'
+                echo 'version en place reste celle du dernier déploiement'
+                echo 'réussi. Les lignes déposées dans `push_outbox`'
+                echo 'continuent de partir avec leur texte français : c’est'
+                echo 'le repli prévu, pas une panne.'
+                echo
+                echo 'À régénérer dans Supabase → Account → Access Tokens,'
+                echo 'puis à reposer dans les secrets du dépôt.'
+              } >> "$GITHUB_STEP_SUMMARY"
+              echo '::error::SUPABASE_ACCESS_TOKEN refusé (401) : jeton' \
+                   'expiré ou révoqué. La fonction n’est PAS déployée.'
+            fi
+            exit 1
+          fi
 
       - name: Résumé
         if: steps.secrets.outputs.pret == 'oui'

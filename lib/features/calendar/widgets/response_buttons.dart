@@ -99,7 +99,7 @@ class _Bouton extends StatelessWidget {
             ),
           ),
           child: Text(
-            reponse.label,
+            reponse.label(AppTexts.of(context)),
             textAlign: TextAlign.center,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

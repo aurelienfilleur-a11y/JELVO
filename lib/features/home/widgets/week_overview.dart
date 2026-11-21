@@ -90,7 +90,7 @@ class _Jour extends StatelessWidget {
 
     return Semantics(
       button: true,
-      label: _etiquette(),
+      label: _etiquette(AppTexts.of(context)),
       child: InkWell(
         onTap: onTap,
         borderRadius: AppRadii.fieldRadius,
@@ -154,18 +154,16 @@ class _Jour extends StatelessWidget {
 
   /// Les pastilles ne disent rien à un lecteur d'écran : l'étiquette porte le
   /// compte réel.
-  String _etiquette() {
+  String _etiquette(AppTexts t) {
     final StringBuffer texte = StringBuffer(AppDates.shortDate(summary.day));
-    if (estAujourdHui) texte.write(", aujourd'hui");
+    if (estAujourdHui) texte.write(t.homeAujourdHui);
     if (summary.eventCount > 0) {
-      texte.write(', ${summary.eventCount} événement');
-      if (summary.eventCount > 1) texte.write('s');
+      texte.write(t.homeVirguleEvenementCount(summary.eventCount));
     }
     if (summary.taskCount > 0) {
-      texte.write(', ${summary.taskCount} tâche');
-      if (summary.taskCount > 1) texte.write('s');
+      texte.write(t.homeVirguleTacheCount(summary.taskCount));
     }
-    if (summary.isEmpty) texte.write(', rien de prévu');
+    if (summary.isEmpty) texte.write(t.homeRienPrevu);
     return texte.toString();
   }
 }

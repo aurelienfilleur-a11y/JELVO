@@ -95,8 +95,8 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
         error: (Object error, _) => SafeArea(
           child: EmptyState(
             icon: Icons.cloud_off_rounded,
-            title: 'Groupe indisponible',
-            message: AuthFailure.from(error).message,
+            title: AppTexts.of(context).groupsGroupeIndisponible,
+            message: AuthFailure.from(error).message(AppTexts.of(context)),
             actionLabel: 'Réessayer',
             onActionPressed: () => ref.invalidate(groupDetailProvider(groupId)),
           ),
@@ -106,11 +106,9 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
             return SafeArea(
               child: EmptyState(
                 icon: Icons.group_off_outlined,
-                title: 'Groupe introuvable',
-                message:
-                    'Ce groupe a été supprimé, ou vous n’en faites plus '
-                    'partie.',
-                actionLabel: 'Revenir aux groupes',
+                title: AppTexts.of(context).groupsGroupeIntrouvable,
+                message: AppTexts.of(context).groupsGroupeEteSupprimeFaites,
+                actionLabel: AppTexts.of(context).groupsRevenirGroupes,
                 onActionPressed: () => context.goNamed(AppRoutes.groups),
               ),
             );
@@ -129,6 +127,7 @@ class _GroupView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final AppTexts t = AppTexts.of(context);
     final AsyncValue<List<GroupMember>> membersAsync = ref.watch(
       groupMembersProvider(group.id),
     );
@@ -163,27 +162,27 @@ class _GroupView extends ConsumerWidget {
               },
               itemBuilder: (BuildContext context) =>
                   <PopupMenuEntry<_GroupAction>>[
-                    const PopupMenuItem<_GroupAction>(
+                    PopupMenuItem<_GroupAction>(
                       value: _GroupAction.invite,
-                      child: Text('Inviter quelqu’un'),
+                      child: Text(AppTexts.of(context).groupsInviterQuelqu),
                     ),
-                    const PopupMenuItem<_GroupAction>(
+                    PopupMenuItem<_GroupAction>(
                       value: _GroupAction.link,
-                      child: Text('Partager un lien'),
+                      child: Text(AppTexts.of(context).groupsPartagerLien),
                     ),
                     if (group.isAdmin)
-                      const PopupMenuItem<_GroupAction>(
+                      PopupMenuItem<_GroupAction>(
                         value: _GroupAction.edit,
-                        child: Text('Modifier le groupe'),
+                        child: Text(AppTexts.of(context).groupsModifierGroupe),
                       ),
-                    const PopupMenuItem<_GroupAction>(
+                    PopupMenuItem<_GroupAction>(
                       value: _GroupAction.leave,
-                      child: Text('Quitter le groupe'),
+                      child: Text(AppTexts.of(context).groupsQuitterGroupe),
                     ),
                     if (group.isAdmin)
-                      const PopupMenuItem<_GroupAction>(
+                      PopupMenuItem<_GroupAction>(
                         value: _GroupAction.delete,
-                        child: Text('Supprimer le groupe'),
+                        child: Text(AppTexts.of(context).groupsSupprimerGroupe),
                       ),
                   ],
             ),
@@ -253,10 +252,10 @@ class _GroupView extends ConsumerWidget {
           ),
           sliver: SliverToBoxAdapter(
             child: SectionHeader(
-              title: 'Membres',
+              title: t.groupMembers,
               subtitle: group.isAdmin
-                  ? '${group.memberLabel} · vous administrez ce groupe'
-                  : group.memberLabel,
+                  ? t.groupsVousAdministrezCeGroupe(group.memberLabel(t))
+                  : group.memberLabel(t),
             ),
           ),
         ),
@@ -269,13 +268,11 @@ class _GroupView extends ConsumerWidget {
             ),
           )
         else if (members.isEmpty)
-          const SliverToBoxAdapter(
+          SliverToBoxAdapter(
             child: EmptyState(
               icon: Icons.person_outline_rounded,
-              title: 'Aucun membre à afficher',
-              message:
-                  'La liste des membres n’a pas pu être chargée. Réessayez '
-                  'dans un instant.',
+              title: AppTexts.of(context).groupsAucunMembreAfficher,
+              message: AppTexts.of(context).groupsListeMembresPuEtre,
             ),
           )
         else
@@ -328,6 +325,7 @@ class _GroupView extends ConsumerWidget {
     WidgetRef ref,
     Group group,
   ) {
+    final AppTexts t = AppTexts.of(context);
     final DateTime now = ref.watch(nowProvider);
     final List<CalendarEvent> events =
         ref
@@ -344,11 +342,11 @@ class _GroupView extends ConsumerWidget {
       // complète que cette section abrège. Ajouter reste à une touche par le
       // « + » de la barre et par l'état vide.
       _header(
-        title: 'À venir',
+        title: AppTexts.of(context).groupUpcoming,
         subtitle: events.isEmpty
-            ? 'Rien de prévu'
-            : '${events.length} événement${events.length > 1 ? 's' : ''}',
-        actionLabel: events.isEmpty ? null : 'Voir tout',
+            ? AppTexts.of(context).groupNothingPlanned
+            : t.groupsEvenementCount(events.length),
+        actionLabel: events.isEmpty ? null : AppTexts.of(context).groupsVoir,
         onActionPressed: events.isEmpty
             ? null
             : () => _ouvrirLeCalendrier(context, ref, group),
@@ -357,11 +355,9 @@ class _GroupView extends ConsumerWidget {
         SliverToBoxAdapter(
           child: EmptyState(
             icon: Icons.event_available_rounded,
-            title: 'Aucun événement',
-            message:
-                'Proposez une date au groupe : chacun répondra oui, '
-                'peut-être ou non.',
-            actionLabel: 'Proposer une date',
+            title: AppTexts.of(context).groupNoEventTitle,
+            message: AppTexts.of(context).groupNoEventMessage,
+            actionLabel: AppTexts.of(context).groupProposeDate,
             onActionPressed: () =>
                 ouvrirFormulaireDEvenement(context, groupId: group.id),
           ),
@@ -373,19 +369,21 @@ class _GroupView extends ConsumerWidget {
             itemCount: events.length > 3 ? 3 : events.length,
             separatorBuilder: (_, _) => AppSpacing.gapMd,
             itemBuilder: (BuildContext context, int index) {
+              final AppTexts t = AppTexts.of(context);
               final CalendarEvent event = events[index];
               return EventCard(
                 title: event.title,
-                timeLabel:
-                    '${AppDates.relativeDay(event.start, now: now)} · '
-                    '${AppDates.timeRange(event.start, event.end)}',
+                timeLabel: t.coreJourEtHeure(
+                  AppDates.relativeDay(event.start, t, now: now),
+                  AppDates.timeRange(event.start, event.end),
+                ),
                 location: event.location,
                 accentColor: group.accent.color(context.couleurs),
                 participants: event.avatars,
                 statusTone: event.myResponse == EventResponse.yes
                     ? null
                     : event.myResponse.tone,
-                statusLabel: event.myResponse.label,
+                statusLabel: event.myResponse.label(AppTexts.of(context)),
                 onTap: () => context.pushNamed(
                   AppRoutes.eventDetail,
                   pathParameters: <String, String>{'id': event.id},
@@ -395,7 +393,7 @@ class _GroupView extends ConsumerWidget {
           ),
         ),
         _AjouterSliver(
-          semantique: 'Ajouter un événement',
+          semantique: AppTexts.of(context).groupsAjouterEvenement,
           onPressed: () =>
               ouvrirFormulaireDEvenement(context, groupId: group.id),
         ),
@@ -409,6 +407,7 @@ class _GroupView extends ConsumerWidget {
     WidgetRef ref,
     Group group,
   ) {
+    final AppTexts t = AppTexts.of(context);
     final DateTime now = ref.watch(nowProvider);
 
     // **Prioritaires, donc triées** : priorité décroissante, puis échéance la
@@ -434,12 +433,11 @@ class _GroupView extends ConsumerWidget {
 
     return <Widget>[
       _header(
-        title: 'Tâches prioritaires',
+        title: AppTexts.of(context).groupsTachesPrioritaires,
         subtitle: tasks.isEmpty
-            ? 'Tout est à jour'
-            : '${tasks.length} tâche${tasks.length > 1 ? 's' : ''} ouverte'
-                  '${tasks.length > 1 ? 's' : ''}',
-        actionLabel: tasks.isEmpty ? null : 'Voir tout',
+            ? AppTexts.of(context).homeAllUpToDateTitle
+            : t.groupsTacheOuverteCount(tasks.length),
+        actionLabel: tasks.isEmpty ? null : AppTexts.of(context).groupsVoir,
         onActionPressed: tasks.isEmpty
             ? null
             : () => _ouvrirLesTaches(context, group),
@@ -448,9 +446,9 @@ class _GroupView extends ConsumerWidget {
         SliverToBoxAdapter(
           child: EmptyState(
             icon: Icons.task_alt_rounded,
-            title: 'Aucune tâche ouverte',
-            message: 'Répartissez ce qu’il y a à faire : chacun verra sa part.',
-            actionLabel: 'Ajouter une tâche',
+            title: AppTexts.of(context).groupNoTaskTitle,
+            message: AppTexts.of(context).groupNoTaskMessage,
+            actionLabel: AppTexts.of(context).groupAddTask,
             onActionPressed: () =>
                 ouvrirFormulaireDeTache(context, groupId: group.id),
           ),
@@ -478,7 +476,7 @@ class _GroupView extends ConsumerWidget {
           ),
         ),
         _AjouterSliver(
-          semantique: 'Ajouter une tâche',
+          semantique: AppTexts.of(context).groupAddTask,
           onPressed: () => ouvrirFormulaireDeTache(context, groupId: group.id),
         ),
       ],
@@ -565,16 +563,17 @@ class _GroupView extends ConsumerWidget {
     Future<MemberOutcome> Function(GroupActions) action,
   ) async {
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    final AppTexts t = AppTexts.of(context);
     try {
       final MemberOutcome outcome = await action(
         ref.read(groupActionsProvider),
       );
       messenger.showSnackBar(
-        SnackBar(content: Text(outcome.message(member.shortName))),
+        SnackBar(content: Text(outcome.message(member.shortName, t))),
       );
     } catch (error) {
       messenger.showSnackBar(
-        SnackBar(content: Text(AuthFailure.from(error).message)),
+        SnackBar(content: Text(AuthFailure.from(error).message(t))),
       );
     }
   }
@@ -584,13 +583,12 @@ class _GroupView extends ConsumerWidget {
     WidgetRef ref,
     GroupMember member,
   ) async {
+    final AppTexts t = AppTexts.of(context);
     final bool confirmed = await _confirm(
       context,
-      title: 'Retirer ce membre',
-      message:
-          '${member.displayName} n\u2019aura plus accès au groupe. Vous pourrez '
-          'l\u2019inviter à nouveau plus tard.',
-      confirmLabel: 'Retirer',
+      title: AppTexts.of(context).groupsRetirerMembre,
+      message: t.groupsRetraitMembreConfirmation(member.displayName),
+      confirmLabel: t.coreRetirer,
     );
     if (!confirmed || !context.mounted) return;
 
@@ -604,15 +602,15 @@ class _GroupView extends ConsumerWidget {
   }
 
   Future<void> _confirmLeave(BuildContext context, WidgetRef ref) async {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     final GoRouter router = GoRouter.of(context);
     final bool confirmed = await _confirm(
       context,
-      title: 'Quitter le groupe',
-      message:
-          'Vous ne verrez plus « ${group.name} ». Si vous en êtes le dernier '
-          'administrateur, le plus ancien membre prendra le relais.',
-      confirmLabel: 'Quitter',
+      title: AppTexts.of(context).groupsQuitterGroupe,
+      message: t.groupsQuitterConfirmation(group.name),
+      confirmLabel: t.coreQuitter,
     );
     if (!confirmed) return;
 
@@ -620,37 +618,37 @@ class _GroupView extends ConsumerWidget {
       final LeaveOutcome outcome = await ref
           .read(groupActionsProvider)
           .leave(group.id);
-      messenger.showSnackBar(SnackBar(content: Text(outcome.message)));
+      messenger.showSnackBar(SnackBar(content: Text(outcome.message(t))));
       router.goNamed(AppRoutes.groups);
     } catch (error) {
       messenger.showSnackBar(
-        SnackBar(content: Text(AuthFailure.from(error).message)),
+        SnackBar(content: Text(AuthFailure.from(error).message(t))),
       );
     }
   }
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     final GoRouter router = GoRouter.of(context);
     final bool confirmed = await _confirm(
       context,
-      title: 'Supprimer le groupe',
-      message:
-          '« ${group.name} » disparaîtra pour tous ses membres. Cette action '
-          'ne peut pas être annulée depuis l’application.',
-      confirmLabel: 'Supprimer',
+      title: AppTexts.of(context).groupsSupprimerGroupe,
+      message: t.groupsSupprimerConfirmation(group.name),
+      confirmLabel: t.coreSupprimer,
     );
     if (!confirmed) return;
 
     try {
       await ref.read(groupActionsProvider).delete(group.id);
       messenger.showSnackBar(
-        const SnackBar(content: Text('Le groupe a été supprimé.')),
+        SnackBar(content: Text(t.groupsGroupeEteSupprime)),
       );
       router.goNamed(AppRoutes.groups);
     } catch (error) {
       messenger.showSnackBar(
-        SnackBar(content: Text(AuthFailure.from(error).message)),
+        SnackBar(content: Text(AuthFailure.from(error).message(t))),
       );
     }
   }
@@ -771,7 +769,7 @@ class _Description extends StatelessWidget {
       children: <Widget>[
         Expanded(
           child: EmojiText(
-            vide ? 'Décrivez ce groupe en une phrase.' : texte,
+            vide ? AppTexts.of(context).groupsDecrivezGroupePhrase : texte,
             style: vide
                 ? context.typo.bodyMuted.copyWith(fontStyle: FontStyle.italic)
                 : context.typo.bodyMuted,
@@ -782,7 +780,7 @@ class _Description extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.edit_outlined, size: 18),
             color: context.couleurs.primary,
-            tooltip: 'Modifier le groupe',
+            tooltip: AppTexts.of(context).groupsModifierGroupe,
             visualDensity: VisualDensity.compact,
             onPressed: () => context.pushNamed(
               AppRoutes.groupEdit,
@@ -832,11 +830,13 @@ class _InviteMemberSheetState extends ConsumerState<_InviteMemberSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text('Inviter un membre', style: context.typo.h2),
+          Text(
+            AppTexts.of(context).groupsInviterMembre,
+            style: context.typo.h2,
+          ),
           AppSpacing.gapSm,
           Text(
-            'Cherchez la personne par son pseudo. Elle recevra une invitation '
-            'à accepter.',
+            AppTexts.of(context).groupsCherchezPersonnePseudoRecevra,
             style: context.typo.bodyMuted,
           ),
 
@@ -881,6 +881,7 @@ class _InviteMemberSheetState extends ConsumerState<_InviteMemberSheet> {
   }
 
   Future<void> _invite(String userId, String name) async {
+    final AppTexts t = AppTexts.of(context);
     try {
       final String outcome = await ref
           .read(groupActionsProvider)
@@ -893,21 +894,25 @@ class _InviteMemberSheetState extends ConsumerState<_InviteMemberSheet> {
       final DateTime? terme = _terme;
       setState(() {
         _message = switch (outcome) {
-          'invite' when terme != null =>
-            '$name a reçu votre invitation, jusqu’au '
-                '${AppDates.shortDate(terme)}.',
-          'invite' => '$name a reçu votre invitation.',
-          'deja_membre' => '$name fait déjà partie du groupe.',
-          'deja_invite' => '$name a déjà une invitation en attente.',
-          'terme_passe' => 'La date de fin choisie est déjà passée.',
-          'non_admin' =>
-            'Seul un administrateur peut fixer une durée d’adhésion.',
-          _ => 'Seuls les membres du groupe peuvent inviter.',
+          'invite' when terme != null => t.groupsInvitationRecueJusquAu(
+            name,
+            AppDates.shortDate(terme),
+          ),
+          'invite' => AppTexts.of(context).groupsNameRecuInvitation(name),
+          'deja_membre' => AppTexts.of(context).groupsNameFaitDejaPartie(name),
+          'deja_invite' => AppTexts.of(
+            context,
+          ).groupsNameDejaInvitationAttente(name),
+          'terme_passe' => AppTexts.of(context).groupsDateFinChoisieDeja,
+          'non_admin' => AppTexts.of(context).groupsSeulAdministrateurPeutFixer,
+          _ => AppTexts.of(context).groupsSeulsMembresGroupePeuvent,
         };
       });
     } catch (error) {
       if (!mounted) return;
-      setState(() => _message = AuthFailure.from(error).message);
+      setState(
+        () => _message = AuthFailure.from(error).message(AppTexts.of(context)),
+      );
     }
   }
 }
@@ -922,7 +927,7 @@ class _Results extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     if (term.trim().length < 2) {
       return Text(
-        'Saisissez au moins deux caractères.',
+        AppTexts.of(context).groupsSaisissezMoinsDeuxCaracteres,
         style: context.typo.caption,
       );
     }
@@ -937,13 +942,13 @@ class _Results extends ConsumerWidget {
         child: Center(child: CircularProgressIndicator()),
       ),
       error: (Object error, _) => Text(
-        AuthFailure.from(error).message,
+        AuthFailure.from(error).message(AppTexts.of(context)),
         style: context.typo.caption.copyWith(color: context.couleurs.danger),
       ),
       data: (List<ProfileSummary> profiles) {
         if (profiles.isEmpty) {
           return Text(
-            'Aucun pseudo ne commence par « $term ».',
+            AppTexts.of(context).contactsAucunPseudoCommenceTerm(term),
             style: context.typo.caption,
           );
         }

@@ -122,14 +122,16 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Text(
-              _modification ? 'Modifier la tâche' : 'Nouvelle tâche',
+              _modification
+                  ? AppTexts.of(context).tasksModifierTache
+                  : AppTexts.of(context).chatNouvelleTache,
               style: context.typo.h2,
             ),
             AppSpacing.gapLg,
 
             AppTextField(
-              label: 'Titre *',
-              hint: 'Ex. : Acheter le pain',
+              label: AppTexts.of(context).calendarTitre,
+              hint: AppTexts.of(context).tasksExAcheterPain,
               controller: _titre,
               errorText: _erreurTitre,
               autofocus: !_modification,
@@ -163,17 +165,18 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
                   OptionRow(
                     icon: Icons.notifications_none_rounded,
                     label: 'Rappel',
-                    hint:
-                        'Jelvo enverra une notification à la personne assignée',
-                    value: _rappel.label,
+                    hint: AppTexts.of(
+                      context,
+                    ).tasksJelvoEnverraNotificationPersonne,
+                    value: _rappel.label(AppTexts.of(context)),
                     onTap: _choisirRappel,
                   ),
                   Divider(height: 1, color: context.couleurs.border),
                   OptionRow(
                     icon: Icons.repeat_rounded,
                     label: 'Répéter',
-                    hint: 'Pour les tâches récurrentes',
-                    value: _recurrence.label,
+                    hint: AppTexts.of(context).tasksTachesRecurrentes,
+                    value: _recurrence.label(AppTexts.of(context)),
                     onTap: _choisirRecurrence,
                   ),
                 ],
@@ -203,8 +206,8 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
             AppSpacing.gapXl,
             PrimaryButton(
               label: _modification
-                  ? 'Enregistrer les modifications'
-                  : 'Créer la tâche',
+                  ? AppTexts.of(context).calendarEnregistrerModifications
+                  : AppTexts.of(context).tasksCreerTache,
               icon: Icons.check_circle_outline_rounded,
               isLoading: _envoi,
               onPressed: _valider,
@@ -222,8 +225,7 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
   /// conversation. Rien dans une rangée d'avatars ne dit cela — la phrase, si.
   String _mentionAssignation(List<GroupMember> membres) {
     if (_assignes.isEmpty) {
-      return 'Proposée à tout le groupe : une carte s’affichera dans la '
-          'conversation, et le premier qui accepte la prend.';
+      return AppTexts.of(context).tasksProposeeGroupeCarteAffichera;
     }
 
     final List<String> noms = <String>[
@@ -232,27 +234,25 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
     ];
     // Un assigné qui ne figure pas encore dans la liste chargée ne doit pas
     // faire disparaître la phrase : on retombe sur le compte.
+    final AppTexts t = AppTexts.of(context);
     if (noms.isEmpty) {
-      return 'Confiée à ${_assignes.length} personne'
-          '${_assignes.length > 1 ? 's' : ''}, qui recevront une notification.';
+      return t.tasksConfieeAuxPersonnes(_assignes.length);
     }
     final String liste = switch (noms.length) {
       1 => noms.first,
-      2 => '${noms[0]} et ${noms[1]}',
-      _ =>
-        '${noms[0]}, ${noms[1]} et ${noms.length - 2} autre'
-            '${noms.length - 2 > 1 ? 's' : ''}',
+      2 => t.coreDeuxNoms(noms[0], noms[1]),
+      _ => t.coreDeuxNomsEtAutres(noms[0], noms[1], noms.length - 2),
     };
     return noms.length == 1
-        ? 'Confiée à $liste, qui recevra une notification.'
-        : 'Confiée à $liste, qui recevront une notification.';
+        ? AppTexts.of(context).tasksConfieeListeRecevraNotification(liste)
+        : AppTexts.of(context).tasksConfieeListeRecevrontNotification(liste);
   }
 
   /// Échéance, priorité et description : utiles, mais pas à chaque fois.
   Widget _blocPlusDOptions() {
     return ExpandableOptions(
       expanded: _plusDOptions,
-      hint: 'Échéance, priorité, description…',
+      hint: AppTexts.of(context).tasksEcheancePrioriteDescription,
       onToggle: () => setState(() => _plusDOptions = !_plusDOptions),
       children: <Widget>[
         Row(
@@ -280,7 +280,10 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
         SegmentedButton<TaskPriority>(
           segments: <ButtonSegment<TaskPriority>>[
             for (final TaskPriority p in TaskPriority.values)
-              ButtonSegment<TaskPriority>(value: p, label: Text(p.label)),
+              ButtonSegment<TaskPriority>(
+                value: p,
+                label: Text(p.label(AppTexts.of(context))),
+              ),
           ],
           selected: <TaskPriority>{_priorite},
           showSelectedIcon: false,
@@ -290,7 +293,7 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
         AppSpacing.gapMd,
         AppTextField(
           label: 'Description',
-          hint: 'Ce qu’il faut savoir pour s’en occuper',
+          hint: AppTexts.of(context).tasksQuFautSavoirOccuper,
           controller: _description,
           maxLines: 3,
           minLines: 2,
@@ -302,20 +305,22 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
   }
 
   Future<void> _choisirRappel() async {
+    final AppTexts t = AppTexts.of(context);
     final ReminderOffset? choix = await _choisirDansListe<ReminderOffset>(
-      titre: 'Rappel',
+      titre: t.calendarRappel,
       valeurs: ReminderOffset.values,
-      libelle: (ReminderOffset o) => o.label,
+      libelle: (ReminderOffset o) => o.label(t),
       courant: _rappel,
     );
     if (choix != null) setState(() => _rappel = choix);
   }
 
   Future<void> _choisirRecurrence() async {
+    final AppTexts t = AppTexts.of(context);
     final Recurrence? choix = await _choisirDansListe<Recurrence>(
-      titre: 'Répéter',
+      titre: t.calendarRepeter,
       valeurs: Recurrence.values,
-      libelle: (Recurrence r) => r.label,
+      libelle: (Recurrence r) => r.label(t),
       courant: _recurrence,
     );
     if (choix != null) setState(() => _recurrence = choix);
@@ -383,9 +388,13 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
   }
 
   Future<void> _valider() async {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     final String titre = _titre.text.trim();
     setState(() {
-      _erreurTitre = titre.isEmpty ? 'Donnez un titre à la tâche.' : null;
+      _erreurTitre = titre.isEmpty
+          ? AppTexts.of(context).tasksDonnezTitreTache
+          : null;
       _erreur = null;
     });
     if (_erreurTitre != null) return;
@@ -436,14 +445,16 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
         SnackBar(
           content: Text(
             _modification
-                ? 'La tâche a été modifiée.'
-                : 'La tâche « $titre » a été créée.',
+                ? t.tasksTacheEteModifiee
+                : t.tasksTacheTitreEteCreee(titre),
           ),
         ),
       );
     } catch (error) {
       if (!mounted) return;
-      setState(() => _erreur = AuthFailure.from(error).message);
+      setState(
+        () => _erreur = AuthFailure.from(error).message(AppTexts.of(context)),
+      );
     } finally {
       if (mounted) setState(() => _envoi = false);
     }

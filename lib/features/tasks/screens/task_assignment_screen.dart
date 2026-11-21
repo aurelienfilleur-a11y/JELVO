@@ -38,7 +38,7 @@ class _TaskAssignmentScreenState extends ConsumerState<TaskAssignmentScreen> {
     return Scaffold(
       backgroundColor: context.couleurs.background,
       appBar: AppBar(
-        title: const Text('Tâche confiée'),
+        title: Text(AppTexts.of(context).tasksTacheConfiee),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           tooltip: 'Retour',
@@ -49,11 +49,9 @@ class _TaskAssignmentScreenState extends ConsumerState<TaskAssignmentScreen> {
         child: tache == null
             ? EmptyState(
                 icon: Icons.task_alt_rounded,
-                title: 'Tâche introuvable',
-                message:
-                    'Elle a été supprimée, ou vous n’y avez plus accès. Il n’y '
-                    'a plus rien à accepter.',
-                actionLabel: 'Revenir à l’accueil',
+                title: AppTexts.of(context).tasksTacheIntrouvable,
+                message: AppTexts.of(context).tasksEteSupprimeeAvezAcces,
+                actionLabel: AppTexts.of(context).tasksRevenirAccueil,
                 onActionPressed: () => context.goNamed(AppRoutes.home),
               )
             : _corps(tache),
@@ -62,6 +60,7 @@ class _TaskAssignmentScreenState extends ConsumerState<TaskAssignmentScreen> {
   }
 
   Widget _corps(Task tache) {
+    final AppTexts t = AppTexts.of(context);
     final DateTime now = ref.watch(nowProvider);
     final String? moi = ref.watch(currentUserIdProvider);
     final Group? groupe = tache.groupId == null
@@ -91,7 +90,7 @@ class _TaskAssignmentScreenState extends ConsumerState<TaskAssignmentScreen> {
             name: nomDuGroupe ?? 'Personnel',
             subtitle: tache.dueDate == null
                 ? null
-                : 'Échéance ${AppDates.shortDate(tache.dueDate!)}',
+                : t.tasksEcheanceDate(AppDates.shortDate(tache.dueDate!)),
             accentColor: GroupAccent.forId(
               tache.groupId ?? tache.id,
             ).color(context.couleurs),
@@ -112,14 +111,14 @@ class _TaskAssignmentScreenState extends ConsumerState<TaskAssignmentScreen> {
             children: <Widget>[
               InvitationHeader(
                 author: AvatarData(
-                  name: tache.authorName ?? 'Un membre',
+                  name: tache.authorName ?? AppTexts.of(context).calendarMembre,
                   imageUrl: tache.authorAvatarUrl,
                 ),
                 // Sans auteur identifiable, la phrase se reformule sans sujet —
                 // même règle que la notification système.
                 action: tache.authorName == null
-                    ? 'Cette tâche vous a été confiée'
-                    : 'vous a confié une tâche',
+                    ? AppTexts.of(context).tasksTacheEteConfiee
+                    : AppTexts.of(context).tasksConfieTache,
                 // Pas d'ancienneté : `task_assignees` ne retient pas **quand** la
                 // tâche a été confiée. La date de création de la tâche s'en
                 // approche, mais serait fausse pour un assigné ajouté après coup.
@@ -152,16 +151,17 @@ class _TaskAssignmentScreenState extends ConsumerState<TaskAssignmentScreen> {
                     if (tache.dueDate != null)
                       InvitationDetailRow(
                         icon: Icons.event_outlined,
-                        label: 'Échéance',
-                        value:
-                            '${AppDates.fullDate(tache.dueDate!)} à '
-                            '${AppDates.time(tache.dueDate!)}',
+                        label: t.tasksEcheance,
+                        value: t.coreDateAHeure(
+                          AppDates.fullDate(tache.dueDate!),
+                          AppDates.time(tache.dueDate!),
+                        ),
                       ),
                     // `task_priority` existe bel et bien : `low`, `medium`, `high`.
                     InvitationDetailRow(
                       icon: Icons.flag_outlined,
                       label: 'Priorité',
-                      value: tache.priority.label,
+                      value: tache.priority.label(AppTexts.of(context)),
                       dernier: true,
                     ),
                   ],
@@ -171,7 +171,9 @@ class _TaskAssignmentScreenState extends ConsumerState<TaskAssignmentScreen> {
               if (tache.assignees.isNotEmpty) ...<Widget>[
                 AppSpacing.gapXl,
                 SectionHeader(
-                  title: tache.assignees.length > 1 ? 'Assignés' : 'Assignée à',
+                  title: tache.assignees.length > 1
+                      ? 'Assignés'
+                      : AppTexts.of(context).tasksAssignee,
                 ),
                 AppSpacing.gapMd,
                 for (final TaskAssignee a in tache.assignees)
@@ -190,7 +192,7 @@ class _TaskAssignmentScreenState extends ConsumerState<TaskAssignmentScreen> {
                         Expanded(
                           child: Text(
                             a.userId == moi
-                                ? '${a.displayName} (vous)'
+                                ? t.coreVous(a.displayName)
                                 : a.displayName,
                             style: context.typo.body,
                             maxLines: 1,
@@ -200,7 +202,7 @@ class _TaskAssignmentScreenState extends ConsumerState<TaskAssignmentScreen> {
                         AppSpacing.hGapSm,
                         StatusDot(
                           tone: _tonPour(a.status),
-                          label: a.status.label,
+                          label: a.status.label(AppTexts.of(context)),
                         ),
                       ],
                     ),
@@ -213,7 +215,7 @@ class _TaskAssignmentScreenState extends ConsumerState<TaskAssignmentScreen> {
                   icone: Icons.warning_amber_rounded,
                   couleur: context.couleurs.danger,
                   fond: context.couleurs.dangerSoft,
-                  texte: 'L’échéance est déjà passée.',
+                  texte: AppTexts.of(context).tasksEcheanceDejaPassee,
                 ),
               ],
 
@@ -238,16 +240,22 @@ class _TaskAssignmentScreenState extends ConsumerState<TaskAssignmentScreen> {
                       ? context.couleurs.border
                       : context.couleurs.successSoft,
                   texte: switch (statut) {
-                    AssigneeStatus.accepted => 'Vous avez accepté cette tâche.',
-                    AssigneeStatus.declined => 'Vous avez décliné cette tâche.',
-                    AssigneeStatus.done => 'Vous avez terminé votre part.',
+                    AssigneeStatus.accepted => AppTexts.of(
+                      context,
+                    ).tasksAvezAccepteTache,
+                    AssigneeStatus.declined => AppTexts.of(
+                      context,
+                    ).tasksAvezDeclineTache,
+                    AssigneeStatus.done => AppTexts.of(
+                      context,
+                    ).tasksAvezTerminePart,
                     AssigneeStatus.pending ||
-                    null => 'Cette tâche ne vous est pas assignée.',
+                    null => AppTexts.of(context).tasksTacheAssignee,
                   },
                 ),
                 AppSpacing.gapLg,
                 PrimaryButton(
-                  label: 'Ouvrir la tâche',
+                  label: AppTexts.of(context).tasksOuvrirTache,
                   onPressed: () => context.pushReplacementNamed(
                     AppRoutes.taskDetail,
                     pathParameters: <String, String>{'id': tache.id},
@@ -277,6 +285,8 @@ class _TaskAssignmentScreenState extends ConsumerState<TaskAssignmentScreen> {
   }
 
   Future<void> _repondre(Task tache, AssigneeStatus statut) async {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     final ScaffoldMessengerState messager = ScaffoldMessenger.of(context);
 
     setState(() => _enCours = true);
@@ -286,14 +296,14 @@ class _TaskAssignmentScreenState extends ConsumerState<TaskAssignmentScreen> {
         SnackBar(
           content: Text(
             statut == AssigneeStatus.accepted
-                ? 'Tâche acceptée.'
-                : 'Tâche déclinée.',
+                ? t.tasksTacheAcceptee
+                : t.tasksTacheDeclinee,
           ),
         ),
       );
     } catch (error) {
       messager.showSnackBar(
-        SnackBar(content: Text(AuthFailure.from(error).message)),
+        SnackBar(content: Text(AuthFailure.from(error).message(t))),
       );
     } finally {
       if (mounted) setState(() => _enCours = false);

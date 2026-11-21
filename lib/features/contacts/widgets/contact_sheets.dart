@@ -43,14 +43,14 @@ class AddContactSheet extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text('Ajouter un contact', style: context.typo.h2),
+            Text(AppTexts.of(context).createAddContact, style: context.typo.h2),
             AppSpacing.gapLg,
 
             _Choix(
               icone: Icons.qr_code_scanner_rounded,
               couleur: context.couleurs.primary,
-              titre: 'Scanner un QR Code',
-              aide: 'Ajouter un contact avec son QR Code',
+              titre: AppTexts.of(context).contactsScannerQRCode2,
+              aide: AppTexts.of(context).contactsAjouterContactQRCode,
               onTap: () {
                 Navigator.of(context).pop();
                 context.pushNamed(AppRoutes.scanContact);
@@ -60,8 +60,8 @@ class AddContactSheet extends ConsumerWidget {
             _Choix(
               icone: Icons.search_rounded,
               couleur: context.couleurs.success,
-              titre: 'Rechercher un pseudo',
-              aide: 'Trouver un utilisateur Jelvo',
+              titre: AppTexts.of(context).contactsRechercherPseudo,
+              aide: AppTexts.of(context).contactsTrouverUtilisateurJelvo,
               onTap: () {
                 Navigator.of(context).pop();
                 context.pushNamed(AppRoutes.addContact);
@@ -71,8 +71,8 @@ class AddContactSheet extends ConsumerWidget {
             _Choix(
               icone: Icons.mail_outline_rounded,
               couleur: context.couleurs.warning,
-              titre: 'Inviter un ami',
-              aide: 'Envoyer une invitation Jelvo',
+              titre: AppTexts.of(context).contactsInviterAmi,
+              aide: AppTexts.of(context).contactsEnvoyerInvitationJelvo,
               onTap: () => _inviter(context, ref),
             ),
           ],
@@ -86,6 +86,7 @@ class AddContactSheet extends ConsumerWidget {
   /// serait pire que de donner le pseudo, avec lequel on se retrouve par la
   /// recherche. Même arbitrage que « Partager profil ».
   Future<void> _inviter(BuildContext context, WidgetRef ref) async {
+    final AppTexts t = AppTexts.of(context);
     final NavigatorState navigateur = Navigator.of(context);
     final ScaffoldMessengerState messager = ScaffoldMessenger.of(context);
     final Profile? profil = ref.read(currentProfileProvider).value;
@@ -93,12 +94,14 @@ class AddContactSheet extends ConsumerWidget {
 
     final String pseudo = profil?.pseudoHandle ?? '';
     final String texte =
-        'Rejoignez-moi sur Jelvo pour organiser nos sorties : '
-        '${AppConfig.webBaseUrl}'
-        '${pseudo.isEmpty ? '' : '\nMon pseudo : $pseudo'}';
+        t.contactsRejoignezMoi(AppConfig.webBaseUrl) +
+        (pseudo.isEmpty ? '' : t.contactsMonPseudoLigne(pseudo));
     try {
       await SharePlus.instance.share(
-        ShareParams(text: texte, subject: 'Rejoignez-moi sur Jelvo'),
+        ShareParams(
+          text: texte,
+          subject: AppTexts.of(context).contactsRejoignezMoiJelvo,
+        ),
       );
     } catch (_) {
       messager.showSnackBar(SnackBar(content: Text(texte)));
@@ -159,7 +162,7 @@ class ContactActionsSheet extends ConsumerWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
-                        contact.sharedGroupsLabel,
+                        contact.sharedGroupsLabel(AppTexts.of(context)),
                         style: context.typo.caption,
                       ),
                       // L'anniversaire, **quand il y en a un**. C'est la seule
@@ -203,9 +206,9 @@ class ContactActionsSheet extends ConsumerWidget {
                   : Icons.star_border_rounded,
               couleur: context.couleurs.primary,
               titre: contact.isFavorite
-                  ? 'Retirer des favoris'
-                  : 'Ajouter aux favoris',
-              aide: 'Les favoris sont en tête de votre carnet',
+                  ? AppTexts.of(context).contactsRetirerFavoris
+                  : AppTexts.of(context).contactsAjouterFavoris,
+              aide: AppTexts.of(context).contactsFavorisTeteCarnet,
               onTap: () async {
                 final NavigatorState navigateur = Navigator.of(context);
                 await ref.read(contactActionsProvider).toggleFavorite(contact);
@@ -216,8 +219,8 @@ class ContactActionsSheet extends ConsumerWidget {
             _Choix(
               icone: Icons.person_remove_outlined,
               couleur: context.couleurs.danger,
-              titre: 'Retirer de mes contacts',
-              aide: 'La relation est supprimée des deux côtés',
+              titre: AppTexts.of(context).contactsRetirerContacts,
+              aide: AppTexts.of(context).contactsRelationSupprimeeDeuxCotes,
               onTap: () => _retirer(context, ref),
             ),
           ],
@@ -227,15 +230,16 @@ class ContactActionsSheet extends ConsumerWidget {
   }
 
   Future<void> _retirer(BuildContext context, WidgetRef ref) async {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     final NavigatorState navigateur = Navigator.of(context);
     final ScaffoldMessengerState messager = ScaffoldMessenger.of(context);
     final bool? confirme = await showDialog<bool>(
       context: context,
       builder: (BuildContext dialogue) => AlertDialog(
-        title: const Text('Retirer ce contact'),
+        title: Text(AppTexts.of(context).contactsRetirerContact),
         content: Text(
-          '${contact.fullName} ne fera plus partie de vos contacts, et vous '
-          'ne ferez plus partie des siens.',
+          AppTexts.of(context).contactsRetraitConfirmation(contact.fullName),
         ),
         actions: <Widget>[
           TextButton(
@@ -258,11 +262,11 @@ class ContactActionsSheet extends ConsumerWidget {
       await ref.read(contactActionsProvider).remove(contact.id);
       navigateur.pop();
       messager.showSnackBar(
-        SnackBar(content: Text('${contact.shortName} a été retiré.')),
+        SnackBar(content: Text(t.contactsAEteRetire(contact.shortName))),
       );
     } catch (error) {
       messager.showSnackBar(
-        SnackBar(content: Text(AuthFailure.from(error).message)),
+        SnackBar(content: Text(AuthFailure.from(error).message(t))),
       );
     }
   }
@@ -296,21 +300,26 @@ class ManageFavoritesSheet extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text('Gérer les favoris', style: context.typo.h2),
+            Text(
+              AppTexts.of(context).contactsGererFavoris,
+              style: context.typo.h2,
+            ),
             const SizedBox(height: 2),
             Text(
-              'Le favori est personnel : l’autre n’en sait rien.',
+              AppTexts.of(context).contactsFavoriPersonnelAutreSait,
               style: context.typo.caption,
             ),
             AppSpacing.gapLg,
 
             if (contacts.isEmpty)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(bottom: AppSpacing.xl),
                 child: EmptyState(
                   icon: Icons.person_search_rounded,
-                  title: 'Carnet vide',
-                  message: 'Ajoutez d’abord des contacts à épingler.',
+                  title: AppTexts.of(context).contactsCarnetVide,
+                  message: AppTexts.of(
+                    context,
+                  ).contactsAjoutezAbordContactsEpingler,
                 ),
               )
             else

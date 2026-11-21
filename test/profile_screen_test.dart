@@ -289,7 +289,12 @@ void main() {
       // Le message est là, et la ligne est **restée** en saisie avec le texte :
       // refermer ferait disparaître la saisie en même temps que le message, et
       // laisserait croire que la bio est enregistrée.
-      expect(find.text('Le réseau est indisponible.'), findsOneWidget);
+      expect(
+        find.text(
+          'Connexion indisponible. Vérifiez votre accès à Internet, puis réessayez.',
+        ),
+        findsOneWidget,
+      );
       final Finder champ = find.byType(TextField);
       expect(champ, findsOneWidget);
       expect(
@@ -310,7 +315,12 @@ void main() {
       tester.widget<TextField>(find.byType(TextField)).focusNode!.unfocus();
       await tester.pumpAndSettle();
 
-      expect(find.text('Le réseau est indisponible.'), findsNothing);
+      expect(
+        find.text(
+          'Connexion indisponible. Vérifiez votre accès à Internet, puis réessayez.',
+        ),
+        findsNothing,
+      );
       expect(find.byType(TextField), findsNothing);
     });
 

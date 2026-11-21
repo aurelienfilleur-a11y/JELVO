@@ -60,11 +60,10 @@ class _InviteLinkSheetState extends ConsumerState<InviteLinkSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text('Inviter par lien', style: context.typo.h2),
+          Text(AppTexts.of(context).groupsInviterLien, style: context.typo.h2),
           AppSpacing.gapSm,
           Text(
-            'Partagez ce lien par SMS, messagerie ou e-mail. La personne '
-            'pourra créer son compte puis rejoindre « ${widget.group.name} ».',
+            AppTexts.of(context).groupsPartagezCeLien(widget.group.name),
             style: context.typo.bodyMuted,
           ),
 
@@ -90,7 +89,7 @@ class _InviteLinkSheetState extends ConsumerState<InviteLinkSheet> {
             const Center(child: CircularProgressIndicator())
           else if (active.isEmpty)
             Text(
-              'Aucun lien actif pour le moment.',
+              AppTexts.of(context).groupsAucunLienActifMoment,
               style: context.typo.caption,
             )
           else
@@ -111,14 +110,16 @@ class _InviteLinkSheetState extends ConsumerState<InviteLinkSheet> {
               now: now,
               value: _terme,
               enabled: !_working,
-              label: 'Durée accordée par le prochain lien',
+              label: AppTexts.of(context).groupsDureeAccordeeProchainLien,
               onChanged: (DateTime? valeur) => setState(() => _terme = valeur),
             ),
           ],
 
           AppSpacing.gapMd,
           PrimaryButton(
-            label: active.isEmpty ? 'Générer un lien' : 'Générer un autre lien',
+            label: active.isEmpty
+                ? AppTexts.of(context).groupsGenererLien
+                : AppTexts.of(context).groupsGenererAutreLien,
             icon: Icons.link_rounded,
             isLoading: _working,
             onPressed: _create,
@@ -142,7 +143,11 @@ class _InviteLinkSheetState extends ConsumerState<InviteLinkSheet> {
           );
     } catch (error) {
       if (mounted) {
-        setState(() => _errorMessage = AuthFailure.from(error).message);
+        setState(
+          () => _errorMessage = AuthFailure.from(
+            error,
+          ).message(AppTexts.of(context)),
+        );
       }
     } finally {
       if (mounted) setState(() => _working = false);
@@ -160,7 +165,11 @@ class _InviteLinkSheetState extends ConsumerState<InviteLinkSheet> {
           .revokeInviteLink(groupId: widget.group.id, linkId: link.id);
     } catch (error) {
       if (mounted) {
-        setState(() => _errorMessage = AuthFailure.from(error).message);
+        setState(
+          () => _errorMessage = AuthFailure.from(
+            error,
+          ).message(AppTexts.of(context)),
+        );
       }
     } finally {
       if (mounted) setState(() => _working = false);
@@ -168,13 +177,15 @@ class _InviteLinkSheetState extends ConsumerState<InviteLinkSheet> {
   }
 
   Future<void> _share(GroupInviteLink link) async {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     final String url = AppConfig.inviteUrl(link.token);
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     try {
       await SharePlus.instance.share(
         ShareParams(
-          text: 'Rejoins « ${widget.group.name} » sur Jelvo : $url',
-          subject: 'Invitation à rejoindre ${widget.group.name}',
+          text: t.groupsRejoinsSurJelvo(widget.group.name, url),
+          subject: t.groupsInvitationARejoindre(widget.group.name),
         ),
       );
     } catch (_) {
@@ -182,18 +193,20 @@ class _InviteLinkSheetState extends ConsumerState<InviteLinkSheet> {
       // reste copiable, ce qui couvre le même besoin.
       await Clipboard.setData(ClipboardData(text: url));
       messenger.showSnackBar(
-        const SnackBar(content: Text('Lien copié dans le presse-papiers.')),
+        SnackBar(content: Text(t.groupsLienCopiePressePapiers)),
       );
     }
   }
 
   Future<void> _copy(GroupInviteLink link) async {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     await Clipboard.setData(
       ClipboardData(text: AppConfig.inviteUrl(link.token)),
     );
     messenger.showSnackBar(
-      const SnackBar(content: Text('Lien copié dans le presse-papiers.')),
+      SnackBar(content: Text(t.groupsLienCopiePressePapiers)),
     );
   }
 }
@@ -215,6 +228,7 @@ class _LinkCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AppTexts t = AppTexts.of(context);
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
@@ -230,8 +244,10 @@ class _LinkCard extends StatelessWidget {
           ),
           AppSpacing.gapSm,
           Text(
-            '${link.usesLabel} · expire le '
-            '${AppDates.shortDate(link.expiresAt)}',
+            t.groupsUtilisationsExpireLe(
+              link.usesLabel(t),
+              AppDates.shortDate(link.expiresAt),
+            ),
             style: context.typo.caption,
           ),
           // Deux dates que rien ne rapproche : celle du dessus dit jusqu'à
@@ -240,8 +256,9 @@ class _LinkCard extends StatelessWidget {
           if (link.isTemporaryMembership) ...<Widget>[
             const SizedBox(height: 2),
             Text(
-              'Adhésion jusqu’au '
-              '${AppDates.shortDate(link.membershipExpiresAt!)}',
+              t.groupsAdhesionJusquAu(
+                AppDates.shortDate(link.membershipExpiresAt!),
+              ),
               style: context.typo.caption.copyWith(
                 color: context.couleurs.warning,
                 fontWeight: AppTypography.semiBold,
@@ -261,12 +278,12 @@ class _LinkCard extends StatelessWidget {
               AppSpacing.hGapSm,
               IconButton(
                 onPressed: onCopy,
-                tooltip: 'Copier le lien',
+                tooltip: AppTexts.of(context).groupsCopierLien,
                 icon: const Icon(Icons.copy_rounded, size: 20),
               ),
               IconButton(
                 onPressed: onRevoke,
-                tooltip: 'Révoquer le lien',
+                tooltip: AppTexts.of(context).groupsRevoquerLien,
                 icon: Icon(
                   Icons.link_off_rounded,
                   size: 20,

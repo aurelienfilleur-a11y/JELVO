@@ -19,7 +19,7 @@ class MyQrCodeScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: context.couleurs.background,
       appBar: AppBar(
-        title: const Text('Mon QR code'),
+        title: Text(AppTexts.of(context).contactsQRCode),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           tooltip: 'Retour',
@@ -74,29 +74,28 @@ class MyQrCodeScreen extends ConsumerWidget {
 
         AppSpacing.gapXl,
         Text(
-          'Faites scanner ce code pour être ajouté en contact. Il ne contient '
-          'que votre pseudo — ni adresse e-mail, ni agenda.',
+          AppTexts.of(context).contactsFaitesScannerCodeEtre,
           textAlign: TextAlign.center,
           style: context.typo.caption,
         ),
 
         AppSpacing.gapXl,
         SecondaryButton(
-          label: 'Partager mon pseudo',
+          label: AppTexts.of(context).contactsPartagerPseudo,
           icon: Icons.ios_share_rounded,
-          onPressed: () => _share(profile),
+          onPressed: () => _share(profile, AppTexts.of(context)),
         ),
       ],
     );
   }
 
-  Future<void> _share(Profile profile) async {
+  Future<void> _share(Profile profile, AppTexts t) async {
     // Un échec de partage n'a rien de bloquant : le QR reste affiché.
     try {
       await SharePlus.instance.share(
         ShareParams(
-          text: 'Ajoutez-moi sur Jelvo : ${profile.pseudoHandle}',
-          subject: 'Mon pseudo Jelvo',
+          text: t.contactsAjoutezMoiSurJelvo(profile.pseudoHandle),
+          subject: t.contactsPseudoJelvo,
         ),
       );
     } catch (_) {}

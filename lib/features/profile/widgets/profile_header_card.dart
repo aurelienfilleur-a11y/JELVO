@@ -56,13 +56,13 @@ class ProfileHeaderCard extends StatelessWidget {
                   right: 0,
                   bottom: 0,
                   child: Tooltip(
-                    message: 'Changer de photo',
+                    message: AppTexts.of(context).profileChangerPhoto,
                     child: InkWell(
                       onTap: onChangeAvatar,
                       customBorder: const CircleBorder(),
                       child: Semantics(
                         button: true,
-                        label: 'Changer de photo de profil',
+                        label: AppTexts.of(context).profileChangerPhotoProfil,
                         child: Container(
                           width: 38,
                           height: 38,
@@ -107,7 +107,7 @@ class ProfileHeaderCard extends StatelessWidget {
             actions: <ProfileAction>[
               ProfileAction(
                 icon: Icons.qr_code_2_rounded,
-                label: 'QR Code',
+                label: AppTexts.of(context).profileQRCode,
                 accented: true,
                 onTap: onQrCode,
               ),
@@ -118,7 +118,7 @@ class ProfileHeaderCard extends StatelessWidget {
               ),
               ProfileAction(
                 icon: Icons.ios_share_rounded,
-                label: 'Partager profil',
+                label: AppTexts.of(context).profilePartagerProfil,
                 onTap: onShare,
               ),
             ],

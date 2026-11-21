@@ -34,6 +34,7 @@ class AppShell extends ConsumerWidget {
     final _CreateAction action = _createAction(
       location,
       navigationShell.currentIndex,
+      AppTexts.of(context),
     );
 
     return Scaffold(
@@ -64,11 +65,11 @@ class AppShell extends ConsumerWidget {
   /// l'écran d'un groupe on reste dans l'onglet « Groupes », mais proposer d'y
   /// créer un groupe de plus n'a aucun sens. Ce que l'on veut y ajouter, c'est
   /// un événement ou une tâche — d'où la feuille de choix.
-  static _CreateAction _createAction(String location, int index) {
+  static _CreateAction _createAction(String location, int index, AppTexts t) {
     final String? groupId = AppRoutes.groupIdIn(location);
     if (groupId != null) {
       return _CreateAction(
-        label: 'Ajouter au groupe',
+        label: t.groupAddToGroup,
         open: (BuildContext context) =>
             ouvrirFeuilleDeCreation(context, groupId: groupId),
       );
@@ -78,18 +79,18 @@ class AppShell extends ConsumerWidget {
       // Accueil et Groupes mènent tous deux à la création de groupe : c'est
       // l'objet principal de l'application.
       0 || 1 => _CreateAction(
-        label: 'Nouveau groupe',
+        label: t.createNewGroup,
         open: (BuildContext context) =>
             context.pushNamed(AppRoutes.groupCreate),
       ),
       2 => _CreateAction(
-        label: 'Nouvel événement',
+        label: t.createNewEvent,
         open: (BuildContext context) => context.pushNamed(AppRoutes.create),
       ),
       // La même feuille que le « + » de l'en-tête des contacts : « comment
       // j'ajoute quelqu'un ? » n'a qu'une réponse, et elle en propose trois.
       _ => _CreateAction(
-        label: 'Ajouter un contact',
+        label: t.createAddContact,
         open: AddContactSheet.ouvrir,
       ),
     };

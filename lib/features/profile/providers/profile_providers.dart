@@ -103,6 +103,7 @@ class ProfileActions {
   String get _userId {
     final String? id = _ref.read(currentUserIdProvider);
     if (id == null) {
+      // texte-en-dur-autorise: erreur de programmation, jamais affichée.
       throw StateError('Aucune session ouverte : profil inaccessible.');
     }
     return id;
@@ -150,6 +151,7 @@ class ProfileActions {
   Future<void> saveBio(String bio) async {
     final Profile? profil = await _ref.read(currentProfileProvider.future);
     if (profil == null) {
+      // texte-en-dur-autorise: état impossible, jamais affiché tel quel.
       throw StateError('Aucun profil chargé : la bio ne peut pas être écrite.');
     }
     await save(

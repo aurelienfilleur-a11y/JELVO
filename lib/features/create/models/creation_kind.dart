@@ -1,34 +1,32 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/jelvo_colors.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Ce que l'utilisateur peut créer depuis le bouton central « + ».
 enum CreationKind {
-  event(
-    label: 'Événement',
-    description: 'Un créneau dans votre agenda, seul ou partagé',
-    icon: Icons.event_rounded,
-  ),
-  task(
-    label: 'Tâche',
-    description: 'Une action à faire, avec échéance et responsable',
-    icon: Icons.check_circle_outline_rounded,
-  ),
-  group(
-    label: 'Groupe',
-    description: 'Un espace partagé avec vos proches ou vos amis',
-    icon: Icons.groups_rounded,
-  );
+  event(Icons.event_rounded),
+  task(Icons.check_circle_outline_rounded),
+  group(Icons.groups_rounded);
 
-  const CreationKind({
-    required this.label,
-    required this.description,
-    required this.icon,
-  });
+  const CreationKind(this.icon);
 
-  final String label;
-  final String description;
   final IconData icon;
+
+  /// Le libellé dépend de la langue : il ne peut pas être une donnée
+  /// d'énumération, qui est constante par construction — même raison que la
+  /// couleur juste en dessous.
+  String label(AppTexts t) => switch (this) {
+    CreationKind.event => t.createEvenement,
+    CreationKind.task => t.createTache,
+    CreationKind.group => t.createGroupe,
+  };
+
+  String description(AppTexts t) => switch (this) {
+    CreationKind.event => t.createCreneauAgendaSeulPartage,
+    CreationKind.task => t.createActionFaireEcheanceResponsable,
+    CreationKind.group => t.createEspacePartageProchesAmis,
+  };
 
   /// La couleur dépend du thème : elle ne peut plus être une donnée
   /// d'énumération, qui est constante par construction.

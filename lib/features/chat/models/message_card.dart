@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../../calendar/models/calendar_event.dart';
 import '../../tasks/models/task.dart';
 
@@ -41,16 +42,20 @@ class CardPerson {
   const CardPerson({required this.name, this.avatarUrl, this.status});
 
   factory CardPerson.fromJson(Map<String, dynamic> json) => CardPerson(
-    name: (json['nom'] as String?) ?? 'Un membre',
+    name: json['nom'] as String?,
     avatarUrl: json['avatar_url'] as String?,
     status: json['status'] == null
         ? null
         : AssigneeStatus.fromDb(json['status'] as String?),
   );
 
-  final String name;
+  /// `null` quand le profil a disparu : c'est l'écran qui écrit « Un membre »,
+  /// parce que ce mot a une langue.
+  final String? name;
   final String? avatarUrl;
   final AssigneeStatus? status;
+
+  String displayName(AppTexts t) => name ?? t.calendarMembre;
 }
 
 /// La carte d'une tâche.
@@ -160,12 +165,12 @@ class EventCardData extends MessageCard {
 
   /// Décompte affiché sur la carte : « 3 oui · 1 peut-être · 2 non », les
   /// zéros omis.
-  String get decompte {
+  String decompte(AppTexts t) {
     final List<String> parts = <String>[
-      if (oui > 0) '$oui oui',
-      if (peutEtre > 0) '$peutEtre peut-être',
-      if (non > 0) '$non non',
+      if (oui > 0) t.chatOuiOui(oui),
+      if (peutEtre > 0) t.chatPeutEtrePeutEtre(peutEtre),
+      if (non > 0) t.chatNonNon(non),
     ];
-    return parts.isEmpty ? 'Aucune réponse' : parts.join(' · ');
+    return parts.isEmpty ? t.chatAucuneReponse : parts.join(' · ');
   }
 }

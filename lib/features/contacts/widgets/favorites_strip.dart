@@ -69,7 +69,7 @@ class FavoritesStrip extends StatelessWidget {
                   AppSpacing.hGapMd,
                   Expanded(
                     child: Text(
-                      'Épinglez vos proches pour les retrouver ici.',
+                      AppTexts.of(context).contactsEpinglezProchesRetrouverIci,
                       style: context.typo.caption,
                     ),
                   ),

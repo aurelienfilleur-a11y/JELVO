@@ -152,24 +152,28 @@ class ConversationNotifier extends AsyncNotifier<List<Message>> {
 /// Un signal de frappe se périme tout seul : sans expiration, quelqu'un qui
 /// ferme l'application en plein mot resterait « en train d'écrire »
 /// indéfiniment.
+///
+/// **`null` signifie « quelqu'un dont le signal n'a pas porté le nom »**, et
+/// non la chaîne vide : c'est au composeur d'écrire « Quelqu'un », parce que
+/// ce mot a une langue et qu'un provider n'a pas de contexte d'où la tirer.
 final typingProvider =
-    NotifierProvider.family<TypingNotifier, List<String>, String>(
+    NotifierProvider.family<TypingNotifier, List<String?>, String>(
       TypingNotifier.new,
     );
 
-class TypingNotifier extends Notifier<List<String>> {
+class TypingNotifier extends Notifier<List<String?>> {
   TypingNotifier(this.groupId);
 
   final String groupId;
 
   /// Fin de validité de chaque signal reçu.
-  final Map<String, ({String nom, DateTime jusqua})> _actifs =
-      <String, ({String nom, DateTime jusqua})>{};
+  final Map<String, ({String? nom, DateTime jusqua})> _actifs =
+      <String, ({String? nom, DateTime jusqua})>{};
 
   static const Duration _validite = Duration(seconds: 5);
 
   @override
-  List<String> build() {
+  List<String?> build() {
     final StreamSubscription<TypingSignal> abonnement = ref
         .watch(chatRepositoryProvider)
         .watchTyping(groupId)
@@ -185,7 +189,7 @@ class TypingNotifier extends Notifier<List<String>> {
       minuterie.cancel();
     });
 
-    return const <String>[];
+    return const <String?>[];
   }
 
   void _recevoir(TypingSignal signal) {
@@ -193,7 +197,7 @@ class TypingNotifier extends Notifier<List<String>> {
       _actifs.remove(signal.userId);
     } else {
       _actifs[signal.userId] = (
-        nom: signal.name ?? 'Quelqu’un',
+        nom: signal.name,
         jusqua: ref.read(clockProvider).now().add(_validite),
       );
     }
@@ -204,14 +208,14 @@ class TypingNotifier extends Notifier<List<String>> {
     final DateTime maintenant = ref.read(clockProvider).now();
     final int avant = _actifs.length;
     _actifs.removeWhere(
-      (_, ({String nom, DateTime jusqua}) valeur) =>
+      (_, ({String? nom, DateTime jusqua}) valeur) =>
           valeur.jusqua.isBefore(maintenant),
     );
     if (_actifs.length != avant) _publier();
   }
 
-  void _publier() => state = <String>[
-    for (final ({String nom, DateTime jusqua}) valeur in _actifs.values)
+  void _publier() => state = <String?>[
+    for (final ({String? nom, DateTime jusqua}) valeur in _actifs.values)
       valeur.nom,
   ];
 }

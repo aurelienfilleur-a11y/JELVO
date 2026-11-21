@@ -44,20 +44,20 @@ class AgendaCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
             child: SectionHeader(
-              title: 'Mon agenda',
-              actionLabel: 'Voir calendrier',
+              title: AppTexts.of(context).homeAgenda,
+              actionLabel: AppTexts.of(context).homeVoirCalendrier,
               onActionPressed: onOpenCalendar,
             ),
           ),
           AppSpacing.gapMd,
 
           if (visibles.isEmpty)
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
               child: EmptyState(
                 icon: Icons.event_available_rounded,
-                title: 'Journée libre',
-                message: 'Rien n’est encore planifié pour aujourd’hui.',
+                title: AppTexts.of(context).homeNoEventTitle,
+                message: AppTexts.of(context).homeNoEventMessage,
               ),
             )
           else
@@ -76,8 +76,8 @@ class AgendaCard extends StatelessWidget {
               icon: const Icon(Icons.expand_more_rounded, size: 18),
               label: Text(
                 reste == 1
-                    ? 'Voir tout mon agenda (1 de plus)'
-                    : 'Voir tout mon agenda ($reste de plus)',
+                    ? AppTexts.of(context).homeVoirAgenda1
+                    : AppTexts.of(context).homeVoirAgendaReste(reste),
               ),
             ),
           ],

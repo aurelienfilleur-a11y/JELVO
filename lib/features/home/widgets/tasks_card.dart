@@ -44,6 +44,7 @@ class TasksCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AppTexts t = AppTexts.of(context);
     return AppCard(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.md,
@@ -57,8 +58,8 @@ class TasksCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
             child: SectionHeader(
-              title: 'Mes tâches',
-              actionLabel: 'Voir toutes mes tâches',
+              title: AppTexts.of(context).homeTaches,
+              actionLabel: AppTexts.of(context).homeVoirToutesTaches,
               onActionPressed: onOpenTasks,
             ),
           ),
@@ -75,10 +76,8 @@ class TasksCard extends StatelessWidget {
                 Expanded(
                   child: _Compteur(
                     valeur: counts.open,
-                    libelle: 'À faire',
-                    detail: counts.open == 1
-                        ? '1 tâche'
-                        : '${counts.open} tâches',
+                    libelle: AppTexts.of(context).taskStatusTodo,
+                    detail: t.homeTacheCount(counts.open),
                     couleur: context.couleurs.primary,
                     // L'anneau montre la part **restante** de la semaine :
                     // plein quand tout est à faire, presque vide quand tout
@@ -94,7 +93,7 @@ class TasksCard extends StatelessWidget {
                   child: _Compteur(
                     valeur: counts.doneThisWeek,
                     libelle: 'Terminées',
-                    detail: 'cette semaine',
+                    detail: AppTexts.of(context).homeSemaine,
                     couleur: context.couleurs.success,
                     icone: Icons.check_rounded,
                   ),
@@ -103,8 +102,8 @@ class TasksCard extends StatelessWidget {
                 Expanded(
                   child: _Compteur(
                     valeur: counts.overdue,
-                    libelle: 'En retard',
-                    detail: 'à traiter',
+                    libelle: AppTexts.of(context).taskStatusOverdue,
+                    detail: AppTexts.of(context).homeTraiter,
                     couleur: context.couleurs.warning,
                     icone: Icons.schedule_rounded,
                   ),
@@ -123,17 +122,17 @@ class TasksCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
               child: counts.open == 0
-                  ? const EmptyState(
+                  ? EmptyState(
                       icon: Icons.task_alt_rounded,
-                      title: 'Tout est à jour',
-                      message: 'Aucune tâche n’attend d’être traitée.',
+                      title: AppTexts.of(context).homeAllUpToDateTitle,
+                      message: AppTexts.of(context).homeAucuneTacheAttendEtre,
                     )
-                  : const EmptyState(
+                  : EmptyState(
                       icon: Icons.north_rounded,
-                      title: 'Déjà dans votre agenda',
-                      message:
-                          'Vos tâches du jour figurent dans la chronologie '
-                          'ci-dessus.',
+                      title: AppTexts.of(context).homeDejaAgenda,
+                      message: AppTexts.of(
+                        context,
+                      ).homeTachesJourFigurentChronologie,
                     ),
             )
           else ...<Widget>[
@@ -194,7 +193,9 @@ class _Compteur extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: '$valeur $libelle, $detail',
+      label: AppTexts.of(
+        context,
+      ).homeValeurLibelleDetail(valeur, libelle, detail),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
@@ -230,7 +231,9 @@ class _Compteur extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
                 Text(
-                  _chiffreDansLAnneau ? libelle : '$valeur $libelle',
+                  _chiffreDansLAnneau
+                      ? libelle
+                      : AppTexts.of(context).homeValeurLibelle(valeur, libelle),
                   style: context.typo.caption.copyWith(
                     fontWeight: AppTypography.semiBold,
                     color: context.couleurs.encre,

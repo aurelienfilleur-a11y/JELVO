@@ -94,7 +94,10 @@ class _ProfileAboutCardState extends ConsumerState<ProfileAboutCard> {
         children: <Widget>[
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-            child: Text('À propos', style: context.typo.h3),
+            child: Text(
+              AppTexts.of(context).calendarPropos,
+              style: context.typo.h3,
+            ),
           ),
           AppSpacing.gapSm,
 
@@ -118,7 +121,7 @@ class _ProfileAboutCardState extends ConsumerState<ProfileAboutCard> {
             label: 'Anniversaire',
             value:
                 widget.anniversaire?.libelle ??
-                'Ajoutez le jour et le mois, sans l’année',
+                AppTexts.of(context).profileAjoutezJourMoisAnnee,
             attenue: widget.anniversaire == null,
             onTap: () => AnniversaireSheet.ouvrir(context, widget.anniversaire),
           ),
@@ -126,7 +129,8 @@ class _ProfileAboutCardState extends ConsumerState<ProfileAboutCard> {
           _LigneLecture(
             icon: Icons.mail_outline_rounded,
             label: 'Email',
-            value: widget.email ?? 'Adresse indisponible',
+            value:
+                widget.email ?? AppTexts.of(context).profileAdresseIndisponible,
             attenue: widget.email == null,
           ),
         ],
@@ -174,7 +178,7 @@ class _ProfileAboutCardState extends ConsumerState<ProfileAboutCard> {
       // message, et laisserait croire que la bio est enregistrée.
       setState(() {
         _enregistrement = false;
-        _erreur = AuthFailure.from(error).message;
+        _erreur = AuthFailure.from(error).message(AppTexts.of(context));
       });
     }
   }
@@ -278,7 +282,7 @@ class _LigneBio extends StatelessWidget {
                             isDense: true,
                             contentPadding: EdgeInsets.zero,
                             border: InputBorder.none,
-                            hintText: 'Quelques mots sur vous',
+                            hintText: AppTexts.of(context).profileQuelquesMots,
                             hintStyle: context.typo.caption,
                           ),
                         )
@@ -287,7 +291,7 @@ class _LigneBio extends StatelessWidget {
                           // Une bio vide n'est pas un trou à cacher : la ligne
                           // reste, et invite à la remplir.
                           vide
-                              ? 'Ajoutez quelques mots sur vous'
+                              ? AppTexts.of(context).profileAjoutezQuelquesMots
                               : texteAffiche,
                           style: context.typo.caption.copyWith(
                             color: vide
@@ -369,7 +373,7 @@ class _Affordance extends StatelessWidget {
     if (enEdition) {
       return IconButton(
         onPressed: onValider,
-        tooltip: 'Enregistrer la bio',
+        tooltip: AppTexts.of(context).profileEnregistrerBio,
         visualDensity: VisualDensity.compact,
         icon: Icon(
           Icons.check_rounded,
@@ -379,7 +383,7 @@ class _Affordance extends StatelessWidget {
       );
     }
     return Tooltip(
-      message: 'Modifier la bio',
+      message: AppTexts.of(context).profileModifierBio,
       child: Icon(
         Icons.edit_outlined,
         size: 18,

@@ -37,6 +37,7 @@ class _MembershipTermSheetState extends ConsumerState<MembershipTermSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final AppTexts t = AppTexts.of(context);
     final DateTime now = ref.watch(nowProvider);
     final GroupMember membre = widget.member;
 
@@ -51,13 +52,18 @@ class _MembershipTermSheetState extends ConsumerState<MembershipTermSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text('Durée de l’adhésion', style: context.typo.h2),
+          Text(
+            AppTexts.of(context).groupsDureeAdhesion,
+            style: context.typo.h2,
+          ),
           AppSpacing.gapSm,
           Text(
             membre.isTemporary
-                ? '${membre.displayName} fait partie du groupe jusqu’au '
-                      '${AppDates.fullDate(membre.expiresAt!)}.'
-                : '${membre.displayName} fait partie du groupe sans terme.',
+                ? t.groupsMembreJusquAu(
+                    membre.displayName,
+                    AppDates.fullDate(membre.expiresAt!),
+                  )
+                : t.groupsMembreSansTerme(membre.displayName),
             style: context.typo.bodyMuted,
           ),
 
@@ -83,7 +89,7 @@ class _MembershipTermSheetState extends ConsumerState<MembershipTermSheet> {
             now: now,
             value: _terme,
             enabled: !_enregistrement,
-            label: 'Nouvelle durée',
+            label: AppTexts.of(context).groupsNouvelleDuree,
             onChanged: (DateTime? valeur) => setState(() {
               _terme = valeur;
               _erreur = null;
@@ -105,6 +111,7 @@ class _MembershipTermSheetState extends ConsumerState<MembershipTermSheet> {
   Future<void> _enregistrer() async {
     final NavigatorState navigateur = Navigator.of(context);
     final ScaffoldMessengerState messager = ScaffoldMessenger.of(context);
+    final AppTexts t = AppTexts.of(context);
 
     setState(() {
       _enregistrement = true;
@@ -125,17 +132,18 @@ class _MembershipTermSheetState extends ConsumerState<MembershipTermSheet> {
       if (!issue.isSuccess && issue != MemberOutcome.inchange) {
         setState(() {
           _enregistrement = false;
-          _erreur = issue.message(widget.member.shortName);
+          _erreur = issue.message(widget.member.shortName, t);
         });
         return;
       }
 
-      navigateur.maybePop();
+      navigateur.maybePop(AppTexts.of(context));
       messager.showSnackBar(
         SnackBar(
           content: Text(
             issue.message(
               widget.member.shortName,
+              t,
               terme: _terme == null ? null : AppDates.fullDate(_terme!),
             ),
           ),
@@ -145,7 +153,7 @@ class _MembershipTermSheetState extends ConsumerState<MembershipTermSheet> {
       if (!mounted) return;
       setState(() {
         _enregistrement = false;
-        _erreur = AuthFailure.from(error).message;
+        _erreur = AuthFailure.from(error).message(t);
       });
     }
   }

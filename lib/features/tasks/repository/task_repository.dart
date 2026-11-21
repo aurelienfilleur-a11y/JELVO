@@ -128,9 +128,7 @@ class SupabaseTaskRepository implements TaskRepository {
       );
       final List<Map<String, dynamic>> rows = _rows(result);
       if (rows.isEmpty) {
-        throw const AuthFailure(
-          'La tâche n’a pas pu être créée. Réessayez dans un instant.',
-        );
+        throw AuthFailure(AuthFailureKind.tacheNonCreee);
       }
       return Task.fromRow(rows.first);
     } catch (error) {
@@ -163,9 +161,7 @@ class SupabaseTaskRepository implements TaskRepository {
       );
       final List<Map<String, dynamic>> rows = _rows(result);
       if (rows.isEmpty) {
-        throw const AuthFailure(
-          'La tâche n’a pas pu être modifiée. Réessayez dans un instant.',
-        );
+        throw AuthFailure(AuthFailureKind.tacheNonModifiee);
       }
       return Task.fromRow(rows.first);
     } catch (error) {

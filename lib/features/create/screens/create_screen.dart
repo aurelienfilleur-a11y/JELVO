@@ -68,10 +68,10 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
             AppSpacing.xxl,
           ),
           children: <Widget>[
-            Text('Que voulez-vous créer ?', style: context.typo.h1),
+            Text(AppTexts.of(context).createQuestion, style: context.typo.h1),
             AppSpacing.gapSm,
             Text(
-              'Choisissez un type : le formulaire s’ouvre juste en dessous.',
+              AppTexts.of(context).createChoisissezTypeFormulaireOuvre,
               style: context.typo.bodyMuted,
             ),
             AppSpacing.gapXl,

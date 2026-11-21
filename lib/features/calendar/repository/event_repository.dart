@@ -111,9 +111,7 @@ class SupabaseEventRepository implements EventRepository {
       );
       final List<Map<String, dynamic>> rows = _rows(result);
       if (rows.isEmpty) {
-        throw const AuthFailure(
-          'L’événement n’a pas pu être créé. Réessayez dans un instant.',
-        );
+        throw AuthFailure(AuthFailureKind.evenementNonCree);
       }
       return CalendarEvent.fromRow(rows.first);
     } catch (error) {
@@ -150,9 +148,7 @@ class SupabaseEventRepository implements EventRepository {
       );
       final List<Map<String, dynamic>> rows = _rows(result);
       if (rows.isEmpty) {
-        throw const AuthFailure(
-          'L’événement n’a pas pu être modifié. Réessayez dans un instant.',
-        );
+        throw AuthFailure(AuthFailureKind.evenementNonModifie);
       }
       return CalendarEvent.fromRow(rows.first);
     } catch (error) {

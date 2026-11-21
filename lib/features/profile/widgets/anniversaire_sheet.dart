@@ -72,13 +72,12 @@ class _AnniversaireSheetState extends ConsumerState<AnniversaireSheet> {
           Text('Anniversaire', style: context.typo.h3),
           AppSpacing.gapXs,
           Text(
-            'Le jour et le mois seulement. Jelvo ne demande pas votre année '
-            'de naissance.',
+            AppTexts.of(context).profileJourMoisSeulementJelvo,
             style: context.typo.caption,
           ),
           AppSpacing.gapMd,
           Text(
-            'Vos contacts le voient, et sont prévenus le jour même.',
+            AppTexts.of(context).profileContactsVoientPrevenusJour,
             style: context.typo.caption.copyWith(
               color: context.couleurs.textSecondary,
             ),
@@ -121,9 +120,7 @@ class _AnniversaireSheetState extends ConsumerState<AnniversaireSheet> {
           if (_mois == 2 && _jour == 29) ...<Widget>[
             AppSpacing.gapMd,
             _Avertissement(
-              texte:
-                  'Les années non bissextiles, il sera fêté le 28 février, '
-                  'dernier jour du mois.',
+              texte: AppTexts.of(context).profileAnneesNonBissextilesSera,
             ),
           ],
 
@@ -198,7 +195,7 @@ class _AnniversaireSheetState extends ConsumerState<AnniversaireSheet> {
       // ferait disparaître l'erreur et laisserait croire à un enregistrement.
       setState(() {
         _enregistrement = false;
-        _erreur = AuthFailure.from(error).message;
+        _erreur = AuthFailure.from(error).message(AppTexts.of(context));
       });
     }
   }

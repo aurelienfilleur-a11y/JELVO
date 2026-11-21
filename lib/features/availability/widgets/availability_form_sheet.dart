@@ -63,6 +63,7 @@ class _AvailabilityFormSheetState extends ConsumerState<AvailabilityFormSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final AppTexts t = AppTexts.of(context);
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: SingleChildScrollView(
@@ -77,7 +78,9 @@ class _AvailabilityFormSheetState extends ConsumerState<AvailabilityFormSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Text(
-              _modification ? 'Modifier le créneau' : 'Nouveau créneau',
+              _modification
+                  ? AppTexts.of(context).availabilityModifierCreneau
+                  : AppTexts.of(context).availabilityNouveauCreneau,
               style: context.typo.h2,
             ),
             AppSpacing.gapLg,
@@ -87,7 +90,7 @@ class _AvailabilityFormSheetState extends ConsumerState<AvailabilityFormSheet> {
                 for (final AvailabilityKind k in AvailabilityKind.values)
                   ButtonSegment<AvailabilityKind>(
                     value: k,
-                    label: Text(k.label),
+                    label: Text(k.label(AppTexts.of(context))),
                   ),
               ],
               selected: <AvailabilityKind>{_kind},
@@ -102,7 +105,7 @@ class _AvailabilityFormSheetState extends ConsumerState<AvailabilityFormSheet> {
             else
               SecondaryButton(
                 label: _date == null
-                    ? 'Choisir la date'
+                    ? AppTexts.of(context).createPickDate
                     : AppDates.fullDate(_date!),
                 icon: Icons.calendar_today_rounded,
                 onPressed: _choisirDate,
@@ -113,7 +116,7 @@ class _AvailabilityFormSheetState extends ConsumerState<AvailabilityFormSheet> {
               children: <Widget>[
                 Expanded(
                   child: SecondaryButton(
-                    label: 'De ${_debut.format(context)}',
+                    label: t.availabilityDe(_debut.format(context)),
                     icon: Icons.schedule_rounded,
                     onPressed: () => _choisirHeure(debut: true),
                   ),
@@ -121,7 +124,7 @@ class _AvailabilityFormSheetState extends ConsumerState<AvailabilityFormSheet> {
                 AppSpacing.hGapMd,
                 Expanded(
                   child: SecondaryButton(
-                    label: 'À ${_fin.format(context)}',
+                    label: t.availabilityA(_fin.format(context)),
                     icon: Icons.schedule_outlined,
                     onPressed: () => _choisirHeure(debut: false),
                   ),
@@ -135,7 +138,7 @@ class _AvailabilityFormSheetState extends ConsumerState<AvailabilityFormSheet> {
                 for (final AvailabilityStatus s in AvailabilityStatus.values)
                   ButtonSegment<AvailabilityStatus>(
                     value: s,
-                    label: Text(s.label),
+                    label: Text(s.label(AppTexts.of(context))),
                   ),
               ],
               selected: <AvailabilityStatus>{_status},
@@ -163,7 +166,9 @@ class _AvailabilityFormSheetState extends ConsumerState<AvailabilityFormSheet> {
 
             AppSpacing.gapXl,
             PrimaryButton(
-              label: _modification ? 'Enregistrer' : 'Ajouter le créneau',
+              label: _modification
+                  ? 'Enregistrer'
+                  : AppTexts.of(context).availabilityAjouterCreneau2,
               icon: Icons.check_circle_outline_rounded,
               isLoading: _envoi,
               onPressed: _valider,
@@ -223,14 +228,20 @@ class _AvailabilityFormSheetState extends ConsumerState<AvailabilityFormSheet> {
   }
 
   Future<void> _valider() async {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     setState(() => _erreur = null);
 
     if (_kind == AvailabilityKind.exception && _date == null) {
-      setState(() => _erreur = 'Choisissez la date du créneau.');
+      setState(
+        () => _erreur = AppTexts.of(context).availabilityChoisissezDateCreneau,
+      );
       return;
     }
     if (_minutesDe(_fin) <= _minutesDe(_debut)) {
-      setState(() => _erreur = 'La fin doit suivre le début.');
+      setState(
+        () => _erreur = AppTexts.of(context).availabilityFinDoitSuivreDebut,
+      );
       return;
     }
 
@@ -253,12 +264,18 @@ class _AvailabilityFormSheetState extends ConsumerState<AvailabilityFormSheet> {
       navigator.maybePop();
       messenger.showSnackBar(
         SnackBar(
-          content: Text(_modification ? 'Créneau modifié.' : 'Créneau ajouté.'),
+          content: Text(
+            _modification
+                ? t.availabilityCreneauModifie
+                : t.availabilityCreneauAjoute,
+          ),
         ),
       );
     } catch (error) {
       if (!mounted) return;
-      setState(() => _erreur = AuthFailure.from(error).message);
+      setState(
+        () => _erreur = AuthFailure.from(error).message(AppTexts.of(context)),
+      );
     } finally {
       if (mounted) setState(() => _envoi = false);
     }

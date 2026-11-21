@@ -45,8 +45,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return AuthScaffold(
-      title: 'Content de vous revoir',
-      subtitle: 'Connectez-vous pour retrouver vos groupes et votre agenda.',
+      title: AppTexts.of(context).authContentRevoir,
+      subtitle: AppTexts.of(context).authConnectezRetrouverGroupesAgenda,
       children: <Widget>[
         if (_errorMessage != null) ...<Widget>[
           AuthErrorBanner(message: _errorMessage!),
@@ -54,7 +54,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ],
 
         AppTextField(
-          label: 'Pseudo ou adresse e-mail',
+          label: AppTexts.of(context).authPseudoAdresseEMail,
           hint: 'camille.rousseau',
           controller: _identifierController,
           errorText: _identifierError,
@@ -83,7 +83,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             onPressed: _submitting
                 ? null
                 : () => context.pushNamed(AppRoutes.forgotPassword),
-            child: const Text('Mot de passe oublié ?'),
+            child: Text(AppTexts.of(context).authMotPasseOublie2),
           ),
         ),
 
@@ -91,7 +91,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
         AppSpacing.gapLg,
         PrimaryButton(
-          label: 'Se connecter',
+          label: AppTexts.of(context).authConnecter,
           isLoading: _submitting,
           onPressed: _submit,
         ),
@@ -102,14 +102,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           children: <Widget>[
             Flexible(
               child: Text(
-                'Pas encore de compte ?',
+                AppTexts.of(context).authEncoreCompte,
                 style: context.typo.bodyMuted,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
             TextButton(
               onPressed: _submitting ? null : _goToSignUp,
-              child: const Text("S'inscrire"),
+              child: Text(AppTexts.of(context).authInscrire),
             ),
           ],
         ),
@@ -145,7 +145,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             setState(() => _seSouvenir = coche ?? true),
                 ),
                 Flexible(
-                  child: Text('Se souvenir de moi', style: context.typo.body),
+                  child: Text(
+                    AppTexts.of(context).authSouvenirMoi,
+                    style: context.typo.body,
+                  ),
                 ),
               ],
             ),
@@ -156,8 +159,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           padding: const EdgeInsets.only(left: AppSpacing.md),
           child: Text(
             _seSouvenir
-                ? 'Vous resterez connecté jusqu’à la déconnexion.'
-                : 'Vous serez déconnecté à la fermeture de l’application.',
+                ? AppTexts.of(context).authResterezConnecteJusquDeconnexion
+                : AppTexts.of(context).authSerezDeconnecteFermetureApplication,
             style: context.typo.caption.copyWith(
               color: context.couleurs.textSecondary,
             ),
@@ -183,9 +186,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 AppSpacing.hGapSm,
                 Expanded(
                   child: Text(
-                    'Jelvo installé sur l’écran d’accueil a sa propre '
-                    'session : s’y connecter est une étape distincte de '
-                    'Safari, même avec cette case cochée.',
+                    AppTexts.of(context).authJelvoInstalleEcranAccueil,
                     style: context.typo.caption.copyWith(
                       color: context.couleurs.encre,
                     ),
@@ -224,10 +225,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     setState(() {
       _identifierError = identifier.isEmpty
-          ? 'Renseignez votre pseudo ou votre adresse e-mail.'
+          ? AppTexts.of(context).authRenseignezPseudoAdresseE
           : null;
       _passwordError = password.isEmpty
-          ? 'Renseignez votre mot de passe.'
+          ? AppTexts.of(context).authRenseignezMotPasse
           : null;
       _errorMessage = null;
     });
@@ -252,7 +253,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       // par le changement de session.
     } catch (error) {
       if (!mounted) return;
-      setState(() => _errorMessage = AuthFailure.from(error).message);
+      setState(
+        () => _errorMessage = AuthFailure.from(
+          error,
+        ).message(AppTexts.of(context)),
+      );
     } finally {
       if (mounted) setState(() => _submitting = false);
     }

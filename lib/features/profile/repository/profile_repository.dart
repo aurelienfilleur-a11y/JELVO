@@ -156,6 +156,7 @@ class SupabaseProfileRepository implements ProfileRepository {
     required Uint8List bytes,
     required String fileExtension,
   }) async {
+    // texte-en-dur-autorise: chemin dans le bucket, pas une phrase.
     final String path =
         '$userId/avatar_${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
     try {

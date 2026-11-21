@@ -67,6 +67,13 @@ jobs:
       - name: Vérifier le formatage
         run: dart format --output=none --set-exit-if-changed .
 
+      # **Aucune règle de `flutter analyze` ne dit « cette chaîne atteint
+      # l'écran ».** Un texte écrit en dur compile, passe l'analyse et passe
+      # les tests : seul ce contrôle le refuse, et c'est ce qui empêche la
+      # migration de se défaire à la prochaine fonctionnalité.
+      - name: Vérifier les textes
+        run: python3 tool/verifier_textes.py
+
       - name: Analyser le code
         run: flutter analyze
 

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/jelvo_colors.dart';
 import '../../../core/widgets/avatar_stack.dart';
 import 'group_member.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Couleur d'identité d'un groupe.
 ///
@@ -120,7 +121,9 @@ class Group {
 
   IconData get icon => _groupIcons[_stableHash(id) % _groupIcons.length];
 
-  String get memberLabel => '$memberCount membre${memberCount > 1 ? 's' : ''}';
+  /// « 3 membres ». Le pluriel dépend de la langue : le modèle porte le
+  /// nombre, l'appelant en tire la phrase.
+  String memberLabel(AppTexts t) => t.groupsMembreCount(memberCount);
 
   Group copyWith({
     String? name,

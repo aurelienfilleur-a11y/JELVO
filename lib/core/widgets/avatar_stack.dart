@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../theme/jelvo_colors.dart';
 import '../theme/app_typography.dart';
 
@@ -101,7 +102,7 @@ class AvatarStack extends StatelessWidget {
     final double width = step * (slots - 1) + size;
 
     return Semantics(
-      label: '${avatars.length} participants',
+      label: AppTexts.of(context).coreParticipantCount(avatars.length),
       child: SizedBox(
         height: size,
         width: width,

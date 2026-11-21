@@ -30,7 +30,7 @@ class ProfileScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: context.couleurs.background,
       appBar: AppBar(
-        title: const Text('Mon profil'),
+        title: Text(AppTexts.of(context).profileProfil),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           tooltip: 'Retour',
@@ -49,18 +49,16 @@ class ProfileScreen extends ConsumerWidget {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (Object error, _) => EmptyState(
             icon: Icons.cloud_off_rounded,
-            title: 'Profil indisponible',
-            message: AuthFailure.from(error).message,
+            title: AppTexts.of(context).profileProfilIndisponible,
+            message: AuthFailure.from(error).message(AppTexts.of(context)),
             actionLabel: 'Réessayer',
             onActionPressed: () => ref.invalidate(currentProfileProvider),
           ),
           data: (Profile? profil) => profil == null
-              ? const EmptyState(
+              ? EmptyState(
                   icon: Icons.person_off_outlined,
-                  title: 'Profil introuvable',
-                  message:
-                      'Votre profil n’a pas encore été créé. Reconnectez-vous '
-                      'pour le finaliser.',
+                  title: AppTexts.of(context).profileProfilIntrouvable,
+                  message: AppTexts.of(context).profileProfilEncoreEteCree,
                 )
               : _contenu(context, ref, profil),
         ),
@@ -119,19 +117,24 @@ class ProfileScreen extends ConsumerWidget {
   /// n'ouvrirait rien serait pire que de partager le pseudo, avec lequel on
   /// se retrouve par la recherche.
   static Future<void> _partager(BuildContext context, Profile profil) async {
+    final AppTexts t = AppTexts.of(context);
     final ScaffoldMessengerState messager = ScaffoldMessenger.of(context);
-    final String texte =
-        'Retrouvez-moi sur Jelvo : ${profil.pseudoHandle}\n'
-        '${QrContact.encode(profil.pseudo)}';
+    final String texte = t.profileRetrouvezMoi(
+      profil.pseudoHandle,
+      QrContact.encode(profil.pseudo),
+    );
     try {
       await SharePlus.instance.share(
-        ShareParams(text: texte, subject: 'Mon profil Jelvo'),
+        ShareParams(
+          text: texte,
+          subject: AppTexts.of(context).profileProfilJelvo,
+        ),
       );
     } catch (_) {
       // Pas de feuille de partage (certains navigateurs) : le pseudo reste
       // copiable, ce qui couvre le même besoin.
       messager.showSnackBar(
-        SnackBar(content: Text('Votre pseudo : ${profil.pseudoHandle}')),
+        SnackBar(content: Text(t.profileVotrePseudo(profil.pseudoHandle))),
       );
     }
   }
@@ -177,15 +180,14 @@ class _LigneDisponibilites extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(
-                      'Mes disponibilités',
+                      AppTexts.of(context).availabilityDisponibilites,
                       style: context.typo.body.copyWith(
                         fontWeight: AppTypography.semiBold,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Les autres n’y voient qu’un mot : disponible, '
-                      'indisponible ou inconnu.',
+                      AppTexts.of(context).profileAutresVoientQuMot,
                       style: context.typo.caption,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,

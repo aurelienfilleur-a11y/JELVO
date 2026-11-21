@@ -261,9 +261,7 @@ class SupabaseChatRepository implements ChatRepository {
         },
       );
       if (result is String) return result;
-      throw const AuthFailure(
-        'Le message n’a pas pu être envoyé. Réessayez dans un instant.',
-      );
+      throw AuthFailure(AuthFailureKind.messageNonEnvoye);
     } catch (error) {
       throw AuthFailure.from(error);
     }

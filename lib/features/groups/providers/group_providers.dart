@@ -428,34 +428,6 @@ final Provider<List<Group>> filteredGroupsProvider = Provider<List<Group>>((
       .toList();
 });
 
-/// La ligne d'activité d'une carte : « 3 tâches en cours · 2 événements à
-/// venir ».
-///
-/// **Elle ne coûte aucune lecture par carte.** `mes_taches` et `mon_agenda`
-/// sont déjà chargées une fois pour toutes, sans bornes de dates et avec
-/// `group_id` : `tasksForGroupProvider` et `eventsForGroupProvider` ne font
-/// que filtrer en mémoire.
-///
-/// **Zéro ne se dit pas.** « 0 tâche · 0 événement » est vrai et inutile, et
-/// se lit comme un défaut de chargement ; un groupe sans rien annonce donc
-/// qu'il est calme, et une moitié vide s'efface au lieu d'afficher son zéro.
-final groupActivityProvider = Provider.family<String, String>((
-  Ref ref,
-  String groupId,
-) {
-  final GroupActivity activite = ref.watch(groupOngoingProvider(groupId));
-  final int taches = activite.taches;
-  final int evenements = activite.evenements;
-
-  final List<String> morceaux = <String>[
-    if (taches > 0) '$taches tâche${taches > 1 ? 's' : ''} en cours',
-    if (evenements > 0)
-      '$evenements événement${evenements > 1 ? 's' : ''} à venir',
-  ];
-  if (morceaux.isEmpty) return 'Rien de prévu pour l’instant';
-  return morceaux.join(' · ');
-});
-
 /// Ce qui est en cours dans un groupe, en chiffres.
 ///
 /// Les deux nombres servent à deux endroits — la ligne d'activité d'une carte

@@ -50,12 +50,12 @@ class NotificationCategorySheet extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text(categorie.label, style: context.typo.h2),
+            Text(categorie.label(AppTexts.of(context)), style: context.typo.h2),
 
             if (async.hasError) ...<Widget>[
               AppSpacing.gapLg,
               Text(
-                AuthFailure.from(async.error!).message,
+                AuthFailure.from(async.error!).message(AppTexts.of(context)),
                 style: context.typo.caption.copyWith(
                   color: context.couleurs.danger,
                 ),
@@ -88,6 +88,8 @@ class NotificationCategorySheet extends ConsumerWidget {
     String type,
     bool valeur,
   ) async {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     final ScaffoldMessengerState messager = ScaffoldMessenger.of(context);
     try {
       await ref
@@ -95,7 +97,7 @@ class NotificationCategorySheet extends ConsumerWidget {
           .basculer(type, enabled: valeur);
     } catch (error) {
       messager.showSnackBar(
-        SnackBar(content: Text(AuthFailure.from(error).message)),
+        SnackBar(content: Text(AuthFailure.from(error).message(t))),
       );
     }
   }
@@ -131,7 +133,10 @@ class PushPermissionSheet extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text('Notifications push', style: context.typo.h2),
+            Text(
+              AppTexts.of(context).notificationsNotificationsPush,
+              style: context.typo.h2,
+            ),
             AppSpacing.gapLg,
             const PushPermissionCard(),
           ],
@@ -142,10 +147,10 @@ class PushPermissionSheet extends ConsumerWidget {
 }
 
 /// Ce que la ligne « Notifications push » annonce à droite.
-String libellePush(PushStatus statut) => switch (statut) {
+String libellePush(PushStatus statut, AppTexts t) => switch (statut) {
   PushStatus.actif => 'Activées',
   PushStatus.aAutoriser => 'Désactivées',
   PushStatus.refuse => 'Refusées',
-  PushStatus.installationRequise => 'À installer',
+  PushStatus.installationRequise => t.notificationsInstaller,
   PushStatus.nonSupporte => 'Indisponibles',
 };

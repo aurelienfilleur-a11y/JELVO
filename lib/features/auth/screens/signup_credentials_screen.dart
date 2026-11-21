@@ -55,9 +55,9 @@ class _SignUpCredentialsScreenState
   @override
   Widget build(BuildContext context) {
     return AuthScaffold(
-      title: 'Créer votre compte',
-      subtitle: 'Choisissez un pseudo et sécurisez votre compte.',
-      stepLabel: 'Étape 1 sur 2',
+      title: AppTexts.of(context).authCreerCompte,
+      subtitle: AppTexts.of(context).authChoisissezPseudoSecurisezCompte,
+      stepLabel: AppTexts.of(context).authEtape12,
       onBack: () => context.pop(),
       children: <Widget>[
         PseudoField(
@@ -68,7 +68,7 @@ class _SignUpCredentialsScreenState
         AppSpacing.gapLg,
 
         AppTextField(
-          label: 'Adresse e-mail',
+          label: AppTexts.of(context).authAdresseEMail,
           hint: 'camille.rousseau@example.com',
           controller: _emailController,
           errorText: _emailError,
@@ -84,10 +84,10 @@ class _SignUpCredentialsScreenState
 
         PasswordField(
           controller: _passwordController,
-          hint: '8 caractères minimum',
+          hint: AppTexts.of(context).auth8CaracteresMinimum,
           textInputAction: TextInputAction.done,
           errorText: _submitted
-              ? CredentialsRules.passwordError(_password)
+              ? CredentialsRules.passwordError(_password, AppTexts.of(context))
               : null,
           onChanged: (String value) => setState(() => _password = value),
           onSubmitted: (_) => _continue(),
@@ -100,8 +100,7 @@ class _SignUpCredentialsScreenState
 
         AppSpacing.gapLg,
         Text(
-          'En créant un compte, vous acceptez de recevoir un e-mail de '
-          'vérification.',
+          AppTexts.of(context).authCreantCompteAcceptezRecevoir,
           textAlign: TextAlign.center,
           style: context.typo.caption,
         ),
@@ -114,7 +113,7 @@ class _SignUpCredentialsScreenState
 
     setState(() {
       _submitted = true;
-      _emailError = CredentialsRules.emailError(email);
+      _emailError = CredentialsRules.emailError(email, AppTexts.of(context));
     });
 
     if (!CredentialsRules.isPseudoValid(_pseudo)) return;

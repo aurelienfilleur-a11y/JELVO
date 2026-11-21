@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../theme/jelvo_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
@@ -80,7 +81,9 @@ class EventCard extends StatelessWidget {
                         child: Text(
                           dateLabel == null
                               ? timeLabel
-                              : '$dateLabel · $timeLabel',
+                              : AppTexts.of(
+                                  context,
+                                ).coreDateLabelTimeLabel(dateLabel!, timeLabel),
                           style: context.typo.caption.copyWith(
                             fontWeight: AppTypography.medium,
                           ),

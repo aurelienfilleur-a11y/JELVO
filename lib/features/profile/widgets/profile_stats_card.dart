@@ -47,7 +47,10 @@ class ProfileStatsCard extends StatelessWidget {
         children: <Widget>[
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-            child: Text('Mes statistiques', style: context.typo.h3),
+            child: Text(
+              AppTexts.of(context).profileStatistiques,
+              style: context.typo.h3,
+            ),
           ),
           AppSpacing.gapMd,
           Row(
@@ -80,7 +83,7 @@ class ProfileStatsCard extends StatelessWidget {
                   couleur: context.couleurs.warning,
                   fond: context.couleurs.warningSoft,
                   valeur: stats.completedTasks,
-                  libelle: 'Tâches terminées',
+                  libelle: AppTexts.of(context).profileTachesTerminees,
                   onTap: onOpenTasks,
                 ),
               ),
@@ -130,7 +133,7 @@ class _Compteur extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: '$valeur $libelle',
+      label: AppTexts.of(context).homeValeurLibelle(valeur, libelle),
       child: InkWell(
         onTap: onTap,
         borderRadius: AppRadii.fieldRadius,

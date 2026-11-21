@@ -54,7 +54,7 @@ class _VerificationCodeFieldState extends State<VerificationCodeField> {
     final String value = widget.controller.text;
 
     return Semantics(
-      label: 'Code de vérification à six chiffres',
+      label: AppTexts.of(context).authCodeVerificationSixChiffres,
       textField: true,
       child: Stack(
         children: <Widget>[

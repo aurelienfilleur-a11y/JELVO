@@ -69,11 +69,10 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     final bool canResend = _secondsLeft <= 0 && !_resending && !_submitting;
 
     return AuthScaffold(
-      title: 'Nouveau mot de passe',
+      title: AppTexts.of(context).authNouveauMotPasse,
       subtitle: email.isEmpty
-          ? 'Saisissez le code reçu, puis choisissez un nouveau mot de passe.'
-          : 'Saisissez le code envoyé à $email, puis choisissez un nouveau '
-                'mot de passe.',
+          ? AppTexts.of(context).authSaisissezCodeRecuPuis
+          : AppTexts.of(context).authSaisissezCodeEnvoyeEmail(email),
       onBack: _submitting ? null : () => context.pop(),
       children: <Widget>[
         if (_errorMessage != null) ...<Widget>[
@@ -90,7 +89,10 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
           AppSpacing.gapLg,
         ],
 
-        Text('Code de vérification', style: context.typo.caption),
+        Text(
+          AppTexts.of(context).authCodeVerification,
+          style: context.typo.caption,
+        ),
         AppSpacing.gapSm,
         VerificationCodeField(
           controller: _codeController,
@@ -104,11 +106,11 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
         AppSpacing.gapLg,
         PasswordField(
           controller: _passwordController,
-          label: 'Nouveau mot de passe',
-          hint: '8 caractères minimum',
+          label: AppTexts.of(context).authNouveauMotPasse,
+          hint: AppTexts.of(context).auth8CaracteresMinimum,
           textInputAction: TextInputAction.done,
           errorText: _submitted
-              ? CredentialsRules.passwordError(_password)
+              ? CredentialsRules.passwordError(_password, AppTexts.of(context))
               : null,
           onChanged: (String value) => setState(() => _password = value),
           onSubmitted: (_) => _submit(),
@@ -118,7 +120,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
 
         AppSpacing.gapXl,
         PrimaryButton(
-          label: 'Changer le mot de passe',
+          label: AppTexts.of(context).authChangerMotPasse,
           isLoading: _submitting,
           onPressed: _submit,
         ),
@@ -128,12 +130,14 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
           child: canResend
               ? TextButton(
                   onPressed: _resend,
-                  child: const Text('Renvoyer le code'),
+                  child: Text(AppTexts.of(context).authRenvoyerCode),
                 )
               : Text(
                   _resending
-                      ? 'Envoi en cours…'
-                      : 'Nouveau code possible dans $_secondsLeft s',
+                      ? AppTexts.of(context).authEnvoiCours
+                      : AppTexts.of(
+                          context,
+                        ).authNouveauCodePossibleSecondsLeft(_secondsLeft),
                   style: context.typo.caption,
                 ),
         ),
@@ -152,7 +156,9 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     });
 
     if (!CredentialsRules.isCodeComplete(code)) {
-      setState(() => _errorMessage = 'Saisissez les six chiffres du code.');
+      setState(
+        () => _errorMessage = AppTexts.of(context).authSaisissezSixChiffresCode,
+      );
       return;
     }
     if (!CredentialsRules.isPasswordValid(_password)) return;
@@ -166,13 +172,17 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
       if (!mounted) return;
       ref.read(passwordResetEmailProvider.notifier).clear();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Votre mot de passe a été mis à jour.')),
+        SnackBar(content: Text(AppTexts.of(context).authMotPasseEteMis)),
       );
       // La session ouverte par le code de récupération suffit : la garde du
       // routeur emmène directement à l'accueil.
     } catch (error) {
       if (!mounted) return;
-      setState(() => _errorMessage = AuthFailure.from(error).message);
+      setState(
+        () => _errorMessage = AuthFailure.from(
+          error,
+        ).message(AppTexts.of(context)),
+      );
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -189,11 +199,17 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
           .read(authRepositoryProvider)
           .sendPasswordResetCode(ref.read(passwordResetEmailProvider));
       if (!mounted) return;
-      setState(() => _infoMessage = 'Un nouveau code vient d’être envoyé.');
+      setState(
+        () => _infoMessage = AppTexts.of(context).authNouveauCodeVientEtre,
+      );
       _startResendCountdown();
     } catch (error) {
       if (!mounted) return;
-      setState(() => _errorMessage = AuthFailure.from(error).message);
+      setState(
+        () => _errorMessage = AuthFailure.from(
+          error,
+        ).message(AppTexts.of(context)),
+      );
     } finally {
       if (mounted) setState(() => _resending = false);
     }

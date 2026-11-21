@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../data/app_config.dart';
+import '../../../l10n/app_localizations.dart';
 import 'message.dart';
 
 /// Un média choisi, prêt à être téléversé.
@@ -19,12 +20,12 @@ class MediaSelection {
   int get sizeInBytes => bytes.length;
 
   /// Poids lisible : « 3,2 Mo », « 480 ko ».
-  String get sizeLabel {
+  String sizeLabel(AppTexts t) {
     if (sizeInBytes >= 1024 * 1024) {
       final double mo = sizeInBytes / (1024 * 1024);
-      return '${mo.toStringAsFixed(1).replaceAll('.', ',')} Mo';
+      return t.chatMegaoctets(mo.toStringAsFixed(1).replaceAll('.', ','));
     }
-    return '${(sizeInBytes / 1024).round()} ko';
+    return t.chatKilooctets((sizeInBytes / 1024).round());
   }
 
   /// Vrai si la vidéo dépasse ce que l'on accepte de téléverser.
@@ -36,9 +37,9 @@ class MediaSelection {
   bool get isTooHeavy =>
       kind == MediaKind.video && sizeInBytes > AppConfig.chatMediaMaxVideoBytes;
 
-  static String get maxVideoLabel {
+  static String maxVideoLabel(AppTexts t) {
     final int mo = AppConfig.chatMediaMaxVideoBytes ~/ (1024 * 1024);
-    return '$mo Mo';
+    return t.chatMoMo(mo);
   }
 
   /// Extension normalisée d'un nom de fichier, avec repli selon le type.

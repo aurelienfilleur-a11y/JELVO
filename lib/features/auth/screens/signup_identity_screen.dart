@@ -53,9 +53,9 @@ class _SignUpIdentityScreenState extends ConsumerState<SignUpIdentityScreen> {
     final SignUpDraft draft = ref.watch(signUpDraftProvider);
 
     return AuthScaffold(
-      title: 'Vous vous appelez comment ?',
-      subtitle: 'Vos proches vous reconnaîtront plus facilement.',
-      stepLabel: 'Étape 2 sur 2',
+      title: AppTexts.of(context).authAppelezComment,
+      subtitle: AppTexts.of(context).authProchesReconnaitrontFacilement,
+      stepLabel: AppTexts.of(context).authEtape22,
       onBack: _submitting ? null : () => context.pop(),
       children: <Widget>[
         if (_errorMessage != null) ...<Widget>[
@@ -101,7 +101,7 @@ class _SignUpIdentityScreenState extends ConsumerState<SignUpIdentityScreen> {
 
         AppSpacing.gapXl,
         PrimaryButton(
-          label: 'Créer mon compte',
+          label: AppTexts.of(context).authCreerCompte2,
           isLoading: _submitting,
           onPressed: _submit,
         ),
@@ -131,12 +131,18 @@ class _SignUpIdentityScreenState extends ConsumerState<SignUpIdentityScreen> {
   }
 
   Future<void> _submit() async {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     final String firstName = _firstNameController.text.trim();
     final String lastName = _lastNameController.text.trim();
 
     setState(() {
-      _firstNameError = firstName.isEmpty ? 'Renseignez votre prénom.' : null;
-      _lastNameError = lastName.isEmpty ? 'Renseignez votre nom.' : null;
+      _firstNameError = firstName.isEmpty
+          ? AppTexts.of(context).authRenseignezPrenom
+          : null;
+      _lastNameError = lastName.isEmpty
+          ? AppTexts.of(context).authRenseignezNom
+          : null;
       _errorMessage = null;
     });
     if (_firstNameError != null || _lastNameError != null) return;
@@ -172,20 +178,19 @@ class _SignUpIdentityScreenState extends ConsumerState<SignUpIdentityScreen> {
       // enchaîne sur le profil et la garde du routeur mène à l'accueil.
       final String? warning = await ref
           .read(signUpActionsProvider)
-          .completeProfile();
+          .completeProfile(t);
       if (warning != null) {
         messenger.showSnackBar(
-          SnackBar(
-            content: Text(
-              'Compte créé, mais le profil n’a pas pu être enregistré : '
-              '$warning',
-            ),
-          ),
+          SnackBar(content: Text(t.authCompteCreeMaisProfil(warning))),
         );
       }
     } catch (error) {
       if (!mounted) return;
-      setState(() => _errorMessage = AuthFailure.from(error).message);
+      setState(
+        () => _errorMessage = AuthFailure.from(
+          error,
+        ).message(AppTexts.of(context)),
+      );
     } finally {
       if (mounted) setState(() => _submitting = false);
     }

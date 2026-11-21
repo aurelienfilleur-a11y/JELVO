@@ -8,8 +8,8 @@ class PasswordField extends StatefulWidget {
   const PasswordField({
     super.key,
     required this.controller,
-    this.label = 'Mot de passe',
-    this.hint = 'Votre mot de passe',
+    this.label,
+    this.hint,
     this.errorText,
     this.textInputAction,
     this.onChanged,
@@ -17,8 +17,12 @@ class PasswordField extends StatefulWidget {
   });
 
   final TextEditingController controller;
-  final String label;
-  final String hint;
+
+  /// `null` → « Mot de passe ». La valeur par défaut ne peut pas vivre
+  /// dans la liste de paramètres : le contexte n'y existe pas, et c'est
+  /// lui qui porte la langue. Même arbitrage que pour les couleurs.
+  final String? label;
+  final String? hint;
   final String? errorText;
   final TextInputAction? textInputAction;
   final ValueChanged<String>? onChanged;
@@ -33,9 +37,10 @@ class _PasswordFieldState extends State<PasswordField> {
 
   @override
   Widget build(BuildContext context) {
+    final AppTexts t = AppTexts.of(context);
     return AppTextField(
-      label: widget.label,
-      hint: widget.hint,
+      label: widget.label ?? t.authMotPasse,
+      hint: widget.hint ?? t.authMotPasse2,
       controller: widget.controller,
       obscureText: _obscured,
       errorText: widget.errorText,
@@ -46,8 +51,8 @@ class _PasswordFieldState extends State<PasswordField> {
       suffixIcon: IconButton(
         onPressed: () => setState(() => _obscured = !_obscured),
         tooltip: _obscured
-            ? 'Afficher le mot de passe'
-            : 'Masquer le mot de passe',
+            ? AppTexts.of(context).authAfficherMotPasse
+            : AppTexts.of(context).authMasquerMotPasse,
         icon: Icon(
           _obscured ? Icons.visibility_outlined : Icons.visibility_off_outlined,
           size: 20,
@@ -69,22 +74,23 @@ class PasswordRulesChecklist extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AppTexts t = AppTexts.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         _Rule(
           satisfied: CredentialsRules.hasMinLength(password),
-          label: 'Au moins ${CredentialsRules.passwordMinLength} caractères',
+          label: t.authMoinsCaracteres(CredentialsRules.passwordMinLength),
         ),
         AppSpacing.gapXs,
         _Rule(
           satisfied: CredentialsRules.hasUppercase(password),
-          label: 'Une majuscule',
+          label: t.authMajuscule,
         ),
         AppSpacing.gapXs,
         _Rule(
           satisfied: CredentialsRules.hasDigit(password),
-          label: 'Un chiffre',
+          label: t.authChiffre,
         ),
       ],
     );

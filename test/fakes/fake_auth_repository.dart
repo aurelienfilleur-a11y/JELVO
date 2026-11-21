@@ -87,10 +87,7 @@ class FakeAuthRepository implements AuthRepository {
   }) async {
     lastVerifiedCode = code;
     if (code != '123456') {
-      throw const AuthFailure(
-        'Code incorrect. Vérifiez les six chiffres reçus par e-mail.',
-        kind: AuthFailureKind.codeInvalid,
-      );
+      throw const AuthFailure(AuthFailureKind.codeInvalid);
     }
     setSignedIn(true);
   }
@@ -170,7 +167,7 @@ class FakeProfileRepository implements ProfileRepository {
   @override
   Future<ProfilConsultable?> fetchProfilConsultable(String userId) async {
     if (echecLectureProfil) {
-      throw const AuthFailure('Le réseau est indisponible.');
+      throw const AuthFailure(AuthFailureKind.network);
     }
     return profilsConsultables[userId];
   }
@@ -183,7 +180,7 @@ class FakeProfileRepository implements ProfileRepository {
     required String bio,
   }) async {
     if (echecEcriture) {
-      throw const AuthFailure('Le réseau est indisponible.');
+      throw const AuthFailure(AuthFailureKind.network);
     }
     _profile = _profile.copyWith(
       firstName: firstName,
@@ -206,7 +203,7 @@ class FakeProfileRepository implements ProfileRepository {
     required Anniversaire? anniversaire,
   }) async {
     if (echecEcriture) {
-      throw const AuthFailure('Le réseau est indisponible.');
+      throw const AuthFailure(AuthFailureKind.network);
     }
     anniversaireEcrit = true;
     dernierAnniversaire = anniversaire;

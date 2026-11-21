@@ -104,5 +104,6 @@ class Anniversaire {
   int get hashCode => Object.hash(jour, mois);
 
   @override
+  // texte-en-dur-autorise: représentation de débogage, jamais affichée.
   String toString() => 'Anniversaire($jour/$mois)';
 }

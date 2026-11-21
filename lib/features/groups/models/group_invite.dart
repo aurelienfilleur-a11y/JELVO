@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// État d'un lien d'invitation, tel que le renvoie `apercu_groupe_par_jeton`.
 enum InviteLinkStatus {
@@ -17,15 +18,12 @@ enum InviteLinkStatus {
   };
 
   /// Message affiché sur la page publique quand le lien ne vaut plus.
-  String get message => switch (this) {
+  String message(AppTexts t) => switch (this) {
     InviteLinkStatus.valide => '',
-    InviteLinkStatus.invalide =>
-      'Ce lien d’invitation n’existe pas ou n’est plus valable.',
-    InviteLinkStatus.expire =>
-      'Ce lien d’invitation a expiré. Demandez-en un nouveau au groupe.',
-    InviteLinkStatus.revoque =>
-      'Ce lien d’invitation a été révoqué par le groupe.',
-    InviteLinkStatus.epuise => 'Ce lien a déjà servi au nombre de fois prévu.',
+    InviteLinkStatus.invalide => t.groupsLienInvitationExisteValable,
+    InviteLinkStatus.expire => t.groupsLienInvitationExpireDemandez,
+    InviteLinkStatus.revoque => t.groupsLienInvitationEteRevoque,
+    InviteLinkStatus.epuise => t.groupsLienDejaServiNombre,
   };
 }
 
@@ -52,15 +50,14 @@ enum JoinOutcome {
   bool get isSuccess =>
       this == JoinOutcome.rejoint || this == JoinOutcome.dejaMembre;
 
-  String get message => switch (this) {
-    JoinOutcome.rejoint => 'Vous avez rejoint le groupe.',
-    JoinOutcome.dejaMembre => 'Vous faites déjà partie de ce groupe.',
-    JoinOutcome.invalide =>
-      'Ce lien d’invitation n’existe pas ou n’est plus valable.',
-    JoinOutcome.expire => 'Ce lien d’invitation a expiré.',
-    JoinOutcome.revoque => 'Ce lien d’invitation a été révoqué.',
-    JoinOutcome.epuise => 'Ce lien a déjà servi au nombre de fois prévu.',
-    JoinOutcome.nonConnecte => 'Connectez-vous pour rejoindre ce groupe.',
+  String message(AppTexts t) => switch (this) {
+    JoinOutcome.rejoint => t.groupsAvezRejointGroupe,
+    JoinOutcome.dejaMembre => t.groupsFaitesDejaPartieGroupe,
+    JoinOutcome.invalide => t.groupsLienInvitationExisteValable,
+    JoinOutcome.expire => t.groupsLienInvitationExpire,
+    JoinOutcome.revoque => t.groupsLienInvitationEteRevoque2,
+    JoinOutcome.epuise => t.groupsLienDejaServiNombre,
+    JoinOutcome.nonConnecte => t.groupsConnectezRejoindreGroupe,
   };
 }
 
@@ -78,13 +75,11 @@ enum LeaveOutcome {
     _ => LeaveOutcome.nonMembre,
   };
 
-  String get message => switch (this) {
-    LeaveOutcome.parti => 'Vous avez quitté le groupe.',
-    LeaveOutcome.adminTransmis =>
-      'Vous avez quitté le groupe. Le plus ancien membre en devient admin.',
-    LeaveOutcome.groupeSupprime =>
-      'Vous étiez le dernier membre : le groupe a été supprimé.',
-    LeaveOutcome.nonMembre => 'Vous ne faites pas partie de ce groupe.',
+  String message(AppTexts t) => switch (this) {
+    LeaveOutcome.parti => t.groupsAvezQuitteGroupe,
+    LeaveOutcome.adminTransmis => t.groupsAvezQuitteGroupeAncien,
+    LeaveOutcome.groupeSupprime => t.groupsEtiezDernierMembreGroupe,
+    LeaveOutcome.nonMembre => t.groupsFaitesPartieGroupe,
   };
 }
 
@@ -137,31 +132,24 @@ enum MemberOutcome {
   ///
   /// [terme] n'est lu que par les issues qui parlent d'une date ; il vaut
   /// `null` partout ailleurs.
-  String message(String nom, {String? terme}) => switch (this) {
-    MemberOutcome.promu => '$nom est désormais administrateur.',
-    MemberOutcome.retrograde => '$nom n’est plus administrateur.',
-    MemberOutcome.retire => '$nom a été retiré du groupe.',
+  String message(String nom, AppTexts t, {String? terme}) => switch (this) {
+    MemberOutcome.promu => t.groupsNomDesormaisAdministrateur(nom),
+    MemberOutcome.retrograde => t.groupsNomAdministrateur(nom),
+    MemberOutcome.retire => t.groupsNomEteRetireGroupe(nom),
     MemberOutcome.termeDefini =>
       terme == null
-          ? 'L’adhésion de $nom est désormais temporaire.'
-          : '$nom fait partie du groupe jusqu’au $terme.',
-    MemberOutcome.termeRetire => 'L’adhésion de $nom n’a plus de terme.',
-    MemberOutcome.inchange => 'C’était déjà le cas, rien n’a changé.',
-    MemberOutcome.termePasse =>
-      'Cette date est déjà passée. Pour un départ immédiat, utilisez '
-          '« Retirer du groupe ».',
-    MemberOutcome.dejaAdmin => '$nom est déjà administrateur.',
-    MemberOutcome.dernierAdmin =>
-      'Un groupe doit garder au moins un administrateur. Nommez quelqu’un '
-          'd’autre avant.',
-    MemberOutcome.nonAdmin =>
-      'Seul un administrateur du groupe peut faire cela.',
-    MemberOutcome.nonAdminCible => '$nom n’est pas administrateur.',
-    MemberOutcome.nonMembre => '$nom ne fait plus partie du groupe.',
-    MemberOutcome.soiMeme =>
-      'Pour partir vous-même, utilisez « Quitter le groupe ».',
-    MemberOutcome.inconnu =>
-      'L’action n’a pas abouti. Réessayez dans un instant.',
+          ? t.groupsAdhesionNomDesormaisTemporaire(nom)
+          : t.groupsNomFaitPartieGroupe(nom, terme),
+    MemberOutcome.termeRetire => t.groupsAdhesionNomTerme(nom),
+    MemberOutcome.inchange => t.groupsEtaitDejaCasRien,
+    MemberOutcome.termePasse => t.groupsDateDejaPasseeDepart,
+    MemberOutcome.dejaAdmin => t.groupsNomDejaAdministrateur(nom),
+    MemberOutcome.dernierAdmin => t.groupsGroupeDoitGarderMoins,
+    MemberOutcome.nonAdmin => t.groupsSeulAdministrateurGroupePeut,
+    MemberOutcome.nonAdminCible => t.groupsNomAdministrateur2(nom),
+    MemberOutcome.nonMembre => t.groupsNomFaitPartieGroupe2(nom),
+    MemberOutcome.soiMeme => t.groupsPartirMemeUtilisezQuitter,
+    MemberOutcome.inconnu => t.groupsActionAboutiReessayezInstant,
   };
 }
 
@@ -267,14 +255,14 @@ class GroupInviteLink {
       (maxUses == null || usesCount < maxUses!);
 
   /// Résumé affiché sous le lien : « 2 utilisations sur 5 ».
-  String get usesLabel {
+  String usesLabel(AppTexts t) {
     final int? max = maxUses;
     if (max == null) {
       return usesCount == 0
-          ? 'Jamais utilisé'
-          : '$usesCount utilisation${usesCount > 1 ? 's' : ''}';
+          ? t.groupsJamaisUtilise
+          : t.groupsUtilisationCount(usesCount);
     }
-    return '$usesCount utilisation${usesCount > 1 ? 's' : ''} sur $max';
+    return t.groupsUtilisationSurMax(t.groupsUtilisationCount(usesCount), max);
   }
 
   @override
@@ -319,35 +307,24 @@ enum InvitationScreenStatus {
       this != InvitationScreenStatus.introuvable &&
       this != InvitationScreenStatus.groupeSupprime;
 
-  String get titre => switch (this) {
+  String titre(AppTexts t) => switch (this) {
     InvitationScreenStatus.valide => '',
-    InvitationScreenStatus.acceptee => 'Invitation déjà acceptée',
-    InvitationScreenStatus.refusee => 'Invitation déjà refusée',
-    InvitationScreenStatus.expiree => 'Invitation expirée',
-    InvitationScreenStatus.dejaMembre => 'Vous êtes déjà membre',
-    InvitationScreenStatus.groupeSupprime => 'Groupe supprimé',
-    InvitationScreenStatus.introuvable => 'Invitation introuvable',
+    InvitationScreenStatus.acceptee => t.groupsInvitationDejaAcceptee,
+    InvitationScreenStatus.refusee => t.groupsInvitationDejaRefusee,
+    InvitationScreenStatus.expiree => t.groupsInvitationExpiree,
+    InvitationScreenStatus.dejaMembre => t.groupsEtesDejaMembre,
+    InvitationScreenStatus.groupeSupprime => t.groupsGroupeSupprime,
+    InvitationScreenStatus.introuvable => t.groupsInvitationIntrouvable,
   };
 
-  String get message => switch (this) {
+  String message(AppTexts t) => switch (this) {
     InvitationScreenStatus.valide => '',
-    InvitationScreenStatus.acceptee =>
-      'Vous avez déjà rejoint ce groupe. Ouvrez-le pour y retrouver ses '
-          'événements, ses tâches et sa conversation.',
-    InvitationScreenStatus.refusee =>
-      'Vous avez décliné cette invitation. Demandez-en une nouvelle si vous '
-          'changez d’avis.',
-    InvitationScreenStatus.expiree =>
-      'Cette invitation a passé sa date limite. Demandez-en une nouvelle au '
-          'groupe.',
-    InvitationScreenStatus.dejaMembre =>
-      'Vous faites déjà partie de ce groupe, sans doute par un lien de '
-          'partage.',
-    InvitationScreenStatus.groupeSupprime =>
-      'Le groupe qui vous invitait a été supprimé. Il n’y a plus rien à '
-          'rejoindre.',
-    InvitationScreenStatus.introuvable =>
-      'Cette invitation n’existe pas, ou elle ne vous était pas destinée.',
+    InvitationScreenStatus.acceptee => t.groupsAvezDejaRejointGroupe,
+    InvitationScreenStatus.refusee => t.groupsAvezDeclineInvitationDemandez,
+    InvitationScreenStatus.expiree => t.groupsInvitationPasseDateLimite,
+    InvitationScreenStatus.dejaMembre => t.groupsFaitesDejaPartieGroupe2,
+    InvitationScreenStatus.groupeSupprime => t.groupsGroupeInvitaitEteSupprime,
+    InvitationScreenStatus.introuvable => t.groupsInvitationExisteEtaitDestinee,
   };
 
   IconData get icone => switch (this) {
@@ -453,11 +430,13 @@ class GroupInvitationDetail {
   final DateTime? expiresAt;
   final DateTime? membershipExpiresAt;
 
-  String get displaySender => senderName ?? 'Un membre';
+  String displaySender(AppTexts t) => senderName ?? t.calendarMembre;
 
-  String get displayGroupName => groupName ?? 'ce groupe';
+  String displayGroupName(AppTexts t) => groupName ?? t.groupsGroupe;
 
-  String get memberLabel => '$memberCount membre${memberCount > 1 ? 's' : ''}';
+  /// « 3 membres ». Le pluriel dépend de la langue : le modèle porte le
+  /// nombre, l'appelant en tire la phrase.
+  String memberLabel(AppTexts t) => t.groupsMembreCount(memberCount);
 }
 
 /// Invitation nominative reçue, prête à être affichée.
@@ -466,8 +445,8 @@ class GroupInvitation {
   const GroupInvitation({
     required this.id,
     required this.groupId,
-    required this.groupName,
-    required this.senderName,
+    this.groupName,
+    this.senderName,
     this.description,
     this.photoUrl,
     this.senderAvatarUrl,
@@ -482,8 +461,8 @@ class GroupInvitation {
     return GroupInvitation(
       id: row['id'] as String,
       groupId: row['group_id'] as String,
-      groupName: (row['nom'] as String?) ?? 'Groupe',
-      senderName: (row['emetteur'] as String?) ?? 'Un membre',
+      groupName: row['nom'] as String?,
+      senderName: row['emetteur'] as String?,
       description: row['description'] as String?,
       photoUrl: row['photo_url'] as String?,
       senderAvatarUrl: row['emetteur_avatar'] as String?,
@@ -503,8 +482,17 @@ class GroupInvitation {
 
   final String id;
   final String groupId;
-  final String groupName;
-  final String senderName;
+
+  /// `null` quand le groupe ou le profil a disparu. **L'écran écrit le mot de
+  /// remplacement**, parce qu'un mot a une langue et qu'un modèle n'en
+  /// connaît aucune — même forme que `GroupInviteApercu.displaySender`.
+  final String? groupName;
+  final String? senderName;
+
+  String displayGroupName(AppTexts t) => groupName ?? t.notificationsGroupe;
+
+  String displaySender(AppTexts t) => senderName ?? t.calendarMembre;
+
   final String? description;
   final String? photoUrl;
   final String? senderAvatarUrl;
@@ -519,7 +507,9 @@ class GroupInvitation {
   /// Terme de l'adhésion proposée ; `null` = adhésion permanente.
   final DateTime? membershipExpiresAt;
 
-  String get memberLabel => '$memberCount membre${memberCount > 1 ? 's' : ''}';
+  /// « 3 membres ». Le pluriel dépend de la langue : le modèle porte le
+  /// nombre, l'appelant en tire la phrase.
+  String memberLabel(AppTexts t) => t.groupsMembreCount(memberCount);
 
   bool isExpired(DateTime now) => expiresAt != null && !expiresAt!.isAfter(now);
 

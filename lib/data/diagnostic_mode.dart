@@ -43,6 +43,7 @@ abstract final class DiagnosticMode {
     if (demande != null) _actif = demande;
 
     if (_actif) {
+      // texte-en-dur-autorise: console de développement, jamais à l'écran.
       debugPrint(
         '[jelvo:diagnostic] Mode diagnostic ACTIF : les erreurs techniques '
         'brutes sont affichées. Rechargez sans « ?$parametre=1 » pour le '

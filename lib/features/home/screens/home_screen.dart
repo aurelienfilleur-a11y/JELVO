@@ -31,17 +31,18 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final AppTexts t = AppTexts.of(context);
     final DateTime now = ref.watch(nowProvider);
     final Profile? profil = ref.watch(currentProfileProvider).value;
     final List<Group> groups = ref.watch(activeGroupsProvider);
-    final List<AgendaEntry> agenda = ref.watch(todayAgendaProvider);
-    final List<Task> focusTasks = ref.watch(homeTaskRowsProvider);
+    final List<AgendaEntry> agenda = ref.watch(todayAgendaProvider(t));
+    final List<Task> focusTasks = ref.watch(homeTaskRowsProvider(t));
 
     return AppScreen(
       // Pas d'emoji dans le titre, contrairement à la maquette : sans police
       // emoji installée, le glyphe manquant s'affiche en carré « tofu » au
       // tout premier écran.
-      title: _salutation(ref, profil),
+      title: _salutation(ref, profil, t),
       subtitle: AppDates.dayAndMonth(now),
       leading: _Avatar(profil: profil),
       headerAction: Row(
@@ -51,7 +52,7 @@ class HomeScreen extends ConsumerWidget {
             count: ref.watch(unreadCountProvider),
             child: AppScreenAction(
               icon: Icons.notifications_none_rounded,
-              tooltip: 'Notifications',
+              tooltip: t.navNotifications,
               onPressed: () => context.pushNamed(AppRoutes.notifications),
             ),
           ),
@@ -62,7 +63,7 @@ class HomeScreen extends ConsumerWidget {
           // depuis l'accueil. Rien n'est perdu, et un raccourci gagné.
           AppScreenAction(
             icon: Icons.settings_outlined,
-            tooltip: 'Paramètres',
+            tooltip: t.navParametres,
             accented: true,
             onPressed: () => context.pushNamed(AppRoutes.settings),
           ),
@@ -101,8 +102,10 @@ class HomeScreen extends ConsumerWidget {
           ),
           sliver: SliverToBoxAdapter(
             child: SectionHeader(
-              title: 'Mes groupes',
-              actionLabel: groups.isEmpty ? null : 'Voir tout',
+              title: AppTexts.of(context).homeMyGroups,
+              actionLabel: groups.isEmpty
+                  ? null
+                  : AppTexts.of(context).groupsVoir,
               onActionPressed: groups.isEmpty
                   ? null
                   : () => context.goNamed(AppRoutes.groups),
@@ -115,11 +118,9 @@ class HomeScreen extends ConsumerWidget {
                   padding: AppSpacing.screenHorizontal,
                   child: EmptyState(
                     icon: Icons.groups_2_outlined,
-                    title: 'Aucun groupe pour le moment',
-                    message:
-                        'Créez un groupe pour partager un agenda, des tâches '
-                        'et une conversation.',
-                    actionLabel: 'Créer un groupe',
+                    title: AppTexts.of(context).groupsAucunGroupeMoment,
+                    message: AppTexts.of(context).homeCreezGroupePartagerAgenda,
+                    actionLabel: AppTexts.of(context).groupsCreerGroupe2,
                     onActionPressed: () =>
                         context.pushNamed(AppRoutes.groupCreate),
                   ),
@@ -182,10 +183,10 @@ class HomeScreen extends ConsumerWidget {
   /// Le prénom n'est pas attendu : un écran qui reste blanc le temps d'une
   /// lecture réseau donne l'impression d'une application lente, alors que la
   /// salutation seule est déjà juste.
-  static String _salutation(WidgetRef ref, Profile? profil) {
-    final String base = ref.watch(greetingProvider);
+  static String _salutation(WidgetRef ref, Profile? profil, AppTexts t) {
+    final String base = ref.watch(greetingProvider).salutation(t);
     final String prenom = profil?.firstName.trim() ?? '';
-    return prenom.isEmpty ? base : '$base $prenom';
+    return prenom.isEmpty ? base : t.homeBasePrenom(base, prenom);
   }
 
   static void _ouvrir(BuildContext context, AgendaEntry entry) {

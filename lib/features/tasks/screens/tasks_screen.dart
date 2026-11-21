@@ -30,6 +30,7 @@ class TasksScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final AppTexts t = AppTexts.of(context);
     final AsyncValue<List<Task>> toutes = ref.watch(tasksProvider);
     final DateTime now = ref.watch(nowProvider);
     final Group? groupe = groupId == null
@@ -60,7 +61,7 @@ class TasksScreen extends ConsumerWidget {
         actions: <Widget>[
           IconButton(
             icon: const Icon(Icons.add_rounded),
-            tooltip: 'Nouvelle tâche',
+            tooltip: AppTexts.of(context).chatNouvelleTache,
             onPressed: () => ouvrirFormulaireDeTache(context, groupId: groupId),
           ),
         ],
@@ -69,8 +70,10 @@ class TasksScreen extends ConsumerWidget {
           ? SafeArea(
               child: EmptyState(
                 icon: Icons.cloud_off_rounded,
-                title: 'Tâches indisponibles',
-                message: AuthFailure.from(toutes.error!).message,
+                title: AppTexts.of(context).tasksTachesIndisponibles,
+                message: AuthFailure.from(
+                  toutes.error!,
+                ).message(AppTexts.of(context)),
                 actionLabel: 'Réessayer',
                 onActionPressed: () =>
                     ref.read(tasksProvider.notifier).refresh(),
@@ -90,10 +93,8 @@ class TasksScreen extends ConsumerWidget {
                       children: <Widget>[
                         if (ouvertes.isNotEmpty) ...<Widget>[
                           SectionHeader(
-                            title: 'À faire',
-                            subtitle:
-                                '${ouvertes.length} tâche'
-                                '${ouvertes.length > 1 ? 's' : ''}',
+                            title: AppTexts.of(context).taskStatusTodo,
+                            subtitle: t.homeTacheCount(ouvertes.length),
                           ),
                           AppSpacing.gapMd,
                           _Carte(taches: ouvertes, now: now),
@@ -101,10 +102,8 @@ class TasksScreen extends ConsumerWidget {
                         if (terminees.isNotEmpty) ...<Widget>[
                           AppSpacing.gapXl,
                           SectionHeader(
-                            title: 'Terminées',
-                            subtitle:
-                                '${terminees.length} tâche'
-                                '${terminees.length > 1 ? 's' : ''}',
+                            title: t.tasksTerminees,
+                            subtitle: t.homeTacheCount(terminees.length),
                           ),
                           AppSpacing.gapMd,
                           _Carte(taches: terminees, now: now),
@@ -125,11 +124,11 @@ class TasksScreen extends ConsumerWidget {
       children: <Widget>[
         EmptyState(
           icon: Icons.task_alt_rounded,
-          title: 'Aucune tâche',
+          title: AppTexts.of(context).tasksAucuneTache,
           message: groupId == null
-              ? 'Tout est fait — ou rien n’a encore été noté.'
-              : 'Ce groupe n’a aucune tâche pour l’instant.',
-          actionLabel: 'Nouvelle tâche',
+              ? AppTexts.of(context).tasksFaitRienEncoreEte
+              : AppTexts.of(context).tasksGroupeAucuneTacheInstant,
+          actionLabel: AppTexts.of(context).chatNouvelleTache,
           onActionPressed: () =>
               ouvrirFormulaireDeTache(context, groupId: groupId),
         ),

@@ -55,11 +55,9 @@ class _EventInvitationScreenState extends ConsumerState<EventInvitationScreen> {
         child: evenement == null
             ? EmptyState(
                 icon: Icons.event_busy_rounded,
-                title: 'Événement introuvable',
-                message:
-                    'Il a été supprimé, ou vous n’y avez plus accès. Il n’y a '
-                    'plus rien à confirmer.',
-                actionLabel: 'Revenir au calendrier',
+                title: AppTexts.of(context).calendarEvenementIntrouvable,
+                message: AppTexts.of(context).calendarEteSupprimeAvezAcces2,
+                actionLabel: AppTexts.of(context).calendarRevenirCalendrier,
                 onActionPressed: () => context.goNamed(AppRoutes.calendar),
               )
             : _corps(evenement),
@@ -68,6 +66,7 @@ class _EventInvitationScreenState extends ConsumerState<EventInvitationScreen> {
   }
 
   Widget _corps(CalendarEvent evenement) {
+    final AppTexts t = AppTexts.of(context);
     final DateTime now = ref.watch(nowProvider);
     final Group? groupe = evenement.groupId == null
         ? null
@@ -114,10 +113,12 @@ class _EventInvitationScreenState extends ConsumerState<EventInvitationScreen> {
             children: <Widget>[
               InvitationHeader(
                 author: AvatarData(
-                  name: evenement.authorName ?? 'Un membre',
+                  name:
+                      evenement.authorName ??
+                      AppTexts.of(context).calendarMembre,
                   imageUrl: evenement.authorAvatarUrl,
                 ),
-                action: 'vous convie à un événement',
+                action: AppTexts.of(context).calendarConvieEvenement,
                 // Pas d'ancienneté : `event_participants` ne retient pas
                 // **quand** quelqu'un a été convié, seulement quand il a
                 // répondu. Une date inventée ici serait fausse pour tout
@@ -174,7 +175,7 @@ class _EventInvitationScreenState extends ConsumerState<EventInvitationScreen> {
               if (evenement.notes != null &&
                   evenement.notes!.isNotEmpty) ...<Widget>[
                 AppSpacing.gapXl,
-                const SectionHeader(title: 'À propos'),
+                SectionHeader(title: AppTexts.of(context).calendarPropos),
                 AppSpacing.gapSm,
                 Text(evenement.notes!, style: context.typo.bodyMuted),
               ],
@@ -182,8 +183,8 @@ class _EventInvitationScreenState extends ConsumerState<EventInvitationScreen> {
               if (evenement.participants.isNotEmpty) ...<Widget>[
                 AppSpacing.gapXl,
                 SectionHeader(
-                  title: 'Participants',
-                  subtitle: '${evenement.yesCount} oui',
+                  title: t.calendarParticipants,
+                  subtitle: t.calendarOuiCount(evenement.yesCount),
                 ),
                 AppSpacing.gapMd,
                 Row(
@@ -213,7 +214,7 @@ class _EventInvitationScreenState extends ConsumerState<EventInvitationScreen> {
                   icone: Icons.history_rounded,
                   couleur: context.couleurs.textSecondary,
                   fond: context.couleurs.border,
-                  texte: 'Cet événement a déjà eu lieu.',
+                  texte: AppTexts.of(context).calendarCetEvenementDejaEu,
                 ),
               ],
 
@@ -223,14 +224,14 @@ class _EventInvitationScreenState extends ConsumerState<EventInvitationScreen> {
                   icone: Icons.how_to_reg_rounded,
                   couleur: context.couleurs.success,
                   fond: context.couleurs.successSoft,
-                  texte:
-                      'Vous avez répondu : ${evenement.myResponse.label}. '
-                      'Vous pouvez encore changer d’avis.',
+                  texte: t.calendarVousAvezRepondu(
+                    evenement.myResponse.label(t),
+                  ),
                 ),
               ],
 
               AppSpacing.gapXl,
-              Text('Serez-vous là ?', style: context.typo.h3),
+              Text(AppTexts.of(context).calendarSerez, style: context.typo.h3),
               AppSpacing.gapMd,
               ResponseButtons(
                 courante: evenement.myResponse,
@@ -239,7 +240,7 @@ class _EventInvitationScreenState extends ConsumerState<EventInvitationScreen> {
 
               AppSpacing.gapLg,
               SecondaryButton(
-                label: 'Voir le détail de l’événement',
+                label: AppTexts.of(context).calendarVoirDetailEvenement,
                 icon: Icons.open_in_new_rounded,
                 onPressed: () => context.pushNamed(
                   AppRoutes.eventDetail,
@@ -262,17 +263,19 @@ class _EventInvitationScreenState extends ConsumerState<EventInvitationScreen> {
   }
 
   Future<void> _repondre(CalendarEvent evenement, EventResponse reponse) async {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     final ScaffoldMessengerState messager = ScaffoldMessenger.of(context);
 
     setState(() => _enCours = true);
     try {
       await ref.read(eventActionsProvider).respond(evenement.id, reponse);
       messager.showSnackBar(
-        SnackBar(content: Text('Réponse enregistrée : ${reponse.label}.')),
+        SnackBar(content: Text(t.calendarReponseEnregistree(reponse.label(t)))),
       );
     } catch (error) {
       messager.showSnackBar(
-        SnackBar(content: Text(AuthFailure.from(error).message)),
+        SnackBar(content: Text(AuthFailure.from(error).message(t))),
       );
     } finally {
       if (mounted) setState(() => _enCours = false);

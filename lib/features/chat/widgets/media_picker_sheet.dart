@@ -40,6 +40,7 @@ class _MediaPickerSheetState extends State<_MediaPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final AppTexts t = AppTexts.of(context);
     return SafeArea(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -82,19 +83,20 @@ class _MediaPickerSheetState extends State<_MediaPickerSheet> {
           else ...<Widget>[
             _Choix(
               icone: Icons.photo_library_outlined,
-              titre: 'Photo de la galerie',
+              titre: AppTexts.of(context).chatPhotoGalerie,
               onTap: () => _prendre(MediaKind.image, ImageSource.gallery),
             ),
             _Choix(
               icone: Icons.photo_camera_outlined,
-              titre: 'Prendre une photo',
+              titre: AppTexts.of(context).chatPrendrePhoto,
               onTap: () => _prendre(MediaKind.image, ImageSource.camera),
             ),
             _Choix(
               icone: Icons.video_library_outlined,
-              titre: 'Vidéo de la galerie',
-              sousTitre:
-                  'Jusqu’à ${MediaSelection.maxVideoLabel}, environ une minute',
+              titre: AppTexts.of(context).chatVideoGalerie,
+              sousTitre: t.chatJusquAEnvironUneMinute(
+                MediaSelection.maxVideoLabel(t),
+              ),
               onTap: () => _prendre(MediaKind.video, ImageSource.gallery),
             ),
             _Choix(
@@ -110,6 +112,7 @@ class _MediaPickerSheetState extends State<_MediaPickerSheet> {
   }
 
   Future<void> _prendre(MediaKind kind, ImageSource source) async {
+    final AppTexts t = AppTexts.of(context);
     setState(() {
       _chargement = true;
       _erreur = null;
@@ -143,10 +146,10 @@ class _MediaPickerSheetState extends State<_MediaPickerSheet> {
       if (choix.isTooHeavy) {
         setState(() {
           _chargement = false;
-          _erreur =
-              'Cette vidéo pèse ${choix.sizeLabel}, au-delà des '
-              '${MediaSelection.maxVideoLabel} acceptés. Filmez plus court, '
-              'ou envoyez-la autrement.';
+          _erreur = t.chatVideoTropLourde(
+            choix.sizeLabel(t),
+            MediaSelection.maxVideoLabel(t),
+          );
         });
         return;
       }
@@ -156,7 +159,7 @@ class _MediaPickerSheetState extends State<_MediaPickerSheet> {
       if (!mounted) return;
       setState(() {
         _chargement = false;
-        _erreur = 'Ce média n’a pas pu être lu. Réessayez.';
+        _erreur = AppTexts.of(context).chatMediaPuEtreLu;
       });
     }
   }

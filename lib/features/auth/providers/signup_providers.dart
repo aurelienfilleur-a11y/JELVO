@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../../groups/providers/group_providers.dart';
 import '../models/auth_failure.dart';
 import 'auth_providers.dart';
@@ -115,7 +116,7 @@ class SignUpActions {
   /// Renvoie `null` en cas de succès, sinon le message à afficher : un profil
   /// non enregistré ne doit pas barrer l'entrée dans l'application, l'écran
   /// Profil permettant de le compléter ensuite.
-  Future<String?> completeProfile() async {
+  Future<String?> completeProfile(AppTexts t) async {
     final SignUpDraft draft = _ref.read(signUpDraftProvider);
 
     String? warning;
@@ -130,7 +131,7 @@ class SignUpActions {
             avatarFileExtension: draft.avatarExtension,
           );
     } catch (error) {
-      warning = AuthFailure.from(error).message;
+      warning = AuthFailure.from(error).message(t);
     }
 
     _ref.read(signUpDraftProvider.notifier).reset();

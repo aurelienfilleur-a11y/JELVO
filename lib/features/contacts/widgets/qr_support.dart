@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Contenu encodé dans le QR code personnel, et conditions du scan.
 ///
@@ -40,7 +41,7 @@ abstract final class QrScanSupport {
         defaultTargetPlatform == TargetPlatform.iOS;
   }
 
-  static String get unavailableMessage =>
-      'Le scan de QR code demande une caméra : il est disponible sur '
-      'l’application mobile. Ici, cherchez la personne par son pseudo.';
+  /// Le message prend la langue en paramètre : un `static get` n'a pas de
+  /// contexte, et c'est l'écran qui en a un.
+  static String unavailableMessage(AppTexts t) => t.contactsScanQRCodeDemande;
 }

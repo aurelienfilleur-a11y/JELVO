@@ -56,7 +56,10 @@ class PeerAvailabilityList extends ConsumerWidget {
           Row(
             children: <Widget>[
               Expanded(
-                child: Text('Qui est disponible ?', style: context.typo.h3),
+                child: Text(
+                  AppTexts.of(context).availabilityDisponible,
+                  style: context.typo.h3,
+                ),
               ),
               if (statuts.isLoading)
                 const SizedBox(
@@ -68,8 +71,7 @@ class PeerAvailabilityList extends ConsumerWidget {
           ),
           const SizedBox(height: 2),
           Text(
-            'À l’heure choisie. Vous ne voyez qu’un mot, jamais leurs '
-            'créneaux.',
+            AppTexts.of(context).availabilityHeureChoisieVoyezQu,
             style: context.typo.caption.copyWith(
               color: context.couleurs.textSecondary,
             ),
@@ -80,7 +82,9 @@ class PeerAvailabilityList extends ConsumerWidget {
           // et on laisse le formulaire utilisable.
           if (statuts.hasError)
             Text(
-              'Disponibilités indisponibles pour l’instant.',
+              AppTexts.of(
+                context,
+              ).availabilityDisponibilitesIndisponiblesInstant,
               style: context.typo.caption.copyWith(
                 color: context.couleurs.warning,
               ),

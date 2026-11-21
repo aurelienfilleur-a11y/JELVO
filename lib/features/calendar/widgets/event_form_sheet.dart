@@ -113,14 +113,16 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Text(
-              _modification ? 'Modifier l’événement' : 'Nouvel événement',
+              _modification
+                  ? AppTexts.of(context).calendarModifierEvenement
+                  : AppTexts.of(context).createNewEvent,
               style: context.typo.h2,
             ),
             AppSpacing.gapLg,
 
             AppTextField(
-              label: 'Titre *',
-              hint: 'Ex. : Déjeuner chez Camille',
+              label: AppTexts.of(context).calendarTitre,
+              hint: AppTexts.of(context).calendarExDejeunerChezCamille,
               controller: _titre,
               errorText: _erreurTitre,
               autofocus: !_modification,
@@ -157,7 +159,7 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
             AppSpacing.gapLg,
             AppTextField(
               label: 'Lieu',
-              hint: 'Ex. : Le Petit Comptoir',
+              hint: AppTexts.of(context).calendarExPetitComptoir,
               controller: _lieu,
               prefixIcon: Icons.place_outlined,
               // Le lieu est facultatif : effacer doit être aussi rapide que
@@ -167,7 +169,7 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
                   : IconButton(
                       icon: const Icon(Icons.cancel_rounded, size: 20),
                       color: context.couleurs.textSecondary,
-                      tooltip: 'Effacer le lieu',
+                      tooltip: AppTexts.of(context).calendarEffacerLieu,
                       onPressed: () => setState(_lieu.clear),
                     ),
               onChanged: (_) => setState(() {}),
@@ -176,7 +178,7 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
             AppSpacing.gapLg,
             AppTextField(
               label: 'Description',
-              hint: 'Ce qu’il faut savoir, ce qu’il faut apporter',
+              hint: AppTexts.of(context).calendarQuFautSavoirQu,
               controller: _description,
               maxLines: 3,
               minLines: 2,
@@ -193,7 +195,7 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
                     OptionRow(
                       icon: Icons.group_outlined,
                       label: 'Participants',
-                      hint: 'Inviter des membres du groupe',
+                      hint: AppTexts.of(context).calendarInviterMembresGroupe,
                       value: _libelleParticipants(membres),
                       onTap: () => _choisirParticipants(membres),
                     ),
@@ -202,16 +204,18 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
                   OptionRow(
                     icon: Icons.notifications_none_rounded,
                     label: 'Rappel',
-                    hint: 'Jelvo préviendra les participants',
-                    value: _rappel.label,
+                    hint: AppTexts.of(
+                      context,
+                    ).calendarJelvoPreviendraParticipants,
+                    value: _rappel.label(AppTexts.of(context)),
                     onTap: _choisirRappel,
                   ),
                   Divider(height: 1, color: context.couleurs.border),
                   OptionRow(
                     icon: Icons.repeat_rounded,
                     label: 'Répéter',
-                    hint: 'Pour les rendez-vous réguliers',
-                    value: _recurrence.label,
+                    hint: AppTexts.of(context).calendarRendezReguliers,
+                    value: _recurrence.label(AppTexts.of(context)),
                     onTap: _choisirRecurrence,
                   ),
                 ],
@@ -238,8 +242,8 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
             AppSpacing.gapXl,
             PrimaryButton(
               label: _modification
-                  ? 'Enregistrer les modifications'
-                  : 'Créer l’événement',
+                  ? AppTexts.of(context).calendarEnregistrerModifications
+                  : AppTexts.of(context).calendarCreerEvenement2,
               icon: Icons.check_circle_outline_rounded,
               isLoading: _envoi,
               onPressed: _valider,
@@ -266,7 +270,7 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
           children: <Widget>[
             Expanded(
               child: _Champ(
-                label: 'Date *',
+                label: AppTexts.of(context).calendarDate,
                 icon: Icons.calendar_today_rounded,
                 valeur: _jour == null ? null : AppDates.shortDate(_jour!),
                 placeholder: 'Choisir',
@@ -276,7 +280,7 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
             AppSpacing.hGapMd,
             Expanded(
               child: _Champ(
-                label: 'Heure *',
+                label: AppTexts.of(context).calendarHeure,
                 icon: Icons.schedule_rounded,
                 valeur: _debut?.format(context),
                 placeholder: 'Choisir',
@@ -309,15 +313,17 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
   /// Aucun coché veut dire « tous les membres » — c'est ce que fait
   /// `creer_evenement` quand la liste est `null`, et non « personne ».
   String _libelleParticipants(List<GroupMember> membres) {
-    if (_participants.isEmpty) return 'Tous les membres';
-    return '${_participants.length} sur ${membres.length}';
+    if (_participants.isEmpty) return AppTexts.of(context).calendarMembres;
+    return AppTexts.of(
+      context,
+    ).coreSurTotalTexte(_participants.length, membres.length);
   }
 
   Future<void> _choisirParticipants(List<GroupMember> membres) {
     return PersonPickerSheet.ouvrir(
       context,
       titre: 'Participants',
-      aide: 'Sans sélection, tous les membres du groupe sont conviés.',
+      aide: AppTexts.of(context).calendarSelectionMembresGroupeConvies,
       personnes: <PickablePerson>[
         for (final GroupMember membre in membres)
           PickablePerson(
@@ -367,20 +373,22 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
   }
 
   Future<void> _choisirRappel() async {
+    final AppTexts t = AppTexts.of(context);
     final ReminderOffset? choix = await _choisirDansListe<ReminderOffset>(
-      titre: 'Rappel',
+      titre: t.calendarRappel,
       valeurs: ReminderOffset.values,
-      libelle: (ReminderOffset o) => o.label,
+      libelle: (ReminderOffset o) => o.label(t),
       courant: _rappel,
     );
     if (choix != null) setState(() => _rappel = choix);
   }
 
   Future<void> _choisirRecurrence() async {
+    final AppTexts t = AppTexts.of(context);
     final Recurrence? choix = await _choisirDansListe<Recurrence>(
-      titre: 'Répéter',
+      titre: t.calendarRepeter,
       valeurs: Recurrence.values,
-      libelle: (Recurrence r) => r.label,
+      libelle: (Recurrence r) => r.label(t),
       courant: _recurrence,
     );
     if (choix != null) setState(() => _recurrence = choix);
@@ -473,9 +481,13 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
   }
 
   Future<void> _valider() async {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     final String titre = _titre.text.trim();
     setState(() {
-      _erreurTitre = titre.isEmpty ? 'Donnez un titre à l’événement.' : null;
+      _erreurTitre = titre.isEmpty
+          ? AppTexts.of(context).calendarDonnezTitreEvenement
+          : null;
       _erreur = null;
     });
     if (_erreurTitre != null) return;
@@ -485,14 +497,16 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
       const TimeOfDay(hour: 12, minute: 0),
     );
     if (debut == null) {
-      setState(() => _erreur = 'Choisissez la date de l’événement.');
+      setState(() => _erreur = AppTexts.of(context).createMissingDate);
       return;
     }
     final DateTime fin =
         _instant(_fin, const TimeOfDay(hour: 13, minute: 0)) ??
         debut.add(const Duration(hours: 1));
     if (fin.isBefore(debut)) {
-      setState(() => _erreur = 'La fin doit suivre le début.');
+      setState(
+        () => _erreur = AppTexts.of(context).availabilityFinDoitSuivreDebut,
+      );
       return;
     }
 
@@ -539,14 +553,16 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
         SnackBar(
           content: Text(
             _modification
-                ? 'L’événement a été modifié.'
-                : 'L’événement « $titre » a été créé.',
+                ? t.calendarEvenementEteModifie
+                : t.calendarEvenementTitreEteCree(titre),
           ),
         ),
       );
     } catch (error) {
       if (!mounted) return;
-      setState(() => _erreur = AuthFailure.from(error).message);
+      setState(
+        () => _erreur = AuthFailure.from(error).message(AppTexts.of(context)),
+      );
     } finally {
       if (mounted) setState(() => _envoi = false);
     }

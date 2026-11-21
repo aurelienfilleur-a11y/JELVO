@@ -42,7 +42,7 @@ class GroupStatsRow extends StatelessWidget {
               valeur: tachesEnRetard,
               // Deux lignes, comme sur la maquette, et la hauteur est donc la
               // même que le compteur voisin.
-              libelle: 'tâches\nen retard',
+              libelle: AppTexts.of(context).groupsTachesNenRetard,
               icon: Icons.schedule_rounded,
               // Rouge seulement s'il y a du retard : une pastille rouge sur un
               // zéro annoncerait un problème qui n'existe pas.
@@ -59,7 +59,7 @@ class GroupStatsRow extends StatelessWidget {
           Expanded(
             child: _Compteur(
               valeur: evenementsAVenir,
-              libelle: 'événements\nà venir',
+              libelle: AppTexts.of(context).groupsEvenementsNaVenir,
               icon: Icons.calendar_month_rounded,
               couleur: context.couleurs.primary,
               fond: context.couleurs.primarySoft,

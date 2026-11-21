@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/jelvo_colors.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Nature d'une notification.
 ///
@@ -107,15 +108,16 @@ class AppNotification {
     return value is String && value.isNotEmpty ? value : null;
   }
 
-  String get groupName => _text('group_name') ?? 'un groupe';
+  String groupName(AppTexts t) => _text('group_name') ?? t.notificationsGroupe;
 
-  String get senderName => switch (type) {
-    NotificationType.groupInvitation => _text('inviter_name') ?? 'Un membre',
-    NotificationType.contactRequest => _text('name') ?? 'Quelqu’un',
-    NotificationType.eventInvitation => _text('auteur') ?? 'Un membre',
-    NotificationType.taskAssigned => _text('auteur') ?? 'Un membre',
-    NotificationType.taskResponse => _text('auteur') ?? 'Un membre',
-    NotificationType.birthday => _text('name') ?? 'Un contact',
+  String senderName(AppTexts t) => switch (type) {
+    NotificationType.groupInvitation =>
+      _text('inviter_name') ?? t.calendarMembre,
+    NotificationType.contactRequest => _text('name') ?? t.chatQuelqu,
+    NotificationType.eventInvitation => _text('auteur') ?? t.calendarMembre,
+    NotificationType.taskAssigned => _text('auteur') ?? t.calendarMembre,
+    NotificationType.taskResponse => _text('auteur') ?? t.calendarMembre,
+    NotificationType.birthday => _text('name') ?? t.notificationsContact,
     NotificationType.autre => 'Jelvo',
   };
 
@@ -138,7 +140,7 @@ class AppNotification {
   /// Événement concerné, pour les invitations d'agenda.
   String? get eventId => _text('event_id');
 
-  String get eventTitle => _text('titre') ?? 'un événement';
+  String eventTitle(AppTexts t) => _text('titre') ?? t.notificationsEvenement;
 
   /// Début de l'événement, déjà remis à l'heure locale.
   DateTime? get eventStart =>
@@ -152,7 +154,7 @@ class AppNotification {
   /// Tâche concernée, pour une attribution.
   String? get taskId => _text('task_id');
 
-  String get taskTitle => _text('titre') ?? 'une tâche';
+  String taskTitle(AppTexts t) => _text('titre') ?? t.notificationsTache;
 
   /// Échéance de la tâche, déjà remise à l'heure locale.
   DateTime? get taskDueAt =>
@@ -165,39 +167,47 @@ class AppNotification {
   /// acceptation qui n'a pas eu lieu.
   bool get taskResponseAccepted => _text('reponse') == 'accepted';
 
-  String get title => switch (type) {
-    NotificationType.groupInvitation => 'Invitation à rejoindre $groupName',
-    NotificationType.contactRequest => 'Demande de contact',
-    NotificationType.eventInvitation => eventTitle,
-    NotificationType.taskAssigned => taskTitle,
-    NotificationType.taskResponse => taskTitle,
-    NotificationType.birthday => senderName,
-    NotificationType.autre => 'Notification',
+  String title(AppTexts t) => switch (type) {
+    NotificationType.groupInvitation =>
+      t.notificationsInvitationRejoindreGroupName(groupName(t)),
+    NotificationType.contactRequest => t.notificationsDemandeContact,
+    NotificationType.eventInvitation => eventTitle(t),
+    NotificationType.taskAssigned => taskTitle(t),
+    NotificationType.taskResponse => taskTitle(t),
+    NotificationType.birthday => senderName(t),
+    NotificationType.autre => t.notificationsNotification,
   };
 
-  String get message => switch (type) {
+  String message(AppTexts t) => switch (type) {
     NotificationType.groupInvitation =>
-      '$senderName vous invite à rejoindre « $groupName ».',
+      t.notificationsSenderNameInviteRejoindreGroupName(
+        senderName(t),
+        groupName(t),
+      ),
     NotificationType.contactRequest =>
-      '$senderName souhaite vous ajouter à ses contacts.',
+      t.notificationsSenderNameSouhaiteAjouterContacts(senderName(t)),
     NotificationType.eventInvitation =>
-      '$senderName vous convie${_text('group_name') == null ? '' : ' avec « $groupName »'}.',
-    NotificationType.taskAssigned => '$senderName vous a confié cette tâche.',
+      _text('group_name') == null
+          ? t.notificationsVousConvie(senderName(t))
+          : t.notificationsVousConvieAvecGroupe(senderName(t), groupName(t)),
+    NotificationType.taskAssigned => t.notificationsSenderNameConfieTache(
+      senderName(t),
+    ),
     NotificationType.taskResponse =>
       taskResponseAccepted
-          ? '$senderName accepte cette tâche.'
-          : '$senderName décline cette tâche.',
-    NotificationType.birthday => 'fête son anniversaire aujourd’hui.',
-    NotificationType.autre => 'Vous avez une nouvelle notification.',
+          ? t.notificationsSenderNameAccepteTache(senderName(t))
+          : t.notificationsSenderNameDeclineTache(senderName(t)),
+    NotificationType.birthday => t.notificationsFeteAnniversaireAujourdHui,
+    NotificationType.autre => t.notificationsAvezNouvelleNotification,
   };
 
   /// Libellé de l'action, ou `null` si la notification n'en propose pas.
-  String? get actionLabel => switch (type) {
+  String? actionLabel(AppTexts t) => switch (type) {
     NotificationType.groupInvitation => 'Voir l’invitation',
-    NotificationType.contactRequest => 'Voir la demande',
-    NotificationType.eventInvitation => 'Voir l’événement',
-    NotificationType.taskAssigned => 'Voir la tâche',
-    NotificationType.taskResponse => 'Voir la tâche',
+    NotificationType.contactRequest => t.notificationsVoirDemande,
+    NotificationType.eventInvitation => t.notificationsVoirEvenement,
+    NotificationType.taskAssigned => t.notificationsVoirTache,
+    NotificationType.taskResponse => t.notificationsVoirTache,
     // Rien à ouvrir : Jelvo n'a pas d'écran de profil d'autrui, et un bouton
     // qui mènerait ailleurs annoncerait ce qu'il ne fait pas. La ligne du
     // calendrier, elle, porte la même information là où on la cherche.

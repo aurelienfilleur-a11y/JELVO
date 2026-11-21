@@ -34,7 +34,7 @@ class _AddContactScreenState extends ConsumerState<AddContactScreen> {
     return Scaffold(
       backgroundColor: context.couleurs.background,
       appBar: AppBar(
-        title: const Text('Ajouter un contact'),
+        title: Text(AppTexts.of(context).createAddContact),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           tooltip: 'Retour',
@@ -68,7 +68,7 @@ class _AddContactScreenState extends ConsumerState<AddContactScreen> {
               children: <Widget>[
                 Expanded(
                   child: SecondaryButton(
-                    label: 'Mon QR code',
+                    label: AppTexts.of(context).contactsQRCode,
                     icon: Icons.qr_code_rounded,
                     onPressed: () => context.pushNamed(AppRoutes.myQrCode),
                   ),
@@ -88,7 +88,7 @@ class _AddContactScreenState extends ConsumerState<AddContactScreen> {
             if (!QrScanSupport.isAvailable) ...<Widget>[
               AppSpacing.gapSm,
               Text(
-                QrScanSupport.unavailableMessage,
+                QrScanSupport.unavailableMessage(AppTexts.of(context)),
                 style: context.typo.caption,
               ),
             ],
@@ -126,10 +126,12 @@ class _AddContactScreenState extends ConsumerState<AddContactScreen> {
           .read(contactActionsProvider)
           .sendRequest(profile.id);
       if (!mounted) return;
-      setState(() => _message = outcome.message);
+      setState(() => _message = outcome.message(AppTexts.of(context)));
     } catch (error) {
       if (!mounted) return;
-      setState(() => _message = AuthFailure.from(error).message);
+      setState(
+        () => _message = AuthFailure.from(error).message(AppTexts.of(context)),
+      );
     }
   }
 }
@@ -143,12 +145,10 @@ class _Results extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (term.trim().length < 2) {
-      return const EmptyState(
+      return EmptyState(
         icon: Icons.search_rounded,
-        title: 'Cherchez un pseudo',
-        message:
-            'Saisissez au moins deux caractères pour trouver quelqu’un, ou '
-            'scannez son QR code.',
+        title: AppTexts.of(context).contactsCherchezPseudo,
+        message: AppTexts.of(context).contactsSaisissezMoinsDeuxCaracteres,
       );
     }
 
@@ -166,15 +166,15 @@ class _Results extends ConsumerWidget {
       ),
       error: (Object error, _) => EmptyState(
         icon: Icons.cloud_off_rounded,
-        title: 'Recherche indisponible',
-        message: AuthFailure.from(error).message,
+        title: AppTexts.of(context).contactsRechercheIndisponible,
+        message: AuthFailure.from(error).message(AppTexts.of(context)),
       ),
       data: (List<ProfileSummary> profiles) {
         if (profiles.isEmpty) {
           return EmptyState(
             icon: Icons.person_off_outlined,
-            title: 'Aucun résultat',
-            message: 'Aucun pseudo ne commence par « $term ».',
+            title: AppTexts.of(context).contactsAucunResultat,
+            message: AppTexts.of(context).contactsAucunPseudoCommenceTerm(term),
           );
         }
 
@@ -220,7 +220,10 @@ class _Results extends ConsumerWidget {
                       ),
                     ),
                     if (knownIds.contains(profile.id))
-                      Text('Déjà dans le carnet', style: context.typo.caption)
+                      Text(
+                        AppTexts.of(context).contactsDejaCarnet,
+                        style: context.typo.caption,
+                      )
                     else
                       TextButton(
                         onPressed: () => onPick(profile),

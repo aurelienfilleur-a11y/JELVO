@@ -44,7 +44,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
     return Scaffold(
       backgroundColor: context.couleurs.background,
       appBar: AppBar(
-        title: const Text('Changer de mot de passe'),
+        title: Text(AppTexts.of(context).profileChangerMotPasse),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           tooltip: 'Retour',
@@ -79,11 +79,14 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
 
             PasswordField(
               controller: _controleur,
-              label: 'Nouveau mot de passe',
-              hint: '8 caractères minimum',
+              label: AppTexts.of(context).authNouveauMotPasse,
+              hint: AppTexts.of(context).auth8CaracteresMinimum,
               textInputAction: TextInputAction.done,
               errorText: _soumis
-                  ? CredentialsRules.passwordError(_motDePasse)
+                  ? CredentialsRules.passwordError(
+                      _motDePasse,
+                      AppTexts.of(context),
+                    )
                   : null,
               onChanged: (String valeur) => setState(() {
                 _motDePasse = valeur;
@@ -96,7 +99,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
 
             AppSpacing.gapXl,
             PrimaryButton(
-              label: 'Changer le mot de passe',
+              label: AppTexts.of(context).authChangerMotPasse,
               isLoading: _enCours,
               onPressed: _enregistrer,
             ),
@@ -107,6 +110,8 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
   }
 
   Future<void> _enregistrer() async {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     setState(() => _soumis = true);
     if (!CredentialsRules.isPasswordValid(_motDePasse)) return;
 
@@ -120,14 +125,12 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
     try {
       await ref.read(authRepositoryProvider).updatePassword(_motDePasse);
       navigateur.maybePop();
-      messager.showSnackBar(
-        const SnackBar(content: Text('Mot de passe changé.')),
-      );
+      messager.showSnackBar(SnackBar(content: Text(t.profileMotPasseChange)));
     } catch (error) {
       if (!mounted) return;
       setState(() {
         _enCours = false;
-        _erreur = AuthFailure.from(error).message;
+        _erreur = AuthFailure.from(error).message(AppTexts.of(context));
       });
     }
   }

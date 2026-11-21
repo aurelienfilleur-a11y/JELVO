@@ -22,10 +22,22 @@ void main() {
       expect(CredentialsRules.isPseudoValid('a' * 20), isTrue);
     });
 
-    test('renvoie un message en français', () {
-      expect(CredentialsRules.pseudoError('ab'), contains('au moins 3'));
-      expect(CredentialsRules.pseudoError('Camille'), contains('minuscules'));
-      expect(CredentialsRules.pseudoError('camille'), isNull);
+    // **Le problème, pas la phrase.** Affirmer `contains('au moins 3')`
+    // reviendrait à figer le français dans un test qui doit survivre aux
+    // quatre langues ; la mise en mots est éprouvée là où elle se fait, dans
+    // les écrans.
+    test('nomme ce qui ne va pas', () {
+      expect(CredentialsRules.pseudoProbleme('ab'), PseudoProbleme.tropCourt);
+      expect(
+        CredentialsRules.pseudoProbleme('Camille'),
+        PseudoProbleme.caracteresInterdits,
+      );
+      expect(CredentialsRules.pseudoProbleme(''), PseudoProbleme.vide);
+      expect(
+        CredentialsRules.pseudoProbleme('a' * 21),
+        PseudoProbleme.tropLong,
+      );
+      expect(CredentialsRules.pseudoProbleme('camille'), isNull);
     });
   });
 
@@ -38,13 +50,20 @@ void main() {
     });
 
     test('signale la contrainte manquante', () {
-      expect(CredentialsRules.passwordError('court'), contains('8 caractères'));
       expect(
-        CredentialsRules.passwordError('motdepasse1'),
-        contains('majuscule'),
+        CredentialsRules.motDePasseProbleme('court'),
+        MotDePasseProbleme.tropCourt,
       );
-      expect(CredentialsRules.passwordError('Motdepasse'), contains('chiffre'));
-      expect(CredentialsRules.passwordError('Motdepasse1'), isNull);
+      expect(
+        CredentialsRules.motDePasseProbleme('motdepasse1'),
+        MotDePasseProbleme.sansMajuscule,
+      );
+      expect(
+        CredentialsRules.motDePasseProbleme('Motdepasse'),
+        MotDePasseProbleme.sansChiffre,
+      );
+      expect(CredentialsRules.motDePasseProbleme(''), MotDePasseProbleme.vide);
+      expect(CredentialsRules.motDePasseProbleme('Motdepasse1'), isNull);
     });
   });
 

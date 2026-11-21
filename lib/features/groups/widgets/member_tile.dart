@@ -43,6 +43,7 @@ class MemberTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AppTexts t = AppTexts.of(context);
     return AppCard(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
@@ -70,7 +71,7 @@ class MemberTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   EmojiText(
-                    isMe ? '${member.displayName} (vous)' : member.displayName,
+                    isMe ? t.coreVous(member.displayName) : member.displayName,
                     style: context.typo.body.copyWith(
                       fontWeight: AppTypography.semiBold,
                     ),
@@ -100,7 +101,9 @@ class MemberTile extends StatelessWidget {
                         AppSpacing.hGapXs,
                         Flexible(
                           child: Text(
-                            'Jusqu’au ${AppDates.shortDate(member.expiresAt!)}',
+                            t.groupsJusquAu(
+                              AppDates.shortDate(member.expiresAt!),
+                            ),
                             style: context.typo.caption.copyWith(
                               color: context.couleurs.warning,
                               fontWeight: AppTypography.semiBold,
@@ -126,7 +129,7 @@ class MemberTile extends StatelessWidget {
           ],
           if (_showMenu)
             PopupMenuButton<_MemberAction>(
-              tooltip: 'Gérer ce membre',
+              tooltip: AppTexts.of(context).groupsGererMembre,
               // Le trois-points vertical, et non horizontal : c'est celui que
               // Material emploie partout ailleurs pour « d'autres actions »,
               // et l'ancien passait pour un ornement.
@@ -143,14 +146,18 @@ class MemberTile extends StatelessWidget {
               itemBuilder: (BuildContext context) =>
                   <PopupMenuEntry<_MemberAction>>[
                     if (member.isAdmin)
-                      const PopupMenuItem<_MemberAction>(
+                      PopupMenuItem<_MemberAction>(
                         value: _MemberAction.demote,
-                        child: Text('Retirer le rôle d’administrateur'),
+                        child: Text(
+                          AppTexts.of(context).groupsRetirerRoleAdministrateur,
+                        ),
                       )
                     else
-                      const PopupMenuItem<_MemberAction>(
+                      PopupMenuItem<_MemberAction>(
                         value: _MemberAction.promote,
-                        child: Text('Nommer administrateur'),
+                        child: Text(
+                          AppTexts.of(context).groupsNommerAdministrateur,
+                        ),
                       ),
                     // Une seule entrée pour prolonger, écourter et rendre
                     // permanent : c'est la même écriture, et la feuille
@@ -159,13 +166,15 @@ class MemberTile extends StatelessWidget {
                       value: _MemberAction.term,
                       child: Text(
                         member.isTemporary
-                            ? 'Modifier la durée de l’adhésion'
-                            : 'Rendre l’adhésion temporaire',
+                            ? AppTexts.of(context).groupsModifierDureeAdhesion
+                            : AppTexts.of(
+                                context,
+                              ).groupsRendreAdhesionTemporaire,
                       ),
                     ),
-                    const PopupMenuItem<_MemberAction>(
+                    PopupMenuItem<_MemberAction>(
                       value: _MemberAction.remove,
-                      child: Text('Retirer du groupe'),
+                      child: Text(AppTexts.of(context).groupsRetirerGroupe),
                     ),
                   ],
             ),

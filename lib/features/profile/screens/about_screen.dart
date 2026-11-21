@@ -17,7 +17,7 @@ class AboutScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: context.couleurs.background,
       appBar: AppBar(
-        title: const Text('À propos de Jelvo'),
+        title: Text(AppTexts.of(context).profileProposJelvo),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           tooltip: 'Retour',
@@ -58,7 +58,7 @@ class AboutScreen extends StatelessWidget {
             const SizedBox(height: 2),
             Center(
               child: Text(
-                'Version ${AppConfig.version}',
+                AppTexts.of(context).profileVersion(AppConfig.version),
                 style: context.typo.caption,
               ),
             ),
@@ -66,9 +66,7 @@ class AboutScreen extends StatelessWidget {
             AppSpacing.gapXxl,
             AppCard(
               child: Text(
-                'Jelvo réunit vos groupes, vos événements, vos tâches et vos '
-                'disponibilités au même endroit — pour la famille, les amis, '
-                'la colocation.',
+                AppTexts.of(context).profileJelvoReunitGroupesEvenements,
                 style: context.typo.bodyMuted,
               ),
             ),
@@ -78,13 +76,13 @@ class AboutScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  Text('Bon à savoir', style: context.typo.h3),
+                  Text(
+                    AppTexts.of(context).profileBonSavoir,
+                    style: context.typo.h3,
+                  ),
                   AppSpacing.gapSm,
                   Text(
-                    'Jelvo est une application web installable. Sur iPhone, '
-                    'les notifications ne fonctionnent qu’une fois l’icône '
-                    'ajoutée à l’écran d’accueil, et l’application installée '
-                    'a sa propre session : il faut s’y reconnecter.',
+                    AppTexts.of(context).profileJelvoApplicationWebInstallable,
                     style: context.typo.bodyMuted,
                   ),
                 ],

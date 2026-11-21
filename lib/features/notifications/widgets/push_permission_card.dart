@@ -20,6 +20,7 @@ class PushPermissionCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final AppTexts t = AppTexts.of(context);
     final AsyncValue<PushStatus> etat = ref.watch(pushStatusProvider);
     final PushStatus statut = etat.value ?? PushStatus.nonSupporte;
     final bool enCours = etat.isLoading;
@@ -32,18 +33,18 @@ class PushPermissionCard extends ConsumerWidget {
             children: <Widget>[
               Icon(_icone(statut), color: _teinte(context, statut)),
               AppSpacing.hGapMd,
-              Expanded(child: Text(_titre(statut), style: context.typo.h3)),
+              Expanded(child: Text(_titre(statut, t), style: context.typo.h3)),
               if (statut == PushStatus.actif)
                 StatusDot(
                   tone: StatusTone.success,
-                  label: 'Actives',
+                  label: t.notificationsActives,
                   filled: true,
                 ),
             ],
           ),
           AppSpacing.gapSm,
           Text(
-            _explication(statut),
+            _explication(statut, t),
             style: context.typo.caption.copyWith(
               color: context.couleurs.textSecondary,
             ),
@@ -52,7 +53,7 @@ class PushPermissionCard extends ConsumerWidget {
           if (statut == PushStatus.aAutoriser) ...<Widget>[
             AppSpacing.gapLg,
             PrimaryButton(
-              label: 'Activer les notifications',
+              label: t.notificationsActiverNotifications,
               icon: Icons.notifications_active_outlined,
               isLoading: enCours,
               onPressed: () => _autoriser(context, ref),
@@ -61,7 +62,7 @@ class PushPermissionCard extends ConsumerWidget {
           if (statut == PushStatus.actif) ...<Widget>[
             AppSpacing.gapLg,
             SecondaryButton(
-              label: 'Désactiver sur cet appareil',
+              label: t.notificationsDesactiverCetAppareil,
               icon: Icons.notifications_off_outlined,
               onPressed: () => _desactiver(context, ref),
             ),
@@ -90,35 +91,30 @@ class PushPermissionCard extends ConsumerWidget {
         _ => context.couleurs.primary,
       };
 
-  static String _titre(PushStatus statut) => switch (statut) {
-    PushStatus.actif => 'Notifications actives',
-    PushStatus.refuse => 'Notifications refusées',
-    PushStatus.installationRequise => 'Installez Jelvo pour les recevoir',
-    PushStatus.aAutoriser => 'Notifications désactivées',
-    PushStatus.nonSupporte => 'Notifications indisponibles ici',
+  static String _titre(PushStatus statut, AppTexts t) => switch (statut) {
+    PushStatus.actif => t.notificationsNotificationsActives,
+    PushStatus.refuse => t.notificationsNotificationsRefusees,
+    PushStatus.installationRequise => t.notificationsInstallezJelvoRecevoir,
+    PushStatus.aAutoriser => t.notificationsNotificationsDesactivees,
+    PushStatus.nonSupporte => t.notificationsNotificationsIndisponiblesIci,
   };
 
-  static String _explication(PushStatus statut) => switch (statut) {
-    PushStatus.actif =>
-      'Cet appareil recevra les notifications que vous laissez cochées '
-          'que vous laissez cochées dans les paramètres.',
-    PushStatus.refuse =>
-      'Vous avez refusé l’autorisation. L’application ne peut plus la '
-          'redemander : elle se rouvre dans les réglages de votre navigateur, '
-          'à la ligne « Notifications » du site.',
+  static String _explication(PushStatus statut, AppTexts t) => switch (statut) {
+    PushStatus.actif => t.notificationsCetAppareilRecevraNotifications,
+    PushStatus.refuse => t.notificationsAvezRefuseAutorisationApplication,
     PushStatus.installationRequise =>
-      'Sur iPhone et iPad, les notifications n’existent que dans Jelvo ajouté '
-          'à l’écran d’accueil. Dans un onglet Safari, le système ne les '
-          'propose pas du tout.',
+      t.notificationsIPhoneIPadNotificationsExistent,
     PushStatus.aAutoriser =>
-      'Votre navigateur vous demandera l’autorisation. Vous pourrez revenir '
-          'dessus à tout moment.',
+      t.notificationsNavigateurDemanderaAutorisationPourrez,
     PushStatus.nonSupporte =>
-      'Cette version de l’application ne gère pas les notifications système.',
+      t.notificationsVersionApplicationGereNotifications,
   };
 
   Future<void> _autoriser(BuildContext context, WidgetRef ref) async {
+    // Lus **avant** l'attente : la garde du routeur peut avoir quitté l'écran
+    // au moment d'afficher la `SnackBar`.
     final ScaffoldMessengerState messager = ScaffoldMessenger.of(context);
+    final AppTexts t = AppTexts.of(context);
     final PushStatus apres = await ref
         .read(pushStatusProvider.notifier)
         .autoriser();
@@ -128,9 +124,8 @@ class PushPermissionCard extends ConsumerWidget {
         SnackBar(
           content: Text(
             apres == PushStatus.refuse
-                ? 'Autorisation refusée. Elle se rouvre dans les réglages de '
-                      'votre navigateur, pas ici.'
-                : 'Les notifications n’ont pas pu être activées.',
+                ? t.notificationsAutorisationRefuseeRouvreReglages
+                : t.notificationsNotificationsOntPuEtre,
           ),
         ),
       );
@@ -139,10 +134,11 @@ class PushPermissionCard extends ConsumerWidget {
 
   Future<void> _desactiver(BuildContext context, WidgetRef ref) async {
     final ScaffoldMessengerState messager = ScaffoldMessenger.of(context);
+    final AppTexts t = AppTexts.of(context);
     await ref.read(pushStatusProvider.notifier).desactiver();
     messager.showSnackBar(
-      const SnackBar(
-        content: Text('Notifications désactivées sur cet appareil.'),
+      SnackBar(
+        content: Text(t.notificationsNotificationsDesactiveesCetAppareil),
       ),
     );
   }
@@ -158,6 +154,7 @@ class _ConsigneInstallation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AppTexts t = AppTexts.of(context);
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
@@ -167,10 +164,10 @@ class _ConsigneInstallation extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          for (final String etape in const <String>[
-            '1. Touchez le bouton Partager de Safari.',
-            '2. Choisissez « Sur l’écran d’accueil ».',
-            '3. Ouvrez Jelvo depuis l’icône, puis reconnectez-vous.',
+          for (final String etape in <String>[
+            t.notifications1TouchezBoutonPartager,
+            t.notifications2ChoisissezEcranAccueil,
+            t.notifications3OuvrezJelvoDepuis,
           ])
             Padding(
               padding: const EdgeInsets.only(bottom: 2),
@@ -183,8 +180,7 @@ class _ConsigneInstallation extends StatelessWidget {
             ),
           AppSpacing.gapSm,
           Text(
-            'La reconnexion n’est pas une erreur : l’application installée a '
-            'son propre stockage, distinct de Safari.',
+            t.notificationsReconnexionErreurApplicationInstallee,
             style: context.typo.caption.copyWith(
               color: context.couleurs.textSecondary,
             ),

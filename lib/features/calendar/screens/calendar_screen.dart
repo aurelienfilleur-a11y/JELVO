@@ -29,11 +29,12 @@ class CalendarScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final AppTexts t = AppTexts.of(context);
     final DateTime now = ref.watch(nowProvider);
     final DateTime selectedDay = ref.watch(selectedDayProvider);
-    final List<AgendaEntry> agenda = ref.watch(agendaForSelectedDayProvider);
+    final List<AgendaEntry> agenda = ref.watch(agendaForSelectedDayProvider(t));
     final CalendarCounters counters = ref.watch(
-      calendarCountersProvider(selectedDay),
+      calendarCountersProvider((selectedDay, t)),
     );
     final Set<String> selection = ref.watch(calendarFilterProvider);
     final Profile? profil = ref.watch(currentProfileProvider).value;
@@ -79,7 +80,7 @@ class CalendarScreen extends ConsumerWidget {
               children: <Widget>[
                 _ArrowButton(
                   icon: Icons.chevron_left_rounded,
-                  tooltip: 'Semaine précédente',
+                  tooltip: AppTexts.of(context).calendarSemainePrecedente,
                   onPressed: () =>
                       ref.read(selectedDayProvider.notifier).shiftDays(-7),
                 ),
@@ -94,7 +95,7 @@ class CalendarScreen extends ConsumerWidget {
                 ),
                 _ArrowButton(
                   icon: Icons.chevron_right_rounded,
-                  tooltip: 'Semaine suivante',
+                  tooltip: AppTexts.of(context).calendarSemaineSuivante,
                   onPressed: () =>
                       ref.read(selectedDayProvider.notifier).shiftDays(7),
                 ),
@@ -123,13 +124,19 @@ class CalendarScreen extends ConsumerWidget {
                     text: TextSpan(
                       children: <InlineSpan>[
                         TextSpan(
-                          text: AppDates.relativeDay(selectedDay, now: now),
+                          text: AppDates.relativeDay(
+                            selectedDay,
+                            now: now,
+                            AppTexts.of(context),
+                          ),
                           style: context.typo.h3.copyWith(
                             color: context.couleurs.primary,
                           ),
                         ),
                         TextSpan(
-                          text: ' • ${AppDates.fullDate(selectedDay)}',
+                          text: t.calendarPuceEtDate(
+                            AppDates.fullDate(selectedDay),
+                          ),
                           style: context.typo.h3.copyWith(
                             color: context.couleurs.encre,
                           ),
@@ -141,7 +148,7 @@ class CalendarScreen extends ConsumerWidget {
                 if (!aujourdhui) ...<Widget>[
                   AppSpacing.hGapSm,
                   SecondaryButton(
-                    label: "Aujourd'hui",
+                    label: AppTexts.of(context).coreAujourdHui,
                     expanded: false,
                     onPressed: () =>
                         ref.read(selectedDayProvider.notifier).select(now),
@@ -175,13 +182,15 @@ class CalendarScreen extends ConsumerWidget {
           SliverToBoxAdapter(
             child: EmptyState(
               icon: Icons.event_note_rounded,
-              title: filtreActif ? 'Rien avec ces filtres' : 'Journée libre',
+              title: filtreActif
+                  ? AppTexts.of(context).calendarRienFiltres
+                  : AppTexts.of(context).homeNoEventTitle,
               message: filtreActif
-                  ? 'Un filtre est posé : la journée entière porte peut-être '
-                        'autre chose.'
-                  : 'Ni événement, ni tâche, ni créneau déclaré pour cette '
-                        'journée.',
-              actionLabel: filtreActif ? 'Tout voir' : 'Créer un événement',
+                  ? AppTexts.of(context).calendarFiltrePoseJourneeEntiere
+                  : AppTexts.of(context).calendarNiEvenementNiTache,
+              actionLabel: filtreActif
+                  ? AppTexts.of(context).homeSeeAll
+                  : AppTexts.of(context).calendarCreerEvenement,
               onActionPressed: filtreActif
                   ? () {
                       ref.read(calendarFilterProvider.notifier).clear();

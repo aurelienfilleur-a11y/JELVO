@@ -136,7 +136,7 @@ class _NavTab extends StatelessWidget {
       selected: selected,
       button: true,
       label: badge > 0
-          ? '${destination.label}, $badge non lu${badge > 1 ? 's' : ''}'
+          ? AppTexts.of(context).navBadgeNonLus(destination.label, badge)
           : destination.label,
       child: InkWell(
         onTap: onTap,

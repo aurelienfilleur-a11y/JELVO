@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/jelvo_colors.dart';
+import '../../../l10n/app_localizations.dart';
 import '../repository/push_repository.dart';
 
 /// Les neuf types de notification, rangés en trois familles.
@@ -15,11 +16,8 @@ import '../repository/push_repository.dart';
 /// que ce regroupement oublierait apparaîtrait dans [autres], plutôt que de
 /// devenir muet.
 enum NotificationCategory {
-  groupes('Groupes et discussions', Icons.forum_outlined, <String>[
-    'chat_message',
-    'group_invitation',
-  ]),
-  evenements('Événements', Icons.calendar_month_outlined, <String>[
+  groupes(Icons.forum_outlined, <String>['chat_message', 'group_invitation']),
+  evenements(Icons.calendar_month_outlined, <String>[
     'event_invitation',
     'event_response',
     'event_changed',
@@ -29,16 +27,14 @@ enum NotificationCategory {
     // contraire : le carnet n'en montre pas la liste, et ne l'annonce pas.
     'birthday',
   ]),
-  taches('Tâches et rappels', Icons.check_circle_outline_rounded, <String>[
+  taches(Icons.check_circle_outline_rounded, <String>[
     'task_assigned',
     'task_response',
     'reminder',
   ]),
-  autres('Autres', Icons.notifications_none_rounded, <String>[]);
+  autres(Icons.notifications_none_rounded, <String>[]);
 
-  const NotificationCategory(this.label, this.icon, this.types);
-
-  final String label;
+  const NotificationCategory(this.icon, this.types);
   final IconData icon;
 
   /// Les types de `types_de_notification()` que cette famille couvre.
@@ -73,17 +69,22 @@ enum NotificationCategory {
         if (!connus.contains(p.type)) p,
     ];
   }
+
+  /// Le libellé est **demandé**, pas porté : une valeur d'énumération est
+  /// `const`, et ne peut donc pas contenir un texte qui dépend de la langue.
+  String label(AppTexts t) => switch (this) {
+    NotificationCategory.groupes => t.notificationsGroupesDiscussions,
+    NotificationCategory.evenements => 'Événements',
+    NotificationCategory.taches => t.notificationsTachesRappels,
+    NotificationCategory.autres => 'Autres',
+  };
 }
 
 /// L'état d'une famille, tel que la ligne l'annonce.
 enum CategoryState {
-  toutes('Activées'),
-  partielles('Partielles'),
-  aucune('Désactivées');
-
-  const CategoryState(this.label);
-
-  final String label;
+  toutes,
+  partielles,
+  aucune;
 
   /// Un mot d'état, donc du **texte** : c'est la variante encrée qui le porte.
   Color color(JelvoColors c) => switch (this) {
@@ -100,4 +101,12 @@ enum CategoryState {
     if (actives == preferences.length) return CategoryState.toutes;
     return actives == 0 ? CategoryState.aucune : CategoryState.partielles;
   }
+
+  /// Le libellé est **demandé**, pas porté : une valeur d'énumération est
+  /// `const`, et ne peut donc pas contenir un texte qui dépend de la langue.
+  String label(AppTexts t) => switch (this) {
+    CategoryState.toutes => 'Activées',
+    CategoryState.partielles => 'Partielles',
+    CategoryState.aucune => 'Désactivées',
+  };
 }

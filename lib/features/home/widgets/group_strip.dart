@@ -89,7 +89,7 @@ class _Carte extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      group.memberLabel,
+                      group.memberLabel(AppTexts.of(context)),
                       style: context.typo.caption,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,

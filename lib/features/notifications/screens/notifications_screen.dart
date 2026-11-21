@@ -62,7 +62,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           if (unread > 0)
             TextButton(
               onPressed: () => _markAllRead(context),
-              child: const Text('Tout marquer comme lu'),
+              child: Text(AppTexts.of(context).notificationsMarquerCommeLu),
             ),
         ],
       ),
@@ -88,8 +88,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       return _scrollable(
         EmptyState(
           icon: Icons.cloud_off_rounded,
-          title: 'Notifications indisponibles',
-          message: AuthFailure.from(async.error!).message,
+          title: AppTexts.of(context).notificationsNotificationsIndisponibles,
+          message: AuthFailure.from(async.error!).message(AppTexts.of(context)),
           actionLabel: 'Réessayer',
           onActionPressed: () =>
               ref.read(notificationsProvider.notifier).refresh(),
@@ -98,12 +98,12 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     }
     if (notifications.isEmpty) {
       return _scrollable(
-        const EmptyState(
+        EmptyState(
           icon: Icons.notifications_none_rounded,
-          title: 'Aucune notification',
-          message:
-              'Les invitations à un groupe et les demandes de contact '
-              'apparaîtront ici.',
+          title: AppTexts.of(context).notificationsAucuneNotification,
+          message: AppTexts.of(
+            context,
+          ).notificationsInvitationsGroupeDemandesContact,
         ),
       );
     }
@@ -152,17 +152,21 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   );
 
   Future<void> _markAllRead(BuildContext context) async {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     try {
       await ref.read(notificationActionsProvider).markAllRead();
     } catch (error) {
       messenger.showSnackBar(
-        SnackBar(content: Text(AuthFailure.from(error).message)),
+        SnackBar(content: Text(AuthFailure.from(error).message(t))),
       );
     }
   }
 
   Future<void> _open(BuildContext context, AppNotification notification) async {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     final GoRouter router = GoRouter.of(context);
 
@@ -173,7 +177,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         // Le marquage n'est pas le but du geste : on prévient sans bloquer la
         // navigation vers l'élément concerné.
         messenger.showSnackBar(
-          SnackBar(content: Text(AuthFailure.from(error).message)),
+          SnackBar(content: Text(AuthFailure.from(error).message(t))),
         );
       }
     }
@@ -280,7 +284,7 @@ class _NotificationTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     EmojiText(
-                      notification.title,
+                      notification.title(AppTexts.of(context)),
                       style: context.typo.body.copyWith(
                         fontWeight: notification.isUnread
                             ? AppTypography.semiBold
@@ -291,7 +295,7 @@ class _NotificationTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     EmojiText(
-                      notification.message,
+                      notification.message(AppTexts.of(context)),
                       style: context.typo.caption,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -299,7 +303,11 @@ class _NotificationTile extends StatelessWidget {
                     if (notification.createdAt != null) ...<Widget>[
                       AppSpacing.gapXs,
                       Text(
-                        AppDates.relativeDay(notification.createdAt!, now: now),
+                        AppDates.relativeDay(
+                          notification.createdAt!,
+                          now: now,
+                          AppTexts.of(context),
+                        ),
                         style: context.typo.caption.copyWith(
                           color: context.couleurs.textSecondary,
                         ),
@@ -337,6 +345,8 @@ class _ReponseEvenement extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     final CalendarEvent? event = ref.watch(eventByIdProvider(eventId));
 
     return ResponseButtons(
@@ -347,11 +357,13 @@ class _ReponseEvenement extends ConsumerWidget {
         try {
           await ref.read(eventActionsProvider).respond(eventId, reponse);
           messenger.showSnackBar(
-            SnackBar(content: Text('Réponse enregistrée : ${reponse.label}.')),
+            SnackBar(
+              content: Text(t.calendarReponseEnregistree(reponse.label(t))),
+            ),
           );
         } catch (error) {
           messenger.showSnackBar(
-            SnackBar(content: Text(AuthFailure.from(error).message)),
+            SnackBar(content: Text(AuthFailure.from(error).message(t))),
           );
         }
       },

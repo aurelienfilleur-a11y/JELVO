@@ -1,4 +1,5 @@
 import 'package:intl/intl.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Formatage des dates en français, centralisé pour rester cohérent d'un
 /// écran à l'autre.
@@ -12,6 +13,7 @@ abstract final class AppDates {
   static String time(DateTime value) => DateFormat.Hm(locale).format(value);
 
   /// « 14:00 – 15:30 »
+  // texte-en-dur-autorise: deux heures et un tiret, sans mot.
   static String timeRange(DateTime start, DateTime end) =>
       '${time(start)} – ${time(end)}';
 
@@ -48,13 +50,17 @@ abstract final class AppDates {
 
   /// Libellé relatif : « Aujourd'hui », « Demain », « Hier », sinon la date
   /// courte. Utilisé sur les tâches et les prochains événements.
-  static String relativeDay(DateTime value, {DateTime? now}) {
+  /// `AppTexts` est **demandé**, pas deviné : « Aujourd'hui » et « Hier » sont
+  /// du texte, et une classe utilitaire sans `BuildContext` ne peut pas le
+  /// résoudre elle-même. Le paramètre est positionnel et vient avant le bloc
+  /// nommé — Dart refuse l'inverse.
+  static String relativeDay(DateTime value, AppTexts t, {DateTime? now}) {
     final DateTime reference = now ?? DateTime.now();
     final int days = dayDifference(value, reference);
     return switch (days) {
-      0 => "Aujourd'hui",
-      1 => 'Demain',
-      -1 => 'Hier',
+      0 => t.coreAujourdHui,
+      1 => t.coreDemain,
+      -1 => t.coreHier,
       _ => shortDate(value),
     };
   }
@@ -66,20 +72,22 @@ abstract final class AppDates {
   /// temps ? ». Les deux questions ne se posent pas au même endroit : une
   /// échéance se situe dans le calendrier, une invitation se situe par rapport
   /// à maintenant.
-  static String timeAgo(DateTime value, {DateTime? now}) {
+  static String timeAgo(DateTime value, AppTexts t, {DateTime? now}) {
     final DateTime reference = now ?? DateTime.now();
     final Duration ecart = reference.difference(value);
 
     // Une date à venir n'a pas d'ancienneté : mieux vaut le dire que d'écrire
     // « il y a -3 minutes ».
-    if (ecart.isNegative) return 'à l’instant';
-    if (ecart.inMinutes < 1) return 'à l’instant';
-    if (ecart.inMinutes < 60) return 'il y a ${ecart.inMinutes} min';
-    if (ecart.inHours < 24) return 'il y a ${ecart.inHours} h';
-    if (ecart.inDays < 7) {
-      return 'il y a ${ecart.inDays} jour${ecart.inDays > 1 ? 's' : ''}';
-    }
-    return 'le ${shortDate(value)}';
+    if (ecart.isNegative) return t.coreInstant;
+    if (ecart.inMinutes < 1) return t.coreInstant;
+    if (ecart.inMinutes < 60) return t.coreIlYaMinutes(ecart.inMinutes);
+    if (ecart.inHours < 24) return t.coreIlYaHeures(ecart.inHours);
+    // **Un pluriel, et il passe par ICU.** Le `${n > 1 ? 's' : ''}` d'avant
+    // était du français écrit en Dart : il n'a aucun sens en anglais, où le
+    // pluriel commence à 2 mais s'écrit autrement, ni en allemand. `plural`
+    // laisse chaque langue poser ses propres formes.
+    if (ecart.inDays < 7) return t.coreIlYaJours(ecart.inDays);
+    return t.coreLeDate(shortDate(value));
   }
 
   /// Nombre de jours calendaires entre [value] et [reference], en ignorant

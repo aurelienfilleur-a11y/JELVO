@@ -133,6 +133,8 @@ class _MessageComposerState extends State<MessageComposer> {
   // --- Messages vocaux ------------------------------------------------------
 
   Future<void> _demarrerEnregistrement() async {
+    // Lu **avant** l’attente : le contexte peut avoir disparu après.
+    final AppTexts t = AppTexts.of(context);
     final ScaffoldMessengerState messager = ScaffoldMessenger.of(context);
     final bool parti = await widget.recorder.demarrer();
 
@@ -141,12 +143,7 @@ class _MessageComposerState extends State<MessageComposer> {
       // pas de redemander. Renvoyer aux réglages du navigateur vaut mieux
       // qu'un bouton qui ne ferait plus rien.
       messager.showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Le microphone n’est pas accessible. Autorisez-le dans les '
-            'réglages de votre navigateur, puis rouvrez la conversation.',
-          ),
-        ),
+        SnackBar(content: Text(t.chatMicrophoneAccessibleAutorisezReglages)),
       );
       return;
     }
@@ -253,7 +250,7 @@ class _MessageComposerState extends State<MessageComposer> {
         if (widget.onAction != null)
           IconButton(
             icon: const Icon(Icons.add_rounded),
-            tooltip: 'Ajouter à la conversation',
+            tooltip: AppTexts.of(context).chatAjouterConversation,
             color: context.couleurs.textSecondary,
             onPressed: widget.enabled ? _ouvrirActions : null,
           ),
@@ -270,7 +267,7 @@ class _MessageComposerState extends State<MessageComposer> {
             onChanged: _surSaisie,
             style: context.typo.body,
             decoration: InputDecoration(
-              hintText: 'Votre message',
+              hintText: AppTexts.of(context).chatMessage,
               hintStyle: context.typo.bodyMuted,
               counterText: '',
               filled: true,
@@ -286,7 +283,9 @@ class _MessageComposerState extends State<MessageComposer> {
                       ? Icons.keyboard_alt_outlined
                       : Icons.emoji_emotions_outlined,
                 ),
-                tooltip: _emojisOuverts ? 'Fermer les emojis' : 'Emojis',
+                tooltip: _emojisOuverts
+                    ? AppTexts.of(context).chatFermerEmojis
+                    : 'Emojis',
                 color: context.couleurs.textSecondary,
                 onPressed: widget.enabled
                     ? () {
@@ -308,7 +307,9 @@ class _MessageComposerState extends State<MessageComposer> {
         AppSpacing.hGapSm,
         IconButton.filled(
           icon: Icon(micro ? Icons.mic_rounded : Icons.send_rounded, size: 20),
-          tooltip: micro ? 'Enregistrer un message vocal' : 'Envoyer',
+          tooltip: micro
+              ? AppTexts.of(context).chatEnregistrerMessageVocal
+              : 'Envoyer',
           onPressed: micro
               ? (widget.enabled ? _demarrerEnregistrement : null)
               : (peutEnvoyer ? _envoyer : null),
@@ -329,7 +330,7 @@ class _MessageComposerState extends State<MessageComposer> {
       children: <Widget>[
         IconButton(
           icon: const Icon(Icons.delete_outline_rounded),
-          tooltip: 'Annuler l’enregistrement',
+          tooltip: AppTexts.of(context).chatAnnulerEnregistrement,
           color: context.couleurs.danger,
           onPressed: _annulerEnregistrement,
         ),
@@ -354,7 +355,7 @@ class _MessageComposerState extends State<MessageComposer> {
               AppSpacing.hGapSm,
               Expanded(
                 child: Text(
-                  'Enregistrement…',
+                  AppTexts.of(context).chatEnregistrement,
                   style: context.typo.caption,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -365,7 +366,7 @@ class _MessageComposerState extends State<MessageComposer> {
         ),
         IconButton.filled(
           icon: const Icon(Icons.send_rounded, size: 20),
-          tooltip: 'Envoyer le message vocal',
+          tooltip: AppTexts.of(context).chatEnvoyerMessageVocal,
           onPressed: _terminerEnregistrement,
           style: IconButton.styleFrom(
             backgroundColor: context.couleurs.primary,
@@ -376,6 +377,8 @@ class _MessageComposerState extends State<MessageComposer> {
     );
   }
 
+  // texte-en-dur-autorise: « 1:07 » — chiffres et deux-points, le même
+  // dans les quatre langues.
   static String _minutage(Duration duree) {
     final int secondes = duree.inSeconds;
     return '${secondes ~/ 60}:${(secondes % 60).toString().padLeft(2, '0')}';
@@ -389,7 +392,9 @@ class _MessageComposerState extends State<MessageComposer> {
 class TypingIndicator extends StatelessWidget {
   const TypingIndicator({super.key, required this.names});
 
-  final List<String> names;
+  /// `null` pour un signal dont le nom n'est pas venu : c'est ici qu'il
+  /// devient « Quelqu'un », parce que c'est ici qu'il y a une langue.
+  final List<String?> names;
 
   @override
   Widget build(BuildContext context) {
@@ -402,7 +407,7 @@ class TypingIndicator extends StatelessWidget {
                 horizontal: AppSpacing.screenMargin,
               ),
               child: EmojiText(
-                _libelle(),
+                _libelle(AppTexts.of(context)),
                 style: context.typo.caption.copyWith(
                   color: context.couleurs.textSecondary,
                   fontStyle: FontStyle.italic,
@@ -414,9 +419,11 @@ class TypingIndicator extends StatelessWidget {
     );
   }
 
-  String _libelle() => switch (names.length) {
-    1 => '${names.first} est en train d’écrire…',
-    2 => '${names[0]} et ${names[1]} sont en train d’écrire…',
-    _ => 'Plusieurs personnes sont en train d’écrire…',
+  String _libelle(AppTexts t) => switch (names.length) {
+    1 => t.chatUnePersonneEcrit(_nom(0, t)),
+    2 => t.chatDeuxPersonnesEcrivent(_nom(0, t), _nom(1, t)),
+    _ => t.chatPlusieursPersonnesTrainEcrire,
   };
+
+  String _nom(int index, AppTexts t) => names[index] ?? t.chatQuelqu;
 }

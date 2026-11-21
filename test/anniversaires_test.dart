@@ -10,6 +10,7 @@ import 'package:jelvo/data/data_providers.dart';
 import 'package:jelvo/features/auth/providers/auth_providers.dart';
 import 'package:jelvo/features/availability/providers/availability_providers.dart';
 import 'package:jelvo/features/calendar/models/agenda_entry.dart';
+import 'package:jelvo/l10n/app_localizations.dart';
 import 'package:jelvo/features/calendar/providers/calendar_providers.dart';
 import 'package:jelvo/features/chat/providers/chat_providers.dart';
 import 'package:jelvo/features/contacts/models/contact_birthday.dart';
@@ -170,7 +171,7 @@ void main() {
       expect(NotificationType.birthday.navIndex, 2);
     });
 
-    test('elle ne propose aucune action', () {
+    test('elle ne propose aucune action', () async {
       // Jelvo n'a pas d'écran de profil d'autrui : un bouton mènerait
       // ailleurs que là où il annonce.
       const AppNotification notif = AppNotification(
@@ -178,9 +179,10 @@ void main() {
         type: NotificationType.birthday,
         payload: <String, dynamic>{'name': 'Léa Marchand'},
       );
-      expect(notif.actionLabel, isNull);
-      expect(notif.title, 'Léa Marchand');
-      expect(notif.message, contains('anniversaire'));
+      final AppTexts t = await _textes();
+      expect(notif.actionLabel(t), isNull);
+      expect(notif.title(t), 'Léa Marchand');
+      expect(notif.message(t), contains('anniversaire'));
     });
 
     test('un type inconnu ne devient pas un anniversaire', () {
@@ -353,7 +355,12 @@ void main() {
       // Refermer ferait disparaître l'erreur en même temps que la saisie, et
       // laisserait croire à un enregistrement.
       expect(find.byType(AnniversaireSheet), findsOneWidget);
-      expect(find.text('Le réseau est indisponible.'), findsOneWidget);
+      expect(
+        find.text(
+          'Connexion indisponible. Vérifiez votre accès à Internet, puis réessayez.',
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('le 29 février annonce ce qu’il fera les autres années', (
@@ -405,7 +412,7 @@ void main() {
       ]);
 
       final List<AgendaEntry> jour = c.read(
-        dayAgendaProvider(DateTime(2026, 8, 3)),
+        dayAgendaProvider((DateTime(2026, 8, 3), await _textes())),
       );
       final AgendaEntry ligne = jour.firstWhere(
         (AgendaEntry e) => e.kind == AgendaEntryKind.birthday,
@@ -431,7 +438,7 @@ void main() {
 
       expect(
         c
-            .read(dayAgendaProvider(DateTime(2026, 8, 4)))
+            .read(dayAgendaProvider((DateTime(2026, 8, 4), await _textes())))
             .where((AgendaEntry e) => e.kind == AgendaEntryKind.birthday),
         isEmpty,
       );
@@ -446,8 +453,9 @@ void main() {
         ),
       ]);
 
+      final AppTexts t = await _textes();
       bool aUnAnniversaire(DateTime jour) => c
-          .read(dayAgendaProvider(jour))
+          .read(dayAgendaProvider((jour, t)))
           .any((AgendaEntry e) => e.kind == AgendaEntryKind.birthday);
 
       // 2026 n'est pas bissextile.
@@ -464,7 +472,7 @@ void main() {
       final ProviderContainer c = await _conteneur(const <ContactBirthday>[]);
       expect(
         c
-            .read(dayAgendaProvider(DateTime(2026, 8, 3)))
+            .read(dayAgendaProvider((DateTime(2026, 8, 3), await _textes())))
             .where((AgendaEntry e) => e.kind == AgendaEntryKind.birthday),
         isEmpty,
       );
@@ -507,6 +515,13 @@ Profile _profil(Anniversaire? anniversaire) => Profile(
 /// `contactBirthdaysProvider` serait encore en vol, son `.value` nul
 /// retomberait sur la liste vide de repli, et le test passerait pour de
 /// mauvaises raisons — en ne voyant aucun anniversaire là où il en attend un.
+/// Un `AppTexts` français hors de tout widget.
+///
+/// Les lignes d'agenda portent des phrases — « Journée », « X fête son
+/// anniversaire » —, et c'est la langue qui les écrit : la lecture de
+/// `dayAgendaProvider` la prend donc en argument, comme elle prend le jour.
+Future<AppTexts> _textes() => AppTexts.delegate.load(const Locale('fr'));
+
 Future<ProviderContainer> _conteneur(
   List<ContactBirthday> anniversaires,
 ) async {

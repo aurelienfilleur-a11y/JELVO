@@ -4803,6 +4803,56 @@ Le poids et les types sont bornés **côté serveur**, dans `storage.buckets` :
 la borne de l'application ne protège que l'application, et une requête directe
 s'en passe.
 
+#### Le durcissement du stockage était sans effet — constaté le 21 novembre 2026
+
+Le tableau ci-dessus décrivait l'intention, pas la base. Cinq politiques
+posées **à la main dans l'éditeur SQL** quand les buckets ont été créés, avant
+qu'il n'y ait des migrations, étaient toujours là :
+
+| Politique | Ce qu'elle laissait faire à tout porteur d'un compte |
+| --- | --- |
+| `lecture chat media` | lire **tout** `chat-media`, sans condition d'appartenance |
+| `maj avatars` | UPDATE sur les trois buckets **sans `with check`** — donc déplacer un objet |
+| `ecriture avatars` | écrire dans les trois buckets à n'importe quel chemin |
+| `suppression avatars` | supprimer tout objet dont on est le propriétaire, quel que soit le bucket |
+| `lecture publique avatars` | redondante : `avatars_lecture` et `group_photos_lecture` ouvrent déjà ces deux buckets à `anon` |
+
+**Les politiques RLS s'additionnent : elles ne se remplacent pas.** Poser
+`chat_media_lecture` à côté de `lecture chat media` ne resserrait donc rien,
+les deux étant évaluées en « ou ». La tranche 5b et la tranche 7 n'ont jamais
+retiré que **leurs propres** politiques, par le `drop policy if exists` qui
+précède chaque `create` — une habitude qui protège du rejeu, et qui ne voit
+pas ce qu'elle n'a pas écrit.
+
+Les deux premières se combinaient en une fuite complète : il suffisait de
+connaître l'identifiant d'un groupe — et les identifiants circulent, c'est
+écrit plus haut — pour lister son dossier, lire ses photos, ses vidéos et ses
+messages vocaux sans en être membre, puis **déplacer** l'un d'eux vers
+`group-photos`, qui est public en lecture. La photo privée devenait alors
+lisible par n'importe qui, sans jeton.
+
+C'est exactement le défaut que ce chapitre documente sous « Une politique
+UPDATE sans `with check` autorise le déplacement » — présent une sixième fois,
+et manqué parce que la politique n'était pas la nôtre.
+
+**Ce qui l'a laissé passer, c'est le relevé.** `schema_actuel.sql` s'arrêtait
+au schéma `public` : rien ne montrait les politiques de stockage, et la
+tranche 5b avait dû **sonder** le bucket par deux requêtes HTTP pour savoir
+s'il existait et s'il était privé. Une politique de trop ne se voit pas en
+lisant les fichiers de migration — elle ne se voit qu'en lisant la base.
+`extraire_schema.sql` relève donc désormais les trois buckets et toutes les
+politiques de `storage.objects`, et une sixième politique apparaîtrait dans un
+diff sur `main`.
+
+**Deux règles** :
+
+- **une politique qu'on resserre doit être retirée, pas doublée** ; un
+  `create policy` ne dit rien de ce qui existe déjà à côté, seul `pg_policy`
+  le dit ;
+- **ce qui n'est pas relevé n'est pas vérifié.** La règle valait déjà pour les
+  colonnes — c'est tout l'objet de `schema_actuel.sql` — et elle ne s'arrêtait
+  au schéma `public` que par accident.
+
 ### Ce qui reste ouvert, et pourquoi
 
 - **`email_pour_pseudo` est accessible à `anon`**, et le doit : se connecter

@@ -21,6 +21,33 @@
 # de corriger `tranche3_taches_et_evenements.sql` deux fois sans écrire de
 # fichier de correctif.
 #
+# ===========================================================================
+# TROIS FICHIERS SONT GELÉS : NE PAS LES MODIFIER
+# ===========================================================================
+#
+#   tranche2_groupes_et_invitations.sql
+#   correctif_invitations_type.sql
+#   tranche3_taches_et_evenements.sql
+#
+# Une tranche ultérieure a redéfini certaines de leurs fonctions avec une
+# signature différente, précédée d'un `drop function`. Leur `create or
+# replace` tente donc de revenir en arrière, et PostgreSQL refuse :
+#
+#   ERROR:  cannot change return type of existing function
+#   HINT:  Use DROP FUNCTION apercu_groupe_par_jeton(text) first.
+#
+# Comme chaque fichier est appliqué dans sa propre transaction, le fichier
+# gelé reste intact — mais **tout ce qui le suit ici n'est jamais appliqué**.
+# C'est arrivé le 21 novembre 2026 : un filtre d'une ligne ajouté à la
+# tranche 2 a empêché la tranche 14 d'atteindre la base, et l'application
+# s'est retrouvée avec un bouton de suppression de compte que la base ne
+# servait pas.
+#
+# Pour changer une de ces fonctions, la **redéfinir dans un fichier
+# postérieur** : le propriétaire d'une fonction est le dernier fichier qui la
+# crée, pas le premier. `tool/pieges_migrations.py` tient la liste à jour en
+# partant du code — à lancer avant de toucher à une migration.
+#
 # Les lignes vides et celles commençant par « # » sont ignorées.
 # La colonne avatar_preset est ajoutée en premier : plusieurs fonctions
 # de lecture ci-dessous sont en `language sql`, dont le corps est validé

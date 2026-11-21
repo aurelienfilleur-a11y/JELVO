@@ -246,12 +246,18 @@ begin
 
       continue when not found;
 
+      -- La clé et les paramètres sont rendus dans la langue de l'appareil
+      -- par la fonction Edge (tranche 14) ; `corps` reste le repli français.
       if public.empiler_push(
         destinataire.user_id,
         'reminder',
         coalesce(ligne.groupe, 'Personnel'),
         corps,
-        '/taches/' || ligne.id::text
+        '/taches/' || ligne.id::text,
+        'push.rappel.tache',
+        jsonb_strip_nulls(jsonb_build_object(
+          'titre', ligne.groupe, 'tache', ligne.title
+        ))
       ) then
         empiles := empiles + 1;
       end if;
@@ -283,9 +289,12 @@ begin
     rappel := occurrence - avance;
     continue when rappel < depuis or rappel > maintenant;
 
-    -- L'heure est rendue en Europe/Paris : l'application est en français et
-    -- n'a qu'une locale. Le schéma ne porte aucun fuseau par événement, donc
-    -- il n'y a rien de plus juste à faire ici.
+    -- L'heure est rendue en Europe/Paris : le schéma ne porte aucun fuseau
+    -- par événement, et c'est la convention de tout l'envoyeur. Ce `corps`
+    -- n'est plus que le repli français : depuis la tranche 14, l'heure part
+    -- **en ISO** dans les paramètres et c'est la fonction Edge qui la
+    -- formate — « 09:00 » et « 9:00 AM » sont la même heure écrite dans deux
+    -- langues.
     corps := 'Rappel — ' || ligne.title
       || ' à ' || to_char(occurrence at time zone 'Europe/Paris', 'HH24:MI');
 
@@ -314,7 +323,13 @@ begin
         'reminder',
         coalesce(ligne.groupe, 'Personnel'),
         corps,
-        '/evenements/' || ligne.id::text
+        '/evenements/' || ligne.id::text,
+        'push.rappel.evenement',
+        jsonb_strip_nulls(jsonb_build_object(
+          'titre', ligne.groupe, 'evenement', ligne.title,
+          'heure', to_char(occurrence at time zone 'utc',
+                           'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+        ))
       ) then
         empiles := empiles + 1;
       end if;

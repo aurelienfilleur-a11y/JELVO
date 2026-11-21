@@ -31,7 +31,8 @@
 
 alter table public.push_tokens
   add column if not exists p256dh text,
-  add column if not exists auth_key text;
+  add column if not exists auth_key text,
+  add column if not exists langue text;
 
 do $$
 begin
@@ -44,6 +45,10 @@ $$;
 
 comment on column public.push_tokens.p256dh is
   'Clé publique de l''abonnement Web Push. Nulle pour ios/android.';
+comment on column public.push_tokens.langue is
+  'Code de langue de cet appareil (fr, en, es, de). null = inconnu, et '
+  'l''envoyeur retombe alors sur le français — la seule langue que ces '
+  'notifications aient jamais eue.';
 comment on column public.push_tokens.auth_key is
   'Secret d''authentification de l''abonnement Web Push. Nul pour ios/android.';
 
@@ -171,11 +176,20 @@ grant execute on function public.definir_preference_notification(text, boolean)
 -- son écran d'accueil, et l'abonnement disparaît sans que personne ne le
 -- sache. On réenregistre donc à chaque démarrage, d'où le `on conflict`.
 
+-- **Le `drop` n'est pas décoratif, et il doit rester.** Cette fonction a eu
+-- quatre paramètres ; en ajouter un cinquième, même avec une valeur par
+-- défaut, crée une **surcharge**, et PostgREST — qui appelle par noms
+-- d'arguments — n'aurait plus de quoi trancher. C'est le piège déjà payé par
+-- `envoyer_message` en tranche 5b. Le `grant` est reposé juste après : la
+-- tranche 7 ne se rejoue que si son propre contenu change.
+drop function if exists public.enregistrer_push(text, text, text, text);
+
 create or replace function public.enregistrer_push(
   p_token text,
   p_platform text default 'web',
   p_p256dh text default null,
-  p_auth text default null
+  p_auth text default null,
+  p_langue text default null
 )
 returns boolean
 language plpgsql
@@ -191,20 +205,24 @@ begin
   end if;
 
   insert into public.push_tokens (
-    user_id, token, platform, p256dh, auth_key, updated_at)
-  values (auth.uid(), p_token, p_platform, p_p256dh, p_auth, now())
+    user_id, token, platform, p256dh, auth_key, langue, updated_at)
+  values (auth.uid(), p_token, p_platform, p_p256dh, p_auth, p_langue, now())
   on conflict (user_id, token) do update
     set platform   = excluded.platform,
         p256dh     = excluded.p256dh,
         auth_key   = excluded.auth_key,
+        -- **Jamais écrasée par un `null`.** Un client plus ancien, qui ne
+        -- connaît pas ce paramètre, ne doit pas effacer la langue qu'un
+        -- client à jour a posée sur le même appareil.
+        langue     = coalesce(excluded.langue, public.push_tokens.langue),
         updated_at = now();
 
   return true;
 end;
 $$;
 
-grant execute on function public.enregistrer_push(text, text, text, text)
-  to authenticated;
+grant execute on function
+  public.enregistrer_push(text, text, text, text, text) to authenticated;
 
 create or replace function public.oublier_push(p_token text)
 returns boolean
@@ -246,11 +264,27 @@ create table if not exists public.push_outbox (
   title      text not null,
   body       text not null,
   url        text,
+  cle        text,
+  params     jsonb,
   created_at timestamptz not null default now(),
   sent_at    timestamptz,
   attempts   integer not null default 0,
   last_error text
 );
+
+-- Pour une base où la table existait déjà : `create table if not exists` ne
+-- rattrape pas une colonne ajoutée après coup.
+alter table public.push_outbox
+  add column if not exists cle text,
+  add column if not exists params jsonb;
+
+comment on column public.push_outbox.cle is
+  'Clé de gabarit, rendue par la fonction Edge dans la langue du '
+  'destinataire. null sur une ligne déposée avant la traduction : title et '
+  'body font alors foi.';
+comment on column public.push_outbox.params is
+  'Valeurs à substituer dans le gabarit. Un paramètre nommé « instant » ou '
+  '« heure » porte un horodatage ISO, que l''envoyeur formate selon la langue.';
 
 create index if not exists push_outbox_a_envoyer
   on public.push_outbox (created_at)
@@ -274,12 +308,20 @@ grant select on public.push_outbox to authenticated;
 -- Empile une notification si — et seulement si — la personne la veut et peut
 -- la recevoir. Ne lève jamais : un défaut d'empilement ne doit pas remonter
 -- jusqu'à l'écriture qui l'a déclenché.
+-- Les deux derniers paramètres sont **en queue, avec une valeur par
+-- défaut** : un appel à cinq arguments reste valable. Le `drop` est là pour
+-- la même raison que ci-dessus — une surcharge, ici, laisserait deux
+-- fonctions que les déclencheurs résoudraient au hasard de leurs arguments.
+drop function if exists public.empiler_push(uuid, text, text, text, text);
+
 create or replace function public.empiler_push(
   p_user_id uuid,
   p_type text,
   p_title text,
   p_body text,
-  p_url text default null
+  p_url text default null,
+  p_cle text default null,
+  p_params jsonb default null
 )
 returns boolean
 language plpgsql
@@ -307,8 +349,9 @@ begin
     return false;
   end if;
 
-  insert into public.push_outbox (user_id, type, title, body, url)
-  values (p_user_id, p_type, left(p_title, 120), left(p_body, 300), p_url);
+  insert into public.push_outbox (user_id, type, title, body, url, cle, params)
+  values (p_user_id, p_type, left(p_title, 120), left(p_body, 300), p_url,
+          p_cle, p_params);
 
   return true;
 exception
@@ -341,6 +384,28 @@ $$;
 --
 -- Conséquence à tenir : **le corps doit nommer l'élément**, puisque le titre
 -- ne le fait plus.
+--
+--
+-- LA CLÉ PORTE LA MÊME RÈGLE, DANS QUATRE LANGUES
+--
+-- Chaque dépôt pose en outre une **clé de gabarit** et ses **paramètres**, que
+-- la fonction Edge rend dans la langue de l'appareil visé
+-- (`push_tokens.langue`) — voir `functions/envoyer-push/traductions.ts`.
+--
+-- Le titre n'est donc plus une chaîne mais `params.titre` : le nom du groupe,
+-- celui de la personne pour un anniversaire. L'envoyeur rend `push.personnel`
+-- quand il n'y en a pas, ce qui fait une seule règle et aucune branche par
+-- type.
+--
+-- `params.auteur` absent fait écrire « Quelqu'un » par l'envoyeur, dans sa
+-- langue : c'est **le seul paramètre qui a un repli**. Les autres — un titre
+-- de tâche, un nom de groupe — sont des données, et une donnée absente fait
+-- changer de clé plutôt que de prendre une valeur par défaut.
+--
+-- **Le texte français reste déposé**, et c'est le filet : la fonction Edge
+-- peut être en retard d'un déploiement sur la base — c'est arrivé, pendant
+-- trois mois —, et une clé qu'elle ne connaît pas retombe sur `title` et
+-- `body`. Une file qui ne porterait qu'une clé n'enverrait alors plus rien.
 
 -- 5.0 Le nom d'une personne, écrit au même endroit pour tous ---------------
 --
@@ -387,7 +452,7 @@ begin
     return new;
   end if;
 
-  expediteur := coalesce(public.nom_affiche(new.sender_id), 'Quelqu''un');
+  expediteur := public.nom_affiche(new.sender_id);
 
   select g.name into groupe from public.groups g where g.id = new.group_id;
 
@@ -402,13 +467,24 @@ begin
       membre.user_id,
       'chat_message',
       coalesce(groupe, 'Personnel'),
-      expediteur || ' : ' || coalesce(
+      coalesce(expediteur, 'Quelqu''un') || ' : ' || coalesce(
         nullif(new.content, ''),
         case new.media_kind::text
              when 'video' then 'a envoyé une vidéo'
              when 'audio' then 'a envoyé un message vocal'
              else 'a envoyé une photo' end),
-      '/groupes/' || new.group_id::text || '/discussion'
+      '/groupes/' || new.group_id::text || '/discussion',
+      case
+        when nullif(new.content, '') is not null then 'push.chat.texte'
+        when new.media_kind::text = 'video' then 'push.chat.video'
+        when new.media_kind::text = 'audio' then 'push.chat.vocal'
+        else 'push.chat.photo'
+      end,
+      jsonb_strip_nulls(jsonb_build_object(
+        'titre',   groupe,
+        'auteur',  expediteur,
+        'message', nullif(new.content, '')
+      ))
     );
   end loop;
 
@@ -442,14 +518,16 @@ begin
   end if;
 
   select g.name into groupe from public.groups g where g.id = new.group_id;
-  emetteur := coalesce(public.nom_affiche(new.inviter_id), 'Quelqu''un');
+  emetteur := public.nom_affiche(new.inviter_id);
 
   perform public.empiler_push(
     new.invitee_id,
     'group_invitation',
     coalesce(groupe, 'Personnel'),
-    emetteur || ' vous invite dans le groupe',
-    '/invitations/' || new.id::text
+    coalesce(emetteur, 'Quelqu''un') || ' vous invite dans le groupe',
+    '/invitations/' || new.id::text,
+    'push.invitation.groupe',
+    jsonb_strip_nulls(jsonb_build_object('titre', groupe, 'auteur', emetteur))
   );
 
   return new;
@@ -503,7 +581,17 @@ begin
          then 'Nouvelle tâche : ' || tache.title
          else assigneur || ' vous a confié : ' || tache.title
     end,
-    '/taches/' || new.task_id::text
+    '/taches/' || new.task_id::text,
+    -- Deux clés et non une : le français reformule sans sujet quand
+    -- l'assigneur n'est pas identifiable, et une langue ne peut pas deviner
+    -- qu'un paramètre va manquer.
+    case when assigneur is null
+         then 'push.tache.confieeSansAuteur'
+         else 'push.tache.confiee'
+    end,
+    jsonb_strip_nulls(jsonb_build_object(
+      'titre', groupe, 'auteur', assigneur, 'tache', tache.title
+    ))
   );
 
   return new;
@@ -543,7 +631,7 @@ begin
     return new;
   end if;
 
-  qui := coalesce(public.nom_affiche(new.user_id), 'Quelqu''un');
+  qui := public.nom_affiche(new.user_id);
 
   mot := case new.response
            when 'yes'   then 'vient'
@@ -559,8 +647,17 @@ begin
     'event_response',
     coalesce(groupe, 'Personnel'),
     -- Le titre ne nomme plus l'événement : le corps doit le faire.
-    evenement.title || ' — ' || qui || ' ' || mot,
-    '/evenements/' || new.event_id::text
+    evenement.title || ' — ' || coalesce(qui, 'Quelqu''un') || ' ' || mot,
+    '/evenements/' || new.event_id::text,
+    case new.response
+      when 'yes'   then 'push.evenement.reponse.oui'
+      when 'no'    then 'push.evenement.reponse.non'
+      when 'maybe' then 'push.evenement.reponse.peutEtre'
+      else 'push.evenement.reponse.autre'
+    end,
+    jsonb_strip_nulls(jsonb_build_object(
+      'titre', groupe, 'auteur', qui, 'evenement', evenement.title
+    ))
   );
 
   return new;
@@ -625,7 +722,14 @@ begin
          then 'Vous êtes convié à ' || evenement.title
          else emetteur || ' vous convie à ' || evenement.title
     end,
-    '/evenements/' || new.event_id::text
+    '/evenements/' || new.event_id::text,
+    case when emetteur is null
+         then 'push.invitation.evenementSansAuteur'
+         else 'push.invitation.evenement'
+    end,
+    jsonb_strip_nulls(jsonb_build_object(
+      'titre', groupe, 'auteur', emetteur, 'evenement', evenement.title
+    ))
   );
 
   return new;
@@ -670,8 +774,16 @@ begin
       'event_changed',
       coalesce(groupe, 'Personnel'),
       new.title || ' déplacé au '
-        || to_char(new.starts_at, 'DD/MM à HH24:MI'),
-      '/evenements/' || new.id::text
+        || to_char(new.starts_at at time zone 'Europe/Paris', 'DD/MM à HH24:MI'),
+      '/evenements/' || new.id::text,
+      'push.evenement.deplace',
+      -- **L'instant part en ISO, et non formaté** : « 24/08 à 19:30 » est un
+      -- format français, et l'envoyeur seul sait dans quelle langue l'écrire.
+      jsonb_strip_nulls(jsonb_build_object(
+        'titre', groupe, 'evenement', new.title,
+        'instant', to_char(new.starts_at at time zone 'utc',
+                           'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+      ))
     );
   end loop;
 
@@ -696,6 +808,15 @@ create trigger trg_push_date_changee
 -- lisent les abonnements de tout le monde. Seul le rôle `service_role`, dont
 -- la clé ne quitte jamais le serveur, peut les appeler.
 
+-- Trois colonnes de sortie se sont ajoutées — la clé, les paramètres et la
+-- langue de l'appareil —, et `create or replace` **refuse** de changer un
+-- type de retour. Le `drop` est donc obligatoire, et son absence faisait
+-- échouer tout rejeu de ce fichier sur une base déjà à jour : « cannot change
+-- return type of existing function ». Constaté sur un cluster monté pour
+-- l'occasion, et c'est ce qui a ramené cette traduction ici plutôt que dans
+-- un fichier séparé.
+drop function if exists public.push_a_envoyer(integer);
+
 create or replace function public.push_a_envoyer(p_limite integer default 50)
 returns table (
   id       uuid,
@@ -704,17 +825,20 @@ returns table (
   title    text,
   body     text,
   url      text,
+  cle      text,
+  params   jsonb,
   token    text,
   platform text,
   p256dh   text,
-  auth_key text
+  auth_key text,
+  langue   text
 )
 language sql
 security definer
 set search_path = public
 as $$
-  select o.id, o.user_id, o.type, o.title, o.body, o.url,
-         t.token, t.platform, t.p256dh, t.auth_key
+  select o.id, o.user_id, o.type, o.title, o.body, o.url, o.cle, o.params,
+         t.token, t.platform, t.p256dh, t.auth_key, t.langue
     from public.push_outbox o
     join public.push_tokens t on t.user_id = o.user_id
    where o.sent_at is null

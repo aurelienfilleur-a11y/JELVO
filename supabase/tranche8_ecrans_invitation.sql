@@ -539,7 +539,22 @@ begin
          then tache.title || ' — ' || verbe || 'e'
          else qui || ' ' || verbe || ' : ' || tache.title
     end,
-    '/taches/' || tache.id::text
+    '/taches/' || tache.id::text,
+    -- Quatre clés et non deux : le français reformule sans sujet quand le
+    -- répondant n'est pas identifiable, et une langue ne peut pas deviner
+    -- qu'un paramètre va manquer.
+    case
+      when qui is null and new.status = 'accepted'::assignee_status
+        then 'push.tache.reponse.accepteSansAuteur'
+      when qui is null
+        then 'push.tache.reponse.refuseSansAuteur'
+      when new.status = 'accepted'::assignee_status
+        then 'push.tache.reponse.accepte'
+      else 'push.tache.reponse.refuse'
+    end,
+    jsonb_strip_nulls(jsonb_build_object(
+      'titre', groupe, 'auteur', qui, 'tache', tache.title
+    ))
   );
 
   return new;

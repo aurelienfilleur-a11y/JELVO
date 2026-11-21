@@ -249,7 +249,12 @@ begin
         'birthday',
         f.nom,
         'fête son anniversaire aujourd''hui',
-        '/calendrier'
+        '/calendrier',
+        'push.anniversaire',
+        -- `titre` porte le **nom de la personne** et non celui d'un groupe :
+        -- c'est la seule exception à la règle de formulation, et elle traverse
+        -- la traduction sans y changer quoi que ce soit.
+        jsonb_build_object('titre', f.nom)
       );
 
       deposes := deposes + 1;

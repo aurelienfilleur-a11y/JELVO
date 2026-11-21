@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter/material.dart' show Locale, ThemeMode;
+import 'package:flutter/material.dart' show Locale, ThemeMode, WidgetsBinding;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'clock.dart';
@@ -102,6 +102,30 @@ class LocaleNotifier extends Notifier<Locale?> {
     await ref.read(languageStorageProvider).enregistrer(langue);
   }
 }
+
+/// La langue **réellement servie**, choix délégué résolu.
+///
+/// Là où `localeProvider` peut valoir `null` — « celle du téléphone » —,
+/// celui-ci rend toujours une des quatre langues. Il existe pour les
+/// notifications système : la base ne les compose pas, l'envoyeur le fait, et
+/// il lui faut un code de langue à ranger dans `push_tokens.langue`.
+///
+/// **Il lit `PlatformDispatcher` et non un `BuildContext`**, n'en ayant pas.
+/// C'est la même source que celle que Flutter donne à
+/// `localeListResolutionCallback`, et la résolution passe par la **même**
+/// fonction — deux implémentations auraient fini par servir deux langues
+/// différentes au même appareil.
+///
+/// Conséquence connue : un téléphone qui change de langue en cours de route
+/// ne reconstruit pas ce provider, là où l'interface, elle, suit. L'écart se
+/// referme à la session suivante, l'abonnement étant réenregistré à chaque
+/// ouverture. Un choix explicite, lui, le reconstruit aussitôt.
+final Provider<Locale> langueEffectiveProvider = Provider<Locale>((Ref ref) {
+  return ref.watch(localeProvider) ??
+      LanguageStorage.resoudre(
+        WidgetsBinding.instance.platformDispatcher.locales,
+      );
+});
 
 /// Horloge de l'application.
 ///

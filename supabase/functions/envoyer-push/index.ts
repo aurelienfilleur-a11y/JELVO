@@ -61,6 +61,8 @@
 import webpush from 'npm:web-push@3.6.7';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
+import { composer } from './traductions.ts';
+
 const VAPID_PUBLIC = Deno.env.get('VAPID_PUBLIC_KEY') ?? '';
 const VAPID_PRIVATE = Deno.env.get('VAPID_PRIVATE_KEY') ?? '';
 const VAPID_SUBJECT = Deno.env.get('VAPID_SUBJECT') ?? 'mailto:contact@jelvo.app';
@@ -98,13 +100,19 @@ interface LigneAEnvoyer {
   id: string;
   user_id: string;
   type: string;
-  title: string;
-  body: string;
+  /** Repli français, rédigé par la base. Fait foi quand `cle` est nulle. */
+  title: string | null;
+  body: string | null;
+  /** Clé de gabarit (tranche 14). Nulle sur une ligne déposée avant. */
+  cle: string | null;
+  params: Record<string, unknown> | null;
   url: string | null;
   token: string;
   platform: string;
   p256dh: string | null;
   auth_key: string | null;
+  /** Langue de **l'appareil** : le réglage vit là, pas sur le compte. */
+  langue: string | null;
 }
 
 Deno.serve(async (): Promise<Response> => {
@@ -330,11 +338,17 @@ async function envoyer(
     keys: { p256dh: ligne.p256dh, auth: ligne.auth_key },
   };
 
+  // **Le rendu se fait ici, et non dans le service worker.** La raison tient
+  // à deux choses : un worker ne lit pas `localStorage`, et un worker déjà
+  // installé est en cache — le rendu n'y serait arrivé qu'à ceux qui
+  // réinstallent. Voir l'en-tête de `tranche14_notifications_traduites.sql`.
+  const { title, body } = composer(ligne);
+
   // iOS ignore `image`, `badge` et les boutons d'action : on s'en tient au
   // titre, au corps et à l'icône, qui passent partout.
   const charge = JSON.stringify({
-    title: ligne.title,
-    body: ligne.body,
+    title,
+    body,
     url: ligne.url ?? '/',
     type: ligne.type,
   });

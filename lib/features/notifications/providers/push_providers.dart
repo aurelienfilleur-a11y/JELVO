@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../data/data_providers.dart';
 import '../../../data/supabase_providers.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../push/push_service.dart';
@@ -47,6 +48,7 @@ class PushStatusNotifier extends AsyncNotifier<PushStatus> {
               endpoint: abonnement.endpoint,
               p256dh: abonnement.p256dh,
               auth: abonnement.auth,
+              langue: ref.read(langueEffectiveProvider).languageCode,
             );
       }
       return ref.read(pushServiceProvider).status();
@@ -85,6 +87,7 @@ class PushStatusNotifier extends AsyncNotifier<PushStatus> {
           endpoint: abonnement.endpoint,
           p256dh: abonnement.p256dh,
           auth: abonnement.auth,
+          langue: ref.read(langueEffectiveProvider).languageCode,
         );
   }
 }
@@ -142,5 +145,11 @@ final FutureProvider<void> pushRegistrationProvider = FutureProvider<void>((
   Ref ref,
 ) async {
   if (ref.watch(authStatusProvider) != AuthStatus.signedIn) return;
+  // **La langue est observée, et c'est ce qui la fait suivre.** Changer de
+  // langue dans les paramètres reconstruit ce provider, donc réenregistre
+  // l'abonnement : la notification suivante arrive dans la nouvelle langue,
+  // sans rien à faire de plus. Sans ce `watch`, elle n'aurait changé qu'à la
+  // session d'après.
+  ref.watch(langueEffectiveProvider);
   await ref.read(pushStatusProvider.notifier).reenregistrer();
 });

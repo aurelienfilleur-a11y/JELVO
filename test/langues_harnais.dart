@@ -13,6 +13,7 @@ import 'package:jelvo/features/contacts/providers/contact_providers.dart';
 import 'package:jelvo/features/groups/providers/group_providers.dart';
 import 'package:jelvo/features/notifications/providers/notification_providers.dart';
 import 'package:jelvo/features/notifications/providers/push_providers.dart';
+import 'package:jelvo/features/notifications/push/push_service.dart';
 import 'package:jelvo/features/profile/providers/profile_providers.dart';
 import 'package:jelvo/features/tasks/providers/task_providers.dart';
 import 'package:jelvo/main.dart';
@@ -36,6 +37,8 @@ Future<LanguageStorage> pumpAppLangue(
   Locale? choix,
   List<Locale>? telephone,
   Size taille = const Size(420, 2400),
+  FakePushRepository? push,
+  PushStatus? statutPush,
 }) async {
   tester.view.physicalSize = taille;
   tester.view.devicePixelRatio = 1;
@@ -66,8 +69,10 @@ Future<LanguageStorage> pumpAppLangue(
         chatRepositoryProvider.overrideWithValue(chat),
         voiceRecorderProvider.overrideWithValue(FakeVoiceRecorder()),
         voicePlayerFactoryProvider.overrideWithValue(FakeVoicePlayer.new),
-        pushServiceProvider.overrideWithValue(FakePushService()),
-        pushRepositoryProvider.overrideWithValue(FakePushRepository()),
+        pushServiceProvider.overrideWithValue(
+          FakePushService(statut: statutPush ?? PushStatus.aAutoriser),
+        ),
+        pushRepositoryProvider.overrideWithValue(push ?? FakePushRepository()),
         availabilityRepositoryProvider.overrideWithValue(
           FakeAvailabilityRepository(),
         ),

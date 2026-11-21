@@ -64,6 +64,9 @@ class FakePushRepository implements PushRepository {
   final List<NotificationPreference> _preferences;
 
   String? lastRegisteredEndpoint;
+
+  /// La langue envoyée avec l'abonnement : c'est elle que l'envoyeur lira.
+  String? lastRegisteredLangue;
   String? lastForgottenEndpoint;
   String? lastToggledType;
   bool? lastToggledValue;
@@ -162,9 +165,11 @@ class FakePushRepository implements PushRepository {
     required String endpoint,
     required String p256dh,
     required String auth,
+    required String langue,
   }) async {
     registrations++;
     lastRegisteredEndpoint = endpoint;
+    lastRegisteredLangue = langue;
   }
 
   @override

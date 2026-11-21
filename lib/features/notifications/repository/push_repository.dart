@@ -43,10 +43,17 @@ abstract interface class PushRepository {
   Future<void> setPreference({required String type, required bool enabled});
 
   /// Enregistre — ou réenregistre — un abonnement.
+  ///
+  /// [langue] est le code de langue de **cet appareil** : c'est lui que
+  /// l'envoyeur lira pour composer la notification. Il voyage avec
+  /// l'abonnement et non avec le compte, parce que le réglage vit sur
+  /// l'appareil — le même compte peut être ouvert sur un téléphone espagnol
+  /// et sur un ordinateur français.
   Future<void> registerSubscription({
     required String endpoint,
     required String p256dh,
     required String auth,
+    required String langue,
   });
 
   Future<void> forgetSubscription(String endpoint);
@@ -92,6 +99,7 @@ class SupabasePushRepository implements PushRepository {
     required String endpoint,
     required String p256dh,
     required String auth,
+    required String langue,
   }) async {
     try {
       await _client.rpc<Object?>(
@@ -103,6 +111,7 @@ class SupabasePushRepository implements PushRepository {
           'p_platform': 'web',
           'p_p256dh': p256dh,
           'p_auth': auth,
+          'p_langue': langue,
         },
       );
     } catch (error) {

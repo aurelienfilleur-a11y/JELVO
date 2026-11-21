@@ -501,6 +501,20 @@ begin
            where user_id = '11111111-1111-1111-1111-111111111111'::uuid) = 1,
          'un réenregistrement a dupliqué la ligne';
 
+  -- Tranche 14 : la langue voyage avec l'abonnement, donc par appareil.
+  assert public.enregistrer_push('endpoint-web-moi', 'web', 'c', 's', 'de');
+  assert (select langue from public.push_tokens
+           where token = 'endpoint-web-moi') = 'de',
+         'la langue de l''appareil n''a pas été retenue';
+
+  -- **Contrôle négatif** : un client plus ancien, qui ne connaît pas le
+  -- paramètre, ne doit pas effacer la langue qu'un client à jour a posée sur
+  -- le même appareil. Les trois arguments d'avant suffisent à le rejouer.
+  assert public.enregistrer_push('endpoint-web-moi', 'web', 'c', 's');
+  assert (select langue from public.push_tokens
+           where token = 'endpoint-web-moi') = 'de',
+         'un client sans langue a effacé celle de l''appareil';
+
   -- Les neuf types sont proposés, tous activés par défaut : le modèle est un
   -- opt-out, personne n'a de ligne au départ et tout arrive.
   --
@@ -663,6 +677,32 @@ begin
 
   select * into ligne from public.push_a_envoyer(1);
   assert ligne.token is not null, 'push_a_envoyer sans endpoint';
+
+  -- Tranche 14 : la vidange rend de quoi **composer** — une clé, des
+  -- paramètres et la langue de l'appareil —, et plus seulement du texte. Sans
+  -- ces trois colonnes, l'envoyeur retomberait en silence sur le français.
+  assert (select count(*) from public.push_a_envoyer(100) l
+           where l.cle is not null) > 0,
+         'push_a_envoyer ne rend aucune clé de gabarit';
+  assert (select count(*) from public.push_a_envoyer(100) l
+           where l.langue = 'de') > 0,
+         'push_a_envoyer ne rend pas la langue de l''appareil';
+
+  -- La clé et les paramètres disent la même chose que le texte français : le
+  -- titre est le groupe, et le corps nomme l'élément.
+  assert (select cle from public.push_outbox
+           where user_id = '33333333-3333-3333-3333-333333333333'::uuid
+             and type = 'event_invitation') = 'push.invitation.evenement',
+         'l''invitation à un événement n''a pas déposé sa clé';
+  assert (select params->>'evenement' from public.push_outbox
+           where user_id = '33333333-3333-3333-3333-333333333333'::uuid
+             and type = 'event_invitation')
+         = 'Fumée — événement qui notifie',
+         'les paramètres ne nomment pas l''événement';
+  assert (select params->>'titre' from public.push_outbox
+           where user_id = '33333333-3333-3333-3333-333333333333'::uuid
+             and type = 'event_invitation') = 'Famille Rousseau',
+         'les paramètres ne portent pas le nom du groupe';
 
   perform public.marquer_push_traite(ligne.id);
   assert (select sent_at is not null from public.push_outbox

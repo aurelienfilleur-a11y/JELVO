@@ -3025,6 +3025,11 @@ l'élément**, puisque le titre ne le fait plus. Le test de fumée éprouve les
 deux moitiés de la règle sur `event_invitation` — le titre vaut le nom du
 groupe, le corps contient celui de l'événement.
 
+Les corps du tableau ci-dessus sont ceux du **repli français**. Depuis la
+traduction, chaque dépôt pose en outre une clé et des paramètres, rendus dans
+la langue de l'appareil — voir « Les notifications système aussi, mais pas par
+l'ARB » sous Internationalisation.
+
 `public.nom_affiche(uuid)` écrit le nom d'une personne **au même endroit pour
 tous** : le même `coalesce(prénom nom, pseudo)` était recopié dans chaque
 déclencheur. Elle renvoie `null` quand le profil manque, à charge de
@@ -4420,34 +4425,112 @@ Elles portaient sur **zéro**, et le CLDR français met le singulier après « 0
 Un pluriel ICU ne peut pas dire deux choses du même nombre : le singulier
 l'emporte, et deux tests ont changé d'attente.
 
-### Ce qui reste en français : les notifications fabriquées côté base
+### Les notifications système aussi, mais pas par l'ARB
 
-**C'est la limite connue de ce chantier, et elle est assumée.** Les titres et
-les corps des notifications système sont composés **en SQL**, par les
-déclencheurs de `supabase/tranche5c_notifications_push.sql` et des suivantes :
-`Julie Martin vous convie à Randonnée du lac Blanc` est écrit par
-`push_invitation_evenement`, pas par Dart. Un fichier ARB ne peut rien pour
-eux, et l'écran de verrouillage d'un téléphone en allemand reçoit donc du
-français.
+Elles sont composées **en SQL**, par les déclencheurs de
+`tranche5c_notifications_push.sql` et des suivantes : `Julie Martin vous
+convie à Randonnée du lac Blanc` est écrit par `push_invitation_evenement`,
+pas par Dart. Un fichier ARB ne pouvait donc rien pour elles, et l'écran de
+verrouillage d'un téléphone allemand recevait du français.
 
-Deux choses rendent le problème plus profond qu'une traduction :
+La base dépose désormais une **clé de gabarit et des paramètres**
+(`push_outbox.cle`, `push_outbox.params`), et le rendu se fait dans
+`supabase/functions/envoyer-push/traductions.ts`.
 
-- **la base ne sait pas la langue du destinataire.** Le réglage vit sur
-  l'appareil, délibérément — voir plus haut —, et il peut différer d'un
-  appareil à l'autre pour le même compte. Mettre une colonne `profiles.langue`
-  serait reprendre d'une main ce que le réglage par appareil donne de l'autre ;
-- **l'envoi est à sens unique.** `push_outbox` porte un titre et un corps déjà
-  rédigés ; traduire au moment de l'affichage demanderait qu'elle porte une
-  **clé et des paramètres**, et que le service worker fasse le rendu.
+#### La langue est une colonne de l'appareil, pas du compte
 
-C'est la **tranche 14**, et elle se fera séparément : `push_outbox` gagne
-`cle` et `params`, les déclencheurs les remplissent, `web/jelvo_push_sw.js`
-lit la langue dans `localStorage` — la même clé `jelvo-langue` — et compose la
-phrase. Les colonnes de texte restent pendant la transition, un client qui ne
-connaîtrait pas les clés continuant de les lire. Un test confrontera les
-gabarits du service worker à l'ARB, sur le modèle de
-`test/launch_screen_test.dart`, qui tient déjà le contrat entre
-`web/index.html` et le Dart.
+`push_tokens.langue`, renseignée par `enregistrer_push`. C'est le point qui
+fait tenir le reste : **le réglage de langue vit sur l'appareil, et
+`push_tokens` a une ligne par appareil** — les deux granularités coïncident
+exactement. Une colonne `profiles.langue` aurait repris d'une main ce que le
+réglage par appareil donne de l'autre.
+
+Côté Dart, `langueEffectiveProvider` résout le choix délégué par la **même**
+fonction que le `localeListResolutionCallback` — `LanguageStorage.resoudre` —,
+et `pushRegistrationProvider` l'**observe** : changer de langue réenregistre
+l'abonnement, et la notification suivante arrive dans la nouvelle langue.
+Sans ce `watch`, elle n'aurait changé qu'à la session d'après.
+
+#### Le rendu se fait dans la fonction Edge, et non dans le service worker
+
+C'était la voie évidente, et elle est écartée pour trois raisons dont deux
+rédhibitoires :
+
+| | |
+| --- | --- |
+| **un service worker ne lit pas `localStorage`** | l'API est synchrone et n'existe pas dans un worker. Il faudrait une base IndexedDB écrite par la page, donc un **second stockage de la langue** à tenir d'accord avec `jelvo-langue` |
+| **un worker installé est en cache** | une application ajoutée à l'écran d'accueil garde le sien jusqu'à sa mise à jour, et sur iOS cela peut demander de réinstaller. Le rendu n'y serait arrivé qu'à ceux qui réinstallent — la leçon des icônes et des écrans de lancement, payée deux fois |
+| la fonction Edge **joint déjà `push_tokens`** | pour signer l'envoi : la langue y est sans une lecture de plus |
+
+#### Le texte français reste déposé, et c'est le filet
+
+`title` et `body` continuent d'être rédigés par chaque déclencheur. Une
+fonction Edge peut être **en retard d'un déploiement sur la base** — c'est
+arrivé, pendant trois mois —, et une clé qu'elle ne connaît pas retombe sur le
+texte. Une file qui ne porterait qu'une clé n'enverrait alors plus rien du
+tout.
+
+#### Un horodatage part en ISO, jamais formaté
+
+`to_char(…, 'DD/MM à HH24:MI')` est un format **français**. Les deux
+paramètres qui portent un instant — `instant`, `heure` — arrivent donc en ISO,
+et c'est `Intl.DateTimeFormat` qui écrit « 24/08 19:30 », « 08/24, 7:30 PM »
+ou « 24.08., 19:30 », séparateur compris. `timeStyle: 'short'` pour une heure
+seule, qui est le motif court du CLDR — celui que rend `DateFormat.jm` côté
+Dart ; avec `hour: '2-digit'`, l'anglais écrivait « 07:30 PM », que personne
+n'écrit.
+
+Le fuseau reste **Europe/Paris**, comme pour les rappels et les
+anniversaires : le schéma ne porte aucun fuseau par événement.
+
+#### Un seul paramètre a un repli
+
+`auteur` absent fait écrire « Quelqu'un » par l'envoyeur, dans sa langue. Les
+autres — un titre de tâche, un nom de groupe — sont des **données**, et une
+donnée absente fait **changer de clé** plutôt que de prendre une valeur par
+défaut : `push.tache.confieeSansAuteur` et non `push.tache.confiee` avec un
+trou. C'est la règle « on n'invente pas de sujet à la phrase », rendue
+traduisible — une langue ne peut pas deviner qu'un paramètre va manquer.
+
+Le titre suit la même logique : ce n'est pas un gabarit mais `params.titre`,
+et `push.personnel` le remplace quand il n'y en a pas. Une seule règle, aucune
+branche par type — y compris pour l'anniversaire, dont le titre est le nom de
+la personne.
+
+#### Ce qui a fait revenir le travail dans la tranche 5c
+
+Il avait d'abord été écrit dans un `tranche14_notifications_traduites.sql`
+séparé, et **un cluster monté pour l'occasion l'a réfuté** : la tranche 5c
+rejouée ensuite — ce qui arrive dès qu'on la corrige — échoue net.
+
+```
+ERROR: cannot change return type of existing function
+HINT:  Use DROP FUNCTION push_a_envoyer(integer) first.
+```
+
+`push_a_envoyer` y gagne trois colonnes de sortie, et `create or replace`
+refuse de changer un type de retour : la 5c recréait l'ancienne, la 14 la
+nouvelle, et **l'ordre des deux fichiers condamnait l'un ou l'autre**. Un
+second fichier ne peut pas réparer le premier, puisque le premier est rejoué
+sans lui.
+
+Les trois signatures changent donc **dans la 5c**, chacune précédée de son
+`drop function if exists` et suivie de son `grant` — la tranche 7 ne se
+rejouant que si son propre contenu change. C'est exactement ce que le rejeu
+par empreinte existe pour permettre, et ce que la tranche 3 a déjà fait deux
+fois.
+
+**Règle** : une migration qui change la signature d'une fonction qu'elle
+possède déjà porte son `drop`, et se vérifie sur une base **déjà à jour** —
+le rejeu sur base neuve part d'un catalogue vide, où un `drop` ne fait rien et
+ne prouve donc rien.
+
+#### Rien ne part avant que la fonction soit déployée
+
+C'est le seul vrai prérequis de cette traduction : le SQL dépose la clé dès la
+fusion, mais c'est `fonctions-supabase.yml` qui porte le rendu. Tant qu'il n'a
+pas tourné, la fonction en place ignore `cle` et sert le texte français — ce
+qui est précisément le filet décrit plus haut, et non une panne.
 
 ---
 
@@ -5082,6 +5165,18 @@ sécurité.
   espagnol qui commence plus tard. Enfin **27 écrans ouverts dans les quatre
   langues à 360 dp**, où l'ouverture est le contrôle : c'est ce balayage qui a
   trouvé quatre débordements, dont deux antérieurs à la traduction.
+- `test/notifications_traduites_test.dart` couvre les notifications système
+  dans les quatre langues. **Le contrat entre `traductions.ts` et le SQL** :
+  le fichier TypeScript est **lu**, pas recopié — les quatre langues portent
+  les mêmes clés et les mêmes paramètres, aucune ne laisse traîner le
+  français, toute clé que le SQL dépose y est connue, et tout gabarit a un
+  déposant **sauf les deux que l'envoyeur rend lui-même** (`push.personnel`,
+  `push.quelquun`). Puis les invariants de la migration : la langue est une
+  colonne de l'appareil et non du compte, elle n'est jamais écrasée par un
+  client plus ancien, les horodatages partent en ISO, les trois signatures
+  changées portent leur `drop` — **le contrôle qui vient d'un échec réel** —
+  et leurs `grant` sont reposés. Côté application : la langue part avec le
+  réenregistrement du démarrage, et **changer de langue réenregistre**.
 - `test/welcome_screen_test.dart` couvre l'écran de bienvenue : l'installation
   neuve qui s'ouvre dessus, les trois arguments et leurs pictogrammes,
   l'absence de « Passer » et de `PageView`, le titre sans emoji, la bande
@@ -5218,12 +5313,16 @@ sûr d'éprouver son caractère contextuel.
   `tool/verifier_textes.py` fait échouer la CI si un texte en dur revient, et
   `test/langues_test.dart` si les quatre fichiers divergent.
 
-  **Ce qui reste en français : les notifications fabriquées côté base.** Les
-  titres et les corps sont composés en SQL, et la base ne sait pas la langue
-  du destinataire — le réglage vit sur l'appareil. C'est la **tranche 14**,
-  décrite sous « Ce qui reste en français » : `push_outbox` portera une clé et
-  des paramètres, et `web/jelvo_push_sw.js` fera le rendu. Rien n'est cassé
-  entre-temps ; c'est du français servi à qui lit l'allemand.
+  **Les notifications système suivent aussi**, mais par un autre chemin : la
+  base dépose une clé et des paramètres, la langue voyage avec l'abonnement
+  (`push_tokens.langue`), et le rendu se fait dans la fonction Edge — voir
+  « Les notifications système aussi, mais pas par l'ARB ». Deux réserves :
+  **rien ne change tant que `fonctions-supabase.yml` n'a pas déployé** — d'ici
+  là la fonction en place ignore la clé et sert le texte français, qui reste
+  déposé exprès —, et ces phrases vivent dans
+  `supabase/functions/envoyer-push/traductions.ts`, hors de l'ARB, parce que
+  l'application ne les affiche jamais. Un test confronte les quatre langues
+  entre elles et aux clés que le SQL dépose réellement.
 
   Trois réserves de plus : les traductions n'ont été relues **que par
   l'auteur**, pas par un locuteur natif ; le balayage des débordements porte

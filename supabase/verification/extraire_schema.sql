@@ -183,3 +183,40 @@ where table_schema = 'public'
   and grantee in ('anon', 'authenticated')
 group by table_name, grantee
 order by table_name, grantee;
+
+-- ---------------------------------------------------------------------------
+-- Stockage
+-- ---------------------------------------------------------------------------
+-- **Ce relevé manquait, et son absence a coûté cher.** Cinq politiques posées
+-- à la main dans l'éditeur SQL avant qu'il n'y ait des migrations — noms à
+-- espaces — ont survécu à la tranche 5b et à la tranche 7, qui ne retiraient
+-- que les leurs. Les politiques RLS s'additionnant, le durcissement du
+-- stockage était sans effet : tout porteur d'un compte pouvait lire les
+-- médias de n'importe quelle conversation, et en **déplacer** un vers
+-- `group-photos`, public en lecture.
+--
+-- Rien ne le disait. `schema_actuel.sql` s'arrêtait au schéma `public`, et la
+-- tranche 5b avait dû **sonder** le bucket par deux requêtes HTTP pour savoir
+-- s'il existait et s'il était privé. Une politique de trop ne se voit pas en
+-- lisant les fichiers de migration : elle ne se voit qu'en lisant la base.
+--
+-- Les buckets viennent avec, parce que le poids et les types acceptés sont
+-- la seule borne qui protège d'autre chose qu'une requête de l'application.
+select E'\n\n-- =========================================================\n'
+       '-- STOCKAGE — buckets et politiques\n'
+       '-- =========================================================';
+
+select format('-- %-14s public=%-5s  poids=%-10s types=%s',
+              id, public,
+              coalesce(file_size_limit::text, '—'),
+              coalesce(array_to_string(allowed_mime_types, ' '), '—'))
+from storage.buckets
+order by id;
+
+select format(E'-- %-28s %-6s %s\n--   using       : %s\n--   with check  : %s',
+              policyname, cmd, roles::text,
+              coalesce(qual, '—'), coalesce(with_check, '—'))
+from pg_policies
+where schemaname = 'storage'
+  and tablename = 'objects'
+order by cmd, policyname;

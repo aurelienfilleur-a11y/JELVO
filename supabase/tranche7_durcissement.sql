@@ -519,6 +519,60 @@ $$;
 do $$
 begin
   execute $politique$
+    -- ============================================================
+    -- Les politiques **antérieures aux migrations** doivent partir.
+    -- ============================================================
+    --
+    -- Cinq politiques ont été posées à la main dans l'éditeur SQL du projet
+    -- quand les buckets ont été créés, avant qu'il n'y ait de migrations.
+    -- Elles portent des noms à espaces, là où les nôtres ont des traits de
+    -- soulignement — c'est à cela qu'on les reconnaît.
+    --
+    -- **Les politiques RLS s'additionnent : elles ne se remplacent pas.**
+    -- Poser `chat_media_lecture` à côté de `lecture chat media` ne resserre
+    -- donc rien du tout, les deux étant évaluées en « ou ». La tranche 5b et
+    -- la tranche 7 n'ont jamais retiré que **leurs propres** politiques, par
+    -- le `drop policy if exists` qui précède chaque `create` : celles-là leur
+    -- ont survécu, et le durcissement de stockage était en pratique sans
+    -- effet depuis le début.
+    --
+    -- Ce qu'elles laissaient faire, à tout porteur d'un compte :
+    --
+    --   - `lecture chat media` — SELECT sur tout `chat-media`, **sans
+    --     condition d'appartenance**. Il suffit de connaître l'identifiant
+    --     d'un groupe — et les identifiants circulent, c'est écrit plus haut
+    --     dans ce fichier — pour lister son dossier et lire ses photos, ses
+    --     vidéos et ses messages vocaux sans en être membre ;
+    --   - `maj avatars` — UPDATE sur les trois buckets **sans `with check`**,
+    --     le défaut même que ce fichier documente : PostgreSQL retombe sur
+    --     `using`, qui ne regarde que le bucket. Un objet pouvait donc être
+    --     **déplacé**, et `group-photos` étant public en lecture, une photo
+    --     privée de conversation pouvait être posée là où elle devient
+    --     lisible par n'importe qui, sans jeton ;
+    --   - `ecriture avatars` — INSERT dans les trois buckets à n'importe quel
+    --     chemin, ce qui contourne la convention qui porte l'autorisation ;
+    --   - `suppression avatars` — DELETE sur tout objet dont on est le
+    --     propriétaire, quel que soit le bucket ;
+    --   - `lecture publique avatars` — redondante et sans danger :
+    --     `avatars_lecture` et `group_photos_lecture` ouvrent déjà ces deux
+    --     buckets à `anon`. Elle part avec les autres pour qu'il ne reste
+    --     qu'un seul jeu de règles à lire.
+    --
+    -- Les cinq sont retirées sans être remplacées : les politiques posées
+    -- juste en dessous couvrent **exactement** les chemins légitimes de
+    -- l'application — son propre dossier d'avatar, le groupe dont on est
+    -- administrateur pour sa photo, le groupe dont on est membre pour un
+    -- média de conversation.
+    --
+    -- **Règle pour la suite** : une politique qu'on resserre doit être
+    -- retirée, pas doublée. Et un `create policy` ne dit rien de ce qui
+    -- existe déjà à côté — seul `pg_policy` le dit.
+    drop policy if exists "lecture chat media" on storage.objects;
+    drop policy if exists "maj avatars" on storage.objects;
+    drop policy if exists "ecriture avatars" on storage.objects;
+    drop policy if exists "suppression avatars" on storage.objects;
+    drop policy if exists "lecture publique avatars" on storage.objects;
+
     -- avatars : lecture ouverte (bucket public), écriture réservée à son
     -- propre dossier.
     drop policy if exists avatars_lecture on storage.objects;

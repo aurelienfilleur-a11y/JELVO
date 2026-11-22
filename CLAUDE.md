@@ -6241,7 +6241,10 @@ sûr d'éprouver son caractère contextuel.
   Restent hors périmètre : les notifications système, et la modification d'une
   seule occurrence d'un élément récurrent — la `rrule` vaut pour toute la
   série.
-- **Cinq prérequis manuels subsistent, et rien ne les remplace :**
+- **Cinq prérequis manuels, dont trois restent à faire** — les nº 2 et nº 4
+  sont posés et mesurés, et les lignes barrées sont gardées exprès : chacun
+  des deux a été redemandé après avoir été satisfait, et c'est ce qui le
+  faisait répéter. **Ne pas les redemander sans avoir interrogé la base.**
   0. **régénérer `SUPABASE_ACCESS_TOKEN`** — le secret existe mais est refusé
      en `401`, et la fonction Edge n'a donc **pas été déployée depuis le
      19 août** (API Supabase : `version: 9`). Supabase → Account → Access
@@ -6287,14 +6290,30 @@ sûr d'éprouver son caractère contextuel.
      plus que cette étape : voir « Un jeton mort ne doit casser que
      l'instantané ».
 
-  4. **désigner un modérateur**, sans quoi personne ne lit les signalements.
-     Une ligne à passer une fois dans l'éditeur SQL du projet, prête à copier
-     dans `supabase/designer_moderateur.sql`. Elle n'est pas dans le
-     manifeste, et ne peut pas l'être : **le dépôt est public**, et elle
-     porterait une adresse e-mail ou un identifiant. Tant qu'elle n'est pas
-     passée, la ligne des paramètres n'apparaît pour personne et la file ne
-     rend rien — mais les signalements se déposent et attendent dans la table.
-     C'est l'état sûr par défaut, non une panne. Voir « Signaler un abus ».
+  4. ~~désigner un modérateur~~ — **c'est fait, et constaté le 22 novembre
+     2026.** `moderateurs` porte **une** ligne, celle du propriétaire du
+     projet, et le contrôle qui compte n'est pas qu'elle existe : sous le rôle
+     `authenticated` et avec son jeton, `est_moderateur()` rend `true` et
+     `signalements_a_traiter()` répond ; avec le jeton de l'autre compte,
+     `false` et **zéro ligne**, et non une erreur. Les deux ont été mesurés.
+
+     La ligne reste une opération manuelle par construction — elle n'est pas
+     dans le manifeste et ne peut pas l'être : **le dépôt est public**, et
+     elle porterait une adresse e-mail ou un identifiant. La forme à recopier
+     vit dans `supabase/designer_moderateur.sql`, et **aucun des deux ne doit
+     entrer ici** : c'est pourquoi cette ligne ne nomme personne.
+
+     À savoir pour la suite : `estModerateurProvider` n'est pas
+     `autoDispose` et n'observe que `authStatusProvider`. La ligne des
+     paramètres n'apparaît donc **qu'au rechargement** de l'application, pas
+     à la seconde où la ligne est passée en base. Ce n'est pas un défaut —
+     c'est le cache voulu —, mais c'est la première chose à vérifier avant de
+     conclure que la désignation n'a pas pris.
+
+     Désigner quelqu'un de plus, ou retirer, se fait par la même ligne : la
+     table accepte plusieurs modérateurs, et un `delete` défait sans rien
+     perdre — les signalements déjà déposés restent, et le prochain désigné
+     les voit.
 
   Les migrations, elles, s'appliquent seules à chaque push sur `main`.
 - **Une migration n'est éprouvée contre la vraie base qu'après fusion.** Le
@@ -6457,10 +6476,11 @@ sûr d'éprouver son caractère contextuel.
   une minute, et rien de ce qui est déjà délivré ne se rappelle. Enfin l'écran
   n'a été éprouvé que par les tests et le rejeu sur base jetable : la **vraie**
   base ne voit la migration qu'après fusion, comme toujours ici.
-- **Le signalement d'abus est livré** — voir sa section. Cinq réserves.
-  D'abord **personne n'est modérateur tant que la ligne de désignation n'a pas
-  été passée** : c'est le cinquième prérequis manuel, et jusque-là les
-  signalements s'accumulent sans être lus. Ensuite, **la modération ne sait
+- **Le signalement d'abus est livré** — voir sa section. Quatre réserves.
+  ~~Personne n'est modérateur tant que la ligne de désignation n'a pas été
+  passée~~ : **elle l'est depuis le 22 novembre 2026**, un modérateur est
+  désigné et la file se lit — voir le prérequis nº 4, qui porte la mesure.
+  Ensuite, **la modération ne sait
   agir que sur un message** : fermer un compte et supprimer un groupe ne se
   font pas d'ici, et la note est le seul levier pour un groupe ou un profil —
   ce sont des décisions produit, pas un chantier technique. Puis **le fichier

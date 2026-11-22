@@ -277,6 +277,16 @@ introspection du catalogue plutôt que par `pg_dump` — lequel refuse de tourne
 contre un serveur plus récent que lui, et la version de PostgreSQL de Supabase
 n'est pas celle du runner GitHub.
 
+**Et il peut être en retard sur la base, sans le dire.** La poussée de
+l'instantané est refusée dès que `JETON_POUSSEE_SCHEMA` expire — c'est le cas
+depuis le 22 novembre 2026 —, si bien que le fichier du dépôt ne porte ni
+`signalements`, ni `moderateurs`, ni `blocages`, ni les neuf fonctions des
+tranches 15 et 16, **alors qu'elles sont en base**. Le relevé juste est en
+**pièce jointe** du dernier run de `migrations-supabase.yml`, sous le nom
+`schema_actuel` ; le lire de là, ou interroger la base, tant que le jeton n'est
+pas refait. Un fichier qui fait foi et qui prend du retard est pire qu'un
+fichier absent : rien dans son contenu ne dit de quand il date.
+
 ### Le SQL n'est vérifié par aucune de ces commandes
 
 **Une CI verte ne dit rien des fichiers de `supabase/`.** La chaîne Flutter ne
@@ -6261,6 +6271,21 @@ sûr d'éprouver son caractère contextuel.
      schéma réel de la base », est la première publication d'instantané à
      avoir atteint `main`. Le prérequis reste listé parce qu'il ne tient qu'à
      ces deux réglages — le jeton expire, et le rôle se retire d'un clic.
+
+     **Et le jeton a expiré**, constaté le 22 novembre 2026 : il faut le
+     refaire. La signature est propre, l'en-tête `Authorization` étant bien
+     posé et pourtant refusé —
+
+     ```
+     fatal: could not read Username for 'https://github.com':
+     No such device or address
+     ```
+
+     — git se rabattant sur une demande d'identifiants après le `401`. À
+     distinguer d'un secret **absent**, où l'étape le dit en toutes lettres.
+     Ce qui a changé depuis le 22 novembre, c'est que ce jeton mort ne casse
+     plus que cette étape : voir « Un jeton mort ne doit casser que
+     l'instantané ».
 
   4. **désigner un modérateur**, sans quoi personne ne lit les signalements.
      Une ligne à passer une fois dans l'éditeur SQL du projet, prête à copier

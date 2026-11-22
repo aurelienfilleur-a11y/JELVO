@@ -167,7 +167,7 @@ class _AvailabilityFormSheetState extends ConsumerState<AvailabilityFormSheet> {
             AppSpacing.gapXl,
             PrimaryButton(
               label: _modification
-                  ? 'Enregistrer'
+                  ? AppTexts.of(context).commonSave
                   : AppTexts.of(context).availabilityAjouterCreneau2,
               icon: Icons.check_circle_outline_rounded,
               isLoading: _envoi,
@@ -186,7 +186,12 @@ class _AvailabilityFormSheetState extends ConsumerState<AvailabilityFormSheet> {
       children: <Widget>[
         for (int jour = 1; jour <= 7; jour++)
           ChoiceChip(
-            label: Text(AvailabilitySlot.nomDuJour(jour).substring(0, 3)),
+            label: Text(
+              AvailabilitySlot.nomDuJour(
+                jour,
+                AppTexts.of(context),
+              ).substring(0, 3),
+            ),
             selected: _weekday == jour,
             onSelected: (_) => setState(() => _weekday = jour),
           ),

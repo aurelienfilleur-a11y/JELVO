@@ -64,7 +64,7 @@ class ChatHeader extends StatelessWidget implements PreferredSizeWidget {
                           mainAxisSize: MainAxisSize.min,
                           children: <Widget>[
                             EmojiText(
-                              g?.name ?? 'Discussion',
+                              g?.name ?? AppTexts.of(context).coreDiscussion,
                               style: context.typo.h3,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -192,8 +192,11 @@ class ChatShortcutBar extends StatelessWidget {
                   teinte: context.couleurs.success,
                   fond: context.couleurs.successSoft,
                   valeur: taches,
-                  // Le singulier compte : « 1 tâches » se voit tout de suite.
-                  libelle: taches > 1 ? 'tâches' : 'tâche',
+                  // Un pluriel ICU, et non `> 1` : le zéro ne se dit
+                  // pas pareil d'une langue à l'autre — singulier en
+                  // français, pluriel en anglais, en espagnol et en
+                  // allemand.
+                  libelle: AppTexts.of(context).chatCompteurTaches(taches),
                 ),
               if (taches > 0 && evenements > 0) AppSpacing.hGapLg,
               if (evenements > 0)
@@ -202,7 +205,9 @@ class ChatShortcutBar extends StatelessWidget {
                   teinte: context.couleurs.primary,
                   fond: context.couleurs.primarySoft,
                   valeur: evenements,
-                  libelle: evenements > 1 ? 'événements' : 'événement',
+                  libelle: AppTexts.of(
+                    context,
+                  ).chatCompteurEvenements(evenements),
                 ),
               const Spacer(),
             ],

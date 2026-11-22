@@ -62,7 +62,7 @@ class GroupSelector extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     EmojiText(
-                      choisi?.name ?? 'Personnel',
+                      choisi?.name ?? AppTexts.of(context).calendarPersonnel,
                       style: context.typo.body.copyWith(
                         fontWeight: AppTypography.semiBold,
                       ),
@@ -209,7 +209,10 @@ class _Ligne extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       leading: _Vignette(groupe: groupe),
-      title: EmojiText(groupe?.name ?? 'Personnel', style: context.typo.body),
+      title: EmojiText(
+        groupe?.name ?? AppTexts.of(context).calendarPersonnel,
+        style: context.typo.body,
+      ),
       subtitle: Text(
         groupe?.memberLabel(AppTexts.of(context)) ??
             AppTexts.of(context).calendarSeulVerrez,

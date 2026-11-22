@@ -20,6 +20,7 @@ external _Window get _window;
 @JS('PushManager')
 external JSFunction? get _pushManagerApi;
 
+// texte-en-dur-autorise: nom d'un symbole JavaScript, lu par le navigateur.
 @JS('Notification')
 external _NotificationStatique? get _notificationApi;
 

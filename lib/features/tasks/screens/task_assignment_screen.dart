@@ -87,7 +87,7 @@ class _TaskAssignmentScreenState extends ConsumerState<TaskAssignmentScreen> {
             bottom: Radius.circular(AppSpacing.lg),
           ),
           child: CoverBanner(
-            name: nomDuGroupe ?? 'Personnel',
+            name: nomDuGroupe ?? t.calendarPersonnel,
             subtitle: tache.dueDate == null
                 ? null
                 : t.tasksEcheanceDate(AppDates.shortDate(tache.dueDate!, t)),
@@ -140,7 +140,7 @@ class _TaskAssignmentScreenState extends ConsumerState<TaskAssignmentScreen> {
                     InvitationDetailRow(
                       icon: Icons.groups_outlined,
                       label: t.createGroupField,
-                      value: nomDuGroupe ?? 'Personnel',
+                      value: nomDuGroupe ?? t.calendarPersonnel,
                     ),
                     if (tache.notes != null && tache.notes!.isNotEmpty)
                       InvitationDetailRow(
@@ -172,7 +172,7 @@ class _TaskAssignmentScreenState extends ConsumerState<TaskAssignmentScreen> {
                 AppSpacing.gapXl,
                 SectionHeader(
                   title: tache.assignees.length > 1
-                      ? 'Assignés'
+                      ? t.tasksAssignes
                       : AppTexts.of(context).tasksAssignee,
                 ),
                 AppSpacing.gapMd,
@@ -183,7 +183,7 @@ class _TaskAssignmentScreenState extends ConsumerState<TaskAssignmentScreen> {
                       children: <Widget>[
                         AvatarImage(
                           data: AvatarData(
-                            name: a.displayName,
+                            name: a.displayName(t),
                             imageUrl: a.avatarUrl,
                           ),
                           size: 32,
@@ -192,8 +192,8 @@ class _TaskAssignmentScreenState extends ConsumerState<TaskAssignmentScreen> {
                         Expanded(
                           child: Text(
                             a.userId == moi
-                                ? t.coreVous(a.displayName)
-                                : a.displayName,
+                                ? t.coreVous(a.displayName(t))
+                                : a.displayName(t),
                             style: context.typo.body,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -222,8 +222,8 @@ class _TaskAssignmentScreenState extends ConsumerState<TaskAssignmentScreen> {
               AppSpacing.gapXxl,
               if (aRepondre)
                 InvitationActions(
-                  refuser: 'Refuser',
-                  accepter: 'Accepter',
+                  refuser: t.taskDecline,
+                  accepter: t.taskAccept,
                   enCours: _enCours,
                   onRefuser: () => _repondre(tache, AssigneeStatus.declined),
                   onAccepter: () => _repondre(tache, AssigneeStatus.accepted),

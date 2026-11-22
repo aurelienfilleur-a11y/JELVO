@@ -58,10 +58,11 @@ class TaskTile extends ConsumerWidget {
           ? null
           : AppDates.relativeDay(task.dueDate!, now: now, AppTexts.of(context)),
       dueTone: task.toneFor(now),
+      // « Libre » était en dur, donc en français dans les quatre langues.
       assignee: task.assignees.isEmpty && !task.isPersonal
-          ? 'Libre'
+          ? AppTexts.of(context).tasksLibre
           : (task.assignees.length == 1
-                ? task.assignees.first.displayName
+                ? task.assignees.first.displayName(AppTexts.of(context))
                 : null),
       showDivider: showDivider,
       onTap: () => context.pushNamed(
@@ -98,7 +99,11 @@ class TaskTile extends ConsumerWidget {
                 task.isDone ? Icons.undo_rounded : Icons.check_circle_outline,
                 color: context.couleurs.success,
               ),
-              title: Text(task.isDone ? 'Rouvrir' : 'Terminée'),
+              title: Text(
+                task.isDone
+                    ? AppTexts.of(context).coreRouvrir
+                    : AppTexts.of(context).taskStatusDone,
+              ),
               onTap: () => Navigator.of(sheetContext).pop(_ChoixCase.terminer),
             ),
             ListTile(

@@ -120,7 +120,10 @@ class Contact {
     ].whereType<String>().where((String p) => p.isNotEmpty).join(' ');
     if (full.isNotEmpty) return full;
     if (pseudo != null && pseudo!.isNotEmpty) return '@$pseudo';
-    return 'Contact';
+    // `profiles.pseudo` est `not null` : ni nom ni pseudo est impossible.
+    // Une chaîne vide plutôt qu'un mot français, qui serait faux dans trois
+    // langues sur quatre pour une branche inatteignable.
+    return '';
   }
 
   String get shortName {

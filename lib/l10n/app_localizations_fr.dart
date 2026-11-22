@@ -3302,4 +3302,103 @@ class AppTextsFr extends AppTexts {
 
   @override
   String get coreMembre => 'Membre';
+
+  @override
+  String get coreEpingle => 'Épinglé';
+
+  @override
+  String get coreEpingler => 'Épingler';
+
+  @override
+  String get coreRouvrir => 'Rouvrir';
+
+  @override
+  String get chatEcouter => 'Écouter';
+
+  @override
+  String get tasksAssignes => 'Assignés';
+
+  @override
+  String get tasksPersonnelle => 'Personnelle';
+
+  @override
+  String chatCompteurTaches(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'tâches',
+      one: 'tâche',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String chatCompteurEvenements(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'événements',
+      one: 'événement',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String contactsCompteurGroupes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'groupes',
+      one: 'groupe',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get tasksLibre => 'Libre';
+
+  @override
+  String get coreIndisponible => 'Indisponible';
+
+  @override
+  String get coreInconnu => 'Inconnu';
+
+  @override
+  String get coreAutres => 'Autres';
+
+  @override
+  String get coreContact => 'Contact';
+
+  @override
+  String get coreDateChoisir => 'Date…';
+
+  @override
+  String get chatEmojis => 'Emojis';
+
+  @override
+  String get chatEnvoyer => 'Envoyer';
+
+  @override
+  String get authRetirerAvatar => 'Retirer l’avatar';
+
+  @override
+  String get groupsRejoindre => 'Rejoindre';
+
+  @override
+  String get notificationsActivees => 'Activées';
+
+  @override
+  String get notificationsPartielles => 'Partielles';
+
+  @override
+  String get notificationsDesactivees => 'Désactivées';
+
+  @override
+  String get notificationsRefusees => 'Refusées';
+
+  @override
+  String get notificationsIndisponibles => 'Indisponibles';
+
+  @override
+  String get notificationsVoirInvitation => 'Voir l’invitation';
 }

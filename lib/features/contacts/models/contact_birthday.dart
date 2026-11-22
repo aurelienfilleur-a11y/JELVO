@@ -68,7 +68,8 @@ class ContactBirthday {
     ].whereType<String>().where((String p) => p.isNotEmpty).join(' ');
     if (full.isNotEmpty) return full;
     if (pseudo != null && pseudo!.isNotEmpty) return '@$pseudo';
-    return 'Contact';
+    // Branche inatteignable, comme pour `Contact.fullName`.
+    return '';
   }
 
   @override

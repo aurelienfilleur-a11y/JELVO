@@ -76,7 +76,7 @@ class MembershipTermPicker extends StatelessWidget {
             _Choix(
               label: choisi != null && !_estUnRaccourci(choisi)
                   ? AppDates.shortDate(choisi, t)
-                  : 'Date…',
+                  : t.coreDateChoisir,
               icon: Icons.event_rounded,
               selected: choisi != null && !_estUnRaccourci(choisi),
               onTap: enabled ? () => _choisirDate(context) : null,
@@ -125,8 +125,8 @@ class MembershipTermPicker extends StatelessWidget {
       firstDate: now.add(const Duration(days: 1)),
       lastDate: DateTime(now.year + 5, now.month, now.day),
       helpText: AppTexts.of(context).groupsFinAdhesion,
-      cancelText: 'Annuler',
-      confirmText: 'Choisir',
+      cancelText: AppTexts.of(context).commonCancel,
+      confirmText: AppTexts.of(context).coreChoisir,
     );
     if (jour != null) onChanged(finDeJournee(jour));
   }

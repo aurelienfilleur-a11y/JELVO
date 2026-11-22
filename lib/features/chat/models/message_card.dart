@@ -17,7 +17,7 @@ import '../../tasks/models/task.dart';
 /// tâche prise d'une tâche confiée.
 @immutable
 sealed class MessageCard {
-  const MessageCard({required this.titre, required this.supprimee});
+  const MessageCard({required this.supprimee, this.titre});
 
   static MessageCard? fromJson(Object? brut) {
     if (brut is! Map<String, dynamic>) return null;
@@ -28,7 +28,11 @@ sealed class MessageCard {
     };
   }
 
-  final String titre;
+  /// Nullable : **le libellé de remplacement vient de l’écran**, pas d’ici.
+  /// Il était « Tâche » et « Événement » en dur, donc en français dans les
+  /// quatre langues. En pratique le SQL renseigne toujours le titre : c’est
+  /// un repli défensif, et un repli défensif ne choisit pas ses mots.
+  final String? titre;
 
   /// L'élément a été supprimé. **La carte reste**, et le dit : une carte
   /// morte, qui n'aurait plus ni titre ni réponse, ne dirait rien de ce qui
@@ -75,7 +79,7 @@ class TaskCard extends MessageCard {
   factory TaskCard.fromJson(Map<String, dynamic> json) {
     final Object? gens = json['assignes'];
     return TaskCard(
-      titre: (json['titre'] as String?) ?? 'Tâche',
+      titre: json['titre'] as String?,
       supprimee: json['supprimee'] == true,
       prise: json['prise'] == true,
       terminee: json['terminee'] == true,
@@ -141,7 +145,7 @@ class EventCardData extends MessageCard {
         DateTime.tryParse((json['starts_at'] as String?) ?? '')?.toLocal() ??
         DateTime.fromMillisecondsSinceEpoch(0);
     return EventCardData(
-      titre: (json['titre'] as String?) ?? 'Événement',
+      titre: json['titre'] as String?,
       supprimee: json['supprimee'] == true,
       debut: debut,
       fin:

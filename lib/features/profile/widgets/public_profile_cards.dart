@@ -103,7 +103,7 @@ class _Pastille extends StatelessWidget {
           StatusDot(tone: dispo.tone, filled: true),
           AppSpacing.gapXs,
           Text(
-            dispo.label,
+            dispo.label(AppTexts.of(context)),
             style: context.typo.caption.copyWith(
               color: dispo.tone.ink(context.couleurs),
               fontWeight: AppTypography.semiBold,

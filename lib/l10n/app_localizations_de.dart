@@ -3301,4 +3301,103 @@ class AppTextsDe extends AppTexts {
 
   @override
   String get coreMembre => 'Mitglied';
+
+  @override
+  String get coreEpingle => 'Angepinnt';
+
+  @override
+  String get coreEpingler => 'Anpinnen';
+
+  @override
+  String get coreRouvrir => 'Wieder öffnen';
+
+  @override
+  String get chatEcouter => 'Abspielen';
+
+  @override
+  String get tasksAssignes => 'Zugewiesen';
+
+  @override
+  String get tasksPersonnelle => 'Persönlich';
+
+  @override
+  String chatCompteurTaches(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Aufgaben',
+      one: 'Aufgabe',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String chatCompteurEvenements(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Termine',
+      one: 'Termin',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String contactsCompteurGroupes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Gruppen',
+      one: 'Gruppe',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get tasksLibre => 'Frei';
+
+  @override
+  String get coreIndisponible => 'Nicht verfügbar';
+
+  @override
+  String get coreInconnu => 'Unbekannt';
+
+  @override
+  String get coreAutres => 'Sonstige';
+
+  @override
+  String get coreContact => 'Kontakt';
+
+  @override
+  String get coreDateChoisir => 'Datum…';
+
+  @override
+  String get chatEmojis => 'Emojis';
+
+  @override
+  String get chatEnvoyer => 'Senden';
+
+  @override
+  String get authRetirerAvatar => 'Avatar entfernen';
+
+  @override
+  String get groupsRejoindre => 'Beitreten';
+
+  @override
+  String get notificationsActivees => 'Aktiviert';
+
+  @override
+  String get notificationsPartielles => 'Teilweise';
+
+  @override
+  String get notificationsDesactivees => 'Deaktiviert';
+
+  @override
+  String get notificationsRefusees => 'Abgelehnt';
+
+  @override
+  String get notificationsIndisponibles => 'Nicht verfügbar';
+
+  @override
+  String get notificationsVoirInvitation => 'Einladung ansehen';
 }

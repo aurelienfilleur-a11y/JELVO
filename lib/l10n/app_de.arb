@@ -2037,5 +2037,51 @@
   "profileSuppressionEchec": "Die Löschung ist nicht durchgegangen. Dein Konto ist unverändert: versuche es gleich noch einmal.",
   "profileSuppressionFaite": "Dein Konto wurde gelöscht.",
   "coreCompteSupprime": "Gelöschtes Konto",
-  "coreMembre": "Mitglied"
+  "coreMembre": "Mitglied",
+  "coreEpingle": "Angepinnt",
+  "coreEpingler": "Anpinnen",
+  "coreRouvrir": "Wieder öffnen",
+  "chatEcouter": "Abspielen",
+  "tasksAssignes": "Zugewiesen",
+  "tasksPersonnelle": "Persönlich",
+  "chatCompteurTaches": "{count, plural, one{Aufgabe} other{Aufgaben}}",
+  "@chatCompteurTaches": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "chatCompteurEvenements": "{count, plural, one{Termin} other{Termine}}",
+  "@chatCompteurEvenements": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "contactsCompteurGroupes": "{count, plural, one{Gruppe} other{Gruppen}}",
+  "@contactsCompteurGroupes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tasksLibre": "Frei",
+  "coreIndisponible": "Nicht verfügbar",
+  "coreInconnu": "Unbekannt",
+  "coreAutres": "Sonstige",
+  "coreContact": "Kontakt",
+  "coreDateChoisir": "Datum…",
+  "chatEmojis": "Emojis",
+  "chatEnvoyer": "Senden",
+  "authRetirerAvatar": "Avatar entfernen",
+  "groupsRejoindre": "Beitreten",
+  "notificationsActivees": "Aktiviert",
+  "notificationsPartielles": "Teilweise",
+  "notificationsDesactivees": "Deaktiviert",
+  "notificationsRefusees": "Abgelehnt",
+  "notificationsIndisponibles": "Nicht verfügbar",
+  "notificationsVoirInvitation": "Einladung ansehen"
 }

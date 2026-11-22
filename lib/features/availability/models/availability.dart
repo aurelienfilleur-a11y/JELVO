@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/utils/date_formatting.dart';
 import '../../../core/widgets/status_dot.dart';
 import '../../../l10n/app_localizations.dart';
 
@@ -41,8 +42,8 @@ enum AvailabilityStatus {
   /// Le libellé est **demandé**, pas porté : une valeur d'énumération est
   /// `const`, et ne peut donc pas contenir un texte qui dépend de la langue.
   String label(AppTexts t) => switch (this) {
-    AvailabilityStatus.available => 'Disponible',
-    AvailabilityStatus.unavailable => 'Indisponible',
+    AvailabilityStatus.available => t.coreDisponible,
+    AvailabilityStatus.unavailable => t.coreIndisponible,
   };
 }
 
@@ -54,19 +55,29 @@ enum AvailabilityStatus {
 /// couvre aussi bien « rien de déclaré » que « vous n'avez pas à le savoir »,
 /// et les distinguer serait déjà en dire trop.
 enum PeerAvailability {
-  available('Disponible', StatusTone.success),
-  unavailable('Indisponible', StatusTone.danger),
-  unknown('Inconnu', StatusTone.neutral);
+  available(StatusTone.success),
+  unavailable(StatusTone.danger),
+  unknown(StatusTone.neutral);
 
-  const PeerAvailability(this.label, this.tone);
+  const PeerAvailability(this.tone);
 
-  final String label;
   final StatusTone tone;
 
   static PeerAvailability fromDb(String? value) => switch (value) {
     'available' => PeerAvailability.available,
     'unavailable' => PeerAvailability.unavailable,
     _ => PeerAvailability.unknown,
+  };
+
+  /// Le libellé est **demandé**, pas porté : une valeur d'énumération est
+  /// `const`, et ne peut donc pas contenir un texte qui dépend de la langue.
+  /// Celle-ci le portait encore — « Disponible », « Indisponible »,
+  /// « Inconnu » —, et c'est tout ce qu'un contact lit de la disponibilité de
+  /// quelqu'un d'autre : trois mots, restés français dans les quatre langues.
+  String label(AppTexts t) => switch (this) {
+    PeerAvailability.available => t.coreDisponible,
+    PeerAvailability.unavailable => t.coreIndisponible,
+    PeerAvailability.unknown => t.coreInconnu,
   };
 }
 
@@ -124,17 +135,13 @@ class AvailabilitySlot {
   /// Date d'un créneau exceptionnel, `null` pour un récurrent.
   final DateTime? onDate;
 
-  static const List<String> nomsDeJour = <String>[
-    'Lundi',
-    'Mardi',
-    'Mercredi',
-    'Jeudi',
-    'Vendredi',
-    'Samedi',
-    'Dimanche',
-  ];
-
-  static String nomDuJour(int weekday) => nomsDeJour[(weekday - 1).clamp(0, 6)];
+  /// Nom du jour, **dans la langue de l'appareil**.
+  ///
+  /// C'était une liste de sept noms français en `const`, et elle ne pouvait
+  /// pas être autre chose : une constante ne dépend pas de la langue. Le nom
+  /// se demande donc, comme un libellé d'énumération.
+  static String nomDuJour(int weekday, AppTexts t) =>
+      AppDates.weekdayName((weekday - 1).clamp(0, 6) + 1, t);
 
   /// ISO (1 = lundi … 7 = dimanche) → `extract(dow)` (0 = dimanche … 6).
   static int? jourBaseDepuisIso(int? iso) => iso == null ? null : iso % 7;

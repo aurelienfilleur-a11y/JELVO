@@ -342,15 +342,17 @@ enum InvitationScreenStatus {
 /// un visage, rien de plus.
 @immutable
 class InvitationMember {
-  const InvitationMember({required this.name, this.avatarUrl});
+  const InvitationMember({this.name, this.avatarUrl});
 
   factory InvitationMember.fromJson(Map<String, dynamic> json) =>
       InvitationMember(
-        name: (json['nom'] as String?) ?? 'Membre',
+        name: json['nom'] as String?,
         avatarUrl: json['avatar_url'] as String?,
       );
 
-  final String name;
+  /// Nullable : un profil disparu ne donne pas de nom, et **le libellé de
+  /// remplacement vient de l’écran**, pas d’ici. Il était « Membre » en dur.
+  final String? name;
   final String? avatarUrl;
 }
 

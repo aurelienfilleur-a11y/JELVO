@@ -1,16 +1,19 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../l10n/app_localizations.dart';
+
 /// Rôle d'une personne dans un groupe.
 ///
 /// Reflète le type `member_role` de la base, qui ne connaît que ces deux
 /// valeurs.
+///
+/// **Il ne porte plus de libellé.** Il en portait deux en `const` — « Admin »
+/// et « Membre » —, donc en français dans les quatre langues ; et personne ne
+/// les lisait, la pastille d'administrateur de `MemberTile` passant déjà par
+/// l'ARB. Un champ mort qui ment est pire qu'un champ absent.
 enum GroupRole {
-  admin('Admin'),
-  member('Membre');
-
-  const GroupRole(this.label);
-
-  final String label;
+  admin,
+  member;
 
   static GroupRole fromDb(String? value) =>
       value == 'admin' ? GroupRole.admin : GroupRole.member;
@@ -68,20 +71,23 @@ class GroupMember {
 
   /// Nom affiché, avec repli sur le pseudo puis sur un libellé neutre : un
   /// profil peut n'avoir jamais été complété.
-  String get displayName {
+  ///
+  /// **Prend l'`AppTexts`**, comme `TaskAssignee.displayName` : le repli était
+  /// « Membre » en dur, et c'est un mot — un modèle ne choisit pas ses mots.
+  String displayName(AppTexts t) {
     final String full = <String?>[
       firstName,
       lastName,
     ].whereType<String>().where((String p) => p.isNotEmpty).join(' ');
     if (full.isNotEmpty) return full;
     if (pseudo != null && pseudo!.isNotEmpty) return '@$pseudo';
-    return 'Membre';
+    return t.coreMembre;
   }
 
-  String get shortName {
+  String shortName(AppTexts t) {
     final String? first = firstName;
     if (first != null && first.isNotEmpty) return first;
-    return displayName;
+    return displayName(t);
   }
 
   @override

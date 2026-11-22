@@ -75,7 +75,10 @@ class Group {
   }) {
     return Group(
       id: row['id'] as String,
-      name: (row['name'] as String?) ?? 'Groupe',
+      // `groups.name` est `not null` : cette branche ne peut pas se
+      // produire. Une chaîne vide plutôt qu'un mot français, qui serait
+      // faux dans trois langues sur quatre pour un cas impossible.
+      name: (row['name'] as String?) ?? '',
       description: row['description'] as String?,
       photoUrl: row['photo_url'] as String?,
       isPrivate: (row['is_private'] as bool?) ?? true,

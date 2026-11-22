@@ -251,7 +251,7 @@ class _Caracteristiques extends StatelessWidget {
           _Ligne(
             icon: Icons.groups_outlined,
             label: t.createGroupField,
-            value: group?.name ?? (task.isPersonal ? 'Personnelle' : '—'),
+            value: group?.name ?? (task.isPersonal ? t.tasksPersonnelle : '—'),
           ),
           if (task.reminderAt != null)
             _Ligne(
@@ -365,7 +365,7 @@ class _Assignes extends ConsumerWidget {
                           child: AvatarStack(
                             avatars: <AvatarData>[
                               AvatarData(
-                                name: assigne.displayName,
+                                name: assigne.displayName(t),
                                 imageUrl: assigne.avatarUrl,
                               ),
                             ],
@@ -378,8 +378,8 @@ class _Assignes extends ConsumerWidget {
                             onTap: () => context.ouvrirProfilDe(assigne.userId),
                             child: Text(
                               assigne.userId == moi
-                                  ? t.coreVous(assigne.displayName)
-                                  : assigne.displayName,
+                                  ? t.coreVous(assigne.displayName(t))
+                                  : assigne.displayName(t),
                               style: context.typo.body,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,

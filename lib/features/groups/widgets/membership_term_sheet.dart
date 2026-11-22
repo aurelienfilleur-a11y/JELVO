@@ -60,10 +60,10 @@ class _MembershipTermSheetState extends ConsumerState<MembershipTermSheet> {
           Text(
             membre.isTemporary
                 ? t.groupsMembreJusquAu(
-                    membre.displayName,
+                    membre.displayName(t),
                     AppDates.fullDate(membre.expiresAt!, t),
                   )
-                : t.groupsMembreSansTerme(membre.displayName),
+                : t.groupsMembreSansTerme(membre.displayName(t)),
             style: context.typo.bodyMuted,
           ),
 
@@ -132,17 +132,17 @@ class _MembershipTermSheetState extends ConsumerState<MembershipTermSheet> {
       if (!issue.isSuccess && issue != MemberOutcome.inchange) {
         setState(() {
           _enregistrement = false;
-          _erreur = issue.message(widget.member.shortName, t);
+          _erreur = issue.message(widget.member.shortName(t), t);
         });
         return;
       }
 
-      navigateur.maybePop(AppTexts.of(context));
+      navigateur.maybePop();
       messager.showSnackBar(
         SnackBar(
           content: Text(
             issue.message(
-              widget.member.shortName,
+              widget.member.shortName(t),
               t,
               terme: _terme == null ? null : AppDates.fullDate(_terme!, t),
             ),

@@ -50,7 +50,7 @@ class TasksScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: context.couleurs.background,
       appBar: AppBar(
-        title: EmojiText(groupe?.name ?? 'Tâches'),
+        title: EmojiText(groupe?.name ?? AppTexts.of(context).coreTaches),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           tooltip: t.commonBack,

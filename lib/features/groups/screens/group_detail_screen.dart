@@ -379,7 +379,7 @@ class _GroupView extends ConsumerWidget {
                 ),
                 location: event.location,
                 accentColor: group.accent.color(context.couleurs),
-                participants: event.avatars,
+                participants: event.avatars(AppTexts.of(context)),
                 statusTone: event.myResponse == EventResponse.yes
                     ? null
                     : event.myResponse.tone,
@@ -569,7 +569,7 @@ class _GroupView extends ConsumerWidget {
         ref.read(groupActionsProvider),
       );
       messenger.showSnackBar(
-        SnackBar(content: Text(outcome.message(member.shortName, t))),
+        SnackBar(content: Text(outcome.message(member.shortName(t), t))),
       );
     } catch (error) {
       messenger.showSnackBar(
@@ -587,7 +587,7 @@ class _GroupView extends ConsumerWidget {
     final bool confirmed = await _confirm(
       context,
       title: AppTexts.of(context).groupsRetirerMembre,
-      message: t.groupsRetraitMembreConfirmation(member.displayName),
+      message: t.groupsRetraitMembreConfirmation(member.displayName(t)),
       confirmLabel: t.coreRetirer,
     );
     if (!confirmed || !context.mounted) return;

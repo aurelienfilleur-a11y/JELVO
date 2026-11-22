@@ -65,7 +65,7 @@ class _MessageCardTileState extends ConsumerState<MessageCardTile> {
           icone: Icons.task_alt_rounded,
           couleur: context.couleurs.primary,
           libelle: t.createTache,
-          titre: carte.titre,
+          titre: carte.titre ?? t.createTache,
           barre: carte.supprimee || carte.terminee,
         ),
 
@@ -105,8 +105,8 @@ class _MessageCardTileState extends ConsumerState<MessageCardTile> {
           _Etat(texte: AppTexts.of(context).chatProposeeGroupePersonneEncore),
           AppSpacing.gapMd,
           InvitationActions(
-            refuser: 'Non',
-            accepter: 'Oui',
+            refuser: t.eventAnswerNo,
+            accepter: t.eventAnswerYes,
             enCours: _enCours,
             onRefuser: _passerSonTour,
             onAccepter: _prendre,
@@ -142,7 +142,7 @@ class _MessageCardTileState extends ConsumerState<MessageCardTile> {
           icone: Icons.event_rounded,
           couleur: context.couleurs.warning,
           libelle: t.createEvenement,
-          titre: carte.titre,
+          titre: carte.titre ?? t.createEvenement,
           barre: carte.supprimee,
         ),
 

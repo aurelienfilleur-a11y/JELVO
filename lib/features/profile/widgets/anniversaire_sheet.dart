@@ -110,7 +110,7 @@ class _AnniversaireSheetState extends ConsumerState<AnniversaireSheet> {
                   libelle: AppTexts.of(context).coreMois,
                   valeur: _mois,
                   valeurs: <int>[for (int m = 1; m <= 12; m++) m],
-                  texte: _nomDuMois,
+                  texte: (int m) => _nomDuMois(m, AppTexts.of(context)),
                   onChange: _changerDeMois,
                 ),
               ),
@@ -200,20 +200,11 @@ class _AnniversaireSheetState extends ConsumerState<AnniversaireSheet> {
     }
   }
 
-  static String _nomDuMois(int mois) => const <String>[
-    'janvier',
-    'février',
-    'mars',
-    'avril',
-    'mai',
-    'juin',
-    'juillet',
-    'août',
-    'septembre',
-    'octobre',
-    'novembre',
-    'décembre',
-  ][mois - 1];
+  /// Nom du mois, **dans la langue de l'appareil**.
+  ///
+  /// C'était une liste de douze noms français en `const` : la saisie d'un
+  /// anniversaire proposait « février » à un téléphone allemand.
+  static String _nomDuMois(int mois, AppTexts t) => AppDates.monthName(mois, t);
 }
 
 /// Une liste déroulante encadrée, au gabarit des champs de l'application.

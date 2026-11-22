@@ -1,5 +1,8 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:jelvo/features/availability/models/availability.dart';
+import 'package:jelvo/l10n/app_localizations.dart';
 
 /// Le jour de la semaine se compte différemment des deux côtés.
 ///
@@ -57,7 +60,13 @@ void main() {
     });
   });
 
-  test('une ligne de la base est relue en convention ISO', () {
+  test('une ligne de la base est relue en convention ISO', () async {
+    // Le nom du jour vient désormais d'`AppDates`, donc d'`intl` : sans
+    // `initializeDateFormatting()` — **sans argument**, comme dans `main()` —
+    // les symboles ne sont pas chargés.
+    initializeDateFormatting();
+    final AppTexts textes = await AppTexts.delegate.load(const Locale('fr'));
+
     final AvailabilitySlot dimanche =
         AvailabilitySlot.fromRow(<String, dynamic>{
           'id': 'd1',
@@ -70,7 +79,7 @@ void main() {
         });
 
     expect(dimanche.weekday, DateTime.sunday);
-    expect(AvailabilitySlot.nomDuJour(dimanche.weekday!), 'Dimanche');
+    expect(AvailabilitySlot.nomDuJour(dimanche.weekday!, textes), 'Dimanche');
     expect(dimanche.plage, '09:00 – 12:30');
   });
 }

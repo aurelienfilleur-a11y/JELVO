@@ -230,7 +230,8 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
 
     final List<String> noms = <String>[
       for (final GroupMember membre in membres)
-        if (_assignes.contains(membre.userId)) membre.shortName,
+        if (_assignes.contains(membre.userId))
+          membre.shortName(AppTexts.of(context)),
     ];
     // Un assigné qui ne figure pas encore dans la liste chargée ne doit pas
     // faire disparaître la phrase : on retombe sur le compte.
@@ -261,7 +262,7 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
             Expanded(
               child: SecondaryButton(
                 label: _echeance == null
-                    ? 'Échéance'
+                    ? t.tasksEcheance
                     : AppDates.shortDate(_echeance!, t),
                 icon: Icons.calendar_today_rounded,
                 onPressed: _choisirDate,
@@ -270,7 +271,7 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
             AppSpacing.hGapMd,
             Expanded(
               child: SecondaryButton(
-                label: _heure == null ? 'Heure' : _heure!.format(context),
+                label: _heure == null ? t.createTime : _heure!.format(context),
                 icon: Icons.schedule_rounded,
                 onPressed: _choisirHeure,
               ),

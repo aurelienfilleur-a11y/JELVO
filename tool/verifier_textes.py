@@ -54,8 +54,39 @@ PARAMETRES = (
     'label|title|titre|libelle|message|texte|text|tooltip|hint|aide|helper|'
     'error|erreur|placeholder|semanticsLabel|confirmLabel|actionLabel|'
     'description|sousTitre|subtitle|valeur|value|boutonTexte|emptyTitle|'
-    'emptyMessage'
+    # `name` et `nom` s'affichent **ici** : `AvatarData(name:)` en tire une
+    # initiale, `PickablePerson(nom:)` une rangée de prénoms. Le nom paraît
+    # trop général pour une liste de positions de texte — éprouvé plutôt que
+    # supposé : il ne rapporte que de vraies fuites, « Membre », « Vous »,
+    # « Personnel » et « Groupe », et aucun faux positif. Les routes et les
+    # fichiers nommés passent par des constantes, jamais par un littéral.
+    'emptyMessage|name|nom'
 )
+
+# Ce qui peut s'intercaler entre la position et la chaîne.
+#
+# **Troisième trou du détecteur, et le plus coûteux : la position devait être
+# collée à la chaîne.** `EmojiText(message.senderName ?? 'Membre', …)` lui
+# échappait, parce que la chaîne n'y est pas le premier jeton — et un mot d'un
+# seul tenant passe aussi la règle des deux mots, celle de l'accent exigeant
+# une espace. Dix-neuf chaînes françaises atteignaient l'écran dans les quatre
+# langues, dont deux pluriels écrits à la main.
+#
+# Un relais est une suite de jetons qui **passe la main** à la chaîne : un
+# repli `??`, une branche de ternaire (`? …` / `: …`), ou le corps d'une
+# flèche (`=> …`).
+#
+# Seule la **virgule** en est exclue, et c'est le bon critère : elle veut dire
+# qu'on a changé d'argument, donc que la position ne vaut plus. Les guillemets,
+# eux, doivent être admis — `taches > 1 ? 'tâches' : 'tâche'` met une chaîne
+# dans le relais de l'autre, et `json['titre'] ?? 'Tâche'` en met une dans un
+# indice. Les exclure laissait passer la moitié de chaque ternaire, et tous les
+# replis de lecture de JSON.
+#
+# Écarté sciemment : n'importe quel caractère, virgule comprise. C'est la leçon
+# des deux premiers trous — un écartement trop large ne se voit jamais, il rend
+# le vert.
+RELAIS = r"(?:[^,]*?(?:\?\?|\?|:|=>)\s*)*"
 
 # Une chaîne précédée de ceci s'affiche.
 #
@@ -67,7 +98,8 @@ PARAMETRES = (
 POSITIONS = re.compile(
     r'(?:\b(?:Text|EmojiText|SelectableText)\s*(?:\.rich\s*)?\(\s*'
     r'|\b(?:' + PARAMETRES + r')\s*:\s*'
-    r'|\b\w*(?i:' + PARAMETRES + r')\s*(?<![=!<>])=\s*)$',
+    r'|\b\w*(?i:' + PARAMETRES + r')\s*(?<![=!<>])=\s*)'
+    + RELAIS + r'$',
 )
 
 # Contextes où une chaîne qui en a l'air n'est pourtant pas du texte affiché.
@@ -89,6 +121,59 @@ DEUX_MOTS = re.compile(r'[^\W\d_]{2,}[^\w]+[^\W\d_]{2,}')
 
 ACCENTS = 'àâäéèêëîïôöùûüÿçœæÀÂÄÉÈÊËÎÏÔÖÙÛÜŸÇŒÆ'
 
+# ---------------------------------------------------------------------------
+# Quatrième trou : la méthode `label(AppTexts t)` qui rend du français en dur
+# ---------------------------------------------------------------------------
+# Les deux règles précédentes — la position, et la phrase accentuée — ne
+# voient rien dans ceci :
+#
+#     String label(AppTexts t) => switch (this) {
+#       TaskPriority.low => 'Basse',
+#       …
+#
+# La méthode prend bien la langue, et n'en fait rien. Il n'y a aucune position
+# de texte à repérer : la chaîne est le corps d'une branche de `switch`. Les
+# sept jours de la semaine, les douze mois, les priorités, les statuts et les
+# réponses Oui / Peut-être / Non sont tous dans ce cas — **une soixantaine de
+# chaînes, dans des fichiers qu'on croyait traduits.**
+#
+# La règle qui les attrape est un troisième filet par le contenu : une chaîne
+# **faite de mots et de ponctuation seulement**, qui porte une majuscule, un
+# accent, ou plusieurs mots. Ce que cela n'attrape pas est dit juste après.
+MOTS_SEULEMENT = re.compile(r"^[^\W\d_][\w\s'’\-.,;:!?…«»()]*$")
+PASCAL_CASE = re.compile(r'^[A-Z][a-z]+(?:[A-Z][a-z]*)+$')
+TOUT_CAPITALES = re.compile(r'^[A-ZÀÂÄÉÈÊËÎÏÔÖÙÛÜŸÇŒÆ\s]{3,}$')
+MAJUSCULE = re.compile(r'^[A-ZÀÂÄÉÈÊËÎÏÔÖÙÛÜŸÇŒÆ]')
+
+
+def ressemble_a_un_libelle(nu: str) -> bool:
+    """Vrai pour « Basse », « Lundi », « février », « Peut-être ».
+
+    **Faux pour un mot ASCII en minuscules d'un seul tenant**, et c'est
+    délibéré : `admin`, `member`, `pending`, `image`, `audio` sont les valeurs
+    des types énumérés de la base, et `clair`, `sombre`, `systeme` les trois
+    mots du contrat d'apparence. Les unes comme les autres doivent rester en
+    dur, et aucun critère de contenu ne les distingue de `mai` ou `avril`.
+
+    La contrepartie est assumée : sur les douze noms de mois, seuls `février`,
+    `août` et `décembre` sont signalés. **Trois suffisent** — ils rendent la
+    CI rouge, et c'est la liste entière qu'on corrige alors. Un détecteur n'a
+    pas à voir chaque occurrence, il a à rendre le défaut visible.
+    """
+    if len(nu) < 3 or not MOTS_SEULEMENT.match(nu):
+        return False
+    # `ClientException`, `PushManager`, `NotoColorEmoji` : des identifiants.
+    if PASCAL_CASE.match(nu):
+        return False
+    # `DIAGNOSTIC` : un bandeau de développement, pas une phrase.
+    if TOUT_CAPITALES.match(nu):
+        return False
+    return (
+        bool(MAJUSCULE.match(nu))
+        or any(a in nu for a in ACCENTS)
+        or bool(DEUX_MOTS.search(nu))
+    )
+
 # Formes qui ne sont jamais une phrase, quoi qu'elles contiennent.
 # `$` et les accolades compris : `'assets/avatars/$id.png'` est un
 # chemin, pas une phrase — et il avait bel et bien été migré une fois.
@@ -103,7 +188,18 @@ ACCENTS = 'àâäéèêëîïôöùûüÿçœæÀÂÄÉÈÊËÎÏÔÖÙÛÜŸÇ�
 # seule la **position** peut le signaler : `clair`, `sombre` et `systeme`
 # n'apparaissent jamais en position de texte, les trois mots du contrat
 # d'apparence restent donc tranquilles.
-IDENTIFIANT = re.compile(r'^(?=[\w./:+${}#&?=@~%-]*$).*[\d./:+${}#&?=@~%_-]')
+IDENTIFIANT = re.compile(r'^(?=[\w./:+${}#&?=@~%-]*$).*[\d./:+${}#&?=@~%_]')
+
+# **Cinquième trou : un trait d'union suffisait à faire passer un mot pour un
+# identifiant.** `« Peut-être »` entrait dans la classe de caractères, et le
+# tiret y comptait comme marque technique : la réponse « peut-être » d'un
+# événement est restée en français sans que rien ne le dise.
+#
+# Le tiret ne vaut donc comme marque technique que si la chaîne est
+# **entièrement en minuscules ASCII** : `jelvo-apparence`, `chat-media`,
+# `group-photos`, `sb-hôte-auth-token` sont de cette forme, et doivent rester
+# en dur. Une majuscule ou un accent, et c'est un mot.
+IDENTIFIANT_TIRET = re.compile(r'^[a-z0-9._-]*-[a-z0-9._-]*$')
 GABARIT_DATE = re.compile(r"^[dMyEHhmsaz'\s:/.,-]+$")
 
 
@@ -188,7 +284,7 @@ def est_affiche(texte: str, avant: str) -> bool:
     # ne s'écrit ainsi, et celui-là avait bel et bien été migré une fois.
     if not re.search(r'[a-zàâäéèêëîïôöùûüÿçœ]', nu):
         return False
-    if IDENTIFIANT.match(nu):
+    if IDENTIFIANT.match(nu) or IDENTIFIANT_TIRET.match(nu):
         return False
     if HORS_SUJET.search(avant.rstrip()):
         return False
@@ -202,7 +298,10 @@ def est_affiche(texte: str, avant: str) -> bool:
     phrase = bool(DEUX_MOTS.search(nu)) or (
         any(a in nu for a in ACCENTS) and ' ' in nu
     )
-    return par_position or phrase
+    # Le troisième filet, qui ne regarde ni la position ni l'espace : voir
+    # `ressemble_a_un_libelle`. C'est lui qui voit les branches de `switch`
+    # d'une méthode `label(AppTexts t)`.
+    return par_position or phrase or ressemble_a_un_libelle(nu)
 
 
 def main() -> int:

@@ -148,9 +148,9 @@ class PushPermissionSheet extends ConsumerWidget {
 
 /// Ce que la ligne « Notifications push » annonce à droite.
 String libellePush(PushStatus statut, AppTexts t) => switch (statut) {
-  PushStatus.actif => 'Activées',
-  PushStatus.aAutoriser => 'Désactivées',
-  PushStatus.refuse => 'Refusées',
+  PushStatus.actif => t.notificationsActivees,
+  PushStatus.aAutoriser => t.notificationsDesactivees,
+  PushStatus.refuse => t.notificationsRefusees,
   PushStatus.installationRequise => t.notificationsInstaller,
-  PushStatus.nonSupporte => 'Indisponibles',
+  PushStatus.nonSupporte => t.notificationsIndisponibles,
 };

@@ -159,7 +159,7 @@ class _PastilleGroupes extends StatelessWidget {
             ),
           ),
           Text(
-            contact.sharedGroups > 1 ? 'groupes' : 'groupe',
+            AppTexts.of(context).contactsCompteurGroupes(contact.sharedGroups),
             style: context.typo.caption.copyWith(
               color: context.couleurs.primary,
               fontSize: 10,

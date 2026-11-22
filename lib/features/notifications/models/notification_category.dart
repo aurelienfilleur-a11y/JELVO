@@ -74,9 +74,9 @@ enum NotificationCategory {
   /// `const`, et ne peut donc pas contenir un texte qui dépend de la langue.
   String label(AppTexts t) => switch (this) {
     NotificationCategory.groupes => t.notificationsGroupesDiscussions,
-    NotificationCategory.evenements => 'Événements',
+    NotificationCategory.evenements => t.coreEvenements,
     NotificationCategory.taches => t.notificationsTachesRappels,
-    NotificationCategory.autres => 'Autres',
+    NotificationCategory.autres => t.coreAutres,
   };
 }
 
@@ -105,8 +105,8 @@ enum CategoryState {
   /// Le libellé est **demandé**, pas porté : une valeur d'énumération est
   /// `const`, et ne peut donc pas contenir un texte qui dépend de la langue.
   String label(AppTexts t) => switch (this) {
-    CategoryState.toutes => 'Activées',
-    CategoryState.partielles => 'Partielles',
-    CategoryState.aucune => 'Désactivées',
+    CategoryState.toutes => t.notificationsActivees,
+    CategoryState.partielles => t.notificationsPartielles,
+    CategoryState.aucune => t.notificationsDesactivees,
   };
 }

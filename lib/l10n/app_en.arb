@@ -2037,5 +2037,51 @@
   "profileSuppressionEchec": "The deletion did not go through. Your account is intact: try again in a moment.",
   "profileSuppressionFaite": "Your account has been deleted.",
   "coreCompteSupprime": "Deleted account",
-  "coreMembre": "Member"
+  "coreMembre": "Member",
+  "coreEpingle": "Pinned",
+  "coreEpingler": "Pin",
+  "coreRouvrir": "Reopen",
+  "chatEcouter": "Play",
+  "tasksAssignes": "Assignees",
+  "tasksPersonnelle": "Personal",
+  "chatCompteurTaches": "{count, plural, one{task} other{tasks}}",
+  "@chatCompteurTaches": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "chatCompteurEvenements": "{count, plural, one{event} other{events}}",
+  "@chatCompteurEvenements": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "contactsCompteurGroupes": "{count, plural, one{group} other{groups}}",
+  "@contactsCompteurGroupes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tasksLibre": "Free",
+  "coreIndisponible": "Unavailable",
+  "coreInconnu": "Unknown",
+  "coreAutres": "Other",
+  "coreContact": "Contact",
+  "coreDateChoisir": "Date…",
+  "chatEmojis": "Emojis",
+  "chatEnvoyer": "Send",
+  "authRetirerAvatar": "Remove the avatar",
+  "groupsRejoindre": "Join",
+  "notificationsActivees": "On",
+  "notificationsPartielles": "Partial",
+  "notificationsDesactivees": "Off",
+  "notificationsRefusees": "Blocked",
+  "notificationsIndisponibles": "Unavailable",
+  "notificationsVoirInvitation": "View the invitation"
 }

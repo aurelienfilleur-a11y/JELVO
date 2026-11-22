@@ -5379,6 +5379,156 @@ abstract class AppTexts {
   /// In fr, this message translates to:
   /// **'Membre'**
   String get coreMembre;
+
+  /// No description provided for @coreEpingle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Épinglé'**
+  String get coreEpingle;
+
+  /// No description provided for @coreEpingler.
+  ///
+  /// In fr, this message translates to:
+  /// **'Épingler'**
+  String get coreEpingler;
+
+  /// No description provided for @coreRouvrir.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rouvrir'**
+  String get coreRouvrir;
+
+  /// No description provided for @chatEcouter.
+  ///
+  /// In fr, this message translates to:
+  /// **'Écouter'**
+  String get chatEcouter;
+
+  /// No description provided for @tasksAssignes.
+  ///
+  /// In fr, this message translates to:
+  /// **'Assignés'**
+  String get tasksAssignes;
+
+  /// No description provided for @tasksPersonnelle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Personnelle'**
+  String get tasksPersonnelle;
+
+  /// No description provided for @chatCompteurTaches.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count, plural, one{tâche} other{tâches}}'**
+  String chatCompteurTaches(int count);
+
+  /// No description provided for @chatCompteurEvenements.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count, plural, one{événement} other{événements}}'**
+  String chatCompteurEvenements(int count);
+
+  /// No description provided for @contactsCompteurGroupes.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count, plural, one{groupe} other{groupes}}'**
+  String contactsCompteurGroupes(int count);
+
+  /// No description provided for @tasksLibre.
+  ///
+  /// In fr, this message translates to:
+  /// **'Libre'**
+  String get tasksLibre;
+
+  /// No description provided for @coreIndisponible.
+  ///
+  /// In fr, this message translates to:
+  /// **'Indisponible'**
+  String get coreIndisponible;
+
+  /// No description provided for @coreInconnu.
+  ///
+  /// In fr, this message translates to:
+  /// **'Inconnu'**
+  String get coreInconnu;
+
+  /// No description provided for @coreAutres.
+  ///
+  /// In fr, this message translates to:
+  /// **'Autres'**
+  String get coreAutres;
+
+  /// No description provided for @coreContact.
+  ///
+  /// In fr, this message translates to:
+  /// **'Contact'**
+  String get coreContact;
+
+  /// No description provided for @coreDateChoisir.
+  ///
+  /// In fr, this message translates to:
+  /// **'Date…'**
+  String get coreDateChoisir;
+
+  /// No description provided for @chatEmojis.
+  ///
+  /// In fr, this message translates to:
+  /// **'Emojis'**
+  String get chatEmojis;
+
+  /// No description provided for @chatEnvoyer.
+  ///
+  /// In fr, this message translates to:
+  /// **'Envoyer'**
+  String get chatEnvoyer;
+
+  /// No description provided for @authRetirerAvatar.
+  ///
+  /// In fr, this message translates to:
+  /// **'Retirer l’avatar'**
+  String get authRetirerAvatar;
+
+  /// No description provided for @groupsRejoindre.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rejoindre'**
+  String get groupsRejoindre;
+
+  /// No description provided for @notificationsActivees.
+  ///
+  /// In fr, this message translates to:
+  /// **'Activées'**
+  String get notificationsActivees;
+
+  /// No description provided for @notificationsPartielles.
+  ///
+  /// In fr, this message translates to:
+  /// **'Partielles'**
+  String get notificationsPartielles;
+
+  /// No description provided for @notificationsDesactivees.
+  ///
+  /// In fr, this message translates to:
+  /// **'Désactivées'**
+  String get notificationsDesactivees;
+
+  /// No description provided for @notificationsRefusees.
+  ///
+  /// In fr, this message translates to:
+  /// **'Refusées'**
+  String get notificationsRefusees;
+
+  /// No description provided for @notificationsIndisponibles.
+  ///
+  /// In fr, this message translates to:
+  /// **'Indisponibles'**
+  String get notificationsIndisponibles;
+
+  /// No description provided for @notificationsVoirInvitation.
+  ///
+  /// In fr, this message translates to:
+  /// **'Voir l’invitation'**
+  String get notificationsVoirInvitation;
 }
 
 class _AppTextsDelegate extends LocalizationsDelegate<AppTexts> {

@@ -94,7 +94,10 @@ class AvailabilityScreen extends ConsumerWidget {
                     for (int jour = 1; jour <= 7; jour++)
                       if (parJour[jour] != null)
                         _BlocJour(
-                          titre: AvailabilitySlot.nomDuJour(jour),
+                          titre: AvailabilitySlot.nomDuJour(
+                            jour,
+                            AppTexts.of(context),
+                          ),
                           creneaux: parJour[jour]!,
                         ),
 
@@ -204,30 +207,41 @@ class _LigneCreneau extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
       child: Row(
         children: <Widget>[
-          StatusDot(
-            tone: creneau.status.tone,
-            label: creneau.status.label(AppTexts.of(context)),
-            filled: true,
-          ),
-          AppSpacing.hGapMd,
+          // **La pastille est au-dessus de l'horaire, et non à côté.** Côte à
+          // côte, les deux mots et les deux boutons demandaient 314 px pour
+          // 296 disponibles à 360 dp, dès que « Indisponible » devenait
+          // « Nicht verfügbar » : la ligne ne tenait pas, et rogner l'un des
+          // deux textes aurait tronqué soit le statut, soit l'heure. La
+          // hauteur, elle, ne coûte rien ici.
           Expanded(
-            child: Text(
-              date == null
-                  ? creneau.plage
-                  : t.availabilityDateEtPlage(
-                      AppDates.shortDate(date, t),
-                      creneau.plage,
-                    ),
-              style: context.typo.body,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                StatusDot(
+                  tone: creneau.status.tone,
+                  label: creneau.status.label(t),
+                  filled: true,
+                ),
+                AppSpacing.gapXs,
+                Text(
+                  date == null
+                      ? creneau.plage
+                      : t.availabilityDateEtPlage(
+                          AppDates.shortDate(date, t),
+                          creneau.plage,
+                        ),
+                  style: context.typo.body,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
           ),
-          // **Deux boutons d'icône de 48 dp ne tiennent pas ici.** La
-          // pastille de statut porte un mot, et la ligne débordait de 3 px à
-          // 360 dp — dans les quatre langues : ce défaut-là précède la
-          // traduction, c'est le balayage des langues qui l'a trouvé.
-          // `compact` les ramène à 40 dp, ce qui reste une cible touchable.
+          // **Deux boutons d'icône de 48 dp ne tiennent pas ici.** La ligne
+          // débordait de 3 px à 360 dp — dans les quatre langues : ce
+          // défaut-là précède la traduction, c'est le balayage des langues
+          // qui l'a trouvé. `compact` les ramène à 40 dp, ce qui reste une
+          // cible touchable.
           IconButton(
             icon: const Icon(Icons.edit_outlined, size: 18),
             tooltip: AppTexts.of(context).availabilityModifierCreneau,

@@ -5907,6 +5907,114 @@ abstract class AppTexts {
   /// In fr, this message translates to:
   /// **'« {texte} »'**
   String moderationCitation(String texte);
+
+  /// No description provided for @errorBlocked.
+  ///
+  /// In fr, this message translates to:
+  /// **'Cette personne ne peut pas être ajoutée.'**
+  String get errorBlocked;
+
+  /// No description provided for @profileBloquer.
+  ///
+  /// In fr, this message translates to:
+  /// **'Bloquer'**
+  String get profileBloquer;
+
+  /// No description provided for @profileDebloquer.
+  ///
+  /// In fr, this message translates to:
+  /// **'Débloquer'**
+  String get profileDebloquer;
+
+  /// No description provided for @profileBloques.
+  ///
+  /// In fr, this message translates to:
+  /// **'Personnes bloquées'**
+  String get profileBloques;
+
+  /// No description provided for @blocageTitre.
+  ///
+  /// In fr, this message translates to:
+  /// **'Bloquer cette personne ?'**
+  String get blocageTitre;
+
+  /// No description provided for @blocageCeQueCaFait.
+  ///
+  /// In fr, this message translates to:
+  /// **'Elle ne pourra plus vous inviter dans un groupe, vous ajouter en contact, ni vous assigner de tâche. Votre lien de contact est retiré.'**
+  String get blocageCeQueCaFait;
+
+  /// No description provided for @blocageGroupePartage.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vous partagez un groupe : elle y restera visible, et la conversation ne change pas. Pour ne plus la croiser, quittez le groupe.'**
+  String get blocageGroupePartage;
+
+  /// No description provided for @blocageBloque.
+  ///
+  /// In fr, this message translates to:
+  /// **'Personne bloquée.'**
+  String get blocageBloque;
+
+  /// No description provided for @blocageDejaBloque.
+  ///
+  /// In fr, this message translates to:
+  /// **'Cette personne est déjà bloquée.'**
+  String get blocageDejaBloque;
+
+  /// No description provided for @blocageDebloque.
+  ///
+  /// In fr, this message translates to:
+  /// **'Personne débloquée.'**
+  String get blocageDebloque;
+
+  /// No description provided for @blocagePasBloque.
+  ///
+  /// In fr, this message translates to:
+  /// **'Cette personne n’était pas bloquée.'**
+  String get blocagePasBloque;
+
+  /// No description provided for @blocageSoiMeme.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vous ne pouvez pas vous bloquer vous-même.'**
+  String get blocageSoiMeme;
+
+  /// No description provided for @blocageIntrouvable.
+  ///
+  /// In fr, this message translates to:
+  /// **'Cette personne n’existe plus.'**
+  String get blocageIntrouvable;
+
+  /// No description provided for @blocageVideTitre.
+  ///
+  /// In fr, this message translates to:
+  /// **'Personne n’est bloqué'**
+  String get blocageVideTitre;
+
+  /// No description provided for @blocageVideMessage.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vous pouvez bloquer quelqu’un depuis son profil.'**
+  String get blocageVideMessage;
+
+  /// No description provided for @blocageDepuis.
+  ///
+  /// In fr, this message translates to:
+  /// **'Bloquée {depuis}'**
+  String blocageDepuis(String depuis);
+
+  /// No description provided for @blocageDebloquerConfirmation.
+  ///
+  /// In fr, this message translates to:
+  /// **'Elle pourra de nouveau vous inviter, vous ajouter et vous assigner des tâches. Votre lien de contact ne revient pas.'**
+  String get blocageDebloquerConfirmation;
+
+  /// No description provided for @profileBloqueeCestVous.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vous avez bloqué cette personne.'**
+  String get profileBloqueeCestVous;
 }
 
 class _AppTextsDelegate extends LocalizationsDelegate<AppTexts> {

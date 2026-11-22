@@ -3587,4 +3587,63 @@ class AppTextsEn extends AppTexts {
   String moderationCitation(String texte) {
     return '“$texte”';
   }
+
+  @override
+  String get errorBlocked => 'This person cannot be added.';
+
+  @override
+  String get profileBloquer => 'Block';
+
+  @override
+  String get profileDebloquer => 'Unblock';
+
+  @override
+  String get profileBloques => 'Blocked people';
+
+  @override
+  String get blocageTitre => 'Block this person?';
+
+  @override
+  String get blocageCeQueCaFait =>
+      'They will no longer be able to invite you to a group, add you as a contact, or assign you a task. Your contact link is removed.';
+
+  @override
+  String get blocageGroupePartage =>
+      'You share a group: they will stay visible there, and the conversation does not change. To stop crossing paths, leave the group.';
+
+  @override
+  String get blocageBloque => 'Person blocked.';
+
+  @override
+  String get blocageDejaBloque => 'This person is already blocked.';
+
+  @override
+  String get blocageDebloque => 'Person unblocked.';
+
+  @override
+  String get blocagePasBloque => 'This person was not blocked.';
+
+  @override
+  String get blocageSoiMeme => 'You cannot block yourself.';
+
+  @override
+  String get blocageIntrouvable => 'This person no longer exists.';
+
+  @override
+  String get blocageVideTitre => 'Nobody is blocked';
+
+  @override
+  String get blocageVideMessage => 'You can block someone from their profile.';
+
+  @override
+  String blocageDepuis(String depuis) {
+    return 'Blocked $depuis';
+  }
+
+  @override
+  String get blocageDebloquerConfirmation =>
+      'They will be able to invite you, add you and assign you tasks again. Your contact link does not come back.';
+
+  @override
+  String get profileBloqueeCestVous => 'You have blocked this person.';
 }

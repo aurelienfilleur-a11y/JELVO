@@ -119,6 +119,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   valeur: _langueCourante(context, ref),
                   onTap: () => LanguageSheet.ouvrir(context),
                 ),
+                // **Toujours présente**, contrairement à la modération : une
+                // liste vide n'est pas un écran qui ne mène nulle part, c'est
+                // la réponse à « qui ai-je bloqué ? ». Et c'est le seul
+                // chemin vers le déblocage, le profil d'une personne bloquée
+                // ne se lisant plus.
+                SettingsRow(
+                  icone: Icons.block_outlined,
+                  libelle: AppTexts.of(context).profileBloques,
+                  valeur: _compteBloques(ref),
+                  onTap: () => context.pushNamed(AppRoutes.blocages),
+                ),
                 SettingsRow(
                   icone: Icons.info_outline_rounded,
                   libelle: AppTexts.of(context).profileProposJelvo,
@@ -255,6 +266,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   /// **Pas le code `fr` ni le drapeau d'un pays** : un drapeau désigne un
   /// État et non une langue — l'espagnol est parlé dans vingt pays, et aucun
   /// ne peut raisonnablement le représenter.
+  /// Le nombre, ou rien du tout.
+  ///
+  /// **Zéro ne se dit pas** : « 0 » sur cette ligne se lirait comme une
+  /// alerte, et la ligne mène de toute façon à un écran qui l'explique. C'est
+  /// la règle déjà tenue par la carte d'un groupe sans activité.
+  String? _compteBloques(WidgetRef ref) {
+    final int n = ref.watch(idsBloquesProvider).length;
+    return n == 0 ? null : '$n';
+  }
+
   String _langueCourante(BuildContext context, WidgetRef ref) {
     final AppTexts t = AppTexts.of(context);
     final Locale? choix = ref.watch(localeProvider);

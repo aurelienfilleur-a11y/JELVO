@@ -84,6 +84,7 @@ tranche9_cartes_conversation.sql
 tranche10_carnet.sql
 tranche11_apercu_groupes.sql
 tranche12_anniversaires.sql
+tranche16_blocage.sql
 tranche13_profil_consultable.sql
 tranche14_suppression_compte.sql
 tranche15_signalements.sql

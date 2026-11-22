@@ -2184,5 +2184,30 @@
         "type": "String"
       }
     }
-  }
+  },
+  "errorBlocked": "Diese Person kann nicht hinzugefügt werden.",
+  "profileBloquer": "Blockieren",
+  "profileDebloquer": "Entsperren",
+  "profileBloques": "Blockierte Personen",
+  "blocageTitre": "Diese Person blockieren?",
+  "blocageCeQueCaFait": "Sie kann Sie nicht mehr in eine Gruppe einladen, als Kontakt hinzufügen oder Ihnen eine Aufgabe zuweisen. Ihre Kontaktverbindung wird entfernt.",
+  "blocageGroupePartage": "Sie teilen eine Gruppe: Dort bleibt sie sichtbar, und die Unterhaltung ändert sich nicht. Um ihr nicht mehr zu begegnen, verlassen Sie die Gruppe.",
+  "blocageBloque": "Person blockiert.",
+  "blocageDejaBloque": "Diese Person ist schon blockiert.",
+  "blocageDebloque": "Person entsperrt.",
+  "blocagePasBloque": "Diese Person war nicht blockiert.",
+  "blocageSoiMeme": "Sie können sich nicht selbst blockieren.",
+  "blocageIntrouvable": "Diese Person gibt es nicht mehr.",
+  "blocageVideTitre": "Niemand ist blockiert",
+  "blocageVideMessage": "Sie können jemanden über sein Profil blockieren.",
+  "blocageDepuis": "Blockiert {depuis}",
+  "@blocageDepuis": {
+    "placeholders": {
+      "depuis": {
+        "type": "String"
+      }
+    }
+  },
+  "blocageDebloquerConfirmation": "Sie kann Sie wieder einladen, hinzufügen und Ihnen Aufgaben zuweisen. Ihre Kontaktverbindung kommt nicht zurück.",
+  "profileBloqueeCestVous": "Sie haben diese Person blockiert."
 }

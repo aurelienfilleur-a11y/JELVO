@@ -7,6 +7,7 @@ import '../../auth/models/auth_failure.dart';
 import '../../calendar/models/recurrence.dart';
 import '../../groups/models/group_member.dart';
 import '../../groups/providers/group_providers.dart';
+import '../../signalements/providers/signalement_providers.dart';
 import '../models/task.dart';
 import '../providers/task_providers.dart';
 import 'assignee_picker.dart';
@@ -103,10 +104,24 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
 
   @override
   Widget build(BuildContext context) {
+    // **Les personnes bloquées sont écartées des candidats**, et elles seules.
+    //
+    // Elles restent membres du groupe et visibles partout ailleurs : le
+    // blocage ne retire personne d'un groupe partagé. Ce qui est écarté ici,
+    // c'est **le geste** — `refuser_si_bloque` lèverait en `JB001`, et
+    // proposer un avatar pour obtenir un refus serait promettre ce que la
+    // base refuse, comme un bouton grisé.
+    //
+    // Le filtre ne vaut que pour celui qui a bloqué : la personne bloquée,
+    // elle, n'est pas prévenue et rencontrera le refus. C'est le prix de ne
+    // pas lui annoncer le blocage.
+    final Set<String> bloques = ref.watch(idsBloquesProvider);
     final List<GroupMember> membres = _groupId == null
         ? const <GroupMember>[]
-        : ref.watch(groupMembersProvider(_groupId!)).value ??
-              const <GroupMember>[];
+        : (ref.watch(groupMembersProvider(_groupId!)).value ??
+                  const <GroupMember>[])
+              .where((GroupMember m) => !bloques.contains(m.userId))
+              .toList();
 
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),

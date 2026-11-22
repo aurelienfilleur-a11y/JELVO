@@ -1,3 +1,4 @@
+import 'package:jelvo/features/signalements/models/blocage.dart';
 import 'package:jelvo/features/signalements/models/signalement.dart';
 import 'package:jelvo/features/signalements/repository/signalement_repository.dart';
 
@@ -16,7 +17,11 @@ class FakeSignalementRepository implements SignalementRepository {
     this.issueTraitement = SignalementOutcome.traite,
     this.issueSuppression = SignalementOutcome.supprime,
     this.leveEnLecture = false,
-  }) : _signalements = List<Signalement>.of(signalements ?? const []);
+    List<PersonneBloquee>? bloques,
+    this.issueBlocage = BlocageOutcome.bloque,
+    this.issueDeblocage = BlocageOutcome.debloque,
+  }) : _signalements = List<Signalement>.of(signalements ?? const []),
+       _bloques = List<PersonneBloquee>.of(bloques ?? const []);
 
   /// Ce que `est_moderateur()` répond.
   bool moderateur;
@@ -45,6 +50,17 @@ class FakeSignalementRepository implements SignalementRepository {
 
   String? dernierMessageSupprime;
   int suppressions = 0;
+
+  final List<PersonneBloquee> _bloques;
+
+  BlocageOutcome issueBlocage;
+  BlocageOutcome issueDeblocage;
+
+  String? dernierBloque;
+  String? dernierDebloque;
+  int blocages = 0;
+  int deblocages = 0;
+  int lecturesBloques = 0;
 
   /// Nombre de relectures, par onglet. Traiter doit relire **les deux** : la
   /// ligne passe de l'un à l'autre.
@@ -153,5 +169,43 @@ class FakeSignalementRepository implements SignalementRepository {
       );
     }
     return issueSuppression;
+  }
+
+  @override
+  Future<BlocageOutcome> bloquer(String userId) async {
+    blocages++;
+    dernierBloque = userId;
+    // Le faux dépôt **ajoute vraiment** la personne : sans cela, l'assertion
+    // « l'écran offre désormais de débloquer » passerait parce que rien n'a
+    // été relu, et non parce que la relecture a eu lieu.
+    if (issueBlocage.isSuccess &&
+        !_bloques.any((PersonneBloquee p) => p.userId == userId)) {
+      _bloques.add(
+        PersonneBloquee(
+          userId: userId,
+          creeLe: DateTime(2026, 11, 22, 9),
+          pseudo: 'lea.marchand',
+          nom: 'Léa Marchand',
+        ),
+      );
+    }
+    return issueBlocage;
+  }
+
+  @override
+  Future<BlocageOutcome> debloquer(String userId) async {
+    deblocages++;
+    dernierDebloque = userId;
+    if (issueDeblocage.isSuccess) {
+      _bloques.removeWhere((PersonneBloquee p) => p.userId == userId);
+    }
+    return issueDeblocage;
+  }
+
+  @override
+  Future<List<PersonneBloquee>> fetchBloques() async {
+    lecturesBloques++;
+    if (leveEnLecture) throw Exception('lecture impossible');
+    return List<PersonneBloquee>.of(_bloques);
   }
 }

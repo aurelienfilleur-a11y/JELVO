@@ -129,6 +129,23 @@ begin
     return;
   end if;
 
+  -- **Un blocage ferme le profil, dans les deux sens** *(tranche 16)*.
+  --
+  -- Zéro ligne, et non une ligne amputée : l'écran affiche « Profil
+  -- indisponible », le même état qu'un identifiant inconnu. Celui qui a posé
+  -- le blocage retrouve la personne par `mes_blocages()`, et c'est pour cela
+  -- que cette liste existe — sans elle, on se serait enfermé dans son propre
+  -- réglage.
+  --
+  -- **Cela ne cache pas le blocage à la personne bloquée**, et il ne faut pas
+  -- s'en flatter : elle continue de voir l'autre dans un groupe partagé, et
+  -- en tirera la conclusion. Ce que la fonction garantit, c'est qu'elle ne
+  -- lira plus ni la bio, ni l'anniversaire, ni la disponibilité — pas qu'elle
+  -- ignorera l'existence du blocage, ce qu'aucune requête ne peut promettre.
+  if public.bloque(moi, p_user_id) then
+    return;
+  end if;
+
   select exists (
     select 1
       from public.contacts c

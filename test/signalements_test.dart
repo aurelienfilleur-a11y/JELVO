@@ -22,6 +22,10 @@ import 'package:jelvo/features/tasks/providers/task_providers.dart';
 import 'package:jelvo/l10n/app_localizations.dart';
 import 'package:jelvo/main.dart';
 
+import 'package:jelvo/features/auth/models/auth_failure.dart';
+import 'package:jelvo/features/signalements/models/blocage.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'fakes/fake_auth_repository.dart';
 import 'fakes/fake_availability_repository.dart';
 import 'fakes/fake_chat_repository.dart';
@@ -37,30 +41,38 @@ final DateTime _maintenant = DateTime(2026, 11, 22, 9);
 
 /// Une ligne telle que `profil_consultable` la rend, pour que l'écran d'un
 /// profil ait quelque chose à afficher.
-Map<String, dynamic> _ligneProfil({String id = 'u2', bool cestMoi = false}) =>
-    <String, dynamic>{
-      'id': id,
-      'pseudo': 'lea.marchand',
-      'first_name': 'Léa',
-      'last_name': 'Marchand',
-      'avatar_url': null,
-      'bio': null,
-      'anniversaire_jour': null,
-      'anniversaire_mois': null,
-      'cest_moi': cestMoi,
-      'autre_id': id,
-      'statut': 'accepted',
-      'sens': 'sortant',
-      'favori': false,
-      'groupes_communs': 0,
-      'groupes': <Map<String, dynamic>>[],
-      'disponibilite': null,
-    };
+Map<String, dynamic> _ligneProfil({
+  String id = 'u2',
+  bool cestMoi = false,
+  bool groupesPartages = false,
+}) => <String, dynamic>{
+  'id': id,
+  'pseudo': 'lea.marchand',
+  'first_name': 'Léa',
+  'last_name': 'Marchand',
+  'avatar_url': null,
+  'bio': null,
+  'anniversaire_jour': null,
+  'anniversaire_mois': null,
+  'cest_moi': cestMoi,
+  'autre_id': id,
+  'statut': 'accepted',
+  'sens': 'sortant',
+  'favori': false,
+  'groupes_communs': groupesPartages ? 1 : 0,
+  'groupes_partages': groupesPartages
+      ? <Map<String, dynamic>>[
+          <String, dynamic>{'id': 'g1', 'name': 'Famille Rousseau'},
+        ]
+      : <Map<String, dynamic>>[],
+  'disponibilite': null,
+};
 
 Future<FakeProfileRepository> _pumpApp(
   WidgetTester tester, {
   required FakeSignalementRepository signalements,
   FakeChatRepository? chat,
+  bool groupesPartages = false,
 }) async {
   tester.view.physicalSize = const Size(420, 2400);
   tester.view.devicePixelRatio = 1;
@@ -71,7 +83,7 @@ Future<FakeProfileRepository> _pumpApp(
   addTearDown(auth.dispose);
   final FakeProfileRepository profils = FakeProfileRepository();
   profils.profilsConsultables['u2'] = ProfilConsultable.depuisLigne(
-    _ligneProfil(),
+    _ligneProfil(groupesPartages: groupesPartages),
   );
   profils.profilsConsultables[FakeChatRepository.moi] =
       ProfilConsultable.depuisLigne(
@@ -702,6 +714,236 @@ void main() {
 
       expect(find.text('Signalements indisponibles'), findsOneWidget);
       expect(find.text('Rien à traiter'), findsNothing);
+    });
+  });
+
+  // ========================================================================
+  // Bloquer quelqu'un
+  // ========================================================================
+  group('Bloquer', () {
+    test('les mots d’état disent la réponse, et non une panne', () async {
+      final AppTexts t = await AppTexts.delegate.load(const Locale('fr'));
+
+      expect(BlocageOutcome.dejaBloque.isSuccess, isFalse);
+      expect(BlocageOutcome.pasBloque.isSuccess, isFalse);
+      expect(BlocageOutcome.bloque.isSuccess, isTrue);
+      expect(BlocageOutcome.debloque.isSuccess, isTrue);
+      // Un mot que la base ajouterait demain ne doit pas faire lever un
+      // client plus ancien.
+      expect(BlocageOutcome.fromDb('autre_chose'), BlocageOutcome.inconnu);
+      for (final BlocageOutcome o in BlocageOutcome.values) {
+        expect(o.message(t), isNotEmpty);
+      }
+    });
+
+    test(
+      'JB001 a son propre message, et ce n’est pas « permission refusée »',
+      () async {
+        final AppTexts t = await AppTexts.delegate.load(const Locale('fr'));
+        // **Le contrôle qui compte** : « permission refusée » enverrait
+        // chercher un défaut de droits, là où la cause est un blocage posé
+        // délibérément par l'une des deux personnes.
+        final AuthFailure bloque = AuthFailure.from(
+          const PostgrestException(
+            message: 'blocage entre … et …',
+            code: 'JB001',
+          ),
+        );
+        expect(bloque.kind, AuthFailureKind.blocked);
+        expect(bloque.message(t), isNot(t.errorForbidden));
+
+        final AuthFailure refus = AuthFailure.from(
+          const PostgrestException(
+            message: 'row-level security',
+            code: '42501',
+          ),
+        );
+        expect(refus.kind, AuthFailureKind.forbidden);
+      },
+    );
+
+    testWidgets(
+      'le menu du profil l’offre, et la confirmation dit ce que ça fait',
+      (WidgetTester tester) async {
+        final FakeSignalementRepository faux = FakeSignalementRepository();
+        await _pumpApp(tester, signalements: faux);
+        await _aller(tester, '/personnes/u2');
+
+        await tester.tap(find.byIcon(Icons.more_horiz_rounded));
+        await tester.pumpAndSettle();
+        expect(find.text('Bloquer'), findsOneWidget);
+        await tester.tap(find.text('Bloquer'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Bloquer cette personne ?'), findsOneWidget);
+        expect(
+          find.textContaining('ne pourra plus vous inviter'),
+          findsOneWidget,
+          reason: 'la confirmation doit dire ce que le blocage fait',
+        );
+
+        // **« Annuler » n’écrit rien** — le contrôle négatif.
+        await tester.tap(find.text('Annuler'));
+        await tester.pumpAndSettle();
+        expect(faux.blocages, 0);
+
+        await tester.tap(find.byIcon(Icons.more_horiz_rounded));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Bloquer'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Bloquer').last);
+        await tester.pumpAndSettle();
+
+        expect(faux.blocages, 1);
+        expect(faux.dernierBloque, 'u2');
+        expect(find.text('Personne bloquée.'), findsOneWidget);
+      },
+    );
+
+    testWidgets('le cas délicat se dit : un groupe partagé n’est pas touché', (
+      WidgetTester tester,
+    ) async {
+      // La phrase n'apparaît **que** si un groupe est réellement partagé :
+      // c'est `groupes_partages` de `profil_consultable` qui la déclenche.
+      await _pumpApp(
+        tester,
+        signalements: FakeSignalementRepository(),
+        groupesPartages: true,
+      );
+      await _aller(tester, '/personnes/u2');
+      await tester.tap(find.byIcon(Icons.more_horiz_rounded));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Bloquer'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Vous partagez un groupe'), findsOneWidget);
+      // Et elle nomme la seule suite qui a du sens.
+      expect(find.textContaining('quittez le groupe'), findsOneWidget);
+    });
+
+    testWidgets('sans groupe partagé, la phrase ne s’affiche pas', (
+      WidgetTester tester,
+    ) async {
+      // **Le contrôle négatif de la phrase** : l'afficher toujours ferait
+      // croire à un groupe partagé qui n'existe pas.
+      await _pumpApp(tester, signalements: FakeSignalementRepository());
+      await _aller(tester, '/personnes/u2');
+      await tester.tap(find.byIcon(Icons.more_horiz_rounded));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Bloquer'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Vous partagez un groupe'), findsNothing);
+      expect(
+        find.textContaining('ne pourra plus vous inviter'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('la liste des bloqués est le chemin du déblocage', (
+      WidgetTester tester,
+    ) async {
+      final FakeSignalementRepository faux = FakeSignalementRepository(
+        bloques: <PersonneBloquee>[
+          PersonneBloquee(
+            userId: 'u2',
+            creeLe: DateTime(2026, 11, 22, 8),
+            pseudo: 'lea.marchand',
+            nom: 'Léa Marchand',
+          ),
+        ],
+      );
+      await _pumpApp(tester, signalements: faux);
+      await _aller(tester, '/parametres');
+
+      // La ligne annonce le compte.
+      expect(find.text('Personnes bloquées'), findsOneWidget);
+      expect(find.text('1'), findsWidgets);
+
+      await tester.tap(find.text('Personnes bloquées'));
+      await tester.pumpAndSettle();
+      expect(find.text('Léa Marchand'), findsOneWidget);
+
+      await tester.tap(find.text('Débloquer'));
+      await tester.pumpAndSettle();
+      // La confirmation dit ce qui **ne revient pas**.
+      expect(
+        find.textContaining('lien de contact ne revient pas'),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Débloquer').last);
+      await tester.pumpAndSettle();
+
+      expect(faux.deblocages, 1);
+      expect(faux.dernierDebloque, 'u2');
+      expect(find.text('Personne débloquée.'), findsOneWidget);
+      // La liste se relit : la ligne a disparu.
+      expect(find.text('Léa Marchand'), findsNothing);
+      expect(find.text('Personne n’est bloqué'), findsOneWidget);
+    });
+
+    testWidgets('zéro ne se dit pas sur la ligne des paramètres', (
+      WidgetTester tester,
+    ) async {
+      await _pumpApp(tester, signalements: FakeSignalementRepository());
+      await _aller(tester, '/parametres');
+
+      expect(find.text('Personnes bloquées'), findsOneWidget);
+      // **Le contrôle négatif** : « 0 » sur cette ligne se lirait comme une
+      // alerte, alors qu'il n'y a rien à signaler.
+      await tester.tap(find.text('Personnes bloquées'));
+      await tester.pumpAndSettle();
+      expect(find.text('Personne n’est bloqué'), findsOneWidget);
+      expect(
+        find.textContaining('depuis son profil'),
+        findsOneWidget,
+        reason: 'l’état vide doit dire où l’on bloque',
+      );
+    });
+
+    testWidgets('une personne bloquée n’est plus proposée en assignée', (
+      WidgetTester tester,
+    ) async {
+      // Elle reste membre du groupe — le blocage ne retire personne — mais le
+      // geste ne lui est plus proposé : la base le refuserait en JB001.
+      await _pumpApp(
+        tester,
+        signalements: FakeSignalementRepository(
+          bloques: <PersonneBloquee>[
+            PersonneBloquee(
+              userId: 'u2',
+              creeLe: DateTime(2026, 11, 22, 8),
+              nom: 'Léa Marchand',
+            ),
+          ],
+        ),
+      );
+      await _aller(tester, '/creer?type=task&groupe=g1');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Assigner à'), findsOneWidget);
+      expect(
+        find.text('Léa'),
+        findsNothing,
+        reason: 'le geste refusé ne doit pas être proposé',
+      );
+      // Camille, elle, reste proposée : c'est le filtre qui écarte, pas le
+      // sélecteur qui serait vide.
+      expect(find.text('Camille'), findsOneWidget);
+    });
+
+    testWidgets('sans blocage, elle est bien proposée', (
+      WidgetTester tester,
+    ) async {
+      // **Le contrôle négatif du filtre.** Sans lui, le test précédent
+      // passerait aussi bien si le sélecteur ne montrait jamais Léa, pour une
+      // raison qui n'aurait rien à voir avec le blocage.
+      await _pumpApp(tester, signalements: FakeSignalementRepository());
+      await _aller(tester, '/creer?type=task&groupe=g1');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Léa'), findsOneWidget);
+      expect(find.text('Camille'), findsOneWidget);
     });
   });
 }

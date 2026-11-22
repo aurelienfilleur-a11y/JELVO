@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../auth/models/auth_failure.dart';
+import '../models/blocage.dart';
 import '../models/signalement.dart';
 
 /// Accès aux signalements d'abus.
@@ -34,6 +35,18 @@ abstract interface class SignalementRepository {
 
   /// Suppression douce du message signalé, par un modérateur.
   Future<SignalementOutcome> supprimerMessage(String signalementId);
+
+  /// Bloque quelqu'un. Défait aussi le lien de contact et les invitations en
+  /// attente — voir `tranche16_blocage.sql`.
+  Future<BlocageOutcome> bloquer(String userId);
+
+  Future<BlocageOutcome> debloquer(String userId);
+
+  /// Les personnes que l'on a bloquées.
+  ///
+  /// **C'est la seule porte vers le déblocage** : `profil_consultable` ne rend
+  /// plus rien sur une personne bloquée.
+  Future<List<PersonneBloquee>> fetchBloques();
 }
 
 class SupabaseSignalementRepository implements SignalementRepository {
@@ -122,6 +135,47 @@ class SupabaseSignalementRepository implements SignalementRepository {
         params: <String, dynamic>{'p_signalement_id': signalementId},
       );
       return SignalementOutcome.fromDb(mot as String?);
+    } catch (error) {
+      throw AuthFailure.from(error);
+    }
+  }
+
+  @override
+  Future<BlocageOutcome> bloquer(String userId) async {
+    try {
+      final Object? mot = await _client.rpc<Object?>(
+        'bloquer',
+        params: <String, dynamic>{'p_user_id': userId},
+      );
+      return BlocageOutcome.fromDb(mot as String?);
+    } catch (error) {
+      throw AuthFailure.from(error);
+    }
+  }
+
+  @override
+  Future<BlocageOutcome> debloquer(String userId) async {
+    try {
+      final Object? mot = await _client.rpc<Object?>(
+        'debloquer',
+        params: <String, dynamic>{'p_user_id': userId},
+      );
+      return BlocageOutcome.fromDb(mot as String?);
+    } catch (error) {
+      throw AuthFailure.from(error);
+    }
+  }
+
+  @override
+  Future<List<PersonneBloquee>> fetchBloques() async {
+    try {
+      final List<dynamic> rows = await _client.rpc<List<dynamic>>(
+        'mes_blocages',
+      );
+      return rows
+          .whereType<Map<String, dynamic>>()
+          .map(PersonneBloquee.fromRow)
+          .toList();
     } catch (error) {
       throw AuthFailure.from(error);
     }

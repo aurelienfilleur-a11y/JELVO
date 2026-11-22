@@ -155,6 +155,12 @@ abstract final class AppRoutes {
   static const String moderation = 'moderation';
   static const String moderationPath = '/parametres/signalements';
 
+  /// La liste des personnes bloquées. **Elle est nécessaire** :
+  /// `profil_consultable` ne rend plus rien sur une personne bloquée, si bien
+  /// que son profil n'est plus un chemin vers le déblocage.
+  static const String blocages = 'blocages';
+  static const String blocagesPath = '/parametres/bloques';
+
   /// Galerie des avatars prédéfinis, empilée sur le profil.
   static const String avatarGallery = 'avatarGallery';
   static const String avatarGalleryPath = '/profil/avatar';

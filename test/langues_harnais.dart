@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:jelvo/features/signalements/models/blocage.dart';
 import 'package:jelvo/features/signalements/models/signalement.dart';
 import 'package:jelvo/features/signalements/providers/signalement_providers.dart';
 import 'package:jelvo/data/clock.dart';
@@ -88,6 +89,17 @@ Future<LanguageStorage> pumpAppLangue(
         signalementRepositoryProvider.overrideWithValue(
           FakeSignalementRepository(
             moderateur: true,
+            // Une personne bloquée, pour que la carte de la liste ait du
+            // texte à mesurer : « Blockierte Personen » et « Entsperren »
+            // sur une même ligne, à 360 dp.
+            bloques: <PersonneBloquee>[
+              PersonneBloquee(
+                userId: 'u2',
+                creeLe: DateTime(2026, 8, 3, 8),
+                pseudo: 'lea.marchand',
+                nom: 'Léa Marchand',
+              ),
+            ],
             signalements: <Signalement>[
               Signalement(
                 id: 's1',

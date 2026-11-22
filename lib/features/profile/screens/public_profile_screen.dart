@@ -5,8 +5,11 @@ import 'package:go_router/go_router.dart';
 import '../../../core/core.dart';
 import '../../../router/app_routes.dart';
 import '../../../router/signaler.dart';
+import '../../auth/models/auth_failure.dart';
 import '../../contacts/models/contact.dart';
 import '../../contacts/providers/contact_providers.dart';
+import '../../signalements/models/blocage.dart';
+import '../../signalements/providers/signalement_providers.dart';
 import '../models/profil_consultable.dart';
 import '../providers/profile_providers.dart';
 import '../widgets/profile_action_row.dart';
@@ -69,6 +72,23 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
                   ),
                   child: Text(AppTexts.of(context).signalementSignaler),
                 ),
+                // **Signaler et bloquer sont deux gestes distincts**, et les
+                // deux ont leur place ici : signaler s'adresse à la
+                // modération, bloquer ne regarde que soi. Confondre les deux
+                // obligerait à choisir lequel disparaît.
+                //
+                // Il n'y a pas de « Débloquer » dans ce menu : le profil
+                // d'une personne bloquée ne se lit plus — `profil_consultable`
+                // rend zéro ligne —, si bien qu'on n'arrive jamais ici sur
+                // quelqu'un qu'on a bloqué. Le déblocage vit dans
+                // `/parametres/bloques`, qui est fait pour cela.
+                PopupMenuItem<void>(
+                  onTap: () => _confirmerBlocage(p),
+                  child: Text(
+                    AppTexts.of(context).profileBloquer,
+                    style: TextStyle(color: context.couleurs.dangerInk),
+                  ),
+                ),
               ],
             ),
         ],
@@ -103,6 +123,75 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
         },
       ),
     );
+  }
+
+  /// **La confirmation dit ce que le blocage fait, et ce qu'il ne fait pas.**
+  ///
+  /// La seconde moitié n'est pas du remplissage : c'est le cas délicat. Un
+  /// blocage arrête les gestes adressés à soi — invitation, contact,
+  /// assignation — et ne touche **pas** un groupe que l'on partage déjà : il
+  /// n'en retire personne, ne masque aucun message. Le taire donnerait un
+  /// blocage qui promet plus qu'il ne fait, et c'est pire qu'un blocage qui
+  /// annonce sa limite. La phrase n'apparaît que lorsqu'un groupe est
+  /// réellement partagé, et nomme la seule suite qui a du sens.
+  Future<void> _confirmerBlocage(ProfilConsultable p) async {
+    final AppTexts t = AppTexts.of(context);
+    final ScaffoldMessengerState messager = ScaffoldMessenger.of(context);
+    final bool partageUnGroupe = p.groupesCommuns.isNotEmpty;
+
+    final bool? confirme = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogue) => AlertDialog(
+        title: Text(t.blocageTitre),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(t.blocageCeQueCaFait),
+            if (partageUnGroupe) ...<Widget>[
+              AppSpacing.gapSm,
+              Text(t.blocageGroupePartage),
+            ],
+          ],
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(dialogue).pop(false),
+            child: Text(t.commonCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogue).pop(true),
+            child: Text(
+              t.profileBloquer,
+              style: TextStyle(color: context.couleurs.dangerInk),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirme != true) return;
+
+    setState(() => _enCours = true);
+    try {
+      final BlocageOutcome issue = await ref
+          .read(signalementActionsProvider)
+          .bloquer(widget.userId);
+      if (!mounted) return;
+      setState(() => _enCours = false);
+      messager.showSnackBar(SnackBar(content: Text(issue.message(t))));
+      // **Le profil se relit**, et ne rendra plus rien : la personne est
+      // bloquée. L'écran bascule donc de lui-même sur « Profil introuvable »,
+      // ce qui est l'état juste — et le déblocage se fait depuis la liste.
+      if (issue.isSuccess) {
+        ref.invalidate(profilConsultableProvider(widget.userId));
+      }
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _enCours = false);
+      messager.showSnackBar(
+        SnackBar(content: Text(AuthFailure.from(error).message(t))),
+      );
+    }
   }
 
   /// Les actions dépendent de la relation, et **aucune n'est inerte** : un

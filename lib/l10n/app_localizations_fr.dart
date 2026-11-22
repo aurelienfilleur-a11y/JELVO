@@ -3615,4 +3615,64 @@ class AppTextsFr extends AppTexts {
   String moderationCitation(String texte) {
     return '« $texte »';
   }
+
+  @override
+  String get errorBlocked => 'Cette personne ne peut pas être ajoutée.';
+
+  @override
+  String get profileBloquer => 'Bloquer';
+
+  @override
+  String get profileDebloquer => 'Débloquer';
+
+  @override
+  String get profileBloques => 'Personnes bloquées';
+
+  @override
+  String get blocageTitre => 'Bloquer cette personne ?';
+
+  @override
+  String get blocageCeQueCaFait =>
+      'Elle ne pourra plus vous inviter dans un groupe, vous ajouter en contact, ni vous assigner de tâche. Votre lien de contact est retiré.';
+
+  @override
+  String get blocageGroupePartage =>
+      'Vous partagez un groupe : elle y restera visible, et la conversation ne change pas. Pour ne plus la croiser, quittez le groupe.';
+
+  @override
+  String get blocageBloque => 'Personne bloquée.';
+
+  @override
+  String get blocageDejaBloque => 'Cette personne est déjà bloquée.';
+
+  @override
+  String get blocageDebloque => 'Personne débloquée.';
+
+  @override
+  String get blocagePasBloque => 'Cette personne n’était pas bloquée.';
+
+  @override
+  String get blocageSoiMeme => 'Vous ne pouvez pas vous bloquer vous-même.';
+
+  @override
+  String get blocageIntrouvable => 'Cette personne n’existe plus.';
+
+  @override
+  String get blocageVideTitre => 'Personne n’est bloqué';
+
+  @override
+  String get blocageVideMessage =>
+      'Vous pouvez bloquer quelqu’un depuis son profil.';
+
+  @override
+  String blocageDepuis(String depuis) {
+    return 'Bloquée $depuis';
+  }
+
+  @override
+  String get blocageDebloquerConfirmation =>
+      'Elle pourra de nouveau vous inviter, vous ajouter et vous assigner des tâches. Votre lien de contact ne revient pas.';
+
+  @override
+  String get profileBloqueeCestVous => 'Vous avez bloqué cette personne.';
 }

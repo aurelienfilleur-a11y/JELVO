@@ -39,13 +39,13 @@
 -- `verification/fumee.sql` refait cette confrontation à chaque rejeu, de
 -- sorte qu'une table ajoutée demain et oubliée ici fasse échouer le rejeu.
 --
--- Les vingt-deux sites et leur sort :
+-- Les vingt-quatre sites et leur sort :
 --
 --   supprimés   availabilities · contacts (deux bouts) · event_participants
 --               group_members · invitations (deux bouts) · message_reactions
 --               message_reads · notification_preferences · notifications
 --               push_outbox · push_reminders_sent · push_tokens
---               task_assignees · moderateurs
+--               task_assignees · moderateurs · blocages (deux bouts)
 --   gardés      messages.sender_id — tout l'objet de la règle
 --               tasks.created_by · groups.created_by · task_list_items.checked_by
 --               events.owner_id, pour un événement **de groupe**
@@ -327,6 +327,12 @@ begin
   -- il faut en désigner un. L'alternative serait de garder un compte
   -- supprimé parmi les modérateurs, ce qui est pire.
   delete from public.moderateurs             where user_id = moi;
+
+  -- Les blocages, **des deux bouts**. « Ce compte a bloqué X » l'identifie
+  -- autant que le reste, et un blocage posé par un compte parti ne protège
+  -- plus personne : il n'y a plus personne à protéger.
+  delete from public.blocages                where bloqueur_id = moi
+                                                or bloque_id = moi;
 
   -- 2.7bis Les signalements survivent, anonymisés.
   --

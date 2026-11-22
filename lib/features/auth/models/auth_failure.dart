@@ -55,6 +55,7 @@ class AuthFailure implements Exception {
       AuthFailureKind.network => t.errorNetwork,
       AuthFailureKind.storage => t.authEnvoiPhotoEchoueReessayez,
       AuthFailureKind.forbidden => t.errorForbidden,
+      AuthFailureKind.blocked => t.errorBlocked,
       AuthFailureKind.schemaOutdated => t.authFonctionnaliteAttendMiseJour,
       AuthFailureKind.notSaved => t.errorNotSaved,
       AuthFailureKind.pseudoInconnu => t.authConnexionPseudoEncoreDisponible,
@@ -191,6 +192,14 @@ class AuthFailure implements Exception {
         error.message.toLowerCase().contains('row-level security')) {
       return AuthFailure(AuthFailureKind.forbidden, technical: technical);
     }
+    // `JB001` est un SQLSTATE propre à Jelvo, levé par `refuser_si_bloque` —
+    // la garde `before insert` posée sur `invitations`, `contacts` et
+    // `task_assignees`. **Il lui faut son propre message** : « permission
+    // refusée » enverrait chercher un défaut de droits, là où la cause est un
+    // blocage que l'une des deux personnes a posé délibérément.
+    if (error.code == 'JB001') {
+      return AuthFailure(AuthFailureKind.blocked, technical: technical);
+    }
     // Colonne inconnue : l'application demande un champ que la base n'a pas.
     //
     // **Ce n'est pas une panne passagère**, et « réessayez dans un instant »
@@ -238,6 +247,11 @@ enum AuthFailureKind {
 
   network,
   storage,
+
+  /// Un blocage s'oppose au geste. Distinct de [forbidden], qui dit « vous
+  /// n'avez pas le droit » : ici le droit n'est pas en cause, c'est une
+  /// personne qui a fermé la porte, et le message doit le dire.
+  blocked,
   forbidden,
 
   /// L'application demande une colonne que la base n'a pas encore : une

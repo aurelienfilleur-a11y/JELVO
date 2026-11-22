@@ -2184,5 +2184,30 @@
         "type": "String"
       }
     }
-  }
+  },
+  "errorBlocked": "This person cannot be added.",
+  "profileBloquer": "Block",
+  "profileDebloquer": "Unblock",
+  "profileBloques": "Blocked people",
+  "blocageTitre": "Block this person?",
+  "blocageCeQueCaFait": "They will no longer be able to invite you to a group, add you as a contact, or assign you a task. Your contact link is removed.",
+  "blocageGroupePartage": "You share a group: they will stay visible there, and the conversation does not change. To stop crossing paths, leave the group.",
+  "blocageBloque": "Person blocked.",
+  "blocageDejaBloque": "This person is already blocked.",
+  "blocageDebloque": "Person unblocked.",
+  "blocagePasBloque": "This person was not blocked.",
+  "blocageSoiMeme": "You cannot block yourself.",
+  "blocageIntrouvable": "This person no longer exists.",
+  "blocageVideTitre": "Nobody is blocked",
+  "blocageVideMessage": "You can block someone from their profile.",
+  "blocageDepuis": "Blocked {depuis}",
+  "@blocageDepuis": {
+    "placeholders": {
+      "depuis": {
+        "type": "String"
+      }
+    }
+  },
+  "blocageDebloquerConfirmation": "They will be able to invite you, add you and assign you tasks again. Your contact link does not come back.",
+  "profileBloqueeCestVous": "You have blocked this person."
 }

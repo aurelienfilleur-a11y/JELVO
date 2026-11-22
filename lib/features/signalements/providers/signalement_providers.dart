@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/supabase_providers.dart';
 import '../../auth/providers/auth_providers.dart';
+import '../models/blocage.dart';
 import '../models/signalement.dart';
 import '../repository/signalement_repository.dart';
 
@@ -56,6 +57,39 @@ class SignalementsNotifier extends AsyncNotifier<List<Signalement>> {
   }
 }
 
+/// Les personnes que l'on a bloquées.
+///
+/// Lu par l'écran de la liste **et** par le sélecteur d'assignés, qui les
+/// écarte de ses candidats : le déclencheur `refuser_si_bloque` lèverait, et
+/// mieux vaut ne pas proposer le geste que de l'offrir pour obtenir un refus.
+final AsyncNotifierProvider<BloquesNotifier, List<PersonneBloquee>>
+bloquesProvider = AsyncNotifierProvider<BloquesNotifier, List<PersonneBloquee>>(
+  BloquesNotifier.new,
+);
+
+class BloquesNotifier extends AsyncNotifier<List<PersonneBloquee>> {
+  @override
+  Future<List<PersonneBloquee>> build() {
+    ref.watch(authStatusProvider);
+    return ref.watch(signalementRepositoryProvider).fetchBloques();
+  }
+
+  Future<void> refresh() async {
+    state = await AsyncValue.guard(
+      () => ref.read(signalementRepositoryProvider).fetchBloques(),
+    );
+  }
+}
+
+/// Les identifiants bloqués, pour un filtrage en mémoire.
+final Provider<Set<String>> idsBloquesProvider = Provider<Set<String>>((
+  Ref ref,
+) {
+  final List<PersonneBloquee> liste =
+      ref.watch(bloquesProvider).value ?? const <PersonneBloquee>[];
+  return liste.map((PersonneBloquee p) => p.userId).toSet();
+});
+
 /// Les écritures passent par un objet d'actions, jamais par le dépôt depuis
 /// un widget.
 final Provider<SignalementActions> signalementActionsProvider =
@@ -106,6 +140,21 @@ class SignalementActions {
     // Relu même sur « deja_supprime » : si le message était déjà parti, c'est
     // justement l'état affiché qui était en retard.
     await _relireLesDeux();
+    return issue;
+  }
+
+  /// Bloquer **relit le profil et la liste** : la relation change, et sans
+  /// relecture l'écran continuerait d'offrir « Bloquer » à quelqu'un qu'on
+  /// vient de bloquer. La règle est celle du profil consultable, étendue ici.
+  Future<BlocageOutcome> bloquer(String userId) async {
+    final BlocageOutcome issue = await _repo.bloquer(userId);
+    if (issue.isSuccess) await _ref.read(bloquesProvider.notifier).refresh();
+    return issue;
+  }
+
+  Future<BlocageOutcome> debloquer(String userId) async {
+    final BlocageOutcome issue = await _repo.debloquer(userId);
+    if (issue.isSuccess) await _ref.read(bloquesProvider.notifier).refresh();
     return issue;
   }
 

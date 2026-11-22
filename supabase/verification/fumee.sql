@@ -2010,6 +2010,258 @@ $profil$;
 
 
 -- ===========================================================================
+-- Tranche 16 — bloquer quelqu'un
+-- ===========================================================================
+-- Les trois refus que la consigne demande, et **les trois contrôles négatifs
+-- qui disent où le blocage s'arrête** — c'est cette seconde moitié qui porte
+-- la réponse au cas délicat : deux personnes déjà dans le même groupe.
+--
+-- Est aussi éprouvé le piège qui a fait échouer le premier jet : un `case`
+-- plpgsql compile ses branches non prises, et le déclencheur partagé par
+-- trois tables levait « record "new" has no field » sur deux d'entre elles.
+-- Trois insertions, trois tables : si une seule branche se recompilait mal,
+-- l'une des trois échouerait ici.
+
+do $blocage$
+declare
+  camille  constant uuid := '11111111-1111-1111-1111-111111111111';
+  lea      constant uuid := '33333333-3333-3333-3333-333333333333';
+  groupe   constant uuid := '22222222-2222-2222-2222-222222222222';
+  autre_g  constant uuid := '77777777-7777-7777-7777-777777777777';
+  tache    uuid := gen_random_uuid();
+  etat     text;
+  lignes   bigint;
+  refuse   boolean;
+begin
+  reset role;
+
+  -- **Les deux adhésions au groupe partagé sont reposées explicitement.**
+  -- Une douzaine de blocs ont précédé, dont celui de la tranche 6 qui range
+  -- les adhésions échues : sans cela, le contrôle négatif du cas délicat
+  -- échouerait parce que personne n'est plus là, et non parce que le blocage
+  -- aurait retiré quelqu'un.
+  insert into public.group_members (group_id, user_id, role)
+  values (groupe, camille, 'admin'),
+         (groupe, lea, 'member')
+  on conflict (group_id, user_id) do update
+    set expires_at = null;
+
+  -- Décor : un autre groupe, dont Léa est administratrice, pour qu'elle ait
+  -- quelque part où inviter Camille.
+  insert into public.groups (id, name, created_by)
+  values (autre_g, 'Groupe de Léa', lea)
+  on conflict (id) do nothing;
+  insert into public.group_members (group_id, user_id, role)
+  values (autre_g, lea, 'admin')
+  on conflict do nothing;
+
+  -- Et une tâche de groupe créée par Léa, pour qu'elle puisse tenter d'y
+  -- assigner Camille.
+  insert into public.tasks (id, group_id, created_by, title)
+  values (tache, groupe, lea, 'Réserver le restaurant')
+  on conflict (id) do nothing;
+
+  -- 1. Camille bloque Léa ---------------------------------------------------
+  set local role authenticated;
+  set local request.jwt.claims =
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+
+  select public.bloquer(lea) into etat;
+  assert etat = 'bloque',
+         format('bloquer devait répondre « bloque », reçu « %s »', etat);
+
+  select public.bloquer(lea) into etat;
+  assert etat = 'deja_bloque',
+         format('un second blocage devait répondre « deja_bloque », '
+                'reçu « %s »', etat);
+
+  select public.bloquer(camille) into etat;
+  assert etat = 'soi_meme',
+         format('se bloquer devait répondre « soi_meme », reçu « %s »', etat);
+
+  -- Le prédicat est **symétrique** : un seul blocage suffit, dans un sens ou
+  -- dans l'autre.
+  assert public.bloque(camille, lea), 'le blocage doit se voir dans un sens';
+  assert public.bloque(lea, camille), 'et dans l''autre';
+
+  -- 2. REFUS Nº 1 — plus d'invitation de groupe -----------------------------
+  reset role;
+  set local role authenticated;
+  set local request.jwt.claims =
+    '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}';
+
+  refuse := false;
+  begin
+    perform public.inviter_dans_groupe(autre_g, camille);
+  exception
+    when sqlstate 'JB001' then refuse := true;
+  end;
+  assert refuse,
+         'une personne bloquée ne doit plus pouvoir inviter dans un groupe';
+
+  -- 3. REFUS Nº 2 — plus de demande de contact ------------------------------
+  refuse := false;
+  begin
+    insert into public.contacts (requester_id, addressee_id, status)
+    values (lea, camille, 'pending');
+  exception
+    when sqlstate 'JB001' then refuse := true;
+  end;
+  assert refuse,
+         'une personne bloquée ne doit plus pouvoir ajouter en contact';
+
+  -- 4. REFUS Nº 3 — plus d'assignation de tâche -----------------------------
+  --    Léa est bien membre du groupe et autrice de la tâche : ce qui la
+  --    refuse est le blocage, et rien d'autre.
+  refuse := false;
+  begin
+    perform public.definir_assignes_tache(
+      tache, array[camille]::uuid[]
+    );
+  exception
+    when sqlstate 'JB001' then refuse := true;
+  end;
+  assert refuse,
+         'une personne bloquée ne doit plus pouvoir assigner une tâche';
+
+  -- 5. CONTRÔLE NÉGATIF — le groupe partagé n'est pas touché ---------------
+  --    **C'est la réponse au cas délicat.** Un blocage arrête un geste qui
+  --    m'est adressé ; il ne retire personne du groupe, ne masque aucun
+  --    message, et n'empêche pas d'écrire dans la conversation commune.
+  select count(*) into lignes
+    from public.group_members m
+   where m.group_id = groupe and m.user_id in (camille, lea);
+  assert lignes = 2,
+         format('le blocage ne doit retirer personne du groupe partagé, '
+                'reçu %s adhésion(s)', lignes);
+
+  -- Léa écrit toujours dans la conversation commune, et Camille la lit.
+  perform public.envoyer_message(groupe, 'Toujours là', null, null, null);
+
+  reset role;
+  set local role authenticated;
+  set local request.jwt.claims =
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+
+  select count(*) into lignes
+    from public.messages_du_groupe(groupe) m
+   where m.content = 'Toujours là';
+  assert lignes = 1,
+         'le blocage ne doit pas masquer les messages du groupe partagé';
+
+  -- 6. CONTRÔLE NÉGATIF — un tiers peut assigner les deux -----------------
+  --    Le déclencheur compare **l'auteur du geste** à la personne visée, et
+  --    non les assignés entre eux : Camille, qui n'est bloquée par personne
+  --    ici, assigne qui elle veut sur sa propre tâche.
+  refuse := false;
+  begin
+    perform public.creer_tache(
+      p_title => 'Tâche de Camille',
+      p_group_id => groupe,
+      p_assignees => array[camille]::uuid[]
+    );
+  exception
+    when sqlstate 'JB001' then refuse := true;
+  end;
+  assert not refuse,
+         'assigner quelqu''un qui ne nous bloque pas doit rester possible';
+
+  -- 7. Le profil se ferme, dans les deux sens -----------------------------
+  select count(*) into lignes from public.profil_consultable(lea);
+  assert lignes = 0,
+         format('le profil d''une personne bloquée ne doit plus se lire, '
+                'reçu %s ligne(s)', lignes);
+
+  reset role;
+  set local role authenticated;
+  set local request.jwt.claims =
+    '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}';
+  select count(*) into lignes from public.profil_consultable(camille);
+  assert lignes = 0,
+         'et celui de qui a bloqué ne se lit pas non plus';
+
+  -- 8. La liste est la seule porte vers le déblocage -----------------------
+  --    Sans elle, le profil étant fermé, on se serait enfermé dans son
+  --    propre réglage.
+  reset role;
+  set local role authenticated;
+  set local request.jwt.claims =
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+
+  select count(*) into lignes from public.mes_blocages();
+  assert lignes = 1,
+         format('la liste devait porter un blocage, reçu %s', lignes);
+
+  select b.nom into etat from public.mes_blocages() b limit 1;
+  assert etat = 'Léa Marchand',
+         format('le nom devait être joint — le lien de contact a été '
+                'supprimé, donc `profiles` est fermé —, reçu « %s »',
+                coalesce(etat, '(nul)'));
+
+  -- Léa, elle, ne voit rien : la liste est celle de l'appelant.
+  reset role;
+  set local role authenticated;
+  set local request.jwt.claims =
+    '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}';
+  select count(*) into lignes from public.mes_blocages();
+  assert lignes = 0, 'la liste ne montre que ses propres blocages';
+
+  -- 9. CONTRÔLE NÉGATIF — la table est hors de portée de l'API -------------
+  refuse := false;
+  begin
+    perform 1 from public.blocages limit 1;
+  exception
+    when insufficient_privilege then refuse := true;
+  end;
+  assert refuse, 'la table des blocages ne doit pas se lire depuis l''API';
+
+  -- 10. Débloquer, et ce qu'il ne rend pas ---------------------------------
+  reset role;
+  set local role authenticated;
+  set local request.jwt.claims =
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+
+  select public.debloquer(lea) into etat;
+  assert etat = 'debloque',
+         format('débloquer devait répondre « debloque », reçu « %s »', etat);
+  select public.debloquer(lea) into etat;
+  assert etat = 'pas_bloque',
+         format('un second déblocage devait répondre « pas_bloque », '
+                'reçu « %s »', etat);
+
+  assert not public.bloque(camille, lea), 'le blocage doit avoir disparu';
+
+  -- **Le lien de contact ne revient pas.** Ce qui a été défait ne se
+  -- reconstitue pas : il faut se redemander en contact.
+  select count(*) into lignes
+    from public.contacts c
+   where (c.requester_id = camille and c.addressee_id = lea)
+      or (c.requester_id = lea and c.addressee_id = camille);
+  assert lignes = 0,
+         format('débloquer ne doit pas rendre le lien de contact, '
+                'reçu %s ligne(s)', lignes);
+
+  -- Et l'invitation redevient possible, ce qui est tout l'objet du déblocage.
+  reset role;
+  set local role authenticated;
+  set local request.jwt.claims =
+    '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}';
+  refuse := false;
+  begin
+    perform public.inviter_dans_groupe(autre_g, camille);
+  exception
+    when sqlstate 'JB001' then refuse := true;
+  end;
+  assert not refuse,
+         'après déblocage, l''invitation doit redevenir possible';
+
+  reset role;
+  raise notice 'Fumée : le blocage de la tranche 16 répond.';
+end;
+$blocage$;
+
+
+-- ===========================================================================
 -- Tranche 15 — signaler un abus
 -- ===========================================================================
 -- Ce qui est éprouvé, et les contrôles négatifs d'abord, parce que ce sont
@@ -2273,7 +2525,7 @@ declare
   camille  constant uuid := '11111111-1111-1111-1111-111111111111';
   lea      constant uuid := '33333333-3333-3333-3333-333333333333';
   groupe   constant uuid := '22222222-2222-2222-2222-222222222222';
-  -- Les vingt-deux sites relevés dans le catalogue, et leur sort. Toute entrée
+  -- Les vingt-quatre sites relevés dans le catalogue, et leur sort. Toute entrée
   -- de `pg_constraint` absente d'ici fait échouer le contrôle 1.
   decides  constant text[] := array[
     -- supprimés
@@ -2291,6 +2543,7 @@ declare
     'push_tokens.user_id',
     'task_assignees.user_id',
     'moderateurs.user_id',
+    'blocages.bloqueur_id', 'blocages.bloque_id',
     -- gardés : c'est l'échange des autres
     'messages.sender_id',
     'tasks.created_by',

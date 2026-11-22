@@ -38,6 +38,7 @@ import '../features/profile/screens/profile_edit_screen.dart';
 import '../features/profile/screens/public_profile_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
 import '../features/profile/screens/settings_screen.dart';
+import '../features/signalements/screens/blocages_screen.dart';
 import '../features/signalements/screens/moderation_screen.dart';
 import '../features/tasks/screens/task_assignment_screen.dart';
 import '../features/tasks/screens/task_detail_screen.dart';
@@ -335,6 +336,13 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
         parentNavigatorKey: _rootNavigatorKey,
         builder: (BuildContext context, GoRouterState state) =>
             const ModerationScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.blocagesPath,
+        name: AppRoutes.blocages,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (BuildContext context, GoRouterState state) =>
+            const BlocagesScreen(),
       ),
       GoRoute(
         path: AppRoutes.settingsPath,

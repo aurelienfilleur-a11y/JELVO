@@ -2184,5 +2184,30 @@
         "type": "String"
       }
     }
-  }
+  },
+  "errorBlocked": "No se puede añadir a esta persona.",
+  "profileBloquer": "Bloquear",
+  "profileDebloquer": "Desbloquear",
+  "profileBloques": "Personas bloqueadas",
+  "blocageTitre": "¿Bloquear a esta persona?",
+  "blocageCeQueCaFait": "Ya no podrá invitarte a un grupo, añadirte como contacto ni asignarte una tarea. Se elimina vuestro vínculo de contacto.",
+  "blocageGroupePartage": "Compartís un grupo: seguirá siendo visible allí y la conversación no cambia. Para no coincidir más, sal del grupo.",
+  "blocageBloque": "Persona bloqueada.",
+  "blocageDejaBloque": "Esta persona ya está bloqueada.",
+  "blocageDebloque": "Persona desbloqueada.",
+  "blocagePasBloque": "Esta persona no estaba bloqueada.",
+  "blocageSoiMeme": "No puedes bloquearte a ti mismo.",
+  "blocageIntrouvable": "Esta persona ya no existe.",
+  "blocageVideTitre": "Nadie está bloqueado",
+  "blocageVideMessage": "Puedes bloquear a alguien desde su perfil.",
+  "blocageDepuis": "Bloqueada {depuis}",
+  "@blocageDepuis": {
+    "placeholders": {
+      "depuis": {
+        "type": "String"
+      }
+    }
+  },
+  "blocageDebloquerConfirmation": "Podrá volver a invitarte, añadirte y asignarte tareas. Vuestro vínculo de contacto no vuelve.",
+  "profileBloqueeCestVous": "Has bloqueado a esta persona."
 }

@@ -351,7 +351,8 @@ supabase/                     # SQL à exécuter sur le projet Supabase
 
 Features existantes : `auth`, `onboarding`, `profile`, `home`, `groups`,
 `calendar`, `contacts`, `notifications`, `tasks`, `availability`, `chat`,
-`create`, `signalements`.
+`create`, `signalements` — qui porte aussi le blocage, les deux étant deux
+façons de répondre au même abus et partageant leur dépôt.
 
 `lib/l10n/` porte les fichiers ARB et la classe `AppTexts` générée.
 
@@ -1540,7 +1541,15 @@ ne serait plus lu.
 **L'ordre du fichier n'est pas celui des numéros**, et ne peut pas l'être :
 `tranche7_durcissement.sql` referme l'exécution de toute fonction absente de sa
 liste et **lève si un nom de sa liste n'existe pas en base**. Il reste donc le
-dernier passage, et les tranches 8 à 14 s'insèrent avant lui.
+dernier passage, et les tranches 8 à 16 s'insèrent avant lui.
+
+**Et la tranche 16 précède la tranche 13**, bien que son numéro soit plus
+grand : `profil_consultable` appelle `bloque()` pour ne plus rien rendre sur
+une personne bloquée. Elle est en `plpgsql`, dont le corps n'est pas validé à
+la création, si bien que l'ordre inverse *marcherait* — c'est précisément
+pourquoi il a été écarté. **Ne rien faire dépendre de la validation
+paresseuse** : la dépendance est réelle, et l'ordre du manifeste doit la dire
+plutôt que de la laisser tenir par accident.
 
 Trois fichiers **précèdent** au contraire tout le reste, et pour la même
 raison : ils ajoutent une colonne ou une valeur d'énumération que des fonctions
@@ -4469,6 +4478,178 @@ ponctuation, mais une langue pourrait vouloir l'ordre inverse.
 
 ---
 
+## Bloquer quelqu'un
+
+Obligation légale, livrée par `supabase/tranche16_blocage.sql`. Depuis le menu
+d'un profil ; la liste et le déblocage vivent dans `/parametres/bloques`.
+
+### Le principe, et le cas délicat qu'il tranche
+
+**Un blocage arrête un geste qui m'est adressé ; il ne change pas ce qu'un
+groupe fait par défaut pour tous ses membres.**
+
+Ce n'est pas une liste de trois exceptions, c'est une règle — et c'est elle
+qui répond au cas délicat, **deux personnes déjà dans le même groupe**.
+
+| Ce que le blocage fait | Ce qu'il ne fait pas, et pourquoi |
+| --- | --- |
+| refuse une invitation de groupe | **ne retire personne du groupe** : l'adhésion est l'affaire du groupe et de ses administrateurs, pas d'un réglage personnel |
+| refuse une demande de contact | **ne masque aucun message** : la conversation se lirait comme des réponses à des propos invisibles |
+| refuse une assignation de tâche | **ne retire personne d'un événement de groupe** |
+
+La dernière ligne paraît contredire la troisième — pourquoi refuser une tâche
+et pas un événement ? Parce que **l'assignation nomme une personne**, un par
+un, alors que `creer_evenement` convie **tous** les membres actifs par défaut.
+Et il n'existe aucun événement **personnel** auquel on puisse convier
+quelqu'un : un événement sans `group_id` n'est visible que de son
+propriétaire. L'invitation à un événement n'existe donc que dans un groupe
+déjà partagé, c'est-à-dire exactement l'espace que le blocage ne réécrit pas.
+Même raison pour `rejoindre_groupe_par_jeton` : rejoindre un groupe n'est pas
+un geste adressé à quelqu'un.
+
+**La conséquence se dit à l'écran.** La confirmation de blocage porte une
+seconde phrase — « vous partagez un groupe : elle y restera visible, et la
+conversation ne change pas ; pour ne plus la croiser, quittez le groupe » —
+qui n'apparaît que lorsqu'un groupe est réellement partagé. Un blocage qui en
+promet plus qu'il n'en fait est pire qu'un blocage qui annonce sa limite, et
+la suite qui a du sens existe déjà.
+
+### Le prédicat est symétrique
+
+`bloque(a, b)` est vrai dès qu'un blocage existe **dans un sens ou dans
+l'autre**. Un seul prédicat, donc une seule règle : avoir bloqué quelqu'un
+puis lui envoyer une invitation serait incohérent, et deux prédicats auraient
+fini par diverger — le reproche déjà fait, et retenu, aux deux
+implémentations de la visibilité des disponibilités.
+
+**Un paramètre nul rend faux**, et ce n'est pas de la complaisance : les
+travaux d'entretien tournent sans session, `auth.uid()` y vaut `null`, et un
+prédicat qui lèverait là ferait échouer la vidange de la file.
+
+### Trois déclencheurs, et non six fonctions réécrites
+
+Les trois gestes passent par des chemins différents : `inviter_dans_groupe`,
+une insertion directe dans `contacts`, et **quatre** fonctions pour
+l'assignation — `creer_tache`, `definir_assignes_tache`, `s_attribuer_tache`,
+`prendre_tache`. Poser la garde dans chacune, c'est six endroits à tenir
+d'accord, dont deux vivent dans un fichier **gelé** qu'il faudrait recopier en
+entier.
+
+La garde est donc posée sur les **tables**, en `before insert` :
+`invitations`, `contacts`, `task_assignees`. C'est la méthode de la requête A0
+appliquée à une interdiction — partir de l'endroit où la donnée atterrit
+plutôt que de la liste des chemins auxquels on a pensé. **Un septième chemin
+d'écriture ajouté demain est couvert sans qu'on y pense.**
+
+Le déclencheur compare **l'auteur du geste** — `auth.uid()` — à la personne
+visée, et non les assignés entre eux. C'est pourquoi un tiers peut
+parfaitement assigner la même tâche aux deux personnes qui se bloquent : il
+ne s'adresse à aucune des deux en leur nom. Le contrôle positif est dans le
+test de fumée.
+
+**Il lève, il ne filtre pas.** Une ligne silencieusement écartée donnerait une
+tâche dont l'assigné manque sans que rien ne le dise — le défaut que ce projet
+appelle « pire qu'une erreur », et qui a coûté la promotion de membre. Le
+SQLSTATE `JB001` est propre à Jelvo, et `AuthFailure` lui donne **son propre
+message** : « permission refusée » enverrait chercher un défaut de droits, là
+où la cause est une personne qui a fermé la porte.
+
+#### Un `case` plpgsql compile ses branches non prises
+
+Le déclencheur est partagé par trois tables, et sa première version lisait la
+colonne visée par un `case tg_table_name when 'invitations' then
+new.invitee_id … end`. Elle échouait sur `contacts` :
+
+```
+ERROR: record "new" has no field "invitee_id"
+```
+
+**Une expression plpgsql est compilée en entier**, branche non prise comprise.
+Trois affectations séparées sont trois *instructions*, et chacune n'est
+préparée qu'au premier passage dans sa branche. Le test de fumée l'a trouvé —
+il insère dans les trois tables, ce qu'une seule n'aurait pas révélé.
+
+### Ce que bloquer défait, et ce qu'il laisse
+
+| Défait | Laissé |
+| --- | --- |
+| le lien de contact, **dans les deux sens**, avec ses favoris | les messages déjà écrits |
+| les invitations encore `pending` entre les deux | les tâches **déjà** assignées |
+| | les adhésions aux groupes |
+
+Le lien de contact part parce que c'est le minimum de ce que « bloquer » veut
+dire, et `contact_status` ne connaît pas de valeur `blocked` : c'est la
+suppression de la ligne qui porte le refus, comme pour une demande déclinée.
+
+Les assignations déjà posées restent : la consigne dit qu'une personne bloquée
+ne doit **plus pouvoir** assigner, au futur. Les retirer changerait une tâche
+du groupe après coup.
+
+**Débloquer ne rend rien.** Le lien de contact et les invitations supprimés ne
+reviennent pas : il faut se redemander en contact. Même parti que l'adhésion
+échue et rangée de la tranche 6 — ce qui a été défait ne se reconstitue pas,
+et prétendre le contraire demanderait de garder une mémoire de ce qu'on a
+effacé, donc de ne pas l'effacer.
+
+### Le profil se ferme, et la liste devient nécessaire
+
+`profil_consultable` rend **zéro ligne** dès qu'un blocage existe, dans un
+sens ou dans l'autre : les deux côtés lisent « Profil introuvable », le même
+état qu'un identifiant inconnu.
+
+**D'où `/parametres/bloques`, qui n'est pas du confort.** Le profil n'étant
+plus un chemin, sans cette liste on se serait enfermé dans son propre
+réglage : il n'y aurait eu aucun moyen de débloquer quelqu'un. `mes_blocages()`
+joint le profil pour la même raison que les autres lectures `security
+definer` — bloquer **supprime** le lien de contact qui aurait pu rendre la
+ligne `profiles` lisible.
+
+La ligne des paramètres est **toujours présente**, contrairement à celle de la
+modération : une liste vide n'est pas un écran qui ne mène nulle part, c'est
+la réponse à « qui ai-je bloqué ? ». **Zéro ne s'affiche pas** à droite — un
+« 0 » s'y lirait comme une alerte —, et l'état vide dit où l'on bloque.
+
+**Cela ne cache pas le blocage à la personne bloquée**, et il ne faut pas s'en
+flatter : elle continue de voir l'autre dans un groupe partagé et en tirera la
+conclusion. Ce que la fonction garantit, c'est qu'elle ne lira plus ni la bio,
+ni l'anniversaire, ni la disponibilité — pas qu'elle ignorera l'existence du
+blocage, ce qu'aucune requête ne peut promettre.
+
+### Le sélecteur d'assignés écarte, l'écran n'interdit pas
+
+`task_form_sheet` retire les personnes bloquées de ses candidats. Elles
+restent membres du groupe et visibles partout ailleurs : ce qui est écarté,
+c'est **le geste** — proposer un avatar pour obtenir un refus serait promettre
+ce que la base refuse, comme un bouton grisé.
+
+**Le filtre ne vaut que pour celui qui a bloqué.** La personne bloquée n'est
+pas prévenue, et rencontrera le refus `JB001` si elle tente l'assignation.
+C'est le prix de ne pas lui annoncer le blocage, et le message qu'elle lit —
+« cette personne ne peut pas être ajoutée » — ne nomme pas la cause.
+
+### Ce que la suppression de compte en fait
+
+`blocages.bloqueur_id` et `blocages.bloque_id` sont **tous deux supprimés** :
+« ce compte a bloqué X » l'identifie autant que le reste, et un blocage posé
+par un compte parti ne protège plus personne — il n'y a plus personne à
+protéger. Le filet de la tranche 14 l'a imposé, comme pour les signalements.
+
+### Ce qui n'est pas couvert, et pourquoi
+
+| Écarté | La raison |
+| --- | --- |
+| masquer les messages dans un groupe partagé | la conversation deviendrait des réponses à des propos invisibles, et elle appartient à tout le groupe |
+| exclure d'un événement de groupe | il convie tous les membres par défaut : ce n'est pas un geste adressé à quelqu'un |
+| empêcher de rejoindre un groupe par lien | rejoindre n'est pas un geste adressé à quelqu'un |
+| retirer les assignations déjà posées | la consigne porte sur ce qui ne sera **plus** possible |
+
+Les quatre lignes disent la même chose sous quatre formes, et c'est voulu :
+**un blocage n'est pas un pouvoir sur un espace partagé.** Le jour où il
+faudrait davantage, c'est « quitter le groupe » ou une exclusion par un
+administrateur — deux gestes qui existent déjà et qui, eux, s'annoncent.
+
+---
+
 ## Écran « Mes contacts »
 
 Quatre blocs : **en-tête**, **bande des favoris**, **carnet rangé par
@@ -4553,8 +4734,8 @@ l'en-tête : « comment j'ajoute quelqu'un ? » n'a qu'une réponse.
 
 **Quatre langues : français, anglais, espagnol, allemand.** Le français est la
 langue de référence — `template-arb-file` de `l10n.yaml` —, et les quatre
-fichiers `lib/l10n/app_{fr,en,es,de}.arb` portent les **967 mêmes clés**, dont
-161 paramétrées et 25 en pluriel ICU. `AppTexts` est la classe générée.
+fichiers `lib/l10n/app_{fr,en,es,de}.arb` portent les **985 mêmes clés**, dont
+162 paramétrées et 25 en pluriel ICU. `AppTexts` est la classe générée.
 
 Les délégués de Material et de Cupertino ne sont pas décoratifs : sans eux, un
 `showDatePicker(locale: Locale('fr'))` reste en anglais quand il ne lève pas.
@@ -4843,7 +5024,7 @@ pas.**
 
 **L'allemand est de 20 à 30 % plus long que le français**, et un débordement
 ne se voit ni à l'analyse ni dans un test qui vise un texte. `test/langues_test.dart`
-ouvre donc **29 écrans dans les quatre langues à 360 dp** — la largeur
+ouvre donc **30 écrans dans les quatre langues à 360 dp** — la largeur
 minimale que le projet se donne — et échoue sur tout `RenderFlex overflowed`.
 
 Ce n'est pas un test qui *vérifie* quelque chose en plus : c'est l'ouverture
@@ -5767,7 +5948,20 @@ sécurité.
   message, session intacte. Côté conversation : son message survit, signé
   « Compte supprimé » et **non « Membre »**, et son nom n'ouvre plus de
   profil.
-- `test/signalements_test.dart` couvre le signalement d'abus. Sans widget :
+- `test/signalements_test.dart` couvre le signalement d'abus **et le
+  blocage**. Côté blocage, sans widget : les mots d'état qui disent la réponse
+  et non une panne, un mot inconnu de la base qui ne lève pas, et **`JB001`
+  qui a son propre message** — le contrôle qui dit que « permission refusée »
+  n'est pas la bonne phrase. Côté écran : le menu du profil qui l'offre, la
+  confirmation qui dit ce que le blocage fait, « Annuler » qui n'écrit rien,
+  **le cas délicat qui se dit** — « vous partagez un groupe » et « quittez le
+  groupe » — avec son contrôle négatif, la phrase absente quand aucun groupe
+  n'est partagé. Côté liste : la ligne des paramètres qui annonce le compte,
+  **zéro qui ne s'affiche pas**, l'état vide qui dit où l'on bloque, et le
+  déblocage qui se confirme en disant ce qui ne revient pas. Côté sélecteur :
+  une personne bloquée qui n'est plus proposée en assignée, avec **le contrôle
+  négatif qui compte** — sans blocage, elle l'est.
+- `test/signalements_test.dart` couvre aussi le signalement. Sans widget :
   « déjà signalé » qui **n'est pas une réussite et n'est pas une panne**, un
   mot d'état inconnu du client qui ne lève pas, les quatre seuls mots qui
   comptent pour une réussite, les six motifs qui portent un libellé et une
@@ -5813,7 +6007,7 @@ sécurité.
   porte dans aucune langue. Côté salutation : le week-end, le soir qui
   l'emporte sur lui, **aucune fête nationale** — le contrôle porte sur
   l'énumération, quatre moments et pas un cinquième —, et l'après-midi
-  espagnol qui commence plus tard. Enfin **29 écrans ouverts dans les quatre
+  espagnol qui commence plus tard. Enfin **30 écrans ouverts dans les quatre
   langues à 360 dp**, où l'ouverture est le contrôle : c'est ce balayage qui a
   trouvé quatre débordements, dont deux antérieurs à la traduction.
 - `test/notifications_traduites_test.dart` couvre les notifications système
@@ -5964,8 +6158,8 @@ sûr d'éprouver son caractère contextuel.
   au périmètre.
 - **L'application est en quatre langues** — français, anglais, espagnol,
   allemand —, elle suit celle du téléphone, retombe sur l'anglais, et le
-  choix se règle dans les paramètres et se mémorise sur l'appareil. 967 clés
-  dans quatre fichiers, 161 paramétrées, 25 pluriels ICU ;
+  choix se règle dans les paramètres et se mémorise sur l'appareil. 985 clés
+  dans quatre fichiers, 162 paramétrées, 25 pluriels ICU ;
   `tool/verifier_textes.py` fait échouer la CI si un texte en dur revient, et
   `test/langues_test.dart` si les quatre fichiers divergent.
 
@@ -5983,7 +6177,7 @@ sûr d'éprouver son caractère contextuel.
 
   Trois réserves de plus : les traductions n'ont été relues **que par
   l'auteur**, pas par un locuteur natif ; le balayage des débordements porte
-  sur 29 écrans à 360 dp, et non sur tous les états de chacun — une liste
+  sur 30 écrans à 360 dp, et non sur tous les états de chacun — une liste
   très longue ou un nom de groupe inhabituel peut encore déborder ailleurs ;
   et l'espagnol et l'allemand n'ont été vus que sur un **rendu de test**,
   jamais sur un appareil.
@@ -6040,8 +6234,8 @@ sûr d'éprouver son caractère contextuel.
   appelle les fonctions, mais son décor est recopié de cette documentation, et
   ne dit donc rien des colonnes réelles. C'est `supabase/schema_actuel.sql`,
   relevé après coup, qui fait foi.
-- Le test de fumée couvre les tranches 3, 3b, 4, 5a, 5b, 5c, 5d, 6, 8, 13, 14
-  et 15 — dont, pour la 13, deux contrôles qui portent sur la **signature** de
+- Le test de fumée couvre les tranches 3, 3b, 4, 5a, 5b, 5c, 5d, 6, 8, 13, 14,
+  15 et 16 — dont, pour la 13, deux contrôles qui portent sur la **signature** de
   `profil_consultable` plutôt que sur une valeur : aucun appel ne révélerait
   une colonne de trop, qu'elle porte une adresse e-mail ou des compteurs
   retirés. Pour la 14, c'est **la confrontation du catalogue au code** : toute
@@ -6209,6 +6403,20 @@ sûr d'éprouver son caractère contextuel.
   trompeuse tant que la fonction Edge n'est pas déployée. Enfin l'écran n'a été
   éprouvé que par les tests et le rejeu sur base jetable : la **vraie** base ne
   voit la migration qu'après fusion, comme toujours ici.
+- **Le blocage est livré** — voir sa section. Quatre réserves. D'abord **il ne
+  touche pas un groupe partagé** : la personne y reste visible, la
+  conversation ne change pas, et l'écran le dit au lieu de le taire. Ce n'est
+  pas une limite technique mais un choix — masquer ses messages ferait de la
+  conversation des réponses à des propos invisibles, et l'exclure du groupe
+  est l'affaire d'un administrateur. Ensuite **la personne bloquée n'est pas
+  prévenue, et le prétendre serait faux** : elle continue de voir l'autre dans
+  un groupe partagé et en tirera la conclusion ; ce qui est garanti, c'est
+  qu'elle ne lira plus sa bio, son anniversaire ni sa disponibilité. Puis
+  **les assignations déjà posées restent** — la consigne porte sur ce qui ne
+  sera plus possible —, et **débloquer ne rend ni le lien de contact ni les
+  invitations supprimées**. Enfin l'écran n'a été éprouvé que par les tests et
+  le rejeu sur base jetable : la **vraie** base ne voit la migration qu'après
+  fusion.
 - **Les contrôles de non-contournement portent sur le rejeu, pas sur la
   production.** Que `signalements` soit hors de portée de PostgREST est
   éprouvé sous `authenticated` dans `fumee.sql` — `insufficient_privilege`

@@ -405,6 +405,11 @@ declare
     -- qui rend zéro ligne plutôt qu'une erreur.
     'signaler', 'est_moderateur', 'signalements_a_traiter',
     'traiter_signalement', 'supprimer_message_signale',
+    -- Tranche 16. `refuser_si_bloque` n'y figure **pas** : c'est une fonction
+    -- de déclencheur, et PostgreSQL ne contrôle pas `EXECUTE` quand le
+    -- système la déclenche. L'ouvrir à `authenticated` donnerait un droit
+    -- d'appel direct dont personne n'a besoin.
+    'bloque', 'bloquer', 'debloquer', 'mes_blocages',
     -- Tâches
     'creer_tache', 'modifier_tache', 'supprimer_tache', 'mes_taches',
     'terminer_tache', 'repondre_tache', 's_attribuer_tache',

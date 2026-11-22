@@ -112,22 +112,35 @@ jobs:
 
           case "$destinataire" in
             age1REMPLACEZ*)
-              echo "::error title=Clé publique non posée::$cle porte encore le gabarit. Produisez une paire avec « age-keygen -o jelvo-sauvegarde.key », remplacez la ligne par la clé publique affichée, et gardez la clé privée dans votre gestionnaire de mots de passe. Une sauvegarde chiffrée pour une clé que personne ne détient serait pire qu'aucune sauvegarde : elle en aurait l'air."
-              exit 1 ;;
-            age1*) ;;
-            *)
-              echo "::error title=Clé publique mal formée::La ligne retenue ne commence pas par « age1 »."
+              echo "::error title=Clé publique non posée::$cle porte encore le gabarit. Deux formes sont acceptées : une clé « age1… », ou une clé publique SSH « ssh-ed25519 AAAA… » — celle qu'un gestionnaire de mots de passe sait produire sans terminal. La moitié privée reste chez vous. Voir supabase/sauvegarde/RESTAURER.md. Une sauvegarde chiffrée pour une clé que personne ne détient serait pire qu'aucune sauvegarde : elle en aurait l'air."
               exit 1 ;;
           esac
 
-          # 62 caractères pour une clé X25519 d'`age`. Un copier-coller tronqué
-          # passerait les contrôles ci-dessus et donnerait un chiffrement
-          # impossible à déchiffrer.
-          if [ "${#destinataire}" -ne 62 ]; then
-            echo "::error title=Clé publique de longueur inattendue::${#destinataire} caractères au lieu de 62. La ligne est probablement tronquée."
+          sudo apt-get install -y -qq age \
+            || { sudo apt-get update -qq && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq age; }
+
+          # Le juge est `age` lui-même, et non une règle de longueur écrite
+          # ici : lui seul connaît les formes qu'il accepte — « age1… »,
+          # « ssh-ed25519 … », « ssh-rsa … » — et lui seul sait dire qu'une
+          # ligne est tronquée. Un motif recopié d'après un exemple refuserait
+          # une clé légitime le jour où une forme de plus apparaît, ou
+          # laisserait passer ce qu'il n'a pas prévu.
+          #
+          # Le canari est chiffré **vers le fichier**, donc exactement comme le
+          # sera la sauvegarde trois étapes plus bas.
+          if ! printf 'canari\n' | age --encrypt -R "$cle" --output /dev/null 2> age.err; then
+            echo "::error title=Clé publique refusée par age::$(head -2 age.err | tr '\n' ' ')"
+            rm -f age.err
             exit 1
           fi
-          echo "Destinataire : ${destinataire:0:16}… (${#destinataire} caractères)."
+          rm -f age.err
+
+          # Tronqué, et pas par coquetterie : une clé publique SSH porte
+          # souvent un commentaire en fin de ligne, que `ssh-keygen` remplit
+          # par défaut avec « utilisateur@machine » et qu'un gestionnaire de
+          # mots de passe remplit volontiers d'une adresse e-mail. Les
+          # journaux d'un dépôt public se lisent sans compte.
+          echo "Destinataire accepté par age : ${destinataire:0:24}… (${#destinataire} caractères)"
 
       # ---------------------------------------------------------------------
       # Un client de la même majeure que le serveur

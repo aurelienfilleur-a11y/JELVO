@@ -278,14 +278,28 @@ contre un serveur plus récent que lui, et la version de PostgreSQL de Supabase
 n'est pas celle du runner GitHub.
 
 **Et il peut être en retard sur la base, sans le dire.** La poussée de
-l'instantané est refusée dès que `JETON_POUSSEE_SCHEMA` expire — c'est le cas
-depuis le 22 novembre 2026 —, si bien que le fichier du dépôt ne porte ni
-`signalements`, ni `moderateurs`, ni `blocages`, ni les neuf fonctions des
-tranches 15 et 16, **alors qu'elles sont en base**. Le relevé juste est en
-**pièce jointe** du dernier run de `migrations-supabase.yml`, sous le nom
-`schema_actuel` ; le lire de là, ou interroger la base, tant que le jeton n'est
-pas refait. Un fichier qui fait foi et qui prend du retard est pire qu'un
-fichier absent : rien dans son contenu ne dit de quand il date.
+l'instantané est refusée dès que `JETON_POUSSEE_SCHEMA` expire, et le fichier
+du dépôt reste alors à la version d'avant — **sans que rien dans son contenu
+ne dise de quand il date**. C'est arrivé entre le 21 et le 22 novembre 2026 :
+il ne portait ni `signalements`, ni `moderateurs`, ni `blocages`, ni les neuf
+fonctions des tranches 15 et 16, alors qu'elles étaient en base. Un fichier
+qui fait foi et qui prend du retard est pire qu'un fichier absent.
+
+**C'est réparé depuis le 22 novembre 2026** — jeton régénéré, workflow relancé
+à la main par `workflow_dispatch`, run nº 39 **vert**, commit `8ba2324` et ses
+59 lignes arrivés sur `main`. Deux réflexes pour la prochaine fois :
+
+- **le doute se lève en deux commandes**, pas en lisant le fichier : le job
+  rouge de `migrations-supabase.yml` dit lequel des quatre échecs s'est
+  produit, et la base dit ce qu'elle contient. Le fichier ne dit ni l'un ni
+  l'autre ;
+- **le relevé juste est en pièce jointe du run**, sous le nom `schema_actuel`,
+  même quand la poussée échoue. Il n'est jamais perdu, seulement non publié.
+
+`workflow_dispatch` existe exactement pour ce rattrapage : rien à repousser,
+et l'instantané repart même si aucune migration n'a changé — l'extraction
+tourne à chaque passage, et l'étape de publication ne commite que s'il y a un
+écart.
 
 ### Le SQL n'est vérifié par aucune de ces commandes
 
@@ -6241,10 +6255,12 @@ sûr d'éprouver son caractère contextuel.
   Restent hors périmètre : les notifications système, et la modification d'une
   seule occurrence d'un élément récurrent — la `rrule` vaut pour toute la
   série.
-- **Cinq prérequis manuels, dont trois restent à faire** — les nº 2 et nº 4
-  sont posés et mesurés, et les lignes barrées sont gardées exprès : chacun
-  des deux a été redemandé après avoir été satisfait, et c'est ce qui le
-  faisait répéter. **Ne pas les redemander sans avoir interrogé la base.**
+- **Cinq prérequis manuels, dont deux restent à faire** — les nº 0 et nº 1.
+  Les nº 2, nº 3 et nº 4 sont posés et mesurés, et les lignes barrées sont
+  gardées exprès : les deux premiers ont été redemandés après avoir été
+  satisfaits, et c'est ce texte qui le faisait répéter. **Ne pas les
+  redemander sans avoir interrogé la base, ou lu le dernier run.** Le nº 3
+  est le seul qui revienne tout seul : son jeton a une échéance.
   0. **régénérer `SUPABASE_ACCESS_TOKEN`** — le secret existe mais est refusé
      en `401`, et la fonction Edge n'a donc **pas été déployée depuis le
      19 août** (API Supabase : `version: 9`). Supabase → Account → Access
@@ -6275,9 +6291,15 @@ sûr d'éprouver son caractère contextuel.
      avoir atteint `main`. Le prérequis reste listé parce qu'il ne tient qu'à
      ces deux réglages — le jeton expire, et le rôle se retire d'un clic.
 
-     **Et le jeton a expiré**, constaté le 22 novembre 2026 : il faut le
-     refaire. La signature est propre, l'en-tête `Authorization` étant bien
-     posé et pourtant refusé —
+     **Il a expiré une fois, et il expirera encore** : le 22 novembre 2026,
+     régénéré le jour même pour un an — donc **à refaire vers novembre 2027**.
+     Le run nº 39, lancé à la main par `workflow_dispatch`, est le premier run
+     **vert** de ce workflow, et le commit `8ba2324` a porté sur `main` les
+     59 lignes que le run nº 38 n'avait pas pu pousser.
+
+     **La signature d'un jeton mort vaut d'être connue**, parce qu'elle ne
+     parle ni de jeton ni de SQL. L'en-tête `Authorization` est bien posé, et
+     pourtant refusé —
 
      ```
      fatal: could not read Username for 'https://github.com':
@@ -6286,9 +6308,14 @@ sûr d'éprouver son caractère contextuel.
 
      — git se rabattant sur une demande d'identifiants après le `401`. À
      distinguer d'un secret **absent**, où l'étape le dit en toutes lettres.
-     Ce qui a changé depuis le 22 novembre, c'est que ce jeton mort ne casse
-     plus que cette étape : voir « Un jeton mort ne doit casser que
-     l'instantané ».
+     Depuis le 22 novembre, un jeton mort ne casse plus que cette étape : voir
+     « Un jeton mort ne doit casser que l'instantané ».
+
+     **Et `[skip ci]` a tenu, ce qui méritait d'être vérifié** : une poussée
+     faite avec un jeton personnel déclenche les workflows, là où celle de
+     `GITHUB_TOKEN` n'en déclenche aucun. Le commit d'instantané n'a donc
+     ouvert aucun run — ni migrations, ni déploiement. Le confort est devenu
+     nécessaire, et il fonctionne.
 
   4. ~~désigner un modérateur~~ — **c'est fait, et constaté le 22 novembre
      2026.** `moderateurs` porte **une** ligne, celle du propriétaire du

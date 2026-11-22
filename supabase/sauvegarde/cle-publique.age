@@ -1,0 +1,33 @@
+# Destinataire des sauvegardes — clé **publique** `age`.
+#
+# Elle a sa place dans ce dépôt public, comme la clé « publishable » de
+# Supabase et la clé VAPID publique : elle ne permet que de **chiffrer**.
+#
+# C'est même préférable à un secret GitHub, pour une raison de sécurité et non
+# de commodité : ici, changer le destinataire est un **diff** qu'une revue
+# voit passer. Dans les secrets, la substitution serait invisible, et les
+# sauvegardes partiraient chiffrées pour quelqu'un d'autre sans que rien ne
+# l'annonce.
+#
+# La clé **privée** n'est ni ici, ni dans les secrets GitHub, ni sur le
+# runner. Conséquence tenue par la cryptographie et non par une politique :
+# quelqu'un qui obtiendrait vos secrets GitHub pourrait écrire dans le bucket,
+# **jamais lire une sauvegarde**.
+#
+# Et la contrepartie, qu'il faut accepter en connaissance de cause : perdre la
+# clé privée, c'est perdre toutes les sauvegardes. Voir `RESTAURER.md`.
+#
+# ---------------------------------------------------------------------------
+# À REMPLACER AVANT LA PREMIÈRE SAUVEGARDE
+# ---------------------------------------------------------------------------
+#
+#     age-keygen -o jelvo-sauvegarde.key
+#
+# La commande affiche « Public key: age1… » : c'est cette ligne qui remplace
+# celle ci-dessous. Le fichier `jelvo-sauvegarde.key` va dans votre
+# gestionnaire de mots de passe, et **nulle part ailleurs**.
+#
+# Tant que la ligne suivante est le gabarit, le workflow s'arrête avant de
+# dumper quoi que ce soit : une sauvegarde chiffrée pour une clé que personne
+# ne détient serait pire qu'aucune sauvegarde, parce qu'elle en aurait l'air.
+age1REMPLACEZ0CETTE0LIGNE0PAR0VOTRE0CLE0PUBLIQUE0age0000000000

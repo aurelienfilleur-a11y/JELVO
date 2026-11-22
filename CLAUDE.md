@@ -24,14 +24,21 @@ tool/pieges_migrations.py        # quels fichiers de migration sont **gelés**
 supabase/verification/rejouer.sh # compile et appelle le SQL — voir plus bas
 supabase/verification/appliquer.sh --essai   # ce qui serait appliqué en base
 supabase/verification/essai_connexion.sh     # éprouve le nettoyage de l'URL
+
+supabase/sauvegarde/exporter.sh --sortie /tmp/jelvo.tar    # dump + fichiers
+supabase/sauvegarde/eprouver_restauration.sh /tmp/jelvo.tar
+supabase/sauvegarde/eprouver_restauration.sh x.tar.age --cle ma.key
+                                 # juger une sauvegarde déjà téléversée
 ```
 
-Deux workflows tournent sur `main` :
+Quatre workflows tournent sur `main` :
 
 | Workflow | Déclencheur | Rôle |
 | --- | --- | --- |
 | `deploy-web.yml` | push et pull request | format, analyse, tests, build, publication |
 | `migrations-supabase.yml` | push sur `main` touchant `supabase/` | applique les migrations, relève le schéma |
+| `fonctions-supabase.yml` | push sur `main` touchant `supabase/functions/` | déploie `envoyer-push` |
+| `sauvegarde-base.yml` | **02:17 UTC chaque nuit**, et à la main | exporte la base et les fichiers, éprouve la restauration, chiffre, dépose sur R2 |
 
 `deploy-web.yml` exécute `dart format --set-exit-if-changed`, `flutter
 analyze`, `flutter test` puis `flutter build web`. Ces quatre commandes doivent
@@ -278,14 +285,28 @@ contre un serveur plus récent que lui, et la version de PostgreSQL de Supabase
 n'est pas celle du runner GitHub.
 
 **Et il peut être en retard sur la base, sans le dire.** La poussée de
-l'instantané est refusée dès que `JETON_POUSSEE_SCHEMA` expire — c'est le cas
-depuis le 22 novembre 2026 —, si bien que le fichier du dépôt ne porte ni
-`signalements`, ni `moderateurs`, ni `blocages`, ni les neuf fonctions des
-tranches 15 et 16, **alors qu'elles sont en base**. Le relevé juste est en
-**pièce jointe** du dernier run de `migrations-supabase.yml`, sous le nom
-`schema_actuel` ; le lire de là, ou interroger la base, tant que le jeton n'est
-pas refait. Un fichier qui fait foi et qui prend du retard est pire qu'un
-fichier absent : rien dans son contenu ne dit de quand il date.
+l'instantané est refusée dès que `JETON_POUSSEE_SCHEMA` expire, et le fichier
+du dépôt reste alors à la version d'avant — **sans que rien dans son contenu
+ne dise de quand il date**. C'est arrivé entre le 21 et le 22 novembre 2026 :
+il ne portait ni `signalements`, ni `moderateurs`, ni `blocages`, ni les neuf
+fonctions des tranches 15 et 16, alors qu'elles étaient en base. Un fichier
+qui fait foi et qui prend du retard est pire qu'un fichier absent.
+
+**C'est réparé depuis le 22 novembre 2026** — jeton régénéré, workflow relancé
+à la main par `workflow_dispatch`, run nº 39 **vert**, commit `8ba2324` et ses
+59 lignes arrivés sur `main`. Deux réflexes pour la prochaine fois :
+
+- **le doute se lève en deux commandes**, pas en lisant le fichier : le job
+  rouge de `migrations-supabase.yml` dit lequel des quatre échecs s'est
+  produit, et la base dit ce qu'elle contient. Le fichier ne dit ni l'un ni
+  l'autre ;
+- **le relevé juste est en pièce jointe du run**, sous le nom `schema_actuel`,
+  même quand la poussée échoue. Il n'est jamais perdu, seulement non publié.
+
+`workflow_dispatch` existe exactement pour ce rattrapage : rien à repousser,
+et l'instantané repart même si aucune migration n'a changé — l'extraction
+tourne à chaque passage, et l'étape de publication ne commite que s'il y a un
+écart.
 
 ### Le SQL n'est vérifié par aucune de ces commandes
 
@@ -1614,7 +1635,7 @@ mentionnent. `colonne_avatar_predefini.sql` ouvre le manifeste,
 `chercher_profils_par_pseudo` lisent `supprime_le` —, et
 `colonne_media_audio.sql` se place juste avant `tranche5a_chat.sql`.
 
-Quatre entrées de `supabase/` ne sont **pas** des migrations.
+Cinq entrées de `supabase/` ne sont **pas** des migrations.
 
 | Entrée | Rôle |
 | --- | --- |
@@ -1622,6 +1643,7 @@ Quatre entrées de `supabase/` ne sont **pas** des migrations.
 | `diagnostic_taches_evenements.sql` | même chose pour les tâches et les événements, précédé de l'audit du schéma (PARTIE A) |
 | `designer_moderateur.sql` | la ligne qui désigne un modérateur, à passer une fois. **Hors du manifeste parce que le dépôt est public** : elle porterait une adresse ou un identifiant — voir « Signaler un abus » |
 | `verification/` | contrôle local sur base jetable, décrit en tête de document |
+| `sauvegarde/` | l'export nocturne et son épreuve de restauration — voir « La sauvegarde de la base ». `inventaire.sql` n'écrit rien : il relève, et c'est un diff qui juge |
 
 Les deux fichiers de diagnostic **peuvent** être collés dans l'éditeur SQL du
 projet : leur PARTIE A est en lecture seule, leur PARTIE B se termine par un
@@ -5627,6 +5649,182 @@ diff sur `main`.
 
 ---
 
+## La sauvegarde de la base
+
+**L'offre gratuite de Supabase n'inclut aucune sauvegarde.** Sans ce
+dispositif, la perte du projet est la perte de tout.
+`.github/workflows/sauvegarde-base.yml` exporte chaque nuit, éprouve la
+restauration, chiffre, et dépose sur Cloudflare R2.
+`supabase/sauvegarde/RESTAURER.md` porte la mise en service et la procédure.
+
+### La pièce jointe du job était la voie courte, et elle est fausse
+
+C'eût été l'instinct : l'instantané du schéma y part déjà. **Les pièces
+jointes d'un dépôt public sont téléchargeables sans compte** — la
+documentation REST de GitHub dit de l'endpoint des artifacts qu'il peut être
+utilisé sans authentification si seules des ressources publiques sont
+demandées ; l'interface web exige une session, l'API non, et `nightly.link`
+existe pour exploiter cet écart.
+
+Un dump de cette base porte `auth.users` — adresses e-mail et empreintes de
+mots de passe — et tous les messages de tout le monde. On ne parie pas les
+données personnelles de ses utilisateurs sur une règle d'accès dont la
+documentation est elle-même ambiguë. **Même raison pour les Releases**, et une
+raison différente pour un bucket Supabase : une sauvegarde ne vit pas dans la
+chose qu'elle protège.
+
+**Ne pas ajouter `upload-artifact` sur le fichier de sauvegarde**, même le
+temps d'un essai.
+
+### Le workflow ne peut pas déchiffrer, et c'est la propriété centrale
+
+Le chiffrement est fait par `age` vers une **clé publique**, qui vit dans le
+dépôt (`supabase/sauvegarde/cle-publique.age`). Elle y a sa place comme la clé
+« publishable » et la clé VAPID publique : elle ne permet que de chiffrer.
+
+C'est même préférable à un secret GitHub, pour une raison de sécurité et non
+de commodité : **changer le destinataire est un diff qu'une revue voit
+passer.** Dans les secrets, la substitution serait invisible et les
+sauvegardes partiraient chiffrées pour quelqu'un d'autre sans que rien ne
+l'annonce.
+
+La clé privée n'est ni au dépôt, ni dans les secrets, ni sur le runner.
+Conséquence tenue par la cryptographie : qui obtiendrait les secrets GitHub
+pourrait écrire dans le bucket, **jamais lire une sauvegarde**. Contrepartie
+assumée : perdre la clé privée, c'est perdre toutes les sauvegardes.
+
+### L'ordre des étapes découle de là
+
+**exporter → éprouver → chiffrer → téléverser.** L'épreuve passe avant le
+chiffrement parce que le runner ne pourra plus rien lire après. Éprouver
+ensuite aurait obligé à mettre la clé privée dans les secrets, ce qui
+détruirait exactement la propriété ci-dessus.
+
+D'où aussi la forme d'`exporter.sh` : il produit un **tar en clair**, et le
+chiffrement est une étape du workflow. Un script qui chiffrerait lui-même
+aurait rendu son résultat illisible à l'épreuve qui le suit.
+
+### L'épreuve de restauration, et pourquoi le verdict est un diff
+
+« Une sauvegarde qu'on ne sait pas restaurer ne sert à rien », et une
+procédure écrite ne prouve rien. `eprouver_restauration.sh` monte un cluster
+PostgreSQL **jetable** de la majeure du dump, restaure, et confronte le
+résultat à l'inventaire relevé au moment de l'export. Si elle échoue, l'export
+est déclaré en échec — **même si `pg_dump` a rendu 0**.
+
+`inventaire.sql` est lancé des **deux** côtés, et c'est un `diff` qui juge :
+lignes de chaque table comptées pour de vrai, signatures complètes des
+fonctions, déclencheurs, politiques, état de RLS, privilèges par rôle, droits
+d'exécution, valeurs d'énumération. **Aucune attente n'est écrite à la main** —
+un chiffre recopié ne proteste jamais quand il devient faux, c'est déjà la
+règle des contrastes du thème sombre.
+
+Deux niveaux : les lignes `jelvo` sont fatales, les lignes `interne` — les
+objets que Supabase pose dans `auth` et `storage` — sont relevées et jamais
+fatales. Sans cette séparation, l'épreuve échouerait chaque nuit pour une
+raison bénigne, et une alerte qui crie tous les jours ne se lit plus.
+
+**Le même script sert à juger une sauvegarde déjà téléversée**, avec `--cle`.
+Deux implémentations — l'une automatique, l'autre pour la vérification
+humaine — auraient fini par diverger, et c'est la seconde qui aurait été
+fausse le jour où on en a besoin.
+
+#### Les contrôles négatifs ont été faits
+
+Trois, et les deux derniers sont ceux qui comptent : une archive intacte
+passe ; **un octet ajouté au dump sans retoucher les empreintes est refusé sur
+les empreintes** — et non sur un message de SQL qui aurait envoyé chercher le
+défaut du mauvais côté ; **un privilège retiré de l'inventaire est refusé sur
+l'inventaire**, en nommant la ligne qui manque.
+
+#### Deux défauts trouvés en exécutant, et le second est le pire
+
+- `pol.polcmd` est un `"char"`, et `text || "char"` est **ambigu** :
+  PostgreSQL refuse de choisir. `create` ne prouve rien — la règle du test de
+  fumée, rencontrée ici sur un simple `select` ;
+- `psql` sans `ON_ERROR_STOP=1` sort en **0** après une erreur au milieu du
+  fichier. L'inventaire était donc **silencieusement incomplet des deux
+  côtés**, si bien que le diff tombait juste : un contrôle qui passe parce
+  qu'il ne contrôle plus rien. Le passage à 457 lignes au lieu de 440 est la
+  mesure du trou.
+
+### L'alerte porte sur l'absence, pas sur l'échec
+
+C'est le point qu'il ne faut pas perdre. Deux mécanismes arrêtent un workflow
+nocturne **sans jamais le mettre au rouge** :
+
+| Ce qui l'arrête | Ce qu'on voit |
+| --- | --- |
+| GitHub **désactive un workflow planifié après 60 jours sans activité** sur un dépôt public | plus aucun run — donc aucun échec |
+| un projet Supabase gratuit **se met en pause après 7 jours d'inactivité** | la base ne se dump pas |
+
+Une alerte branchée sur l'échec ne partirait dans aucun des deux cas. C'est le
+défaut déjà connu — « un workflow rouge qui ne bloque rien d'autre ne se
+remarque pas » — en pire : il n'est même pas rouge.
+
+D'où un **interrupteur d'homme mort** : le job annonce son départ et son
+arrivée à `HEALTHCHECK_URL`, et c'est le service distant qui écrit quand
+l'arrivée n'est pas venue. Un seul mécanisme couvre l'échec, la désactivation
+du cron et la pause du projet. Le ping ne fait **jamais** échouer la
+sauvegarde : son rôle est d'alerter, pas de bloquer.
+
+### La rétention est tenue par R2, pas par un script
+
+Trente quotidiennes, douze mensuelles, par deux règles de cycle de vie posées
+une fois. Une boucle de suppression dans le workflow tournerait chaque nuit
+avec les droits d'effacer, et un préfixe mal écrit viderait le bucket.
+
+Le workflow **relève** la présence de ces règles et avertit si elles
+manquent : ce qui n'est pas relevé n'est pas vérifié — la règle a déjà coûté
+des mois sur les politiques de stockage.
+
+### Le client doit être au moins à la majeure du serveur
+
+`pg_dump` refuse de dumper un serveur plus récent que lui, et c'est la raison
+pour laquelle `schema_actuel.sql` passe par une introspection du catalogue.
+Ici le piège est plus sournois : l'image d'un runner n'embarque pas forcément
+la majeure du projet, et elle peut changer sous nos pieds.
+
+La majeure est donc **lue sur le serveur à chaque passage** — 17 aujourd'hui —
+et le client installé en conséquence depuis PGDG. Le serveur aussi, l'épreuve
+montant un cluster de cette version.
+
+Le chemin des binaires est construit depuis le manifeste et non pris dans le
+`PATH` : avec plusieurs versions installées, `/usr/lib/postgresql/*/bin`
+ajouté au `PATH` fait gagner **la plus ancienne**, l'ordre du glob étant
+croissant et le `PATH` lu de gauche à droite. Le défaut serait silencieux
+jusqu'au premier dump d'une majeure plus récente — et c'est un piège latent
+de `verification/rejouer.sh`, qui fait exactement cela.
+
+### Les fichiers des buckets ne sont pas dans la base
+
+`storage.objects` ne porte que les **chemins**. Un dump SQL seul perdrait tous
+les avatars, toutes les photos de couverture et tous les messages vocaux, en
+ayant l'air d'une sauvegarde complète.
+
+Les chemins viennent de la base — la connexion est déjà là —, les octets de
+l'API Storage avec la clé `service_role`. Deux points de forme :
+
+- **`curl --fail`** fait la différence entre une sauvegarde et un dossier de
+  pages d'erreur : sans lui, curl écrit le corps d'un 404 dans le fichier et
+  sort en 0 ;
+- **le nombre obtenu est confronté au nombre annoncé** par `storage.objects`,
+  et un écart fait échouer l'export. Une sauvegarde partielle qui se présente
+  comme complète est pire qu'un échec franc.
+
+### Ce que le dispositif ne couvre pas
+
+- **le point de restauration est la nuit précédente** : une perte à 20 h coûte
+  la journée. Un vrai PITR est payant chez Supabase ;
+- **la première restauration réelle n'a jamais été faite** — elle demanderait
+  un second projet. Ce qui est éprouvé automatiquement est tout ce qui peut
+  l'être sans ;
+- **la déchiffrabilité par la clé de son propriétaire** ne se prouve pas sur le
+  runner, qui n'a que la clé publique. C'est le seul contrôle manuel, et
+  `RESTAURER.md` en fait une étape de la mise en service.
+
+---
+
 ## Écran Paramètres
 
 Trois cartes titrées — **Compte**, **Notifications**, **Autre** — puis la
@@ -6241,10 +6439,12 @@ sûr d'éprouver son caractère contextuel.
   Restent hors périmètre : les notifications système, et la modification d'une
   seule occurrence d'un élément récurrent — la `rrule` vaut pour toute la
   série.
-- **Cinq prérequis manuels, dont trois restent à faire** — les nº 2 et nº 4
-  sont posés et mesurés, et les lignes barrées sont gardées exprès : chacun
-  des deux a été redemandé après avoir été satisfait, et c'est ce qui le
-  faisait répéter. **Ne pas les redemander sans avoir interrogé la base.**
+- **Six prérequis manuels, dont trois restent à faire** — les nº 0, nº 1 et
+  nº 5. Les nº 2, nº 3 et nº 4 sont posés et mesurés, et les lignes barrées
+  sont gardées exprès : les deux premiers ont été redemandés après avoir été
+  satisfaits, et c'est ce texte qui le faisait répéter. **Ne pas les
+  redemander sans avoir interrogé la base, ou lu le dernier run.** Le nº 3
+  est le seul qui revienne tout seul : son jeton a une échéance.
   0. **régénérer `SUPABASE_ACCESS_TOKEN`** — le secret existe mais est refusé
      en `401`, et la fonction Edge n'a donc **pas été déployée depuis le
      19 août** (API Supabase : `version: 9`). Supabase → Account → Access
@@ -6275,9 +6475,15 @@ sûr d'éprouver son caractère contextuel.
      avoir atteint `main`. Le prérequis reste listé parce qu'il ne tient qu'à
      ces deux réglages — le jeton expire, et le rôle se retire d'un clic.
 
-     **Et le jeton a expiré**, constaté le 22 novembre 2026 : il faut le
-     refaire. La signature est propre, l'en-tête `Authorization` étant bien
-     posé et pourtant refusé —
+     **Il a expiré une fois, et il expirera encore** : le 22 novembre 2026,
+     régénéré le jour même pour un an — donc **à refaire vers novembre 2027**.
+     Le run nº 39, lancé à la main par `workflow_dispatch`, est le premier run
+     **vert** de ce workflow, et le commit `8ba2324` a porté sur `main` les
+     59 lignes que le run nº 38 n'avait pas pu pousser.
+
+     **La signature d'un jeton mort vaut d'être connue**, parce qu'elle ne
+     parle ni de jeton ni de SQL. L'en-tête `Authorization` est bien posé, et
+     pourtant refusé —
 
      ```
      fatal: could not read Username for 'https://github.com':
@@ -6286,9 +6492,14 @@ sûr d'éprouver son caractère contextuel.
 
      — git se rabattant sur une demande d'identifiants après le `401`. À
      distinguer d'un secret **absent**, où l'étape le dit en toutes lettres.
-     Ce qui a changé depuis le 22 novembre, c'est que ce jeton mort ne casse
-     plus que cette étape : voir « Un jeton mort ne doit casser que
-     l'instantané ».
+     Depuis le 22 novembre, un jeton mort ne casse plus que cette étape : voir
+     « Un jeton mort ne doit casser que l'instantané ».
+
+     **Et `[skip ci]` a tenu, ce qui méritait d'être vérifié** : une poussée
+     faite avec un jeton personnel déclenche les workflows, là où celle de
+     `GITHUB_TOKEN` n'en déclenche aucun. Le commit d'instantané n'a donc
+     ouvert aucun run — ni migrations, ni déploiement. Le confort est devenu
+     nécessaire, et il fonctionne.
 
   4. ~~désigner un modérateur~~ — **c'est fait, et constaté le 22 novembre
      2026.** `moderateurs` porte **une** ligne, celle du propriétaire du
@@ -6315,7 +6526,39 @@ sûr d'éprouver son caractère contextuel.
      perdre — les signalements déjà déposés restent, et le prochain désigné
      les voit.
 
+  5. **mettre la sauvegarde en service**, sans quoi il n'y en a aucune — et
+     l'offre gratuite de Supabase n'en fournit pas. Quatre gestes, détaillés
+     dans `supabase/sauvegarde/RESTAURER.md` : produire une paire de clés
+     `age` et poser la **publique** dans `cle-publique.age` ; créer un bucket
+     R2 et son jeton ; y poser les deux règles de cycle de vie ; créer un
+     *check* Healthchecks. Puis sept secrets, dont `SUPABASE_SERVICE_ROLE_KEY`
+     et les quatre de R2.
+
+     **Tant que la clé publique est le gabarit, le workflow s'arrête avant de
+     dumper** : une sauvegarde chiffrée pour une clé que personne ne détient
+     serait pire qu'aucune sauvegarde, parce qu'elle en aurait l'air. C'est
+     l'état sûr par défaut, comme la file de modération sans modérateur.
+
+     Un cinquième geste est **manuel par construction** et n'est pas
+     automatisable : déchiffrer une sauvegarde une fois, soi-même. Le runner
+     ne détient que la clé publique, et c'est toute la propriété qu'on
+     cherche.
+
   Les migrations, elles, s'appliquent seules à chaque push sur `main`.
+- **La base est sauvegardée chaque nuit** — voir « La sauvegarde de la base ».
+  L'offre gratuite de Supabase n'en fournit aucune : sans ce workflow, la
+  perte du projet était la perte de tout. Quatre réserves. D'abord **la mise
+  en service est manuelle** et c'est le prérequis nº 5 ; tant qu'elle n'est
+  pas faite, le workflow s'arrête avant de dumper plutôt que de produire
+  l'inutilisable. Ensuite **le point de restauration est la nuit
+  précédente** : une perte à 20 h coûte la journée, et un vrai PITR est une
+  fonctionnalité payante. Puis **aucune restauration réelle n'a été faite** —
+  elle demanderait un second projet Supabase ; ce qui est éprouvé chaque nuit,
+  c'est tout ce qui peut l'être sans, et le verdict est un diff plutôt que des
+  nombres écrits à la main. Enfin **la déchiffrabilité par la clé de son
+  propriétaire ne se prouve pas sur le runner**, qui ne détient que la clé
+  publique : c'est le seul contrôle qui reste à la main, et c'est la
+  contrepartie voulue de la propriété qu'on cherche.
 - **Une migration n'est éprouvée contre la vraie base qu'après fusion.** Le
   workflow qui l'applique ne peut pas tourner sur une pull request — le dépôt
   est public et le secret y serait exposé. Avant fusion, il reste

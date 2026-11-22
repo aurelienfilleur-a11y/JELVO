@@ -123,7 +123,11 @@ class _Ligne extends StatelessWidget {
             ),
           ),
           AppSpacing.hGapMd,
-          StatusDot(tone: statut.tone, label: statut.label, filled: true),
+          StatusDot(
+            tone: statut.tone,
+            label: statut.label(AppTexts.of(context)),
+            filled: true,
+          ),
         ],
       ),
     );

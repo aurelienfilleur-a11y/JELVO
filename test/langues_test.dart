@@ -80,11 +80,44 @@ void main() {
 
     setUpAll(() => fr = _arb('fr'));
 
+    /// Retire les branches ICU — `one{…}`, `other{…}`, `=0{…}` — avec leur
+    /// corps, accolades imbriquées comprises.
+    ///
+    /// **Sans cela, le corps d'une branche passe pour un paramètre** dès
+    /// qu'il est un mot ASCII d'un seul tenant : `one{task}` se lit comme
+    /// `{task}`. Le défaut ne se voyait pas tant que les branches françaises
+    /// portaient un accent ou une espace — `one{tâche}` y échappait par
+    /// accident, `\w` ne couvrant pas `â` en Dart. Un pluriel du mot seul,
+    /// comme `{count, plural, one{tâche} other{tâches}}`, l'a mis au jour :
+    /// le français ne rapportait que `count`, l'anglais `count`, `task` et
+    /// `tasks`, et la comparaison échouait sur deux valeurs toutes deux
+    /// justes.
+    String sansBranches(String valeur) {
+      final RegExp debut = RegExp(
+        r'(?<!\w)(?:zero|one|two|few|many|other|=\d+)\s*\{',
+      );
+      String reste = valeur;
+      while (true) {
+        final RegExpMatch? m = debut.firstMatch(reste);
+        if (m == null) return reste;
+        int profondeur = 1;
+        int j = m.end;
+        while (j < reste.length && profondeur > 0) {
+          if (reste[j] == '{') profondeur++;
+          if (reste[j] == '}') profondeur--;
+          j++;
+        }
+        reste = reste.substring(0, m.start) + reste.substring(j);
+      }
+    }
+
     /// `{nom}` et `{nom, plural` — jamais le corps d'une branche ICU, où
     /// `=0{Aucun événement}` ressemble à un paramètre nommé `Aucun`.
-    Set<String> parametres(String valeur) => RegExp(
-      r'\{(\w+)\s*(?:\}|,\s*plural)',
-    ).allMatches(valeur).map((RegExpMatch m) => m.group(1)!).toSet();
+    Set<String> parametres(String valeur) =>
+        RegExp(r'\{(\w+)\s*(?:\}|,\s*plural)')
+            .allMatches(sansBranches(valeur))
+            .map((RegExpMatch m) => m.group(1)!)
+            .toSet();
 
     Set<String> branchesExplicites(String valeur) => RegExp(r'=\d+\s*\{')
         .allMatches(valeur)

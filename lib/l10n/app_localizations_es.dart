@@ -3290,4 +3290,103 @@ class AppTextsEs extends AppTexts {
 
   @override
   String get coreMembre => 'Miembro';
+
+  @override
+  String get coreEpingle => 'Fijado';
+
+  @override
+  String get coreEpingler => 'Fijar';
+
+  @override
+  String get coreRouvrir => 'Reabrir';
+
+  @override
+  String get chatEcouter => 'Escuchar';
+
+  @override
+  String get tasksAssignes => 'Asignados';
+
+  @override
+  String get tasksPersonnelle => 'Personal';
+
+  @override
+  String chatCompteurTaches(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'tareas',
+      one: 'tarea',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String chatCompteurEvenements(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'eventos',
+      one: 'evento',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String contactsCompteurGroupes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'grupos',
+      one: 'grupo',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get tasksLibre => 'Libre';
+
+  @override
+  String get coreIndisponible => 'No disponible';
+
+  @override
+  String get coreInconnu => 'Desconocido';
+
+  @override
+  String get coreAutres => 'Otras';
+
+  @override
+  String get coreContact => 'Contacto';
+
+  @override
+  String get coreDateChoisir => 'Fecha…';
+
+  @override
+  String get chatEmojis => 'Emojis';
+
+  @override
+  String get chatEnvoyer => 'Enviar';
+
+  @override
+  String get authRetirerAvatar => 'Quitar el avatar';
+
+  @override
+  String get groupsRejoindre => 'Unirme';
+
+  @override
+  String get notificationsActivees => 'Activadas';
+
+  @override
+  String get notificationsPartielles => 'Parciales';
+
+  @override
+  String get notificationsDesactivees => 'Desactivadas';
+
+  @override
+  String get notificationsRefusees => 'Rechazadas';
+
+  @override
+  String get notificationsIndisponibles => 'No disponibles';
+
+  @override
+  String get notificationsVoirInvitation => 'Ver la invitación';
 }

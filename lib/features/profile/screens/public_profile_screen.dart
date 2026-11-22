@@ -139,7 +139,9 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
           icon: relation.isFavorite
               ? Icons.star_rounded
               : Icons.star_outline_rounded,
-          label: relation.isFavorite ? 'Épinglé' : 'Épingler',
+          label: relation.isFavorite
+              ? AppTexts.of(context).coreEpingle
+              : AppTexts.of(context).coreEpingler,
           accented: relation.isFavorite,
           onTap: () => _agir(() => _actionsContact.toggleFavorite(relation)),
         ),

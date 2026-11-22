@@ -29,9 +29,9 @@ enum EventResponse {
   /// Le libellé est **demandé**, pas porté : une valeur d'énumération est
   /// `const`, et ne peut donc pas contenir un texte qui dépend de la langue.
   String label(AppTexts t) => switch (this) {
-    EventResponse.yes => 'Oui',
-    EventResponse.maybe => 'Peut-être',
-    EventResponse.no => 'Non',
+    EventResponse.yes => t.eventAnswerYes,
+    EventResponse.maybe => t.eventAnswerMaybe,
+    EventResponse.no => t.eventAnswerNo,
     EventResponse.pending => t.eventAnswerPending,
   };
 }
@@ -60,7 +60,10 @@ class EventParticipant {
   final String? name;
   final String? avatarUrl;
 
-  String get displayName => name ?? 'Membre';
+  /// **Prend l'`AppTexts`**, comme `MessageCard.displayName` : un modèle ne
+  /// choisit pas ses mots. Le repli était « Membre » en dur, donc en français
+  /// dans les quatre langues.
+  String displayName(AppTexts t) => name ?? t.coreMembre;
 
   @override
   bool operator ==(Object other) =>
@@ -180,10 +183,13 @@ class CalendarEvent {
 
   /// Conversion domaine → design system, faite ici plutôt que dans chaque
   /// écran : `AvatarStack` ne connaît pas `EventParticipant`.
-  List<AvatarData> get avatars => participants
+  ///
+  /// **Prend la langue**, parce qu'un participant sans nom retombe sur un
+  /// libellé — et un modèle ne choisit pas ses mots.
+  List<AvatarData> avatars(AppTexts t) => participants
       .map(
         (EventParticipant p) =>
-            AvatarData(name: p.displayName, imageUrl: p.avatarUrl),
+            AvatarData(name: p.displayName(t), imageUrl: p.avatarUrl),
       )
       .toList();
 

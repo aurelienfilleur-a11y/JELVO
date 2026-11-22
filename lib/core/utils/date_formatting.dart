@@ -92,6 +92,30 @@ abstract final class AppDates {
   static String weekdayInitial(DateTime value, AppTexts t) =>
       DateFormat.E(t.localeName).format(value).substring(0, 1).toUpperCase();
 
+  /// « Lundi », « Monday », « lunes », « Montag » — depuis un jour **ISO**
+  /// (1 = lundi … 7 = dimanche), sans date.
+  ///
+  /// Les créneaux de disponibilité portent un numéro de jour, pas une date :
+  /// ils se répètent chaque semaine. Le nom venait d'une **liste française
+  /// écrite à la main** dans `AvailabilitySlot`, et sept jours restaient donc
+  /// en français dans les quatre langues.
+  ///
+  /// Le 1er janvier 2024 était un lundi : la date de référence se construit
+  /// donc en ajoutant le jour demandé, et aucune liste n'est à tenir.
+  static String weekdayName(int isoWeekday, AppTexts t) => _capitalize(
+    DateFormat.EEEE(t.localeName).format(DateTime(2024, 1, isoWeekday)),
+  );
+
+  /// « janvier », « January », « enero », « Januar » — depuis un numéro de
+  /// mois, sans année.
+  ///
+  /// Même histoire que [weekdayName] : la saisie d'un anniversaire portait
+  /// les douze mois dans une liste française. **La casse suit la langue** et
+  /// n'est pas forcée : le français écrit « janvier », l'allemand
+  /// « Januar », et capitaliser de force mentirait sur l'un des deux.
+  static String monthName(int month, AppTexts t) =>
+      DateFormat.MMMM(t.localeName).format(DateTime(2024, month));
+
   /// Libellé relatif : « Aujourd'hui », « Demain », « Hier », sinon la date
   /// courte. Utilisé sur les tâches et les prochains événements.
   /// `AppTexts` est **demandé**, pas deviné : « Aujourd'hui » et « Hier » sont

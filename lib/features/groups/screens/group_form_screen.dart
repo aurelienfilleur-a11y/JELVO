@@ -180,7 +180,7 @@ class _GroupFormScreenState extends ConsumerState<GroupFormScreen> {
             AppSpacing.gapXl,
             PrimaryButton(
               label: _isEditing
-                  ? 'Enregistrer'
+                  ? AppTexts.of(context).commonSave
                   : AppTexts.of(context).groupsCreerGroupe,
               icon: _isEditing ? null : Icons.group_add_rounded,
               isLoading: _submitting,

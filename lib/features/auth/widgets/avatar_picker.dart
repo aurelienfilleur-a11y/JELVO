@@ -126,7 +126,7 @@ class _AvatarPickerState extends State<AvatarPicker> {
             ),
             child: Text(
               AvatarData.assetPourAvatar(widget.imageUrl) != null
-                  ? 'Retirer l’avatar'
+                  ? AppTexts.of(context).authRetirerAvatar
                   : AppTexts.of(context).authRetirerPhoto,
             ),
           )

@@ -132,7 +132,9 @@ class _Bouton extends StatelessWidget {
           customBorder: const CircleBorder(),
           onTap: chargement ? null : onPressed,
           child: Tooltip(
-            message: joue ? AppTexts.of(context).chatMettrePause : 'Écouter',
+            message: joue
+                ? AppTexts.of(context).chatMettrePause
+                : AppTexts.of(context).chatEcouter,
             child: Center(
               child: chargement
                   ? SizedBox(

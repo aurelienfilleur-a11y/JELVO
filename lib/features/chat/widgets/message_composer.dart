@@ -285,7 +285,7 @@ class _MessageComposerState extends State<MessageComposer> {
                 ),
                 tooltip: _emojisOuverts
                     ? AppTexts.of(context).chatFermerEmojis
-                    : 'Emojis',
+                    : AppTexts.of(context).chatEmojis,
                 color: context.couleurs.textSecondary,
                 onPressed: widget.enabled
                     ? () {
@@ -309,7 +309,7 @@ class _MessageComposerState extends State<MessageComposer> {
           icon: Icon(micro ? Icons.mic_rounded : Icons.send_rounded, size: 20),
           tooltip: micro
               ? AppTexts.of(context).chatEnregistrerMessageVocal
-              : 'Envoyer',
+              : AppTexts.of(context).chatEnvoyer,
           onPressed: micro
               ? (widget.enabled ? _demarrerEnregistrement : null)
               : (peutEnvoyer ? _envoyer : null),

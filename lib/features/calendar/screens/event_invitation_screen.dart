@@ -88,7 +88,7 @@ class _EventInvitationScreenState extends ConsumerState<EventInvitationScreen> {
             bottom: Radius.circular(AppSpacing.lg),
           ),
           child: CoverBanner(
-            name: nomDuGroupe ?? 'Personnel',
+            name: nomDuGroupe ?? t.calendarPersonnel,
             subtitle: AppDates.fullDate(evenement.start, t),
             accentColor: GroupAccent.forId(
               evenement.groupId ?? evenement.id,
@@ -193,12 +193,12 @@ class _EventInvitationScreenState extends ConsumerState<EventInvitationScreen> {
                 AppSpacing.gapMd,
                 Row(
                   children: <Widget>[
-                    AvatarStack(avatars: evenement.avatars, size: 36),
+                    AvatarStack(avatars: evenement.avatars(t), size: 36),
                     AppSpacing.hGapMd,
                     Expanded(
                       child: Text(
                         evenement.participants
-                            .map((EventParticipant p) => p.displayName)
+                            .map((EventParticipant p) => p.displayName(t))
                             .join(', '),
                         style: context.typo.caption,
                         maxLines: 2,

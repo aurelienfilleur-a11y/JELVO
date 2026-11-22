@@ -93,13 +93,24 @@ class StatusDot extends StatelessWidget {
       children: <Widget>[
         dot,
         AppSpacing.hGapSm,
-        Text(
-          label!,
-          style: context.typo.caption.copyWith(
-            color: filled
-                ? tone.ink(context.couleurs)
-                : context.couleurs.textSecondary,
-            fontWeight: AppTypography.medium,
+        // **Le libellé se rogne plutôt que de déborder.** C'est la règle du
+        // projet sur les `Row`, et elle manquait ici — la pastille portait
+        // « Disponible » en dur dans les quatre langues, donc une largeur
+        // constante ; traduite, elle est devenue un texte de longueur
+        // variable. `Flexible` en `loose` ne contraint rien tant qu'il y a de
+        // la place : la pastille garde sa largeur naturelle, et ne se resserre
+        // que là où la ligne la serre.
+        Flexible(
+          child: Text(
+            label!,
+            style: context.typo.caption.copyWith(
+              color: filled
+                  ? tone.ink(context.couleurs)
+                  : context.couleurs.textSecondary,
+              fontWeight: AppTypography.medium,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],

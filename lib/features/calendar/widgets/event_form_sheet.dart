@@ -329,8 +329,8 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
         for (final GroupMember membre in membres)
           PickablePerson(
             id: membre.userId,
-            name: membre.displayName,
-            shortName: membre.shortName,
+            name: membre.displayName(AppTexts.of(context)),
+            shortName: membre.shortName(AppTexts.of(context)),
             avatarUrl: membre.avatarUrl,
           ),
       ],
@@ -363,7 +363,10 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
         if (membre.isActive(maintenant) &&
             membre.userId != moi &&
             (_participants.isEmpty || _participants.contains(membre.userId)))
-          PeerCandidate(userId: membre.userId, name: membre.displayName),
+          PeerCandidate(
+            userId: membre.userId,
+            name: membre.displayName(AppTexts.of(context)),
+          ),
     ];
     if (candidats.isEmpty) return const <Widget>[];
 

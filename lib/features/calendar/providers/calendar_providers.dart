@@ -315,7 +315,7 @@ final dayAgendaProvider =
             groupId: event.groupId,
             // Les convives ne sont montrés que sur un événement de groupe : un
             // rendez-vous personnel n'a personne à convier.
-            avatars: event.isPersonal ? const <AvatarData>[] : event.avatars,
+            avatars: event.isPersonal ? const <AvatarData>[] : event.avatars(t),
             participantCount: event.isPersonal ? 0 : event.participants.length,
           ),
         );

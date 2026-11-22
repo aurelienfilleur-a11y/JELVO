@@ -2037,5 +2037,51 @@
   "profileSuppressionEchec": "La suppression n’a pas abouti. Votre compte est intact : réessayez dans un instant.",
   "profileSuppressionFaite": "Votre compte a été supprimé.",
   "coreCompteSupprime": "Compte supprimé",
-  "coreMembre": "Membre"
+  "coreMembre": "Membre",
+  "coreEpingle": "Épinglé",
+  "coreEpingler": "Épingler",
+  "coreRouvrir": "Rouvrir",
+  "chatEcouter": "Écouter",
+  "tasksAssignes": "Assignés",
+  "tasksPersonnelle": "Personnelle",
+  "chatCompteurTaches": "{count, plural, one{tâche} other{tâches}}",
+  "@chatCompteurTaches": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "chatCompteurEvenements": "{count, plural, one{événement} other{événements}}",
+  "@chatCompteurEvenements": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "contactsCompteurGroupes": "{count, plural, one{groupe} other{groupes}}",
+  "@contactsCompteurGroupes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tasksLibre": "Libre",
+  "coreIndisponible": "Indisponible",
+  "coreInconnu": "Inconnu",
+  "coreAutres": "Autres",
+  "coreContact": "Contact",
+  "coreDateChoisir": "Date…",
+  "chatEmojis": "Emojis",
+  "chatEnvoyer": "Envoyer",
+  "authRetirerAvatar": "Retirer l’avatar",
+  "groupsRejoindre": "Rejoindre",
+  "notificationsActivees": "Activées",
+  "notificationsPartielles": "Partielles",
+  "notificationsDesactivees": "Désactivées",
+  "notificationsRefusees": "Refusées",
+  "notificationsIndisponibles": "Indisponibles",
+  "notificationsVoirInvitation": "Voir l’invitation"
 }

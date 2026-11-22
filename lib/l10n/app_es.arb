@@ -2037,5 +2037,51 @@
   "profileSuppressionEchec": "La eliminación no se ha completado. Tu cuenta está intacta: inténtalo de nuevo en un momento.",
   "profileSuppressionFaite": "Tu cuenta ha sido eliminada.",
   "coreCompteSupprime": "Cuenta eliminada",
-  "coreMembre": "Miembro"
+  "coreMembre": "Miembro",
+  "coreEpingle": "Fijado",
+  "coreEpingler": "Fijar",
+  "coreRouvrir": "Reabrir",
+  "chatEcouter": "Escuchar",
+  "tasksAssignes": "Asignados",
+  "tasksPersonnelle": "Personal",
+  "chatCompteurTaches": "{count, plural, one{tarea} other{tareas}}",
+  "@chatCompteurTaches": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "chatCompteurEvenements": "{count, plural, one{evento} other{eventos}}",
+  "@chatCompteurEvenements": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "contactsCompteurGroupes": "{count, plural, one{grupo} other{grupos}}",
+  "@contactsCompteurGroupes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tasksLibre": "Libre",
+  "coreIndisponible": "No disponible",
+  "coreInconnu": "Desconocido",
+  "coreAutres": "Otras",
+  "coreContact": "Contacto",
+  "coreDateChoisir": "Fecha…",
+  "chatEmojis": "Emojis",
+  "chatEnvoyer": "Enviar",
+  "authRetirerAvatar": "Quitar el avatar",
+  "groupsRejoindre": "Unirme",
+  "notificationsActivees": "Activadas",
+  "notificationsPartielles": "Parciales",
+  "notificationsDesactivees": "Desactivadas",
+  "notificationsRefusees": "Rechazadas",
+  "notificationsIndisponibles": "No disponibles",
+  "notificationsVoirInvitation": "Ver la invitación"
 }

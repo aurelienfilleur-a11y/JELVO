@@ -56,7 +56,7 @@ class MemberTile extends StatelessWidget {
             child: AvatarStack(
               avatars: <AvatarData>[
                 AvatarData(
-                  name: member.displayName,
+                  name: member.displayName(t),
                   imageUrl: member.avatarUrl,
                 ),
               ],
@@ -71,7 +71,9 @@ class MemberTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   EmojiText(
-                    isMe ? t.coreVous(member.displayName) : member.displayName,
+                    isMe
+                        ? t.coreVous(member.displayName(t))
+                        : member.displayName(t),
                     style: context.typo.body.copyWith(
                       fontWeight: AppTypography.semiBold,
                     ),

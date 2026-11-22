@@ -180,7 +180,9 @@ class _Corps extends ConsumerWidget {
               _Ligne(
                 icon: Icons.groups_outlined,
                 label: t.createGroupField,
-                value: group?.name ?? (event.isPersonal ? 'Personnel' : '—'),
+                value:
+                    group?.name ??
+                    (event.isPersonal ? t.calendarPersonnel : '—'),
               ),
               if (event.reminderMinutes != null)
                 _Ligne(
@@ -263,7 +265,7 @@ class _Corps extends ConsumerWidget {
                             child: AvatarStack(
                               avatars: <AvatarData>[
                                 AvatarData(
-                                  name: p.displayName,
+                                  name: p.displayName(t),
                                   imageUrl: p.avatarUrl,
                                 ),
                               ],
@@ -276,8 +278,8 @@ class _Corps extends ConsumerWidget {
                               onTap: () => context.ouvrirProfilDe(p.userId),
                               child: EmojiText(
                                 p.userId == moi
-                                    ? t.coreVous(p.displayName)
-                                    : p.displayName,
+                                    ? t.coreVous(p.displayName(t))
+                                    : p.displayName(t),
                                 style: context.typo.body,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,

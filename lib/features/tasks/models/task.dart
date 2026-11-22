@@ -24,9 +24,9 @@ enum TaskPriority {
   /// Le libellé est **demandé**, pas porté : une valeur d'énumération est
   /// `const`, et ne peut donc pas contenir un texte qui dépend de la langue.
   String label(AppTexts t) => switch (this) {
-    TaskPriority.low => 'Basse',
-    TaskPriority.medium => 'Normale',
-    TaskPriority.high => 'Haute',
+    TaskPriority.low => t.taskPriorityLow,
+    TaskPriority.medium => t.taskPriorityMedium,
+    TaskPriority.high => t.taskPriorityHigh,
   };
 }
 
@@ -53,9 +53,9 @@ enum AssigneeStatus {
   /// `const`, et ne peut donc pas contenir un texte qui dépend de la langue.
   String label(AppTexts t) => switch (this) {
     AssigneeStatus.pending => t.eventAnswerPending,
-    AssigneeStatus.accepted => 'Acceptée',
-    AssigneeStatus.declined => 'Refusée',
-    AssigneeStatus.done => 'Terminée',
+    AssigneeStatus.accepted => t.taskAssigneeAccepted,
+    AssigneeStatus.declined => t.taskAssigneeDeclined,
+    AssigneeStatus.done => t.taskStatusDone,
   };
 }
 
@@ -125,7 +125,10 @@ class TaskAssignee {
   final String? name;
   final String? avatarUrl;
 
-  String get displayName => name ?? 'Membre';
+  /// **Prend l'`AppTexts`**, comme `MessageCard.displayName` : un modèle ne
+  /// choisit pas ses mots. Le repli était « Membre » en dur, donc en français
+  /// dans les quatre langues.
+  String displayName(AppTexts t) => name ?? t.coreMembre;
 
   @override
   bool operator ==(Object other) =>
@@ -296,7 +299,7 @@ class Task {
 
   /// Libellé du statut, tel qu'affiché.
   String statusLabel(DateTime now, AppTexts t) {
-    if (isDone) return 'Terminée';
+    if (isDone) return t.taskStatusDone;
     if (isOverdue(now)) return t.taskStatusOverdue;
     return t.taskStatusTodo;
   }

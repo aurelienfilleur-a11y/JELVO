@@ -48,7 +48,10 @@ class GroupHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final List<AvatarData> avatars = <AvatarData>[
       for (final GroupMember membre in membres)
-        AvatarData(name: membre.displayName, imageUrl: membre.avatarUrl),
+        AvatarData(
+          name: membre.displayName(AppTexts.of(context)),
+          imageUrl: membre.avatarUrl,
+        ),
     ];
 
     return SizedBox(

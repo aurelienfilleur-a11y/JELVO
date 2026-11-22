@@ -77,7 +77,7 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
             bottom: Radius.circular(AppSpacing.lg),
           ),
           child: CoverBanner(
-            name: preview.name ?? 'Groupe',
+            name: preview.name ?? t.createGroupField,
             subtitle: t.groupsMembreCount(preview.memberCount),
             accentColor: context.couleurs.primary,
             icon: Icons.groups_rounded,

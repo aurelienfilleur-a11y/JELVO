@@ -4326,8 +4326,8 @@ l'en-tête : « comment j'ajoute quelqu'un ? » n'a qu'une réponse.
 
 **Quatre langues : français, anglais, espagnol, allemand.** Le français est la
 langue de référence — `template-arb-file` de `l10n.yaml` —, et les quatre
-fichiers `lib/l10n/app_{fr,en,es,de}.arb` portent les **857 mêmes clés**, dont
-150 paramétrées et 22 en pluriel ICU. `AppTexts` est la classe générée.
+fichiers `lib/l10n/app_{fr,en,es,de}.arb` portent les **904 mêmes clés**, dont
+156 paramétrées et 25 en pluriel ICU. `AppTexts` est la classe générée.
 
 Les délégués de Material et de Cupertino ne sont pas décoratifs : sans eux, un
 `showDatePicker(locale: Locale('fr'))` reste en anglais quand il ne lève pas.
@@ -4520,6 +4520,49 @@ forme, pas la classe de caractères qui la contient. Les deux trous étaient des
 écartements trop larges, et un écartement trop large ne se voit jamais — il
 rend le vert.
 
+#### Puis 91 de plus, et ce sont les trois trous suivants
+
+**Le détecteur était vert sur `main`, et quatre-vingt-onze chaînes françaises
+atteignaient l'écran dans les quatre langues** — 37 fichiers. Le chiffre est
+mesuré, pas estimé : l'ancien détecteur et le renforcé ont été lancés côte à
+côte sur le même arbre, et c'est l'écart entre les deux.
+
+| Le trou | Ce qu'il laissait passer |
+| --- | --- |
+| `POSITIONS` exigeait la chaîne **adjacente** à la position | tout ce qui passe par un opérateur : `name ?? 'Membre'`, `x ? 'Épinglé' : 'Épingler'`, `() => 'Personnel'`. Un relais — `(?:[^,]*?(?:\?\?|\?|:|=>)\s*)*` — le rattrape |
+| les paramètres nommés ne couvraient ni `name`, ni `nom`, ni `emptyMessage` | `AvatarData(name: 'Membre')`, et les états vides d'une liste |
+| aucune règle ne voyait **un mot seul en position de texte** | `'Haute'`, `'Terminée'`, `'Oui'`, `'Jeudi'`, `'février'`. La règle des deux mots demande une espace, et celle de l'accent aussi |
+
+Le troisième est celui qui coûtait le plus, et il demandait de rouvrir ce que
+le premier correctif avait fermé trop large : un mot d'un seul tenant avait été
+rendu *indétectable* pour protéger les chemins et les clés de stockage.
+`ressemble_a_un_libelle` le reprend par l'autre bout — un mot capitalisé, en
+PascalCase ou tout en majuscules **en position de texte** est un libellé —, et
+`IDENTIFIANT_TIRET` ne laisse le tiret désigner un identifiant que dans une
+chaîne entièrement en minuscules ASCII. `clair`, `sombre`, `systeme` et
+`jelvo-apparence` restent donc tranquilles.
+
+**C'étaient les libellés rendus par une méthode `label(AppTexts t)`** : les
+neuf énumérations avaient bien gagné le paramètre, et leur `switch` renvoyait
+toujours du français en dur. Le reste est de la même eau — les sept jours de la
+semaine et les douze mois en listes `const`, « Admin » et « Membre » portés par
+`GroupRole`, les trois mots de `PeerAvailability`, « Oui · Peut-être · Non ».
+D'où `AppDates.weekdayName` et `AppDates.monthName`, qui construisent le nom
+depuis une date de référence plutôt que depuis une liste : il n'y a plus de
+liste à tenir.
+
+`GroupRole` a **perdu** son libellé au lieu d'en recevoir un : personne ne le
+lisait, la pastille d'administrateur passant déjà par l'ARB. Un champ mort qui
+mente est pire qu'un champ absent.
+
+**Le balayage a aussi trouvé un défaut laissé par la passe précédente** :
+`navigateur.maybePop()` y était devenu `navigateur.maybePop(AppTexts.of(context))`,
+un remplacement mécanique qui compile — `maybePop` prend un résultat facultatif
+— et qui passait donc l'analyse. Sans conséquence visible, la feuille étant
+ouverte en `showModalBottomSheet<void>` : personne ne lit ce résultat. C'est
+le genre de dégât qu'un script de remplacement fait en silence, et la raison
+de lire son diff.
+
 ### Un modèle ne choisit pas ses mots
 
 **C'est la règle des couleurs, étendue au vocabulaire.** Un modèle dit *ce que
@@ -4534,6 +4577,10 @@ code :
 | `greetingProvider` rendait « Bonjour » | il rend un `MomentDuJour`, dont `salutation(t)` tire le mot |
 | `groupActivityProvider` composait « 3 tâches en cours » | il a disparu : l'écran lit les deux nombres de `groupOngoingProvider` et bâtit la phrase |
 | `CredentialsRules.pseudoError` rendait un message | il y a d'abord `pseudoProbleme`, pur, puis `pseudoError(value, t)` |
+| neuf `label(AppTexts t)` prenaient la langue **et renvoyaient du français en dur** | leur `switch` lit l'ARB ; le paramètre ne suffisait pas, c'est le corps qui comptait |
+| `AvailabilitySlot.nomsDeJour` listait sept jours, `anniversaire_sheet` douze mois | `AppDates.weekdayName` et `AppDates.monthName`, bâtis sur une date de référence : plus aucune liste à tenir |
+| `GroupRole` portait « Admin » et « Membre » | il ne porte **plus rien** : personne ne les lisait |
+| `GroupMember.displayName` repliait sur « Membre » | `displayName(AppTexts t)`, comme `TaskAssignee` et `EventParticipant` |
 
 Le bénéfice est immédiat sur les tests : `test/credentials_rules_test.dart`
 éprouve les conditions **sans aucun `AppTexts`**, là où un message en dur
@@ -4595,6 +4642,35 @@ règle du projet sur les `Row` — sauf pour l'`AppBar`, dont les actions ne son
 pas élastiques : le libellé y est borné à 150 dp, et les traductions ont été
 raccourcies. Une borne, pas une traduction courte, parce qu'une traduction
 courte est une convention que la cinquième langue ne connaîtra pas.
+
+#### Deux de plus, et la seconde ne se corrigeait pas par un `Flexible`
+
+Le balayage des 91 chaînes a rendu variables des textes qui étaient jusque-là
+de largeur **constante**, et il en a trouvé deux autres :
+
+| Où | La cause | La correction |
+| --- | --- | --- |
+| le libellé d'un `StatusDot` | il était en dur, donc de largeur fixe ; traduit, c'est un texte de longueur variable dans une `Row` | un `Flexible` en `loose` autour du `Text`, **dans `StatusDot`** et non aux onze sites d'appel |
+| la ligne d'un créneau de disponibilité | 27 px en allemand | la pastille est passée **au-dessus** de l'horaire |
+
+La seconde est la plus instructive. La ligne portait un mot de statut, une
+plage horaire et deux boutons d'icône — et en allemand, `● Nicht verfügbar`,
+`09:00 – 12:30` et les deux boutons demandent **314 px pour 296 disponibles**
+à 360 dp. Mesuré avec les métriques d'Inter, pas avec la police du harnais de
+test, qui rend chaque caractère large d'un cadratin et exagère : le compte est
+juste même en vraie police, **le test n'était pas pessimiste**.
+
+Aucun `Flexible` ne règle cela, et c'est le point : le flex ne sait pas dire
+« rogne celui-ci en dernier ». Avec un seul enfant élastique, l'autre déborde ;
+avec deux, le `flex` plafonne les deux *même quand il y a de la place*, donc
+tronque en français aussi. **Un `Flexible` répare une `Row` sous-contrainte, il
+ne répare pas une `Row` trop chargée.** La hauteur, elle, ne coûte rien sur cet
+écran : la pastille monte d'une ligne, les deux textes restent entiers dans les
+quatre langues, et les deux assertions qui visent `'Disponible'` et
+`'09:00 – 12:00'` séparément continuent de passer.
+
+**Règle** : quand le balayage redéborde après un `Flexible`, se demander ce que
+la ligne porte de trop avant d'en rogner le contenu.
 
 ### Les quatre fichiers ARB ne peuvent pas diverger en silence
 
@@ -5631,8 +5707,8 @@ sûr d'éprouver son caractère contextuel.
   au périmètre.
 - **L'application est en quatre langues** — français, anglais, espagnol,
   allemand —, elle suit celle du téléphone, retombe sur l'anglais, et le
-  choix se règle dans les paramètres et se mémorise sur l'appareil. 857 clés
-  dans quatre fichiers, 150 paramétrées, 22 pluriels ICU ;
+  choix se règle dans les paramètres et se mémorise sur l'appareil. 904 clés
+  dans quatre fichiers, 156 paramétrées, 25 pluriels ICU ;
   `tool/verifier_textes.py` fait échouer la CI si un texte en dur revient, et
   `test/langues_test.dart` si les quatre fichiers divergent.
 
@@ -5851,24 +5927,16 @@ sûr d'éprouver son caractère contextuel.
   une minute, et rien de ce qui est déjà délivré ne se rappelle. Enfin l'écran
   n'a été éprouvé que par les tests et le rejeu sur base jetable : la **vraie**
   base ne voit la migration qu'après fusion, comme toujours ici.
-- **`tool/verifier_textes.py` a un troisième trou, et il n'est pas refermé.**
-  `POSITIONS` exige que la position de texte soit **adjacente** à la chaîne :
-  `EmojiText(message.senderName ?? 'Membre', …)` ou `label: x ? 'Épinglé' :
-  'Épingler'` lui échappent, parce que la chaîne n'y est pas le premier jeton.
-  Un mot d'un seul tenant passe alors aussi la règle des deux mots, et celle
-  de l'accent demande une espace. **Dix-neuf chaînes françaises atteignent
-  donc l'écran dans les quatre langues** : `'Membre'` ×2 et `'Discussion'`
-  dans le chat, `'Tâche'` et `'Événement'` dans `message_card.dart`,
-  `'Tâches'` et `'Personnel'` ×2 côté tâches, `'Personnelle'`, `'Heure'`,
-  `'Rouvrir'`/`'Terminée'`, `'Épinglé'`/`'Épingler'`, `'Contacts'`/`'Résultats'`,
-  `'Personnel'` du détail d'événement, et deux pluriels écrits à la main
-  (`taches > 1 ? 'tâches' : 'tâche'`, `sharedGroups > 1 ? …`) qui sont faux
-  pour le zéro en anglais, en espagnol et en allemand. Les deux de la bulle de
-  conversation sont corrigées — la suppression de compte écrit dans cette
-  fente —, les dix-sept autres non : refermer le détecteur fait rougir la CI
-  sur toutes, et mêler un balayage de traduction à une livraison légale la
-  rendrait illisible à la revue. C'est le même genre d'écartement trop large
-  que les deux premiers trous, et il rend le vert.
+- **Les trois trous du détecteur sont refermés, et les 91 chaînes qu'ils
+  laissaient passer sont traduites** — voir « Puis 91 de plus ». Ce qui reste
+  n'est pas un trou connu mais la limite de la méthode : la détection se fait
+  **par la position**, et une chaîne qui n'occupe aucune position de texte
+  reconnue ne sera signalée que si elle fait deux mots ou ressemble à un
+  libellé. Un paramètre nommé au nom inattendu — ni `label`, ni `titre`, ni
+  `message`, ni `name`… — portant un mot seul en minuscules passerait encore.
+  La parade n'est pas un motif plus large, qui rendrait le vert comme les trois
+  fois précédentes : c'est d'ajouter le nom à `PARAMETRES` le jour où il
+  apparaît.
 - **Les sessions actives ne sont pas listables depuis le client** : gotrue ne
   les expose qu'à la clé `service_role`. Il faudrait une fonction Edge.
 - `google_fonts` télécharge Inter au premier lancement. Pour un fonctionnement

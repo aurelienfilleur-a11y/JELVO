@@ -134,7 +134,9 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
                   children: <Widget>[
                     Expanded(
                       child: Text(
-                        query.isEmpty ? 'Contacts' : 'Résultats',
+                        query.isEmpty
+                            ? AppTexts.of(context).navContacts
+                            : AppTexts.of(context).coreResultats,
                         style: context.typo.h3,
                       ),
                     ),

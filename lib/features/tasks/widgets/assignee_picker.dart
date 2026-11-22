@@ -46,8 +46,8 @@ class AssigneePicker extends StatelessWidget {
       for (final GroupMember membre in membres)
         PickablePerson(
           id: membre.userId,
-          name: membre.displayName,
-          shortName: membre.shortName,
+          name: membre.displayName(AppTexts.of(context)),
+          shortName: membre.shortName(AppTexts.of(context)),
           avatarUrl: membre.avatarUrl,
         ),
     ];

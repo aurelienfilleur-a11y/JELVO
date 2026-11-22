@@ -259,7 +259,10 @@ class _Avatar extends StatelessWidget {
         customBorder: const CircleBorder(),
         child: AvatarImage(
           data: AvatarData(
-            name: profil?.displayName ?? 'Vous',
+            // Profil pas encore chargé : `AvatarData` rend « ? »,
+            // qui n'appartient à aucune langue. Inventer « Vous » aurait
+            // donné un « V » arbitraire, et un « D » en allemand.
+            name: profil?.displayName ?? '',
             imageUrl: profil?.avatarAAfficher,
           ),
           size: 44,

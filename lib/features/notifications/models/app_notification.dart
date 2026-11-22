@@ -118,6 +118,7 @@ class AppNotification {
     NotificationType.taskAssigned => _text('auteur') ?? t.calendarMembre,
     NotificationType.taskResponse => _text('auteur') ?? t.calendarMembre,
     NotificationType.birthday => _text('name') ?? t.notificationsContact,
+    // texte-en-dur-autorise: le nom du produit, qui ne se traduit pas.
     NotificationType.autre => 'Jelvo',
   };
 
@@ -203,7 +204,7 @@ class AppNotification {
 
   /// Libellé de l'action, ou `null` si la notification n'en propose pas.
   String? actionLabel(AppTexts t) => switch (type) {
-    NotificationType.groupInvitation => 'Voir l’invitation',
+    NotificationType.groupInvitation => t.notificationsVoirInvitation,
     NotificationType.contactRequest => t.notificationsVoirDemande,
     NotificationType.eventInvitation => t.notificationsVoirEvenement,
     NotificationType.taskAssigned => t.notificationsVoirTache,

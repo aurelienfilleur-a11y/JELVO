@@ -3276,4 +3276,103 @@ class AppTextsEn extends AppTexts {
 
   @override
   String get coreMembre => 'Member';
+
+  @override
+  String get coreEpingle => 'Pinned';
+
+  @override
+  String get coreEpingler => 'Pin';
+
+  @override
+  String get coreRouvrir => 'Reopen';
+
+  @override
+  String get chatEcouter => 'Play';
+
+  @override
+  String get tasksAssignes => 'Assignees';
+
+  @override
+  String get tasksPersonnelle => 'Personal';
+
+  @override
+  String chatCompteurTaches(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'tasks',
+      one: 'task',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String chatCompteurEvenements(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'events',
+      one: 'event',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String contactsCompteurGroupes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'groups',
+      one: 'group',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get tasksLibre => 'Free';
+
+  @override
+  String get coreIndisponible => 'Unavailable';
+
+  @override
+  String get coreInconnu => 'Unknown';
+
+  @override
+  String get coreAutres => 'Other';
+
+  @override
+  String get coreContact => 'Contact';
+
+  @override
+  String get coreDateChoisir => 'Date…';
+
+  @override
+  String get chatEmojis => 'Emojis';
+
+  @override
+  String get chatEnvoyer => 'Send';
+
+  @override
+  String get authRetirerAvatar => 'Remove the avatar';
+
+  @override
+  String get groupsRejoindre => 'Join';
+
+  @override
+  String get notificationsActivees => 'On';
+
+  @override
+  String get notificationsPartielles => 'Partial';
+
+  @override
+  String get notificationsDesactivees => 'Off';
+
+  @override
+  String get notificationsRefusees => 'Blocked';
+
+  @override
+  String get notificationsIndisponibles => 'Unavailable';
+
+  @override
+  String get notificationsVoirInvitation => 'View the invitation';
 }

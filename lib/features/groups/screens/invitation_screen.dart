@@ -250,8 +250,10 @@ class _InvitationScreenState extends ConsumerState<InvitationScreen> {
                     AvatarStack(
                       avatars: invitation.members
                           .map(
-                            (InvitationMember m) =>
-                                AvatarData(name: m.name, imageUrl: m.avatarUrl),
+                            (InvitationMember m) => AvatarData(
+                              name: m.name ?? t.coreMembre,
+                              imageUrl: m.avatarUrl,
+                            ),
                           )
                           .toList(),
                       size: 36,
@@ -260,7 +262,7 @@ class _InvitationScreenState extends ConsumerState<InvitationScreen> {
                     Expanded(
                       child: Text(
                         invitation.members
-                            .map((InvitationMember m) => m.name)
+                            .map((InvitationMember m) => m.name ?? t.coreMembre)
                             .join(', '),
                         style: context.typo.caption,
                         maxLines: 2,
@@ -288,8 +290,8 @@ class _InvitationScreenState extends ConsumerState<InvitationScreen> {
               AppSpacing.gapXxl,
               if (invitation.status.peutRepondre)
                 InvitationActions(
-                  refuser: 'Refuser',
-                  accepter: 'Rejoindre',
+                  refuser: t.taskDecline,
+                  accepter: t.groupsRejoindre,
                   enCours: _enCours,
                   onRefuser: () => _refuser(invitation),
                   onAccepter: () => _accepter(invitation),

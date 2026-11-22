@@ -163,12 +163,13 @@ brut ne nommait que la dernière commande.
 qu'une migration n'est pas passée. Le rouge du job ne désigne pas l'étape qui
 compte.
 
-#### Trois échecs différents, un seul rouge
+#### Quatre échecs différents, un seul rouge
 
-Le job peut échouer à trois endroits, et **le rouge ne dit pas lequel** :
+Le job peut échouer à quatre endroits, et **le rouge ne dit pas lequel** :
 
 | Où | Ce qui est vrai | Ce qu'il faut faire |
 | --- | --- | --- |
+| `checkout` | **rien n'est appliqué**, et le journal ne parle même pas de SQL | voir « Un jeton mort ne doit casser que l'instantané » |
 | connexion refusée | **rien n'est appliqué** | régénérer `SUPABASE_DB_URL` |
 | une migration | ce qui précède l'est, pas la suite | corriger le SQL |
 | publication de l'instantané | **tout est appliqué** | rôle `#5` en Bypass list **et** `JETON_POUSSEE_SCHEMA` |
@@ -185,6 +186,50 @@ restée absente en production pendant que l'application l'écrivait déjà.
 D'où une étape **« Éprouver la connexion »** avant toute application, qui
 transforme le `FATAL` de libpq en une phrase actionnable, et un résumé qui
 distingue « aucune migration appliquée » de « seul l'instantané est refusé ».
+
+#### Un jeton mort ne doit casser que l'instantané
+
+**Constaté le 22 novembre 2026, et c'est le quatrième mode d'échec** — celui
+qui manquait au tableau ci-dessus, et le plus trompeur, parce que son journal
+ne parle pas de SQL du tout :
+
+```
+fatal: could not read Username for 'https://github.com':
+terminal prompts disabled
+```
+
+L'étape `checkout` portait
+`token: ${{ secrets.JETON_POUSSEE_SCHEMA || github.token }}`. **Ce repli ne
+couvre qu'un secret absent, pas un secret refusé** : le jeton personnel ayant
+expiré, `checkout` recevait un identifiant mort et ne pouvait même plus *lire*
+le dépôt. Le job mourait donc avant `appliquer.sh`.
+
+Le prix : les tranches **15 et 16** ont été fusionnées, déployées côté
+application, et **la base n'a rien reçu**. L'application offrait un bouton
+« Signaler » et un bouton « Bloquer » que la base ne servait pas — exactement
+le défaut de la tranche 14, par une autre porte. Le contrôle qui l'a trouvé
+n'est pas le rouge du job : c'est d'avoir interrogé la base, où
+`to_regclass('public.signalements')` rendait `null`.
+
+**Règle** : `checkout` lit avec `GITHUB_TOKEN`, toujours. Le jeton personnel
+est posé sur la **seule** étape qui en a besoin, la poussée de l'instantané, de
+sorte qu'un jeton mort ne casse que ce dont il est responsable — le troisième
+échec, déjà documenté et déjà annoncé en toutes lettres.
+
+Deux points de forme sur cette poussée :
+
+- **un en-tête `Authorization`, et non une URL `https://jeton@…`** : un refus
+  de git recopie l'URL distante dans son message, ce qui publierait le jeton
+  dans le journal d'un dépôt **public** ;
+- **le masque est reposé sur la valeur encodée.** Celui de GitHub porte sur le
+  secret tel qu'enregistré, pas sur son base64 — même leçon que la chaîne de
+  connexion épurée, où retirer un saut de ligne suffit à sortir du masque.
+
+**Règle de méthode, et c'est la troisième fois qu'elle se paie** : un repli
+`||` sur un secret ne distingue pas « absent » de « invalide ». Une
+vérification de *présence* laisse passer un jeton mort — c'est déjà ce qui
+était écrit de l'étape « Vérifier les secrets » de `fonctions-supabase.yml`,
+et cela valait ici aussi.
 
 #### La chaîne de connexion est épurée avant usage
 

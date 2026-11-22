@@ -40,23 +40,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Le jeton personnel, quand il existe, remplace `GITHUB_TOKEN` dans les
-      # identifiants que `checkout` persiste — c'est donc lui qui poussera
-      # l'instantané, plus bas.
+      # **`checkout` lit avec `GITHUB_TOKEN`, toujours**, et le jeton personnel
+      # n'est posé que sur la poussée de l'instantané, plus bas.
       #
-      # Ce n'est pas une préférence : sur un dépôt de **compte personnel**,
-      # une application ne peut pas figurer dans la Bypass list du ruleset
-      # (« Actor GitHub Actions integration must be part of the ruleset source
-      # or owner organization »). Le seul acteur inscriptible est le **rôle**
-      # d'administrateur, et un rôle désigne une personne : la poussée doit
-      # donc être faite au nom d'un administrateur, pas d'un automate.
+      # Ce n'est pas un détail de style, c'est un **quatrième mode d'échec**
+      # payé le 22 novembre 2026. L'étape portait
+      # `token: ${secrets.JETON_POUSSEE_SCHEMA || github.token}`, et ce repli
+      # ne couvre qu'un secret **absent** — pas un secret **refusé**. Le jeton
+      # personnel ayant expiré, `checkout` recevait un identifiant mort et ne
+      # pouvait même plus lire le dépôt :
       #
-      # Sans le secret, on retombe sur `GITHUB_TOKEN` et le comportement
-      # d'avant : les migrations s'appliquent, seul l'instantané est refusé.
+      #     fatal: could not read Username for 'https://github.com':
+      #     terminal prompts disabled
+      #
+      # Le job mourait donc **avant** `appliquer.sh`, et la base n'a rien reçu
+      # pendant deux fusions : les tranches 15 et 16 étaient déployées côté
+      # application et absentes côté base. Un jeton mort ne doit pouvoir
+      # casser que ce dont il est responsable — l'instantané —, et c'est le
+      # troisième échec déjà documenté.
       - name: Récupérer le dépôt
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.JETON_POUSSEE_SCHEMA || github.token }}
 
       - name: Installer psql au besoin
         run: |
@@ -173,6 +176,27 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add supabase/schema_actuel.sql
           git commit -m 'Relève le schéma réel de la base [skip ci]'
+
+          # Le jeton personnel est posé **ici**, sur la seule étape qui en a
+          # besoin. Sur un dépôt de compte personnel, une application ne peut
+          # pas figurer dans la Bypass list du ruleset (« Actor GitHub Actions
+          # integration must be part of the ruleset source or owner
+          # organization ») : le seul acteur inscriptible est le **rôle**
+          # d'administrateur, et un rôle désigne une personne.
+          #
+          # Un en-tête `Authorization`, et non une URL `https://jeton@…` : un
+          # refus de git recopie l'URL distante dans son message, ce qui
+          # publierait le jeton dans le journal d'un dépôt **public**.
+          #
+          # Et le masque est reposé sur la valeur encodée : celui de GitHub
+          # porte sur le secret tel qu'enregistré, pas sur son base64. C'est
+          # la leçon déjà écrite pour la chaîne de connexion épurée.
+          if [ -n "${JETON_PERSONNEL:-}" ]; then
+            encode=$(printf 'x-access-token:%s' "$JETON_PERSONNEL" | base64 -w0)
+            echo "::add-mask::$encode"
+            git config --local http."https://github.com/".extraheader \
+              "Authorization: Basic $encode"
+          fi
 
           if git push origin HEAD:main 2>push.log; then
             echo "Instantané publié."

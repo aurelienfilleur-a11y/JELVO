@@ -33,27 +33,88 @@ couverture et tous les messages vocaux en ayant l'air complet.
 
 ## Mise en service — à faire une fois
 
+**Tout se fait depuis un iPhone, sauf un contrôle.** Le tableau dit où chaque
+geste se passe, parce que « ouvrez un terminal » n'est pas une instruction
+utilisable quand on n'en a pas.
+
+| Geste | Où |
+| --- | --- |
+| 1. la paire de clés | **gestionnaire de mots de passe**, sur le téléphone — voir ci-dessous |
+| 2. le bucket R2 et son jeton | dashboard Cloudflare, dans Safari |
+| 3. les deux règles de rétention | dashboard R2, dans Safari — **pas en ligne de commande** |
+| 4. l'alerte | healthchecks.io, dans Safari |
+| 5. les sept secrets | réglages du dépôt sur github.com, dans Safari |
+| 6. le premier passage | **Actions → Run workflow**, dans Safari |
+| 7. le déchiffrement de contrôle | **demande un terminal** — voir § 7 |
+
+Les gestes 2, 4 et 5 ne peuvent pas être faits à votre place : ils demandent
+des comptes qui sont les vôtres, et le geste 5 porte des valeurs qu'aucun
+assistant ne doit voir.
+
 ### 1. La paire de clés
 
-```bash
-age-keygen -o jelvo-sauvegarde.key
-```
+Il faut une paire asymétrique : la moitié **publique** part dans ce dépôt, la
+moitié **privée** reste chez vous. C'est elle qui fait que le workflow peut
+écrire des sauvegardes sans pouvoir les lire.
 
-La commande affiche `Public key: age1…`.
+> **La moitié privée ne doit jamais passer par une conversation avec un
+> assistant.** Pas par prudence de façade : cette session a un accès en
+> écriture au dépôt, donc de quoi écrire un workflow qui exfiltre vos secrets
+> GitHub, donc le jeton R2. Si elle avait *en plus* vu la clé privée, un seul
+> endroit compromis donnerait les sauvegardes **et** de quoi les lire. Les
+> deux moitiés ne doivent pas se rencontrer, et c'est toute l'architecture.
 
-- **la ligne `age1…`** remplace la dernière ligne de
-  `supabase/sauvegarde/cle-publique.age`, et part dans le dépôt. C'est une clé
-  publique : elle ne permet que de chiffrer ;
-- **le fichier `jelvo-sauvegarde.key`** va dans votre gestionnaire de mots de
-  passe, et **nulle part ailleurs**. Ni dans le dépôt, ni dans les secrets
-  GitHub, ni sur votre disque.
+**La forme recommandée, et la seule qui ne demande aucun terminal : une clé
+SSH ed25519 produite par votre gestionnaire de mots de passe.** 1Password et
+Bitwarden savent créer un élément « clé SSH » et en générer la paire sur
+l'appareil ; la moitié privée ne quitte jamais le coffre, et c'est la moitié
+publique — `ssh-ed25519 AAAAC3Nza…` — qu'on copie dans
+`supabase/sauvegarde/cle-publique.age` par l'éditeur web de GitHub.
 
-> **Perdre cette clé, c'est perdre toutes les sauvegardes.** C'est la
-> contrepartie assumée de la propriété qu'elle donne : le workflow ne détient
-> que la clé publique, donc quelqu'un qui obtiendrait vos secrets GitHub
-> pourrait écrire dans le bucket, jamais lire une sauvegarde.
+`age` accepte cette forme : vérifié aller et retour, contrôle négatif
+compris — chiffrement vers la clé publique SSH, déchiffrement par la clé
+privée correspondante, refus d'une clé étrangère.
 
-Tant que la ligne est le gabarit, le workflow **s'arrête avant de dumper**.
+Et elle a un avantage propre, qui n'est pas de la commodité : la paire étant
+produite **par** le gestionnaire, le défaut qu'aucun contrôle automatique ne
+peut voir — une clé publique dont plus personne ne détient la moitié privée —
+devient invraisemblable.
+
+> **Attention au gestionnaire.** « Mots de passe » d'Apple et le trousseau
+> iCloud ne génèrent pas de clés SSH. Si c'est celui que vous utilisez, il
+> faut passer par l'un des deux autres chemins ci-dessous. Je n'ai pas pu
+> éprouver ces applications d'ici : ce qui est vérifié, c'est qu'`age` accepte
+> le résultat, pas que telle version sache le produire.
+
+**Deuxième chemin, si le gestionnaire ne sait pas faire de clé SSH : un vrai
+terminal sur l'iPhone.** `iSH` (App Store, gratuit) fait tourner Alpine, où
+`apk add age` donne `age-keygen`. Cela vaut aussi pour le geste 7, qu'il
+débloque du même coup. Pas éprouvé d'ici non plus.
+
+**Troisième chemin, à n'employer que si les deux premiers échouent : une
+phrase de passe au lieu d'une paire.** `age` sait chiffrer vers une phrase de
+passe, que n'importe quel gestionnaire sait produire. Le coût est précis, et
+il faut le connaître avant de choisir : la phrase devant servir à chiffrer,
+elle vivrait dans les secrets GitHub, et **une compromission de GitHub
+donnerait alors les sauvegardes et de quoi les lire**. Un jeton R2 qui fuite
+seul resterait sans effet, ce qui est déjà la moitié du bénéfice. Ce chemin
+demande une modification du workflow, qui n'est pas écrite : demandez-la
+plutôt que de l'improviser.
+
+Dans tous les cas :
+
+- **la moitié publique** remplace la dernière ligne de
+  `supabase/sauvegarde/cle-publique.age`, et part dans le dépôt ;
+- **la moitié privée** va dans le gestionnaire de mots de passe, et **nulle
+  part ailleurs**.
+
+> **Perdre la moitié privée, c'est perdre toutes les sauvegardes.** C'est la
+> contrepartie assumée de la propriété qu'elle donne.
+
+Tant que la ligne est le gabarit, le workflow **s'arrête avant de dumper**. Le
+juge de la forme est `age` lui-même : le workflow chiffre un canari vers le
+fichier avant tout le reste, si bien qu'une ligne tronquée par un
+copier-coller est refusée et nommée.
 
 ### 2. Le bucket R2
 
@@ -65,6 +126,22 @@ Notez trois valeurs : l'**Account ID**, l'**Access Key ID** et la **Secret
 Access Key**.
 
 ### 3. La rétention, posée une fois et tenue par R2
+
+**Depuis Safari, sans ligne de commande** : R2 → votre bucket → **Settings →
+Object lifecycle rules → Add rule**. Deux règles à créer, une par préfixe :
+
+| Nom | Préfixe | Action |
+| --- | --- | --- |
+| `quotidien-30-jours` | `quotidien/` | supprimer après **30** jours |
+| `mensuel-12-mois` | `mensuel/` | supprimer après **365** jours |
+
+Le préfixe compte : sans lui, la règle des 30 jours emporterait aussi les
+mensuelles, et la rétention longue n'existerait plus. Les deux noms sont
+libres — le workflow ne les lit pas, il relève seulement qu'**une**
+configuration de cycle de vie existe.
+
+<details>
+<summary>La même chose en ligne de commande, si vous avez un terminal</summary>
 
 ```bash
 export AWS_ACCESS_KEY_ID=…
@@ -89,6 +166,8 @@ aws s3api put-bucket-lifecycle-configuration \
   --endpoint-url "$R2" --bucket jelvo-sauvegardes \
   --lifecycle-configuration file://cycle.json
 ```
+
+</details>
 
 **La rétention est tenue par le stockage, et c'est voulu.** Une boucle de
 suppression dans le workflow tournerait chaque nuit avec les droits
@@ -140,26 +219,53 @@ projet. Elle n'est lue que par ce workflow, qui ne tourne **jamais** sur une
 pull request — même raison que le workflow des migrations, et c'est ce qui
 rend son dépôt ici acceptable sur un dépôt public.
 
-### 6. Le premier passage, et le contrôle qui ne s'automatise pas
+### 6. Le premier passage
 
 Lancez le workflow à la main — **Actions → Sauvegarde de la base → Run
-workflow**. Ne pas attendre 02:17 pour découvrir que la chaîne ne tourne pas :
-c'est la leçon du jeton mort, déjà payée.
+workflow**, depuis Safari. Ne pas attendre 02:17 pour découvrir que la chaîne
+ne tourne pas : c'est la leçon du jeton mort, déjà payée.
 
-Puis, **une fois**, déchiffrez la sauvegarde vous-même :
+Le résumé du job dit ce qu'il a fait : la majeure du serveur, le nombre de
+tables et de fichiers, le verdict de l'épreuve de restauration, la taille de
+l'archive chiffrée, l'objet déposé. **C'est là que se lit la réussite**, pas
+dans le bucket.
+
+### 7. Le déchiffrement de contrôle — le seul geste qui demande un terminal
+
+**C'est le seul contrôle que l'épreuve nocturne ne peut pas faire.** Elle
+restaure chaque nuit, mais sur le fichier *en clair*, avant chiffrement : le
+runner ne détient que la clé publique. Que le fichier chiffré soit
+déchiffrable par **votre** moitié privée ne se prouve qu'une fois, à la main.
 
 ```bash
 aws s3 cp "s3://jelvo-sauvegardes/quotidien/<fichier>.tar.age" . \
   --endpoint-url "$R2"
 
 supabase/sauvegarde/eprouver_restauration.sh <fichier>.tar.age \
-  --cle jelvo-sauvegarde.key
+  --cle <votre moitié privée>
 ```
 
-**C'est le seul contrôle que l'épreuve nocturne ne peut pas faire.** Elle
-restaure chaque nuit, mais sur le fichier *en clair*, avant chiffrement : le
-runner ne détient que la clé publique. Que le fichier chiffré soit
-déchiffrable par **votre** clé ne se prouve qu'ici.
+La moitié privée peut être la clé `age` (`jelvo-sauvegarde.key`) **ou la clé
+privée SSH** exportée du gestionnaire de mots de passe : `age` accepte les
+deux comme identité.
+
+**Depuis un iPhone seul, ce geste n'est pas faisable sans installer un
+terminal** (`iSH`, voir § 1). Deux façons de vivre avec, et il faut choisir en
+connaissance de cause :
+
+- **le faire plus tard**, depuis n'importe quel ordinateur emprunté, une fois.
+  Rien n'en dépend pour que les sauvegardes soient correctes : il ne prouve
+  pas la sauvegarde, il prouve **votre clé** ;
+- **s'en passer**, à condition que la paire vienne du gestionnaire de mots de
+  passe (§ 1). C'est l'argument décisif pour cette forme-là : le risque que ce
+  contrôle couvre est « une clé publique dont plus personne ne détient la
+  moitié privée », et une paire produite par le coffre où elle est rangée ne
+  peut guère tomber dans ce cas.
+
+Ce qu'on perd en s'en passant mérite d'être dit : si la ligne du dépôt portait
+la clé de **quelqu'un d'autre** — un copier-coller depuis la mauvaise fiche —
+tout passerait au vert et rien ne le dirait. C'est le seul scénario que ni le
+workflow ni l'épreuve ne peuvent attraper.
 
 À refaire si vous changez un jour de clé.
 
@@ -296,3 +402,8 @@ moitiés de la sauvegarde à la fois.
 - **La première restauration réelle n'a jamais été faite.** Elle ne peut pas
   l'être sans créer un second projet ; ce qui est éprouvé automatiquement,
   c'est tout ce qui peut l'être sans.
+- **La déchiffrabilité par votre moitié privée ne se prouve pas sur le
+  runner**, qui ne détient que la publique. C'est la propriété qu'on cherche,
+  donc ce n'est pas un oubli — mais c'est le geste 7, et il demande un
+  terminal. Depuis un iPhone seul, il reste en attente ; ce qui le rend
+  supportable est que la paire vienne du gestionnaire de mots de passe.

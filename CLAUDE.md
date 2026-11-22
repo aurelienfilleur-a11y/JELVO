@@ -5693,6 +5693,39 @@ Conséquence tenue par la cryptographie : qui obtiendrait les secrets GitHub
 pourrait écrire dans le bucket, **jamais lire une sauvegarde**. Contrepartie
 assumée : perdre la clé privée, c'est perdre toutes les sauvegardes.
 
+**Elle ne doit pas davantage passer par une session d'assistant**, et la
+raison est la même lue dans l'autre sens : une session a un accès en écriture
+au dépôt, donc de quoi écrire un workflow qui exfiltre les secrets GitHub,
+donc le jeton R2. Lui montrer en plus la clé privée réunirait les deux
+moitiés que tout ce dispositif sépare. La demande a été faite, et refusée.
+
+#### Une clé publique SSH fait l'affaire, et c'est ce qui sauve le téléphone
+
+`age` accepte `ssh-ed25519 AAAA…` comme destinataire, et la clé privée SSH
+correspondante comme identité au déchiffrement — vérifié aller et retour,
+avec le contrôle négatif d'une clé étrangère. **C'est la seule forme qu'on
+sache produire depuis un iPhone sans terminal** : 1Password et Bitwarden
+génèrent une clé SSH dans le coffre, et seule la moitié publique en sort.
+
+Elle a un avantage propre, qui n'est pas de la commodité : le seul défaut
+qu'aucun contrôle automatique ne peut voir — une clé publique dont plus
+personne ne détient la moitié privée — devient invraisemblable quand c'est le
+coffre lui-même qui a fait la paire.
+
+**Le juge de la forme est `age`, pas une règle écrite dans le workflow.**
+L'étape de contrôle chiffrait d'abord un canari… après avoir vérifié que la
+ligne faisait 62 caractères et commençait par `age1`. Les deux conditions
+étaient une réimplémentation du parseur d'`age` sur un format non
+contractuel — exactement le reproche fait au filtre de `flutter analyze` —, et
+elles auraient refusé une clé SSH légitime. Elle chiffre donc un canari vers
+le fichier et laisse `age` trancher. Le gabarit garde son message propre : lui
+seul doit expliquer quoi faire.
+
+Un détail de forme qui compte sur un dépôt public : la ligne est **tronquée**
+dans le journal. Une clé publique SSH porte un commentaire en fin de ligne,
+que `ssh-keygen` remplit par défaut avec `utilisateur@machine` et qu'un
+gestionnaire de mots de passe remplit volontiers d'une adresse e-mail.
+
 ### L'ordre des étapes découle de là
 
 **exporter → éprouver → chiffrer → téléverser.** L'épreuve passe avant le
@@ -6527,22 +6560,31 @@ sûr d'éprouver son caractère contextuel.
      les voit.
 
   5. **mettre la sauvegarde en service**, sans quoi il n'y en a aucune — et
-     l'offre gratuite de Supabase n'en fournit pas. Quatre gestes, détaillés
-     dans `supabase/sauvegarde/RESTAURER.md` : produire une paire de clés
-     `age` et poser la **publique** dans `cle-publique.age` ; créer un bucket
-     R2 et son jeton ; y poser les deux règles de cycle de vie ; créer un
-     *check* Healthchecks. Puis sept secrets, dont `SUPABASE_SERVICE_ROLE_KEY`
-     et les quatre de R2.
+     l'offre gratuite de Supabase n'en fournit pas. Six gestes, détaillés dans
+     `supabase/sauvegarde/RESTAURER.md`, **tous faisables depuis un iPhone** :
+     produire une paire de clés et poser la **publique** dans
+     `cle-publique.age` ; créer un bucket R2 et son jeton ; y poser les deux
+     règles de cycle de vie — par le dashboard R2, et non en ligne de
+     commande ; créer un *check* Healthchecks ; poser sept secrets, dont
+     `SUPABASE_SERVICE_ROLE_KEY` et les quatre de R2 ; lancer le premier
+     passage à la main.
+
+     **La paire se fait dans le gestionnaire de mots de passe**, en clé SSH
+     ed25519 — voir « Une clé publique SSH fait l'affaire ». `age-keygen`
+     supposait un terminal, que ce projet n'a pas : tout y est mené depuis un
+     iPhone.
 
      **Tant que la clé publique est le gabarit, le workflow s'arrête avant de
      dumper** : une sauvegarde chiffrée pour une clé que personne ne détient
      serait pire qu'aucune sauvegarde, parce qu'elle en aurait l'air. C'est
      l'état sûr par défaut, comme la file de modération sans modérateur.
 
-     Un cinquième geste est **manuel par construction** et n'est pas
+     Un septième geste est **manuel par construction** et n'est pas
      automatisable : déchiffrer une sauvegarde une fois, soi-même. Le runner
      ne détient que la clé publique, et c'est toute la propriété qu'on
-     cherche.
+     cherche. **C'est le seul qui demande un terminal**, donc le seul qui
+     reste en attente ici ; ce qui le rend supportable est que la paire vienne
+     du coffre où sa moitié privée est rangée.
 
   Les migrations, elles, s'appliquent seules à chaque push sur `main`.
 - **La base est sauvegardée chaque nuit** — voir « La sauvegarde de la base ».
@@ -6558,7 +6600,10 @@ sûr d'éprouver son caractère contextuel.
   nombres écrits à la main. Enfin **la déchiffrabilité par la clé de son
   propriétaire ne se prouve pas sur le runner**, qui ne détient que la clé
   publique : c'est le seul contrôle qui reste à la main, et c'est la
-  contrepartie voulue de la propriété qu'on cherche.
+  contrepartie voulue de la propriété qu'on cherche. Il demande un terminal,
+  que ce projet n'a pas — d'où le choix d'une paire produite par le
+  gestionnaire de mots de passe, qui rend improbable le seul défaut que ce
+  contrôle attrape.
 - **Une migration n'est éprouvée contre la vraie base qu'après fusion.** Le
   workflow qui l'applique ne peut pas tourner sur une pull request — le dépôt
   est public et le secret y serait exposé. Avant fusion, il reste

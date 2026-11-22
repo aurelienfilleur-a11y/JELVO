@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:jelvo/features/signalements/models/signalement.dart';
+import 'package:jelvo/features/signalements/providers/signalement_providers.dart';
 import 'package:jelvo/data/clock.dart';
 import 'package:jelvo/data/data_providers.dart';
 import 'package:jelvo/data/language_storage.dart';
@@ -18,6 +20,7 @@ import 'package:jelvo/features/profile/providers/profile_providers.dart';
 import 'package:jelvo/features/tasks/providers/task_providers.dart';
 import 'package:jelvo/main.dart';
 
+import 'fakes/fake_signalement_repository.dart';
 import 'fakes/fake_auth_repository.dart';
 import 'fakes/fake_availability_repository.dart';
 import 'fakes/fake_chat_repository.dart';
@@ -75,6 +78,46 @@ Future<LanguageStorage> pumpAppLangue(
         pushRepositoryProvider.overrideWithValue(push ?? FakePushRepository()),
         availabilityRepositoryProvider.overrideWithValue(
           FakeAvailabilityRepository(),
+        ),
+        // **Modérateur, et avec de quoi remplir les cartes.** Un faux dépôt
+        // vide rendrait l'état vide de l'écran de modération, et les
+        // libellés les plus longs — « Als bearbeitet markieren », « la note
+        // est le seul levier » — échapperaient au balayage. C'est la même
+        // raison qui fait viser les écrans par le routeur plutôt que par des
+        // touches : les débordements se trouvent là où le texte est.
+        signalementRepositoryProvider.overrideWithValue(
+          FakeSignalementRepository(
+            moderateur: true,
+            signalements: <Signalement>[
+              Signalement(
+                id: 's1',
+                cible: SignalementCible.message,
+                motif: SignalementMotif.harcelement,
+                creeLe: DateTime(2026, 8, 3, 8),
+                commentaire: 'Il insiste depuis trois jours',
+                contexte: const <String, dynamic>{
+                  'contenu': 'Texte signalé',
+                  'groupe_nom': 'Famille Rousseau',
+                },
+                messageId: 'm1',
+                groupId: 'g1',
+                profilId: 'u2',
+                auteurNom: 'Camille Rousseau',
+                viseNom: 'Léa Marchand',
+                groupeNom: 'Famille Rousseau',
+                messageEfface: false,
+              ),
+              Signalement(
+                id: 's2',
+                cible: SignalementCible.group,
+                motif: SignalementMotif.violence,
+                creeLe: DateTime(2026, 8, 3, 7),
+                groupId: 'g1',
+                groupeNom: 'Famille Rousseau',
+                auteurNom: 'Camille Rousseau',
+              ),
+            ],
+          ),
         ),
         notificationRepositoryProvider.overrideWithValue(
           FakeNotificationRepository(),

@@ -3400,4 +3400,219 @@ class AppTextsDe extends AppTexts {
 
   @override
   String get notificationsVoirInvitation => 'Einladung ansehen';
+
+  @override
+  String get signalementMotifSpam => 'Spam oder Werbung';
+
+  @override
+  String get signalementMotifHarcelement => 'Belästigung';
+
+  @override
+  String get signalementMotifHaine => 'Hassrede';
+
+  @override
+  String get signalementMotifSexuel => 'Sexuelle Inhalte';
+
+  @override
+  String get signalementMotifViolence => 'Gewalt oder Drohungen';
+
+  @override
+  String get signalementMotifAutre => 'Etwas anderes';
+
+  @override
+  String get signalementAideSpam =>
+      'Wiederholte Nachrichten, unerwünschte Links';
+
+  @override
+  String get signalementAideHarcelement =>
+      'Aufdringlichkeit, Einschüchterung, wiederholter Spott';
+
+  @override
+  String get signalementAideHaine =>
+      'Angriff wegen Herkunft, Religion, Geschlecht oder Orientierung';
+
+  @override
+  String get signalementAideSexuel =>
+      'Unerwünschte sexuelle Bilder oder Äußerungen';
+
+  @override
+  String get signalementAideViolence => 'Drohungen, Aufruf zu Schaden';
+
+  @override
+  String get signalementAideAutre => 'Beschreiben Sie es unten';
+
+  @override
+  String get signalementEnvoye => 'Meldung gesendet. Sie wird geprüft.';
+
+  @override
+  String get signalementDejaEnvoye =>
+      'Sie haben dies bereits gemeldet, und es ist noch nicht bearbeitet.';
+
+  @override
+  String get signalementIntrouvable => 'Das gibt es nicht mehr.';
+
+  @override
+  String get signalementNonMembre => 'Sie gehören nicht zu dieser Gruppe.';
+
+  @override
+  String get signalementSoiMeme => 'Sie können sich nicht selbst melden.';
+
+  @override
+  String get signalementMotifInconnu => 'Dieser Grund wird nicht erkannt.';
+
+  @override
+  String get signalementNonConnecte =>
+      'Melden Sie sich erneut an, um zu melden.';
+
+  @override
+  String get signalementNonModerateur =>
+      'Sie haben keinen Zugang zur Moderation.';
+
+  @override
+  String get signalementMarqueTraite => 'Meldung bearbeitet.';
+
+  @override
+  String get signalementRouvert => 'Meldung wieder geöffnet.';
+
+  @override
+  String get signalementMessageSupprime => 'Nachricht gelöscht.';
+
+  @override
+  String get signalementMessageDejaSupprime =>
+      'Diese Nachricht war schon gelöscht.';
+
+  @override
+  String get signalementSignaler => 'Melden';
+
+  @override
+  String get signalementTitreMessage => 'Diese Nachricht melden';
+
+  @override
+  String get signalementTitreGroupe => 'Diese Gruppe melden';
+
+  @override
+  String get signalementTitreProfil => 'Dieses Profil melden';
+
+  @override
+  String get signalementConfidentiel =>
+      'Die betroffene Person wird nicht benachrichtigt und erfährt nicht, wer gemeldet hat.';
+
+  @override
+  String get signalementContenuGarde =>
+      'Der gemeldete Inhalt wird kopiert, damit er lesbar bleibt, auch wenn er danach gelöscht wird.';
+
+  @override
+  String get signalementCommentaire => 'Angaben';
+
+  @override
+  String get signalementCommentaireAide =>
+      'Optional – was beim Verstehen hilft';
+
+  @override
+  String get signalementEnvoyer => 'Meldung senden';
+
+  @override
+  String get signalementChoisirMotif => 'Wählen Sie einen Grund.';
+
+  @override
+  String get moderationTitre => 'Meldungen';
+
+  @override
+  String get moderationATraiter => 'Zu bearbeiten';
+
+  @override
+  String get moderationTraites => 'Bearbeitet';
+
+  @override
+  String get moderationVideTitre => 'Nichts zu bearbeiten';
+
+  @override
+  String get moderationVideMessage =>
+      'Keine Meldung wartet. Das ist die gute Nachricht.';
+
+  @override
+  String get moderationVideTraitesTitre => 'Keine bearbeitete Meldung';
+
+  @override
+  String get moderationVideTraitesMessage =>
+      'Was Sie als bearbeitet markieren, wird hier abgelegt.';
+
+  @override
+  String get moderationCibleMessage => 'Nachricht';
+
+  @override
+  String get moderationCibleGroupe => 'Gruppe';
+
+  @override
+  String get moderationCibleProfil => 'Profil';
+
+  @override
+  String moderationSignalePar(String nom) {
+    return 'Gemeldet von $nom';
+  }
+
+  @override
+  String moderationVise(String nom) {
+    return 'Betrifft $nom';
+  }
+
+  @override
+  String moderationDansGroupe(String groupe) {
+    return 'In $groupe';
+  }
+
+  @override
+  String get moderationContenuRecopie => 'Gemeldeter Inhalt';
+
+  @override
+  String get moderationMessageEfface =>
+      'Diese Nachricht wurde seit der Meldung gelöscht.';
+
+  @override
+  String get moderationMediaImage => 'Ein Foto';
+
+  @override
+  String get moderationMediaVideo => 'Ein Video';
+
+  @override
+  String get moderationMediaAudio => 'Eine Sprachnachricht';
+
+  @override
+  String get moderationSupprimerMessage => 'Nachricht löschen';
+
+  @override
+  String get moderationSupprimerConfirmation =>
+      'Die Sprechblase wird für die ganze Gruppe zu „Nachricht gelöscht“. Die Meldung behält, was geschrieben wurde.';
+
+  @override
+  String get moderationMarquerTraite => 'Als bearbeitet markieren';
+
+  @override
+  String get moderationRouvrir => 'Wieder öffnen';
+
+  @override
+  String get moderationNote => 'Notiz';
+
+  @override
+  String get moderationNoteAide => 'Optional – was Sie getan haben';
+
+  @override
+  String get moderationAucunLevier =>
+      'Bei einer Gruppe oder einem Profil ist die Notiz der einzige Hebel: Weder das Schließen eines Kontos noch das Löschen einer Gruppe geschieht von hier.';
+
+  @override
+  String get profileSignalements => 'Meldungen';
+
+  @override
+  String get moderationIndisponible => 'Meldungen nicht verfügbar';
+
+  @override
+  String moderationEnTete(String cible, String motif) {
+    return '$cible · $motif';
+  }
+
+  @override
+  String moderationCitation(String texte) {
+    return '„$texte“';
+  }
 }

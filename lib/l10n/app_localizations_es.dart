@@ -3389,4 +3389,216 @@ class AppTextsEs extends AppTexts {
 
   @override
   String get notificationsVoirInvitation => 'Ver la invitación';
+
+  @override
+  String get signalementMotifSpam => 'Spam o publicidad';
+
+  @override
+  String get signalementMotifHarcelement => 'Acoso';
+
+  @override
+  String get signalementMotifHaine => 'Discurso de odio';
+
+  @override
+  String get signalementMotifSexuel => 'Contenido sexual';
+
+  @override
+  String get signalementMotifViolence => 'Violencia o amenazas';
+
+  @override
+  String get signalementMotifAutre => 'Otra cosa';
+
+  @override
+  String get signalementAideSpam =>
+      'Mensajes repetidos, enlaces no solicitados';
+
+  @override
+  String get signalementAideHarcelement =>
+      'Insistencia, intimidación, burlas repetidas';
+
+  @override
+  String get signalementAideHaine =>
+      'Ataque por origen, religión, género u orientación';
+
+  @override
+  String get signalementAideSexuel =>
+      'Imágenes o comentarios sexuales no deseados';
+
+  @override
+  String get signalementAideViolence => 'Amenazas, incitación a hacer daño';
+
+  @override
+  String get signalementAideAutre => 'Descríbelo abajo';
+
+  @override
+  String get signalementEnvoye => 'Informe enviado. Se revisará.';
+
+  @override
+  String get signalementDejaEnvoye =>
+      'Ya has informado de esto y aún no se ha tratado.';
+
+  @override
+  String get signalementIntrouvable => 'Esto ya no existe.';
+
+  @override
+  String get signalementNonMembre => 'No formas parte de este grupo.';
+
+  @override
+  String get signalementSoiMeme => 'No puedes informar sobre ti mismo.';
+
+  @override
+  String get signalementMotifInconnu => 'Este motivo no se reconoce.';
+
+  @override
+  String get signalementNonConnecte => 'Vuelve a iniciar sesión para informar.';
+
+  @override
+  String get signalementNonModerateur => 'No tienes acceso a la moderación.';
+
+  @override
+  String get signalementMarqueTraite => 'Informe tratado.';
+
+  @override
+  String get signalementRouvert => 'Informe reabierto.';
+
+  @override
+  String get signalementMessageSupprime => 'Mensaje eliminado.';
+
+  @override
+  String get signalementMessageDejaSupprime =>
+      'Este mensaje ya estaba eliminado.';
+
+  @override
+  String get signalementSignaler => 'Informar';
+
+  @override
+  String get signalementTitreMessage => 'Informar de este mensaje';
+
+  @override
+  String get signalementTitreGroupe => 'Informar de este grupo';
+
+  @override
+  String get signalementTitreProfil => 'Informar de este perfil';
+
+  @override
+  String get signalementConfidentiel =>
+      'La persona afectada no recibe aviso y no sabrá quién informó.';
+
+  @override
+  String get signalementContenuGarde =>
+      'El contenido informado se copia, para que siga legible aunque se borre después.';
+
+  @override
+  String get signalementCommentaire => 'Detalles';
+
+  @override
+  String get signalementCommentaireAide => 'Opcional: lo que ayuda a entender';
+
+  @override
+  String get signalementEnvoyer => 'Enviar el informe';
+
+  @override
+  String get signalementChoisirMotif => 'Elige un motivo.';
+
+  @override
+  String get moderationTitre => 'Informes';
+
+  @override
+  String get moderationATraiter => 'Por tratar';
+
+  @override
+  String get moderationTraites => 'Tratados';
+
+  @override
+  String get moderationVideTitre => 'Nada por tratar';
+
+  @override
+  String get moderationVideMessage =>
+      'Ningún informe espera. Esa es la buena noticia.';
+
+  @override
+  String get moderationVideTraitesTitre => 'Ningún informe tratado';
+
+  @override
+  String get moderationVideTraitesMessage =>
+      'Lo que marques como tratado se archivará aquí.';
+
+  @override
+  String get moderationCibleMessage => 'Mensaje';
+
+  @override
+  String get moderationCibleGroupe => 'Grupo';
+
+  @override
+  String get moderationCibleProfil => 'Perfil';
+
+  @override
+  String moderationSignalePar(String nom) {
+    return 'Informado por $nom';
+  }
+
+  @override
+  String moderationVise(String nom) {
+    return 'Sobre $nom';
+  }
+
+  @override
+  String moderationDansGroupe(String groupe) {
+    return 'En $groupe';
+  }
+
+  @override
+  String get moderationContenuRecopie => 'Contenido informado';
+
+  @override
+  String get moderationMessageEfface =>
+      'Este mensaje se ha borrado desde el informe.';
+
+  @override
+  String get moderationMediaImage => 'Una foto';
+
+  @override
+  String get moderationMediaVideo => 'Un vídeo';
+
+  @override
+  String get moderationMediaAudio => 'Un mensaje de voz';
+
+  @override
+  String get moderationSupprimerMessage => 'Eliminar el mensaje';
+
+  @override
+  String get moderationSupprimerConfirmation =>
+      'La burbuja se cierra como «mensaje eliminado» para todo el grupo. El informe conserva lo que se había escrito.';
+
+  @override
+  String get moderationMarquerTraite => 'Marcar como tratado';
+
+  @override
+  String get moderationRouvrir => 'Reabrir';
+
+  @override
+  String get moderationNote => 'Nota';
+
+  @override
+  String get moderationNoteAide => 'Opcional: lo que has hecho';
+
+  @override
+  String get moderationAucunLevier =>
+      'Para un grupo o un perfil, la nota es la única palanca: ni cerrar una cuenta ni eliminar un grupo se hace desde aquí.';
+
+  @override
+  String get profileSignalements => 'Informes';
+
+  @override
+  String get moderationIndisponible => 'Informes no disponibles';
+
+  @override
+  String moderationEnTete(String cible, String motif) {
+    return '$cible · $motif';
+  }
+
+  @override
+  String moderationCitation(String texte) {
+    return '«$texte»';
+  }
 }

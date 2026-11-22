@@ -6,6 +6,7 @@ import '../../../core/core.dart';
 import '../../../router/ouvrir_profil.dart';
 import '../../../data/data_providers.dart';
 import '../../../router/app_routes.dart';
+import '../../../router/signaler.dart';
 import '../../auth/models/auth_failure.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../calendar/models/calendar_event.dart';
@@ -157,6 +158,10 @@ class _GroupView extends ConsumerWidget {
                   AppRoutes.groupEdit,
                   pathParameters: <String, String>{'id': group.id},
                 ),
+                _GroupAction.signaler => context.signalerGroupe(
+                  group.id,
+                  nomVise: group.name,
+                ),
                 _GroupAction.leave => _confirmLeave(context, ref),
                 _GroupAction.delete => _confirmDelete(context, ref),
               },
@@ -175,6 +180,13 @@ class _GroupView extends ConsumerWidget {
                         value: _GroupAction.edit,
                         child: Text(AppTexts.of(context).groupsModifierGroupe),
                       ),
+                    // Signaler est au-dessus de « Quitter », et séparé des
+                    // deux actions destructives : ce n'est pas un départ,
+                    // c'est un avis qu'on donne en restant.
+                    PopupMenuItem<_GroupAction>(
+                      value: _GroupAction.signaler,
+                      child: Text(AppTexts.of(context).signalementSignaler),
+                    ),
                     PopupMenuItem<_GroupAction>(
                       value: _GroupAction.leave,
                       child: Text(AppTexts.of(context).groupsQuitterGroupe),
@@ -683,7 +695,7 @@ class _GroupView extends ConsumerWidget {
   }
 }
 
-enum _GroupAction { invite, link, edit, leave, delete }
+enum _GroupAction { invite, link, edit, signaler, leave, delete }
 
 /// Le « Ajouter » posé sous une section pleine.
 ///

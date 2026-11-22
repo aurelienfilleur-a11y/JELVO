@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/core.dart';
 import '../../../data/data_providers.dart';
 import '../../../router/app_routes.dart';
+import '../../../router/signaler.dart';
 import '../../auth/models/auth_failure.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../create/models/creation_kind.dart';
@@ -443,7 +444,25 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   _supprimer(message);
                 },
               )
-            else
+            else ...<Widget>[
+              // **Signaler est l'action qu'on a sur le message d'autrui**, là
+              // où l'on n'a pas la suppression. La ligne du cadenas reste
+              // sous elle : elle n'est pas inerte, elle explique pourquoi la
+              // suppression n'est pas là.
+              ListTile(
+                leading: Icon(
+                  Icons.flag_outlined,
+                  color: context.couleurs.textSecondary,
+                ),
+                title: Text(AppTexts.of(context).signalementSignaler),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  context.signalerMessage(
+                    message.id,
+                    nomVise: message.senderName,
+                  );
+                },
+              ),
               ListTile(
                 leading: Icon(
                   Icons.lock_outline_rounded,
@@ -451,6 +470,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 ),
                 title: Text(AppTexts.of(context).chatPouvezSupprimerMessages),
               ),
+            ],
             AppSpacing.gapMd,
           ],
         ),

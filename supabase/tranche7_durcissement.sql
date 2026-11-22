@@ -397,6 +397,14 @@ declare
     -- obligation légale : fermée, la ligne des paramètres mènerait à un
     -- refus, et il n'y a aucun autre chemin.
     'supprimer_mon_compte', 'mes_medias_a_effacer',
+    -- Tranche 15. Signaler un abus est une obligation légale : fermée,
+    -- `signaler` ferait échouer le seul chemin qui existe. Les trois
+    -- fonctions de modération portent leur propre règle — `est_moderateur()`
+    -- dans leur corps — et les ouvrir à `authenticated` ne les ouvre donc
+    -- pas à tout le monde : c'est le même parti que `signalements_a_traiter`,
+    -- qui rend zéro ligne plutôt qu'une erreur.
+    'signaler', 'est_moderateur', 'signalements_a_traiter',
+    'traiter_signalement', 'supprimer_message_signale',
     -- Tâches
     'creer_tache', 'modifier_tache', 'supprimer_tache', 'mes_taches',
     'terminer_tache', 'repondre_tache', 's_attribuer_tache',

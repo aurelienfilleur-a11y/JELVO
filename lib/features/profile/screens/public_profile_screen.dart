@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/core.dart';
 import '../../../router/app_routes.dart';
+import '../../../router/signaler.dart';
 import '../../contacts/models/contact.dart';
 import '../../contacts/providers/contact_providers.dart';
 import '../models/profil_consultable.dart';
@@ -50,6 +51,27 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
           tooltip: AppTexts.of(context).commonBack,
           onPressed: () => Navigator.of(context).maybePop(),
         ),
+        actions: <Widget>[
+          // **Pas sur son propre profil**, et pas non plus tant que la
+          // lecture n'a rien rendu : un menu qui n'offrirait que de se
+          // signaler soi-même, ou qui s'ouvrirait sur un profil introuvable,
+          // promettrait une action que la base refuse. Un compte supprimé n'a
+          // pas à être exclu ici — `profil_consultable` ne le rend pas.
+          if (lecture.value case final ProfilConsultable p when !p.cestMoi)
+            PopupMenuButton<void>(
+              tooltip: AppTexts.of(context).coreActions,
+              icon: const Icon(Icons.more_horiz_rounded),
+              itemBuilder: (BuildContext menu) => <PopupMenuEntry<void>>[
+                PopupMenuItem<void>(
+                  onTap: () => context.signalerProfil(
+                    widget.userId,
+                    nomVise: p.profil.displayName,
+                  ),
+                  child: Text(AppTexts.of(context).signalementSignaler),
+                ),
+              ],
+            ),
+        ],
       ),
       body: SafeArea(
         child: switch (lecture) {

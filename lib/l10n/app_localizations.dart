@@ -5529,6 +5529,384 @@ abstract class AppTexts {
   /// In fr, this message translates to:
   /// **'Voir l’invitation'**
   String get notificationsVoirInvitation;
+
+  /// No description provided for @signalementMotifSpam.
+  ///
+  /// In fr, this message translates to:
+  /// **'Spam ou publicité'**
+  String get signalementMotifSpam;
+
+  /// No description provided for @signalementMotifHarcelement.
+  ///
+  /// In fr, this message translates to:
+  /// **'Harcèlement'**
+  String get signalementMotifHarcelement;
+
+  /// No description provided for @signalementMotifHaine.
+  ///
+  /// In fr, this message translates to:
+  /// **'Propos haineux'**
+  String get signalementMotifHaine;
+
+  /// No description provided for @signalementMotifSexuel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Contenu sexuel'**
+  String get signalementMotifSexuel;
+
+  /// No description provided for @signalementMotifViolence.
+  ///
+  /// In fr, this message translates to:
+  /// **'Violence ou menaces'**
+  String get signalementMotifViolence;
+
+  /// No description provided for @signalementMotifAutre.
+  ///
+  /// In fr, this message translates to:
+  /// **'Autre chose'**
+  String get signalementMotifAutre;
+
+  /// No description provided for @signalementAideSpam.
+  ///
+  /// In fr, this message translates to:
+  /// **'Messages répétés, liens non sollicités'**
+  String get signalementAideSpam;
+
+  /// No description provided for @signalementAideHarcelement.
+  ///
+  /// In fr, this message translates to:
+  /// **'Insistance, intimidation, moqueries répétées'**
+  String get signalementAideHarcelement;
+
+  /// No description provided for @signalementAideHaine.
+  ///
+  /// In fr, this message translates to:
+  /// **'Attaque liée à l’origine, la religion, le genre, l’orientation'**
+  String get signalementAideHaine;
+
+  /// No description provided for @signalementAideSexuel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Images ou propos à caractère sexuel non désirés'**
+  String get signalementAideSexuel;
+
+  /// No description provided for @signalementAideViolence.
+  ///
+  /// In fr, this message translates to:
+  /// **'Menaces, incitation à nuire'**
+  String get signalementAideViolence;
+
+  /// No description provided for @signalementAideAutre.
+  ///
+  /// In fr, this message translates to:
+  /// **'Décrivez-le ci-dessous'**
+  String get signalementAideAutre;
+
+  /// No description provided for @signalementEnvoye.
+  ///
+  /// In fr, this message translates to:
+  /// **'Signalement envoyé. Il sera examiné.'**
+  String get signalementEnvoye;
+
+  /// No description provided for @signalementDejaEnvoye.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vous avez déjà signalé cela, et ce n’est pas encore traité.'**
+  String get signalementDejaEnvoye;
+
+  /// No description provided for @signalementIntrouvable.
+  ///
+  /// In fr, this message translates to:
+  /// **'Cela n’existe plus.'**
+  String get signalementIntrouvable;
+
+  /// No description provided for @signalementNonMembre.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vous ne faites pas partie de ce groupe.'**
+  String get signalementNonMembre;
+
+  /// No description provided for @signalementSoiMeme.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vous ne pouvez pas vous signaler vous-même.'**
+  String get signalementSoiMeme;
+
+  /// No description provided for @signalementMotifInconnu.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ce motif n’est pas reconnu.'**
+  String get signalementMotifInconnu;
+
+  /// No description provided for @signalementNonConnecte.
+  ///
+  /// In fr, this message translates to:
+  /// **'Reconnectez-vous pour signaler.'**
+  String get signalementNonConnecte;
+
+  /// No description provided for @signalementNonModerateur.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vous n’avez pas accès à la modération.'**
+  String get signalementNonModerateur;
+
+  /// No description provided for @signalementMarqueTraite.
+  ///
+  /// In fr, this message translates to:
+  /// **'Signalement traité.'**
+  String get signalementMarqueTraite;
+
+  /// No description provided for @signalementRouvert.
+  ///
+  /// In fr, this message translates to:
+  /// **'Signalement rouvert.'**
+  String get signalementRouvert;
+
+  /// No description provided for @signalementMessageSupprime.
+  ///
+  /// In fr, this message translates to:
+  /// **'Message supprimé.'**
+  String get signalementMessageSupprime;
+
+  /// No description provided for @signalementMessageDejaSupprime.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ce message était déjà supprimé.'**
+  String get signalementMessageDejaSupprime;
+
+  /// No description provided for @signalementSignaler.
+  ///
+  /// In fr, this message translates to:
+  /// **'Signaler'**
+  String get signalementSignaler;
+
+  /// No description provided for @signalementTitreMessage.
+  ///
+  /// In fr, this message translates to:
+  /// **'Signaler ce message'**
+  String get signalementTitreMessage;
+
+  /// No description provided for @signalementTitreGroupe.
+  ///
+  /// In fr, this message translates to:
+  /// **'Signaler ce groupe'**
+  String get signalementTitreGroupe;
+
+  /// No description provided for @signalementTitreProfil.
+  ///
+  /// In fr, this message translates to:
+  /// **'Signaler ce profil'**
+  String get signalementTitreProfil;
+
+  /// No description provided for @signalementConfidentiel.
+  ///
+  /// In fr, this message translates to:
+  /// **'La personne concernée n’est pas prévenue, et ne saura pas qui a signalé.'**
+  String get signalementConfidentiel;
+
+  /// No description provided for @signalementContenuGarde.
+  ///
+  /// In fr, this message translates to:
+  /// **'Le contenu signalé est recopié, pour qu’il reste lisible même s’il est effacé ensuite.'**
+  String get signalementContenuGarde;
+
+  /// No description provided for @signalementCommentaire.
+  ///
+  /// In fr, this message translates to:
+  /// **'Précisions'**
+  String get signalementCommentaire;
+
+  /// No description provided for @signalementCommentaireAide.
+  ///
+  /// In fr, this message translates to:
+  /// **'Facultatif — ce qui aide à comprendre'**
+  String get signalementCommentaireAide;
+
+  /// No description provided for @signalementEnvoyer.
+  ///
+  /// In fr, this message translates to:
+  /// **'Envoyer le signalement'**
+  String get signalementEnvoyer;
+
+  /// No description provided for @signalementChoisirMotif.
+  ///
+  /// In fr, this message translates to:
+  /// **'Choisissez un motif.'**
+  String get signalementChoisirMotif;
+
+  /// No description provided for @moderationTitre.
+  ///
+  /// In fr, this message translates to:
+  /// **'Signalements'**
+  String get moderationTitre;
+
+  /// No description provided for @moderationATraiter.
+  ///
+  /// In fr, this message translates to:
+  /// **'À traiter'**
+  String get moderationATraiter;
+
+  /// No description provided for @moderationTraites.
+  ///
+  /// In fr, this message translates to:
+  /// **'Traités'**
+  String get moderationTraites;
+
+  /// No description provided for @moderationVideTitre.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rien à traiter'**
+  String get moderationVideTitre;
+
+  /// No description provided for @moderationVideMessage.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun signalement n’attend. C’est la bonne nouvelle.'**
+  String get moderationVideMessage;
+
+  /// No description provided for @moderationVideTraitesTitre.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun signalement traité'**
+  String get moderationVideTraitesTitre;
+
+  /// No description provided for @moderationVideTraitesMessage.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ce que vous marquerez comme traité se rangera ici.'**
+  String get moderationVideTraitesMessage;
+
+  /// No description provided for @moderationCibleMessage.
+  ///
+  /// In fr, this message translates to:
+  /// **'Message'**
+  String get moderationCibleMessage;
+
+  /// No description provided for @moderationCibleGroupe.
+  ///
+  /// In fr, this message translates to:
+  /// **'Groupe'**
+  String get moderationCibleGroupe;
+
+  /// No description provided for @moderationCibleProfil.
+  ///
+  /// In fr, this message translates to:
+  /// **'Profil'**
+  String get moderationCibleProfil;
+
+  /// No description provided for @moderationSignalePar.
+  ///
+  /// In fr, this message translates to:
+  /// **'Signalé par {nom}'**
+  String moderationSignalePar(String nom);
+
+  /// No description provided for @moderationVise.
+  ///
+  /// In fr, this message translates to:
+  /// **'Concerne {nom}'**
+  String moderationVise(String nom);
+
+  /// No description provided for @moderationDansGroupe.
+  ///
+  /// In fr, this message translates to:
+  /// **'Dans {groupe}'**
+  String moderationDansGroupe(String groupe);
+
+  /// No description provided for @moderationContenuRecopie.
+  ///
+  /// In fr, this message translates to:
+  /// **'Contenu signalé'**
+  String get moderationContenuRecopie;
+
+  /// No description provided for @moderationMessageEfface.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ce message a été effacé depuis le signalement.'**
+  String get moderationMessageEfface;
+
+  /// No description provided for @moderationMediaImage.
+  ///
+  /// In fr, this message translates to:
+  /// **'Une photo'**
+  String get moderationMediaImage;
+
+  /// No description provided for @moderationMediaVideo.
+  ///
+  /// In fr, this message translates to:
+  /// **'Une vidéo'**
+  String get moderationMediaVideo;
+
+  /// No description provided for @moderationMediaAudio.
+  ///
+  /// In fr, this message translates to:
+  /// **'Un message vocal'**
+  String get moderationMediaAudio;
+
+  /// No description provided for @moderationSupprimerMessage.
+  ///
+  /// In fr, this message translates to:
+  /// **'Supprimer le message'**
+  String get moderationSupprimerMessage;
+
+  /// No description provided for @moderationSupprimerConfirmation.
+  ///
+  /// In fr, this message translates to:
+  /// **'La bulle se referme en « message supprimé » pour tout le groupe. Le signalement garde ce qui avait été écrit.'**
+  String get moderationSupprimerConfirmation;
+
+  /// No description provided for @moderationMarquerTraite.
+  ///
+  /// In fr, this message translates to:
+  /// **'Marquer traité'**
+  String get moderationMarquerTraite;
+
+  /// No description provided for @moderationRouvrir.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rouvrir'**
+  String get moderationRouvrir;
+
+  /// No description provided for @moderationNote.
+  ///
+  /// In fr, this message translates to:
+  /// **'Note'**
+  String get moderationNote;
+
+  /// No description provided for @moderationNoteAide.
+  ///
+  /// In fr, this message translates to:
+  /// **'Facultatif — ce que vous avez fait'**
+  String get moderationNoteAide;
+
+  /// No description provided for @moderationAucunLevier.
+  ///
+  /// In fr, this message translates to:
+  /// **'Pour un groupe ou un profil, la note est le seul levier : ni la fermeture d’un compte ni la suppression d’un groupe ne se font d’ici.'**
+  String get moderationAucunLevier;
+
+  /// No description provided for @profileSignalements.
+  ///
+  /// In fr, this message translates to:
+  /// **'Signalements'**
+  String get profileSignalements;
+
+  /// No description provided for @moderationIndisponible.
+  ///
+  /// In fr, this message translates to:
+  /// **'Signalements indisponibles'**
+  String get moderationIndisponible;
+
+  /// No description provided for @moderationEnTete.
+  ///
+  /// In fr, this message translates to:
+  /// **'{cible} · {motif}'**
+  String moderationEnTete(String cible, String motif);
+
+  /// No description provided for @moderationCitation.
+  ///
+  /// In fr, this message translates to:
+  /// **'« {texte} »'**
+  String moderationCitation(String texte);
 }
 
 class _AppTextsDelegate extends LocalizationsDelegate<AppTexts> {

@@ -2083,5 +2083,106 @@
   "notificationsDesactivees": "Off",
   "notificationsRefusees": "Blocked",
   "notificationsIndisponibles": "Unavailable",
-  "notificationsVoirInvitation": "View the invitation"
+  "notificationsVoirInvitation": "View the invitation",
+  "signalementMotifSpam": "Spam or advertising",
+  "signalementMotifHarcelement": "Harassment",
+  "signalementMotifHaine": "Hate speech",
+  "signalementMotifSexuel": "Sexual content",
+  "signalementMotifViolence": "Violence or threats",
+  "signalementMotifAutre": "Something else",
+  "signalementAideSpam": "Repeated messages, unsolicited links",
+  "signalementAideHarcelement": "Persistence, intimidation, repeated mockery",
+  "signalementAideHaine": "Attack based on origin, religion, gender or orientation",
+  "signalementAideSexuel": "Unwanted sexual images or remarks",
+  "signalementAideViolence": "Threats, incitement to harm",
+  "signalementAideAutre": "Describe it below",
+  "signalementEnvoye": "Report sent. It will be reviewed.",
+  "signalementDejaEnvoye": "You have already reported this, and it is not yet handled.",
+  "signalementIntrouvable": "This no longer exists.",
+  "signalementNonMembre": "You are not part of this group.",
+  "signalementSoiMeme": "You cannot report yourself.",
+  "signalementMotifInconnu": "This reason is not recognised.",
+  "signalementNonConnecte": "Sign in again to report.",
+  "signalementNonModerateur": "You do not have access to moderation.",
+  "signalementMarqueTraite": "Report handled.",
+  "signalementRouvert": "Report reopened.",
+  "signalementMessageSupprime": "Message deleted.",
+  "signalementMessageDejaSupprime": "This message was already deleted.",
+  "signalementSignaler": "Report",
+  "signalementTitreMessage": "Report this message",
+  "signalementTitreGroupe": "Report this group",
+  "signalementTitreProfil": "Report this profile",
+  "signalementConfidentiel": "The person concerned is not notified, and will not know who reported.",
+  "signalementContenuGarde": "The reported content is copied, so it stays readable even if it is deleted afterwards.",
+  "signalementCommentaire": "Details",
+  "signalementCommentaireAide": "Optional — what helps to understand",
+  "signalementEnvoyer": "Send the report",
+  "signalementChoisirMotif": "Choose a reason.",
+  "moderationTitre": "Reports",
+  "moderationATraiter": "To handle",
+  "moderationTraites": "Handled",
+  "moderationVideTitre": "Nothing to handle",
+  "moderationVideMessage": "No report is waiting. That is the good news.",
+  "moderationVideTraitesTitre": "No handled report",
+  "moderationVideTraitesMessage": "What you mark as handled will be filed here.",
+  "moderationCibleMessage": "Message",
+  "moderationCibleGroupe": "Group",
+  "moderationCibleProfil": "Profile",
+  "moderationSignalePar": "Reported by {nom}",
+  "@moderationSignalePar": {
+    "placeholders": {
+      "nom": {
+        "type": "String"
+      }
+    }
+  },
+  "moderationVise": "About {nom}",
+  "@moderationVise": {
+    "placeholders": {
+      "nom": {
+        "type": "String"
+      }
+    }
+  },
+  "moderationDansGroupe": "In {groupe}",
+  "@moderationDansGroupe": {
+    "placeholders": {
+      "groupe": {
+        "type": "String"
+      }
+    }
+  },
+  "moderationContenuRecopie": "Reported content",
+  "moderationMessageEfface": "This message has been deleted since the report.",
+  "moderationMediaImage": "A photo",
+  "moderationMediaVideo": "A video",
+  "moderationMediaAudio": "A voice message",
+  "moderationSupprimerMessage": "Delete the message",
+  "moderationSupprimerConfirmation": "The bubble closes as “message deleted” for the whole group. The report keeps what had been written.",
+  "moderationMarquerTraite": "Mark as handled",
+  "moderationRouvrir": "Reopen",
+  "moderationNote": "Note",
+  "moderationNoteAide": "Optional — what you did",
+  "moderationAucunLevier": "For a group or a profile, the note is the only lever: neither closing an account nor deleting a group is done from here.",
+  "profileSignalements": "Reports",
+  "moderationIndisponible": "Reports unavailable",
+  "moderationEnTete": "{cible} · {motif}",
+  "@moderationEnTete": {
+    "placeholders": {
+      "cible": {
+        "type": "String"
+      },
+      "motif": {
+        "type": "String"
+      }
+    }
+  },
+  "moderationCitation": "“{texte}”",
+  "@moderationCitation": {
+    "placeholders": {
+      "texte": {
+        "type": "String"
+      }
+    }
+  }
 }

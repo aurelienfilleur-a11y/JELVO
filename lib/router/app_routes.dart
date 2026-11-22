@@ -144,6 +144,17 @@ abstract final class AppRoutes {
   static const String about = 'about';
   static const String aboutPath = '/parametres/a-propos';
 
+  /// La file de modération. Sous `/parametres` plutôt qu'à la racine : elle
+  /// se range avec les réglages du compte, et n'est pas une destination de
+  /// l'application pour qui n'est pas modérateur.
+  ///
+  /// **La route n'est pas gardée, et elle n'aurait pas à l'être** : la règle
+  /// est tenue par la base — la table n'a aucun privilège, et les fonctions
+  /// appellent `est_moderateur()` dans leur corps. L'ouvrir de force par son
+  /// URL donne un écran vide, pas un accès.
+  static const String moderation = 'moderation';
+  static const String moderationPath = '/parametres/signalements';
+
   /// Galerie des avatars prédéfinis, empilée sur le profil.
   static const String avatarGallery = 'avatarGallery';
   static const String avatarGalleryPath = '/profil/avatar';

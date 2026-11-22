@@ -39,16 +39,20 @@
 -- `verification/fumee.sql` refait cette confrontation à chaque rejeu, de
 -- sorte qu'une table ajoutée demain et oubliée ici fasse échouer le rejeu.
 --
--- Les dix-huit sites et leur sort :
+-- Les vingt-deux sites et leur sort :
 --
 --   supprimés   availabilities · contacts (deux bouts) · event_participants
 --               group_members · invitations (deux bouts) · message_reactions
 --               message_reads · notification_preferences · notifications
 --               push_outbox · push_reminders_sent · push_tokens
---               task_assignees
+--               task_assignees · moderateurs
 --   gardés      messages.sender_id — tout l'objet de la règle
 --               tasks.created_by · groups.created_by · task_list_items.checked_by
 --               events.owner_id, pour un événement **de groupe**
+--               signalements.profil_id — le dossier garderait son sujet
+--   anonymisés  signalements.auteur_id · signalements.traite_par : le dossier
+--               reste, le lien part. Supprimer le signalement donnerait le
+--               moyen de l'effacer en fermant son compte
 --   à part      events.owner_id d'un rendez-vous **personnel** : supprimé,
 --               personne d'autre ne le voit
 
@@ -316,6 +320,43 @@ begin
   delete from public.push_tokens             where user_id = moi;
   delete from public.push_outbox             where user_id = moi;
   delete from public.push_reminders_sent     where user_id = moi;
+
+  -- Modérateur, elle cesse de l'être : la ligne dit « ce compte peut lire
+  -- les signalements », ce qui l'identifie autant que le reste. Conséquence
+  -- assumée — si c'était le seul modérateur, plus personne ne lit la file, et
+  -- il faut en désigner un. L'alternative serait de garder un compte
+  -- supprimé parmi les modérateurs, ce qui est pire.
+  delete from public.moderateurs             where user_id = moi;
+
+  -- 2.7bis Les signalements survivent, anonymisés.
+  --
+  --     **Trois clés, trois sorts différents, et aucun n'est « supprimer ».**
+  --     Un signalement est un dossier de modération : le supprimer avec le
+  --     compte de celui qui l'a déposé donnerait à n'importe qui le moyen
+  --     d'effacer un signalement en fermant son compte — et à celui qu'on
+  --     signale, le moyen d'effacer le dossier qui le concerne.
+  --
+  --     `auteur_id` et `traite_par` passent donc à `null` : le dossier reste,
+  --     le lien part, et l'écran de modération annonce « Compte supprimé ».
+  --     C'est exactement la règle de cette tranche — le contenu reste,
+  --     l'identité part —, appliquée à autre chose qu'un message.
+  --
+  --     `profil_id`, lui, **est conservé** et pointe vers la pierre tombale.
+  --     Le mettre à `null` ne protégerait personne : la ligne n'y gagnerait
+  --     rien, puisque la pierre tombale ne porte plus de nom, et le
+  --     signalement perdrait son sujet — donc tout son sens. Il dit en outre
+  --     au modérateur ce qu'il a besoin de savoir : le compte visé est déjà
+  --     parti, il n'y a plus rien à faire.
+  --
+  --     Le `contexte` recopié n'est pas touché : c'est du contenu, et le
+  --     contenu reste. Même arbitrage que pour les messages et les photos.
+  update public.signalements
+     set auteur_id = null
+   where auteur_id = moi;
+
+  update public.signalements
+     set traite_par = null
+   where traite_par = moi;
 
   -- 2.8 Le profil devient une pierre tombale.
   --

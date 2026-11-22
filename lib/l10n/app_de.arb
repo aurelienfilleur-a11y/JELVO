@@ -2083,5 +2083,106 @@
   "notificationsDesactivees": "Deaktiviert",
   "notificationsRefusees": "Abgelehnt",
   "notificationsIndisponibles": "Nicht verfügbar",
-  "notificationsVoirInvitation": "Einladung ansehen"
+  "notificationsVoirInvitation": "Einladung ansehen",
+  "signalementMotifSpam": "Spam oder Werbung",
+  "signalementMotifHarcelement": "Belästigung",
+  "signalementMotifHaine": "Hassrede",
+  "signalementMotifSexuel": "Sexuelle Inhalte",
+  "signalementMotifViolence": "Gewalt oder Drohungen",
+  "signalementMotifAutre": "Etwas anderes",
+  "signalementAideSpam": "Wiederholte Nachrichten, unerwünschte Links",
+  "signalementAideHarcelement": "Aufdringlichkeit, Einschüchterung, wiederholter Spott",
+  "signalementAideHaine": "Angriff wegen Herkunft, Religion, Geschlecht oder Orientierung",
+  "signalementAideSexuel": "Unerwünschte sexuelle Bilder oder Äußerungen",
+  "signalementAideViolence": "Drohungen, Aufruf zu Schaden",
+  "signalementAideAutre": "Beschreiben Sie es unten",
+  "signalementEnvoye": "Meldung gesendet. Sie wird geprüft.",
+  "signalementDejaEnvoye": "Sie haben dies bereits gemeldet, und es ist noch nicht bearbeitet.",
+  "signalementIntrouvable": "Das gibt es nicht mehr.",
+  "signalementNonMembre": "Sie gehören nicht zu dieser Gruppe.",
+  "signalementSoiMeme": "Sie können sich nicht selbst melden.",
+  "signalementMotifInconnu": "Dieser Grund wird nicht erkannt.",
+  "signalementNonConnecte": "Melden Sie sich erneut an, um zu melden.",
+  "signalementNonModerateur": "Sie haben keinen Zugang zur Moderation.",
+  "signalementMarqueTraite": "Meldung bearbeitet.",
+  "signalementRouvert": "Meldung wieder geöffnet.",
+  "signalementMessageSupprime": "Nachricht gelöscht.",
+  "signalementMessageDejaSupprime": "Diese Nachricht war schon gelöscht.",
+  "signalementSignaler": "Melden",
+  "signalementTitreMessage": "Diese Nachricht melden",
+  "signalementTitreGroupe": "Diese Gruppe melden",
+  "signalementTitreProfil": "Dieses Profil melden",
+  "signalementConfidentiel": "Die betroffene Person wird nicht benachrichtigt und erfährt nicht, wer gemeldet hat.",
+  "signalementContenuGarde": "Der gemeldete Inhalt wird kopiert, damit er lesbar bleibt, auch wenn er danach gelöscht wird.",
+  "signalementCommentaire": "Angaben",
+  "signalementCommentaireAide": "Optional – was beim Verstehen hilft",
+  "signalementEnvoyer": "Meldung senden",
+  "signalementChoisirMotif": "Wählen Sie einen Grund.",
+  "moderationTitre": "Meldungen",
+  "moderationATraiter": "Zu bearbeiten",
+  "moderationTraites": "Bearbeitet",
+  "moderationVideTitre": "Nichts zu bearbeiten",
+  "moderationVideMessage": "Keine Meldung wartet. Das ist die gute Nachricht.",
+  "moderationVideTraitesTitre": "Keine bearbeitete Meldung",
+  "moderationVideTraitesMessage": "Was Sie als bearbeitet markieren, wird hier abgelegt.",
+  "moderationCibleMessage": "Nachricht",
+  "moderationCibleGroupe": "Gruppe",
+  "moderationCibleProfil": "Profil",
+  "moderationSignalePar": "Gemeldet von {nom}",
+  "@moderationSignalePar": {
+    "placeholders": {
+      "nom": {
+        "type": "String"
+      }
+    }
+  },
+  "moderationVise": "Betrifft {nom}",
+  "@moderationVise": {
+    "placeholders": {
+      "nom": {
+        "type": "String"
+      }
+    }
+  },
+  "moderationDansGroupe": "In {groupe}",
+  "@moderationDansGroupe": {
+    "placeholders": {
+      "groupe": {
+        "type": "String"
+      }
+    }
+  },
+  "moderationContenuRecopie": "Gemeldeter Inhalt",
+  "moderationMessageEfface": "Diese Nachricht wurde seit der Meldung gelöscht.",
+  "moderationMediaImage": "Ein Foto",
+  "moderationMediaVideo": "Ein Video",
+  "moderationMediaAudio": "Eine Sprachnachricht",
+  "moderationSupprimerMessage": "Nachricht löschen",
+  "moderationSupprimerConfirmation": "Die Sprechblase wird für die ganze Gruppe zu „Nachricht gelöscht“. Die Meldung behält, was geschrieben wurde.",
+  "moderationMarquerTraite": "Als bearbeitet markieren",
+  "moderationRouvrir": "Wieder öffnen",
+  "moderationNote": "Notiz",
+  "moderationNoteAide": "Optional – was Sie getan haben",
+  "moderationAucunLevier": "Bei einer Gruppe oder einem Profil ist die Notiz der einzige Hebel: Weder das Schließen eines Kontos noch das Löschen einer Gruppe geschieht von hier.",
+  "profileSignalements": "Meldungen",
+  "moderationIndisponible": "Meldungen nicht verfügbar",
+  "moderationEnTete": "{cible} · {motif}",
+  "@moderationEnTete": {
+    "placeholders": {
+      "cible": {
+        "type": "String"
+      },
+      "motif": {
+        "type": "String"
+      }
+    }
+  },
+  "moderationCitation": "„{texte}“",
+  "@moderationCitation": {
+    "placeholders": {
+      "texte": {
+        "type": "String"
+      }
+    }
+  }
 }

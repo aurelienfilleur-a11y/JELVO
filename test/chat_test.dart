@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:jelvo/features/signalements/providers/signalement_providers.dart';
 import 'package:jelvo/core/core.dart';
 import 'package:jelvo/data/clock.dart';
 import 'package:jelvo/data/app_config.dart';
@@ -36,6 +37,7 @@ import 'package:jelvo/features/tasks/providers/task_providers.dart';
 import 'package:jelvo/main.dart';
 import 'package:jelvo/router/app_bottom_nav.dart';
 
+import 'fakes/fake_signalement_repository.dart';
 import 'fakes/fake_auth_repository.dart';
 import 'fakes/fake_availability_repository.dart';
 import 'fakes/fake_chat_repository.dart';
@@ -105,6 +107,9 @@ Future<FakeChatRepository> _pumpApp(
         pushRepositoryProvider.overrideWithValue(FakePushRepository()),
         availabilityRepositoryProvider.overrideWithValue(
           FakeAvailabilityRepository(),
+        ),
+        signalementRepositoryProvider.overrideWithValue(
+          FakeSignalementRepository(),
         ),
         notificationRepositoryProvider.overrideWithValue(
           FakeNotificationRepository(

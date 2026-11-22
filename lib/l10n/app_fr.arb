@@ -2083,5 +2083,106 @@
   "notificationsDesactivees": "Désactivées",
   "notificationsRefusees": "Refusées",
   "notificationsIndisponibles": "Indisponibles",
-  "notificationsVoirInvitation": "Voir l’invitation"
+  "notificationsVoirInvitation": "Voir l’invitation",
+  "signalementMotifSpam": "Spam ou publicité",
+  "signalementMotifHarcelement": "Harcèlement",
+  "signalementMotifHaine": "Propos haineux",
+  "signalementMotifSexuel": "Contenu sexuel",
+  "signalementMotifViolence": "Violence ou menaces",
+  "signalementMotifAutre": "Autre chose",
+  "signalementAideSpam": "Messages répétés, liens non sollicités",
+  "signalementAideHarcelement": "Insistance, intimidation, moqueries répétées",
+  "signalementAideHaine": "Attaque liée à l’origine, la religion, le genre, l’orientation",
+  "signalementAideSexuel": "Images ou propos à caractère sexuel non désirés",
+  "signalementAideViolence": "Menaces, incitation à nuire",
+  "signalementAideAutre": "Décrivez-le ci-dessous",
+  "signalementEnvoye": "Signalement envoyé. Il sera examiné.",
+  "signalementDejaEnvoye": "Vous avez déjà signalé cela, et ce n’est pas encore traité.",
+  "signalementIntrouvable": "Cela n’existe plus.",
+  "signalementNonMembre": "Vous ne faites pas partie de ce groupe.",
+  "signalementSoiMeme": "Vous ne pouvez pas vous signaler vous-même.",
+  "signalementMotifInconnu": "Ce motif n’est pas reconnu.",
+  "signalementNonConnecte": "Reconnectez-vous pour signaler.",
+  "signalementNonModerateur": "Vous n’avez pas accès à la modération.",
+  "signalementMarqueTraite": "Signalement traité.",
+  "signalementRouvert": "Signalement rouvert.",
+  "signalementMessageSupprime": "Message supprimé.",
+  "signalementMessageDejaSupprime": "Ce message était déjà supprimé.",
+  "signalementSignaler": "Signaler",
+  "signalementTitreMessage": "Signaler ce message",
+  "signalementTitreGroupe": "Signaler ce groupe",
+  "signalementTitreProfil": "Signaler ce profil",
+  "signalementConfidentiel": "La personne concernée n’est pas prévenue, et ne saura pas qui a signalé.",
+  "signalementContenuGarde": "Le contenu signalé est recopié, pour qu’il reste lisible même s’il est effacé ensuite.",
+  "signalementCommentaire": "Précisions",
+  "signalementCommentaireAide": "Facultatif — ce qui aide à comprendre",
+  "signalementEnvoyer": "Envoyer le signalement",
+  "signalementChoisirMotif": "Choisissez un motif.",
+  "moderationTitre": "Signalements",
+  "moderationATraiter": "À traiter",
+  "moderationTraites": "Traités",
+  "moderationVideTitre": "Rien à traiter",
+  "moderationVideMessage": "Aucun signalement n’attend. C’est la bonne nouvelle.",
+  "moderationVideTraitesTitre": "Aucun signalement traité",
+  "moderationVideTraitesMessage": "Ce que vous marquerez comme traité se rangera ici.",
+  "moderationCibleMessage": "Message",
+  "moderationCibleGroupe": "Groupe",
+  "moderationCibleProfil": "Profil",
+  "moderationSignalePar": "Signalé par {nom}",
+  "@moderationSignalePar": {
+    "placeholders": {
+      "nom": {
+        "type": "String"
+      }
+    }
+  },
+  "moderationVise": "Concerne {nom}",
+  "@moderationVise": {
+    "placeholders": {
+      "nom": {
+        "type": "String"
+      }
+    }
+  },
+  "moderationDansGroupe": "Dans {groupe}",
+  "@moderationDansGroupe": {
+    "placeholders": {
+      "groupe": {
+        "type": "String"
+      }
+    }
+  },
+  "moderationContenuRecopie": "Contenu signalé",
+  "moderationMessageEfface": "Ce message a été effacé depuis le signalement.",
+  "moderationMediaImage": "Une photo",
+  "moderationMediaVideo": "Une vidéo",
+  "moderationMediaAudio": "Un message vocal",
+  "moderationSupprimerMessage": "Supprimer le message",
+  "moderationSupprimerConfirmation": "La bulle se referme en « message supprimé » pour tout le groupe. Le signalement garde ce qui avait été écrit.",
+  "moderationMarquerTraite": "Marquer traité",
+  "moderationRouvrir": "Rouvrir",
+  "moderationNote": "Note",
+  "moderationNoteAide": "Facultatif — ce que vous avez fait",
+  "moderationAucunLevier": "Pour un groupe ou un profil, la note est le seul levier : ni la fermeture d’un compte ni la suppression d’un groupe ne se font d’ici.",
+  "profileSignalements": "Signalements",
+  "moderationIndisponible": "Signalements indisponibles",
+  "moderationEnTete": "{cible} · {motif}",
+  "@moderationEnTete": {
+    "placeholders": {
+      "cible": {
+        "type": "String"
+      },
+      "motif": {
+        "type": "String"
+      }
+    }
+  },
+  "moderationCitation": "« {texte} »",
+  "@moderationCitation": {
+    "placeholders": {
+      "texte": {
+        "type": "String"
+      }
+    }
+  }
 }

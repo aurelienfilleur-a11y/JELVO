@@ -1,0 +1,304 @@
+name: Sauvegarde de la base
+
+# Exporte la base et les fichiers des buckets chaque nuit, éprouve la
+# restauration, chiffre, téléverse sur Cloudflare R2, et signale son passage à
+# un interrupteur d'homme mort.
+#
+# L'offre gratuite de Supabase n'inclut **aucune** sauvegarde : sans ce
+# workflow, la perte du projet est la perte de tout.
+#
+#
+# POURQUOI LA SAUVEGARDE NE PART PAS EN PIÈCE JOINTE DU JOB
+#
+# C'eût été la voie courte — l'instantané du schéma y part déjà. Elle est
+# écartée, et c'est la décision la plus importante de ce fichier.
+#
+# **Les pièces jointes d'un dépôt public sont téléchargeables sans compte.**
+# La documentation REST de GitHub dit de l'endpoint des artifacts qu'il peut
+# être utilisé sans authentification si seules des ressources publiques sont
+# demandées ; l'interface web demande une session, l'API non.
+#
+# Un dump de cette base contient `auth.users` — adresses e-mail et empreintes
+# de mots de passe — et tous les messages de tout le monde. On ne parie pas les
+# données personnelles de ses utilisateurs sur une règle d'accès dont la
+# documentation elle-même est ambiguë. Même raison pour les Releases.
+#
+# **Ne pas ajouter `upload-artifact` sur le fichier de sauvegarde**, même « le
+# temps d'un essai » : c'est l'instinct naturel du prochain lecteur, et c'est
+# exactement ce qu'il ne faut pas faire. La pièce jointe reste réservée au
+# journal, qui ne porte aucune donnée.
+#
+#
+# POURQUOI L'ALERTE PORTE SUR L'ABSENCE, ET NON SUR L'ÉCHEC
+#
+# Deux mécanismes arrêtent un workflow nocturne **sans jamais le mettre au
+# rouge**, donc sans qu'aucune alerte branchée sur l'échec ne parte :
+#
+#   - GitHub **désactive un workflow planifié après 60 jours sans activité**
+#     sur un dépôt public. Le cron s'arrête, et il n'y a plus de run du tout ;
+#   - un projet Supabase gratuit **se met en pause après 7 jours
+#     d'inactivité**, et une base en pause ne se dump pas.
+#
+# C'est le défaut déjà connu de ce projet — « un workflow rouge qui ne bloque
+# rien d'autre ne se remarque pas » — en pire : ici il n'est même pas rouge.
+#
+# D'où `HEALTHCHECK_URL` : le job annonce son départ et son arrivée, et c'est
+# le service distant qui écrit quand l'arrivée n'est pas venue. Il couvre
+# l'échec, la désactivation du cron et la pause du projet d'un seul mécanisme.
+
+on:
+  schedule:
+    # 02:17 UTC. La minute n'est pas ronde exprès : les tâches planifiées à
+    # :00 partent toutes en même temps chez tout le monde et sont retardées
+    # d'autant. L'heure est creuse pour la même raison.
+    - cron: '17 2 * * *'
+  # Le rattrapage à la main, et surtout le **premier** passage : la chaîne ne
+  # se prouve qu'en tournant, et attendre 02:17 pour le découvrir serait la
+  # leçon du jeton mort recommencée.
+  workflow_dispatch:
+
+# Lecture seule : ce workflow n'écrit rien dans le dépôt.
+permissions:
+  contents: read
+
+concurrency:
+  group: sauvegarde-base
+  cancel-in-progress: false
+
+jobs:
+  sauvegarder:
+    name: Exporter, éprouver, téléverser
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      SUPABASE_URL: https://xndvxxcknchanqpnrkjc.supabase.co
+      # Préfixes dans le bucket. La rétention est tenue par les règles de
+      # cycle de vie de R2, posées une fois — voir `RESTAURER.md`. Une boucle
+      # de suppression ici tournerait chaque nuit avec les droits d'effacer,
+      # et un préfixe mal écrit viderait tout.
+      PREFIXE_QUOTIDIEN: quotidien
+      PREFIXE_MENSUEL: mensuel
+
+    steps:
+      # `checkout` lit avec `GITHUB_TOKEN`, toujours. La leçon est payée :
+      # un `secrets.X || github.token` ne distingue pas « absent » de
+      # « refusé », et un jeton personnel expiré avait fait mourir le workflow
+      # des migrations avant même qu'il ne parle de SQL.
+      - uses: actions/checkout@v4
+
+      - name: Annoncer le départ
+        # `|| true` : l'interrupteur d'homme mort ne doit jamais faire échouer
+        # la sauvegarde. Son rôle est d'alerter, pas de bloquer.
+        run: |
+          if [ -n "${{ secrets.HEALTHCHECK_URL }}" ]; then
+            curl -fsS -m 10 --retry 3 "${{ secrets.HEALTHCHECK_URL }}/start" || true
+          else
+            echo "::warning title=Aucune alerte configurée::Le secret HEALTHCHECK_URL est absent : personne ne sera prévenu si cette sauvegarde cesse de tourner. Voir supabase/sauvegarde/RESTAURER.md."
+          fi
+
+      # ---------------------------------------------------------------------
+      # Refuser avant de dumper, plutôt que de produire l'inutilisable
+      # ---------------------------------------------------------------------
+      - name: Contrôler le destinataire du chiffrement
+        run: |
+          cle=supabase/sauvegarde/cle-publique.age
+          destinataire=$(grep -vE '^\s*(#|$)' "$cle" | head -1)
+
+          if [ -z "$destinataire" ]; then
+            echo "::error title=Aucun destinataire::$cle ne porte aucune clé publique."
+            exit 1
+          fi
+
+          case "$destinataire" in
+            age1REMPLACEZ*)
+              echo "::error title=Clé publique non posée::$cle porte encore le gabarit. Produisez une paire avec « age-keygen -o jelvo-sauvegarde.key », remplacez la ligne par la clé publique affichée, et gardez la clé privée dans votre gestionnaire de mots de passe. Une sauvegarde chiffrée pour une clé que personne ne détient serait pire qu'aucune sauvegarde : elle en aurait l'air."
+              exit 1 ;;
+            age1*) ;;
+            *)
+              echo "::error title=Clé publique mal formée::La ligne retenue ne commence pas par « age1 »."
+              exit 1 ;;
+          esac
+
+          # 62 caractères pour une clé X25519 d'`age`. Un copier-coller tronqué
+          # passerait les contrôles ci-dessus et donnerait un chiffrement
+          # impossible à déchiffrer.
+          if [ "${#destinataire}" -ne 62 ]; then
+            echo "::error title=Clé publique de longueur inattendue::${#destinataire} caractères au lieu de 62. La ligne est probablement tronquée."
+            exit 1
+          fi
+          echo "Destinataire : ${destinataire:0:16}… (${#destinataire} caractères)."
+
+      # ---------------------------------------------------------------------
+      # Un client de la même majeure que le serveur
+      # ---------------------------------------------------------------------
+      #
+      # `pg_dump` refuse de dumper un serveur plus récent que lui, et l'image
+      # du runner n'embarque pas forcément la majeure du projet — elle peut
+      # même en changer sous nos pieds à une mise à jour d'image.
+      #
+      # La majeure est donc **lue sur le serveur** à chaque passage, et le
+      # client installé en conséquence. `psql` se connecte sans difficulté
+      # d'une version à l'autre : seul `pg_dump` est exigeant.
+      - name: Installer PostgreSQL à la majeure du serveur
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          . supabase/verification/connexion.sh
+          url=$(normaliser_url_connexion "$SUPABASE_DB_URL") || exit $?
+
+          majeure=$(psql "$url" -At -c 'show server_version_num' | cut -c1-2)
+          echo "Serveur en majeure $majeure."
+          echo "PG_MAJEURE=$majeure" >> "$GITHUB_ENV"
+
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsS -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          . /etc/os-release
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update -qq
+
+          # Le **serveur** autant que le client : l'épreuve de restauration
+          # monte un cluster jetable de cette majeure, et `pg_restore` d'une
+          # version antérieure refuserait l'archive.
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+            "postgresql-$majeure" "postgresql-client-$majeure" age
+          /usr/lib/postgresql/"$majeure"/bin/pg_dump --version
+
+      # ---------------------------------------------------------------------
+      # L'export
+      # ---------------------------------------------------------------------
+      - name: Exporter la base et les fichiers des buckets
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "::error title=Clé de service absente::Le secret SUPABASE_SERVICE_ROLE_KEY est nécessaire pour lire le bucket privé chat-media. Sans lui, une restauration rendrait une application dont tous les messages vocaux et toutes les photos de conversation ont disparu."
+            exit 1
+          fi
+          supabase/sauvegarde/exporter.sh --sortie "$RUNNER_TEMP/jelvo.tar"
+
+      # ---------------------------------------------------------------------
+      # L'épreuve, avant le chiffrement
+      # ---------------------------------------------------------------------
+      #
+      # L'ordre n'est pas négociable : le runner ne détient que la clé
+      # publique, donc il ne pourra plus rien lire une fois le fichier
+      # chiffré. Éprouver après aurait obligé à mettre la clé privée dans les
+      # secrets, ce qui détruirait la seule propriété qu'on cherche.
+      #
+      # C'est ce qui transforme « une sauvegarde qu'on ne sait pas restaurer »
+      # en « une sauvegarde restaurée toutes les nuits ».
+      - name: Éprouver la restauration
+        run: supabase/sauvegarde/eprouver_restauration.sh "$RUNNER_TEMP/jelvo.tar"
+
+      - name: Chiffrer
+        run: |
+          nom="jelvo-$(date -u +%Y%m%d-%H%M).tar.age"
+          age --encrypt -R supabase/sauvegarde/cle-publique.age \
+            --output "$RUNNER_TEMP/$nom" "$RUNNER_TEMP/jelvo.tar"
+
+          # Le fichier en clair ne doit pas survivre à l'étape. Le runner est
+          # détruit à la fin du job de toute façon, mais les étapes suivantes
+          # parlent au réseau : autant qu'il ne soit plus là.
+          rm -f "$RUNNER_TEMP/jelvo.tar"
+          echo "ARCHIVE=$nom" >> "$GITHUB_ENV"
+          echo "Chiffré : $nom ($(du -h "$RUNNER_TEMP/$nom" | cut -f1))."
+
+      # ---------------------------------------------------------------------
+      # Le téléversement
+      # ---------------------------------------------------------------------
+      - name: Téléverser sur Cloudflare R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          for secret in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY R2_BUCKET; do
+            if [ -z "${!secret}" ]; then
+              echo "::error title=Secret R2 absent::$secret n'est pas défini. La sauvegarde a été produite et éprouvée, mais elle n'a nulle part où aller — elle disparaîtra avec le runner. Voir supabase/sauvegarde/RESTAURER.md."
+              exit 1
+            fi
+          done
+
+          aws="aws s3 --endpoint-url $R2_ENDPOINT"
+          $aws cp "$RUNNER_TEMP/$ARCHIVE" \
+            "s3://$R2_BUCKET/$PREFIXE_QUOTIDIEN/$ARCHIVE" --only-show-errors
+          echo "Déposé : $PREFIXE_QUOTIDIEN/$ARCHIVE"
+
+          # Le 1er du mois, une copie sous un second préfixe, que sa propre
+          # règle de cycle de vie garde douze mois. Le quotidien seul ne
+          # protège pas d'un dégât qu'on met six semaines à remarquer.
+          if [ "$(date -u +%d)" = '01' ]; then
+            $aws cp "s3://$R2_BUCKET/$PREFIXE_QUOTIDIEN/$ARCHIVE" \
+                    "s3://$R2_BUCKET/$PREFIXE_MENSUEL/$ARCHIVE" --only-show-errors
+            echo "Copie mensuelle : $PREFIXE_MENSUEL/$ARCHIVE"
+          fi
+
+          # Ce qui n'est pas relevé n'est pas vérifié — la règle a déjà coûté
+          # cher sur les politiques de stockage, restées sans effet pendant des
+          # mois parce que l'instantané du schéma s'arrêtait au schéma public.
+          # Une rétention qu'on croit posée et qui ne l'est pas se constate le
+          # jour où le bucket est plein, c'est-à-dire le jour où la sauvegarde
+          # s'arrête.
+          #
+          # Et le relevé distingue ses deux échecs, parce qu'ils ne demandent
+          # pas la même chose. Un jeton borné à « Object Read & Write » n'a pas
+          # forcément le droit de **lire** la configuration du bucket : avertir
+          # dans ce cas crierait chaque nuit sans rien dire de vrai, et une
+          # alerte qui crie tous les jours ne se lit plus. Ne pas mentir sur le
+          # coupable est la règle de l'étape qui publie l'instantané du schéma.
+          if aws s3api get-bucket-lifecycle-configuration \
+               --endpoint-url "$R2_ENDPOINT" --bucket "$R2_BUCKET" \
+               > "$RUNNER_TEMP/cycle.json" 2> "$RUNNER_TEMP/cycle.err"; then
+            echo "Règles de cycle de vie : $(grep -c '"ID"' "$RUNNER_TEMP/cycle.json") posée(s)."
+          elif grep -q 'NoSuchLifecycleConfiguration' "$RUNNER_TEMP/cycle.err"; then
+            echo "::warning title=Aucune règle de rétention::Le bucket n'a aucune règle de cycle de vie : rien ne supprimera les anciennes sauvegardes, et il finira par déborder — c'est-à-dire que la sauvegarde s'arrêtera. La commande à passer une fois est dans supabase/sauvegarde/RESTAURER.md."
+          else
+            echo "Règles de cycle de vie : non vérifiables avec ce jeton."
+            echo "(ce n'est pas un défaut de rétention — seulement un droit que"
+            echo " « Object Read & Write » ne porte pas. À contrôler une fois"
+            echo " dans le tableau de bord R2.)"
+          fi
+
+      - name: Annoncer l'arrivée
+        if: success()
+        run: |
+          if [ -n "${{ secrets.HEALTHCHECK_URL }}" ]; then
+            curl -fsS -m 10 --retry 3 "${{ secrets.HEALTHCHECK_URL }}" || true
+          fi
+
+      - name: Annoncer l'échec
+        if: failure()
+        run: |
+          if [ -n "${{ secrets.HEALTHCHECK_URL }}" ]; then
+            curl -fsS -m 10 --retry 3 "${{ secrets.HEALTHCHECK_URL }}/fail" || true
+          fi
+
+      - name: Résumer
+        if: always()
+        run: |
+          {
+            echo '## Sauvegarde de la base'
+            echo
+            if [ "${{ job.status }}" = 'success' ]; then
+              echo "La sauvegarde \`$ARCHIVE\` est déposée sur R2, **et elle a été"
+              echo 'restaurée** dans un cluster jetable avant de partir : données,'
+              echo 'privilèges, politiques, déclencheurs et valeurs d’énumération'
+              echo 'confrontés ligne à ligne à l’inventaire du dump.'
+              echo
+              echo 'Ce qui n’est pas prouvé ici : que le fichier chiffré soit'
+              echo 'déchiffrable par votre clé. Le runner ne détient que la clé'
+              echo 'publique, et c’est voulu. Ce contrôle se fait une fois à la'
+              echo 'main — voir `supabase/sauvegarde/RESTAURER.md`.'
+            else
+              echo '> **La sauvegarde de cette nuit n’a pas abouti.** Lisez l’étape'
+              echo '> rouge ci-dessus : le message nomme la cause et ce qu’elle'
+              echo '> implique. Une sauvegarde manquée n’est pas une donnée perdue,'
+              echo '> mais deux de suite méritent qu’on regarde.'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -2010,6 +2010,248 @@ $profil$;
 
 
 -- ===========================================================================
+-- Tranche 15 — signaler un abus
+-- ===========================================================================
+-- Ce qui est éprouvé, et les contrôles négatifs d'abord, parce que ce sont
+-- eux qui portent la consigne :
+--
+-- 1. **Un non-modérateur ne lit rien** — zéro ligne, et non une erreur : un
+--    appel direct n'apprend donc pas qu'il y avait quelque chose à voir ;
+-- 2. **on ne signale pas un message qu'on ne peut pas voir.** Sans ce refus,
+--    la recopie du contexte serait un oracle de lecture sur toutes les
+--    conversations du service — c'est le défaut qu'il faut ne pas créer en
+--    voulant garder la preuve ;
+-- 3. la recopie **survit à la suppression du message**, qui est toute sa
+--    raison d'être ;
+-- 4. « traité » fait sortir de la file, et rien d'autre ne l'en sort.
+
+do $signalements$
+declare
+  camille  constant uuid := '11111111-1111-1111-1111-111111111111';
+  lea      constant uuid := '33333333-3333-3333-3333-333333333333';
+  groupe   constant uuid := '22222222-2222-2222-2222-222222222222';
+  etranger constant uuid := '55555555-5555-5555-5555-555555555555';
+  ailleurs constant uuid := '66666666-6666-6666-6666-666666666666';
+  msg_lea  uuid := gen_random_uuid();
+  msg_loin uuid := gen_random_uuid();
+  etat     text;
+  lignes   bigint;
+  dossier  uuid;
+  contenu  text;
+  efface   boolean;
+  nom      text;
+begin
+  -- Décor : un message de Léa dans le groupe, et un groupe où Camille n'est
+  -- pas. Posé sous `postgres`, l'insertion directe dans `messages` étant
+  -- fermée au client depuis la tranche 7.
+  reset role;
+
+  insert into auth.users (id, email) values (etranger, 'loin@exemple.test')
+  on conflict (id) do nothing;
+  insert into public.profiles (id, pseudo, first_name, last_name)
+  values (etranger, 'loin', 'Inès', 'Khelifi')
+  on conflict (id) do nothing;
+
+  insert into public.groups (id, name, created_by)
+  values (ailleurs, 'Groupe sans Camille', etranger)
+  on conflict (id) do nothing;
+  insert into public.group_members (group_id, user_id, role)
+  values (ailleurs, etranger, 'admin')
+  on conflict do nothing;
+
+  insert into public.messages (id, group_id, sender_id, content)
+  values (msg_lea, groupe, lea, 'Texte que Camille signale'),
+         (msg_loin, ailleurs, etranger, 'Conversation où Camille n''est pas');
+
+  -- 1. Signaler un message de son groupe -----------------------------------
+  set local role authenticated;
+  set local request.jwt.claims =
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+
+  select public.signaler('message', msg_lea, 'harcelement', 'Insistant')
+    into etat;
+  assert etat = 'signale',
+         format('signaler un message devait répondre « signale », reçu « %s »',
+                etat);
+
+  -- 2. Deux fois le même, non traité : le second n'apprend rien ------------
+  select public.signaler('message', msg_lea, 'haine') into etat;
+  assert etat = 'deja_signale',
+         format('un second signalement devait répondre « deja_signale », '
+                'reçu « %s »', etat);
+
+  -- 3. CONTRÔLE NÉGATIF — l'oracle de lecture qu'il ne faut pas créer ------
+  --    Camille n'est pas membre d'`ailleurs` : si ce refus tombait, elle
+  --    obtiendrait le texte de n'importe quel message du service en le
+  --    signalant.
+  select public.signaler('message', msg_loin, 'spam') into etat;
+  assert etat = 'non_membre',
+         format('signaler un message d''un groupe dont on n''est pas membre '
+                'devait répondre « non_membre », reçu « %s »', etat);
+
+  -- 4. Un motif que l'énumération ne connaît pas se dit, il ne lève pas ----
+  select public.signaler('message', msg_lea, 'pas-un-motif') into etat;
+  assert etat = 'motif_inconnu',
+         format('un motif inconnu devait répondre « motif_inconnu », '
+                'reçu « %s »', etat);
+
+  -- 5. Se signaler soi-même n'encombre pas la file -------------------------
+  select public.signaler('profile', camille, 'autre') into etat;
+  assert etat = 'soi_meme',
+         format('se signaler devait répondre « soi_meme », reçu « %s »', etat);
+
+  -- 6. CONTRÔLE NÉGATIF — un non-modérateur ne lit rien, et ne le sait pas -
+  assert not public.est_moderateur(),
+         'personne ne doit être modérateur sans avoir été désigné';
+
+  select count(*) into lignes from public.signalements_a_traiter();
+  assert lignes = 0,
+         format('un non-modérateur devait lire zéro ligne, reçu %s', lignes);
+
+  -- Et il ne peut pas traiter, même en connaissant l'identifiant.
+  reset role;
+  select s.id into dossier from public.signalements s
+   where s.message_id = msg_lea limit 1;
+  set local role authenticated;
+  set local request.jwt.claims =
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+
+  select public.traiter_signalement(dossier) into etat;
+  assert etat = 'non_moderateur',
+         format('traiter sans l''être devait répondre « non_moderateur », '
+                'reçu « %s »', etat);
+  select public.supprimer_message_signale(dossier) into etat;
+  assert etat = 'non_moderateur',
+         format('supprimer sans l''être devait répondre « non_moderateur », '
+                'reçu « %s »', etat);
+
+  -- 6bis. CONTRÔLE NÉGATIF — les deux tables sont hors de portée de l'API --
+  --    C'est la demande elle-même : « sans que ce soit contournable ». Une
+  --    politique RLS correcte laisserait la table **atteignable**, et une
+  --    politique de trop posée à côté la rouvrirait en « ou » — c'est
+  --    exactement ce qui est arrivé au stockage. Ici il n'y a pas de
+  --    politique à contourner : il n'y a pas de privilège.
+  begin
+    perform 1 from public.signalements limit 1;
+    assert false, 'un compte ne doit pas pouvoir lire la table des '
+                  'signalements : seules les fonctions sont la porte';
+  exception
+    when insufficient_privilege then null;
+  end;
+
+  begin
+    insert into public.moderateurs (user_id) values (camille);
+    assert false, 'un compte ne doit pas pouvoir se désigner modérateur';
+  exception
+    when insufficient_privilege then null;
+  end;
+
+  -- 7. Désignée, elle lit — avec le profil joint ---------------------------
+  --    `moderateurs` n'a ni politique ni privilège : seul `postgres` écrit,
+  --    donc seul l'éditeur SQL du projet. C'est le contrôle que la
+  --    désignation ne se fait pas depuis l'application.
+  reset role;
+  insert into public.moderateurs (user_id) values (camille)
+  on conflict (user_id) do nothing;
+
+  set local role authenticated;
+  set local request.jwt.claims =
+    '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+
+  assert public.est_moderateur(), 'la désignation doit se voir';
+
+  select count(*) into lignes from public.signalements_a_traiter();
+  assert lignes = 1,
+         format('la file devait porter un signalement, reçu %s', lignes);
+
+  select s.contexte ->> 'contenu', s.message_efface, s.vise_nom
+    into contenu, efface, nom
+    from public.signalements_a_traiter() s limit 1;
+
+  assert contenu = 'Texte que Camille signale',
+         format('la recopie devait porter le texte signalé, reçu « %s »',
+                coalesce(contenu, '(nul)'));
+  assert efface is false,
+         'le message n''est pas encore effacé, la file ne doit pas le dire';
+  assert nom = 'Léa Marchand',
+         format('le nom de la personne visée devait être joint, reçu « %s »',
+                coalesce(nom, '(nul)'));
+
+  -- 8. Agir : la suppression douce, puis son idempotence -------------------
+  select public.supprimer_message_signale(dossier) into etat;
+  assert etat = 'supprime',
+         format('la suppression devait répondre « supprime », reçu « %s »',
+                etat);
+  select public.supprimer_message_signale(dossier) into etat;
+  assert etat = 'deja_supprime',
+         format('un second appel devait répondre « deja_supprime », '
+                'reçu « %s »', etat);
+
+  -- 9. **Toute la raison d'être de la recopie** ----------------------------
+  --    Le message est effacé ; le dossier garde ce qui avait été écrit, et
+  --    dit que la cible n'existe plus. Sans la recopie, il ne resterait rien
+  --    à juger — et c'est son auteur qui aurait effacé la preuve.
+  select s.contexte ->> 'contenu', s.message_efface
+    into contenu, efface
+    from public.signalements_a_traiter() s limit 1;
+
+  assert contenu = 'Texte que Camille signale',
+         'la recopie doit survivre à la suppression du message';
+  assert efface,
+         'la file doit signaler que le message visé a été effacé depuis';
+
+  -- 10. « Traité » fait sortir de la file, et c'est tout ce qui l'en sort --
+  select public.traiter_signalement(dossier, 'Message retiré, personne avertie')
+    into etat;
+  assert etat = 'traite',
+         format('le traitement devait répondre « traite », reçu « %s »', etat);
+
+  select count(*) into lignes from public.signalements_a_traiter();
+  assert lignes = 0,
+         format('un signalement traité ne doit plus revenir, reçu %s', lignes);
+
+  select count(*) into lignes from public.signalements_a_traiter(true);
+  assert lignes = 1,
+         format('l''onglet des traités devait en porter un, reçu %s', lignes);
+
+  -- Rouvrable : un traitement posé par erreur doit avoir un recours.
+  select public.traiter_signalement(dossier, null, false) into etat;
+  assert etat = 'rouvert',
+         format('la réouverture devait répondre « rouvert », reçu « %s »',
+                etat);
+  select count(*) into lignes from public.signalements_a_traiter();
+  assert lignes = 1,
+         format('un signalement rouvert doit revenir, reçu %s', lignes);
+
+  -- La note posée au traitement n'est pas perdue par la réouverture : elle
+  -- dit ce qui a été fait, et le geste ne se défait pas.
+  select s.note into contenu from public.signalements_a_traiter() s limit 1;
+  assert contenu = 'Message retiré, personne avertie',
+         format('la note devait survivre à la réouverture, reçu « %s »',
+                coalesce(contenu, '(nul)'));
+
+  -- 11. Un profil se signale aussi, et le dossier en garde le pseudo -------
+  select public.signaler('profile', lea, 'spam') into etat;
+  assert etat = 'signale',
+         format('signaler un profil devait répondre « signale », reçu « %s »',
+                etat);
+
+  select count(*) into lignes from public.signalements_a_traiter();
+  assert lignes = 2,
+         format('la file devait porter deux signalements, reçu %s', lignes);
+
+  -- Camille cesse d'être modératrice : le bloc suivant la supprime, et un
+  -- décor qui la laisserait modératrice ferait passer la suppression pour
+  -- la cause de ce que la désignation explique.
+  reset role;
+  delete from public.moderateurs where user_id = camille;
+
+  raise notice 'Fumée : les signalements de la tranche 15 répondent.';
+end;
+$signalements$;
+
+
+-- ===========================================================================
 -- Tranche 14 — suppression de compte
 -- ===========================================================================
 -- Deux choses sont éprouvées, et la première est la plus utile.
@@ -2031,7 +2273,7 @@ declare
   camille  constant uuid := '11111111-1111-1111-1111-111111111111';
   lea      constant uuid := '33333333-3333-3333-3333-333333333333';
   groupe   constant uuid := '22222222-2222-2222-2222-222222222222';
-  -- Les dix-huit sites relevés dans le catalogue, et leur sort. Toute entrée
+  -- Les vingt-deux sites relevés dans le catalogue, et leur sort. Toute entrée
   -- de `pg_constraint` absente d'ici fait échouer le contrôle 1.
   decides  constant text[] := array[
     -- supprimés
@@ -2048,13 +2290,18 @@ declare
     'push_reminders_sent.user_id',
     'push_tokens.user_id',
     'task_assignees.user_id',
+    'moderateurs.user_id',
     -- gardés : c'est l'échange des autres
     'messages.sender_id',
     'tasks.created_by',
     'groups.created_by',
     'task_list_items.checked_by',
     -- gardé pour un groupe, supprimé pour un rendez-vous personnel
-    'events.owner_id'
+    'events.owner_id',
+    -- gardé : le dossier de modération garderait son sujet
+    'signalements.profil_id',
+    -- anonymisés : le dossier reste, le lien part
+    'signalements.auteur_id', 'signalements.traite_par'
   ];
   oublie   text;
   etat     text;
@@ -2309,6 +2556,33 @@ begin
   assert drapeau, 'la lecture doit signaler un compte supprimé';
   assert v_pseudo is null and v_prenom is null and v_avatar is null,
          'aucune identité ne doit sortir d''un compte supprimé';
+
+  -- 12bis. Le dossier de modération survit, anonymisé --------------------
+  --     Deux contrôles, et le premier est un **contrôle négatif** : un
+  --     signalement déposé par le compte supprimé ne doit pas partir avec
+  --     lui, sinon fermer son compte effacerait le signalement qu'on a
+  --     déposé. Le second dit l'autre moitié : le lien, lui, part.
+  --
+  --     **Sous `postgres`** : `signalements` n'a aucun privilège, et compter
+  --     sous le mauvais rôle donnerait « permission denied » là où le défaut
+  --     serait dans le test. C'est le même piège que `push_outbox`, dont la
+  --     politique SELECT faisait compter zéro alors que les lignes existaient.
+  reset role;
+
+  --     Deux lignes, et c'est ce qu'on attend : le bloc de la tranche 15 a
+  --     signalé le message de Léa **et** son profil, et un signalement de
+  --     message porte aussi l'auteur du message.
+  select count(*) into lignes from public.signalements s
+   where s.profil_id = lea;
+  assert lignes = 2,
+         format('les signalements déposés par le compte supprimé devaient '
+                'rester, reçu %s ligne(s)', lignes);
+
+  select count(*) into lignes from public.signalements s
+   where s.auteur_id = camille or s.traite_par = camille;
+  assert lignes = 0,
+         format('aucun signalement ne doit encore nommer le compte supprimé, '
+                'reçu %s ligne(s)', lignes);
 
   -- 13. Rejouable : un second appel ne refait pas le travail ----------------
   reset role;

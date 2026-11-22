@@ -3401,4 +3401,218 @@ class AppTextsFr extends AppTexts {
 
   @override
   String get notificationsVoirInvitation => 'Voir l’invitation';
+
+  @override
+  String get signalementMotifSpam => 'Spam ou publicité';
+
+  @override
+  String get signalementMotifHarcelement => 'Harcèlement';
+
+  @override
+  String get signalementMotifHaine => 'Propos haineux';
+
+  @override
+  String get signalementMotifSexuel => 'Contenu sexuel';
+
+  @override
+  String get signalementMotifViolence => 'Violence ou menaces';
+
+  @override
+  String get signalementMotifAutre => 'Autre chose';
+
+  @override
+  String get signalementAideSpam => 'Messages répétés, liens non sollicités';
+
+  @override
+  String get signalementAideHarcelement =>
+      'Insistance, intimidation, moqueries répétées';
+
+  @override
+  String get signalementAideHaine =>
+      'Attaque liée à l’origine, la religion, le genre, l’orientation';
+
+  @override
+  String get signalementAideSexuel =>
+      'Images ou propos à caractère sexuel non désirés';
+
+  @override
+  String get signalementAideViolence => 'Menaces, incitation à nuire';
+
+  @override
+  String get signalementAideAutre => 'Décrivez-le ci-dessous';
+
+  @override
+  String get signalementEnvoye => 'Signalement envoyé. Il sera examiné.';
+
+  @override
+  String get signalementDejaEnvoye =>
+      'Vous avez déjà signalé cela, et ce n’est pas encore traité.';
+
+  @override
+  String get signalementIntrouvable => 'Cela n’existe plus.';
+
+  @override
+  String get signalementNonMembre => 'Vous ne faites pas partie de ce groupe.';
+
+  @override
+  String get signalementSoiMeme =>
+      'Vous ne pouvez pas vous signaler vous-même.';
+
+  @override
+  String get signalementMotifInconnu => 'Ce motif n’est pas reconnu.';
+
+  @override
+  String get signalementNonConnecte => 'Reconnectez-vous pour signaler.';
+
+  @override
+  String get signalementNonModerateur =>
+      'Vous n’avez pas accès à la modération.';
+
+  @override
+  String get signalementMarqueTraite => 'Signalement traité.';
+
+  @override
+  String get signalementRouvert => 'Signalement rouvert.';
+
+  @override
+  String get signalementMessageSupprime => 'Message supprimé.';
+
+  @override
+  String get signalementMessageDejaSupprime =>
+      'Ce message était déjà supprimé.';
+
+  @override
+  String get signalementSignaler => 'Signaler';
+
+  @override
+  String get signalementTitreMessage => 'Signaler ce message';
+
+  @override
+  String get signalementTitreGroupe => 'Signaler ce groupe';
+
+  @override
+  String get signalementTitreProfil => 'Signaler ce profil';
+
+  @override
+  String get signalementConfidentiel =>
+      'La personne concernée n’est pas prévenue, et ne saura pas qui a signalé.';
+
+  @override
+  String get signalementContenuGarde =>
+      'Le contenu signalé est recopié, pour qu’il reste lisible même s’il est effacé ensuite.';
+
+  @override
+  String get signalementCommentaire => 'Précisions';
+
+  @override
+  String get signalementCommentaireAide =>
+      'Facultatif — ce qui aide à comprendre';
+
+  @override
+  String get signalementEnvoyer => 'Envoyer le signalement';
+
+  @override
+  String get signalementChoisirMotif => 'Choisissez un motif.';
+
+  @override
+  String get moderationTitre => 'Signalements';
+
+  @override
+  String get moderationATraiter => 'À traiter';
+
+  @override
+  String get moderationTraites => 'Traités';
+
+  @override
+  String get moderationVideTitre => 'Rien à traiter';
+
+  @override
+  String get moderationVideMessage =>
+      'Aucun signalement n’attend. C’est la bonne nouvelle.';
+
+  @override
+  String get moderationVideTraitesTitre => 'Aucun signalement traité';
+
+  @override
+  String get moderationVideTraitesMessage =>
+      'Ce que vous marquerez comme traité se rangera ici.';
+
+  @override
+  String get moderationCibleMessage => 'Message';
+
+  @override
+  String get moderationCibleGroupe => 'Groupe';
+
+  @override
+  String get moderationCibleProfil => 'Profil';
+
+  @override
+  String moderationSignalePar(String nom) {
+    return 'Signalé par $nom';
+  }
+
+  @override
+  String moderationVise(String nom) {
+    return 'Concerne $nom';
+  }
+
+  @override
+  String moderationDansGroupe(String groupe) {
+    return 'Dans $groupe';
+  }
+
+  @override
+  String get moderationContenuRecopie => 'Contenu signalé';
+
+  @override
+  String get moderationMessageEfface =>
+      'Ce message a été effacé depuis le signalement.';
+
+  @override
+  String get moderationMediaImage => 'Une photo';
+
+  @override
+  String get moderationMediaVideo => 'Une vidéo';
+
+  @override
+  String get moderationMediaAudio => 'Un message vocal';
+
+  @override
+  String get moderationSupprimerMessage => 'Supprimer le message';
+
+  @override
+  String get moderationSupprimerConfirmation =>
+      'La bulle se referme en « message supprimé » pour tout le groupe. Le signalement garde ce qui avait été écrit.';
+
+  @override
+  String get moderationMarquerTraite => 'Marquer traité';
+
+  @override
+  String get moderationRouvrir => 'Rouvrir';
+
+  @override
+  String get moderationNote => 'Note';
+
+  @override
+  String get moderationNoteAide => 'Facultatif — ce que vous avez fait';
+
+  @override
+  String get moderationAucunLevier =>
+      'Pour un groupe ou un profil, la note est le seul levier : ni la fermeture d’un compte ni la suppression d’un groupe ne se font d’ici.';
+
+  @override
+  String get profileSignalements => 'Signalements';
+
+  @override
+  String get moderationIndisponible => 'Signalements indisponibles';
+
+  @override
+  String moderationEnTete(String cible, String motif) {
+    return '$cible · $motif';
+  }
+
+  @override
+  String moderationCitation(String texte) {
+    return '« $texte »';
+  }
 }

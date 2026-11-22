@@ -38,6 +38,7 @@ import '../features/profile/screens/profile_edit_screen.dart';
 import '../features/profile/screens/public_profile_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
 import '../features/profile/screens/settings_screen.dart';
+import '../features/signalements/screens/moderation_screen.dart';
 import '../features/tasks/screens/task_assignment_screen.dart';
 import '../features/tasks/screens/task_detail_screen.dart';
 import '../features/tasks/screens/tasks_screen.dart';
@@ -327,6 +328,13 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
         parentNavigatorKey: _rootNavigatorKey,
         builder: (BuildContext context, GoRouterState state) =>
             const AboutScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.moderationPath,
+        name: AppRoutes.moderation,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (BuildContext context, GoRouterState state) =>
+            const ModerationScreen(),
       ),
       GoRoute(
         path: AppRoutes.settingsPath,

@@ -351,7 +351,7 @@ supabase/                     # SQL à exécuter sur le projet Supabase
 
 Features existantes : `auth`, `onboarding`, `profile`, `home`, `groups`,
 `calendar`, `contacts`, `notifications`, `tasks`, `availability`, `chat`,
-`create`.
+`create`, `signalements`.
 
 `lib/l10n/` porte les fichiers ARB et la classe `AppTexts` générée.
 
@@ -1550,13 +1550,13 @@ mentionnent. `colonne_avatar_predefini.sql` ouvre le manifeste,
 `chercher_profils_par_pseudo` lisent `supprime_le` —, et
 `colonne_media_audio.sql` se place juste avant `tranche5a_chat.sql`.
 
-Trois entrées de `supabase/` ne sont **pas** des migrations : elles n'écrivent
-rien et ne changent rien.
+Quatre entrées de `supabase/` ne sont **pas** des migrations.
 
 | Entrée | Rôle |
 | --- | --- |
 | `diagnostic_invitation.sql` | rejoue l'invitation nominative sous `authenticated`, dans une transaction annulée |
 | `diagnostic_taches_evenements.sql` | même chose pour les tâches et les événements, précédé de l'audit du schéma (PARTIE A) |
+| `designer_moderateur.sql` | la ligne qui désigne un modérateur, à passer une fois. **Hors du manifeste parce que le dépôt est public** : elle porterait une adresse ou un identifiant — voir « Signaler un abus » |
 | `verification/` | contrôle local sur base jetable, décrit en tête de document |
 
 Les deux fichiers de diagnostic **peuvent** être collés dans l'éditeur SQL du
@@ -4242,6 +4242,233 @@ elle.
 
 ---
 
+## Signaler un abus
+
+Obligation légale, livrée par `supabase/tranche15_signalements.sql` et la
+feuille `ReportSheet`. Depuis un message, un groupe ou un profil ; traité
+depuis `/parametres/signalements`.
+
+### Une table dans l'application, et non un envoi d'e-mail
+
+Un e-mail aurait demandé une adresse dédiée, un service d'envoi et une clé de
+plus dans les secrets. Surtout, il n'aurait porté qu'une **alerte** : le
+contenu signalé n'y serait pas, et il ne s'y traiterait pas. Une table lue par
+un écran fait les deux, sans dépendance nouvelle.
+
+### La table n'est pas exposée **du tout**
+
+C'est la réponse à « sans que ce soit contournable ». Une politique RLS qui
+vérifierait le lecteur serait déjà correcte, et pourtant insuffisante : elle
+laisserait la table **atteignable** par PostgREST, et **les politiques
+s'additionnent en « ou »**. Une politique de trop posée à côté la rouvrirait
+— ce qui n'est pas une hypothèse, c'est ce qui est arrivé au stockage pendant
+des mois (voir « Le durcissement du stockage était sans effet »).
+
+`signalements` et `moderateurs` ne reçoivent donc **aucune politique**, et
+leur privilège est retiré à `anon` et `authenticated`. Il n'y a pas de
+politique à contourner : il n'y a pas de privilège. Cinq fonctions
+`security definer` sont la seule porte, et chacune porte sa règle dans son
+corps — ce qui est la règle de la tranche 7, appliquée dès la création plutôt
+qu'après coup.
+
+| Fonction | Qui peut l'appeler utilement |
+| --- | --- |
+| `signaler` | tout compte, sur ce qu'il peut voir |
+| `est_moderateur` | tout compte, sur lui-même |
+| `signalements_a_traiter` | un modérateur ; **zéro ligne** pour les autres |
+| `traiter_signalement` | un modérateur ; `non_moderateur` pour les autres |
+| `supprimer_message_signale` | idem |
+
+**Zéro ligne et non une erreur** : un appel direct avec un identifiant
+arbitraire obtient exactement ce qu'obtient un écran vide, et n'apprend donc
+pas qu'il y avait quelque chose à voir. Les deux contrôles négatifs sont dans
+le test de fumée — lire la table sous `authenticated` échoue en
+`insufficient_privilege`, et s'y inscrire modérateur aussi.
+
+### Qui est modérateur se dit une fois, hors du dépôt
+
+`moderateurs` est **vide à la création**. La désignation est une ligne à
+passer dans l'éditeur SQL du projet, prête à copier dans
+`supabase/designer_moderateur.sql` — fichier qui n'est pas dans
+`migrations.txt`, comme les deux fichiers de diagnostic.
+
+La raison est dirimante : **le dépôt est public.** Ni l'adresse e-mail ni
+l'identifiant du propriétaire n'ont à y figurer, et une migration qui
+désignerait quelqu'un devrait porter l'un des deux.
+
+**Un secret GitHub a été envisagé et écarté** : le workflow des migrations ne
+tourne que sur un push touchant `supabase/`, si bien que poser le secret
+n'aurait rien déclenché. La panne aurait été muette, et on l'aurait cherchée
+du côté de la fonction plutôt que du côté du déclencheur — exactement le
+genre de défaut que ce projet paie cher.
+
+Tant que personne n'est désigné, la ligne des paramètres n'apparaît pour
+personne et la file ne rend rien. Les signalements, eux, se déposent
+normalement et attendent dans la table : **c'est l'état sûr par défaut**, pas
+une panne.
+
+### Le contenu signalé est recopié, et c'est tout l'objet
+
+`signalements.contexte` garde le texte du message au moment du signalement.
+Deux raisons, et chacune suffit :
+
+1. **celui qu'on signale est précisément celui qui veut effacer.**
+   `supprimer_message` vide `content` — la preuve disparaîtrait avec un geste
+   que son auteur peut faire à tout moment ;
+2. **le modérateur n'est pas membre du groupe.** `msg_select` ne lui
+   laisserait rien lire, et lui ouvrir les conversations du service pour qu'il
+   puisse juger un message serait payer bien trop cher.
+
+Sans la recopie, le signalement serait l'alerte sans le contexte — ce que la
+consigne écarte en toutes lettres. C'est la raison d'être de la phrase
+affichée dans la feuille : elle dispense de faire une capture d'écran avant
+de signaler.
+
+**Les messages voisins n'y entrent pas.** Ils sont d'auteurs tiers que
+personne n'a signalés, et les recopier mettrait leurs propos dans un dossier
+de modération sans qu'ils y soient pour rien. Si le contexte alentour devenait
+nécessaire, ce serait une décision à prendre, pas un oubli à combler.
+
+**L'écart entre la recopie et l'état réel est une information** :
+`signalements_a_traiter` rend `message_efface`, et la carte dit « ce message a
+été effacé depuis ». C'est ce qui distingue « rien à voir » de « il a effacé ».
+
+#### On ne signale que ce qu'on peut voir
+
+`signaler` exige `is_group_member` pour un message comme pour un groupe. Ce
+n'est pas du zèle : **sans ce refus, la recopie serait un oracle de lecture**
+sur toutes les conversations du service — il suffirait de signaler un
+identifiant de message pour en obtenir le texte. Le contrôle négatif est dans
+le test de fumée, et c'est le défaut qu'il faut ne pas créer en voulant garder
+la preuve.
+
+### Voir **et agir**, pas seulement recevoir une alerte
+
+| Cible | Ce que le modérateur peut faire |
+| --- | --- |
+| un message | **le supprimer** (suppression douce), et marquer traité |
+| un groupe | marquer traité, avec une note |
+| un profil | marquer traité, avec une note |
+
+`supprimer_message_signale` existe parce que `supprimer_message` n'obéit qu'à
+l'auteur du message, et que le modérateur n'est pas membre du groupe. La
+suppression est **douce** comme partout : `content` passe à la chaîne vide —
+`messages_check` exige un contenu ou un média —, la bulle se referme en
+« message supprimé » chez tout le monde, et la recopie du signalement garde ce
+qui avait été écrit. Le fichier d'un média reste dans le bucket : seule l'API
+Storage l'efface, et c'est la limite déjà documentée pour la suppression de
+compte.
+
+**Fermer un compte et supprimer un groupe ne se font pas d'ici**, et l'écran le
+dit plutôt que de laisser chercher le bouton : ce sont des décisions dont la
+portée dépasse ce qu'une migration peut trancher. La note est le levier, et le
+blocage en sera un autre.
+
+### « Marquer traité pour ne pas le revoir »
+
+C'est `traite_le` qui le porte, et la lecture par défaut ne rend que les
+lignes où il est nul. Pas de colonne « vu », pas de table de suivi — même
+parti que la suppression de la ligne d'adhésion en tranche 6, qui *est* la
+mémoire.
+
+Trois choix à connaître :
+
+- **rouvrir est possible** (`p_traite` à faux) : un traitement posé par erreur
+  n'aurait sinon aucun recours. La note posée au traitement **survit** à la
+  réouverture — elle dit ce qui a été fait, et le geste ne se défait pas ;
+- **la note se demande au moment où l'on décide**, pas après. « Ce que vous
+  avez fait » ne se retrouve pas une heure plus tard, et une note facultative
+  qu'on ne propose jamais n'est jamais écrite ;
+- **`null` et la chaîne vide ne veulent pas dire la même chose** : annuler le
+  dialogue ne traite pas, le valider sans écrire traite sans note. Les
+  confondre empêcherait de traiter sans commentaire. Même distinction que
+  `null` et `[]` pour les assignés de `creer_tache`.
+
+### Deux signalements identiques non traités n'apprennent rien
+
+`signaler` répond `deja_signale`. Le contrôle est dans la fonction et non dans
+une contrainte d'unicité, parce que la règle porte sur « non encore traité » —
+qu'un index unique partiel dirait mal —, et parce que le second signalement du
+même geste, **après** traitement, est légitime.
+
+Côté écran, « déjà signalé » **reste dans la feuille** avec son message : ce
+n'est pas une panne, c'est la réponse à la question, et refermer sur une
+`SnackBar` furtive laisserait croire à un envoi.
+
+### La feuille est unique, et l'ouverture vit dans `router/`
+
+**Une feuille et non trois.** Ce qui change d'un message à un groupe ou à un
+profil, c'est le titre : les six motifs, le champ de précisions et les deux
+phrases d'explication sont les mêmes.
+
+`ReportSheet` vit dans la feature, et son ouverture dans
+`router/signaler.dart` — **même raison que `ouvrirProfilDe`** : trois features
+l'appellent, et *une feature ne lit jamais les widgets d'une autre*. Monter le
+widget dans `core/widgets` comme `CoverBanner` était impossible : il écrit,
+donc il lit un provider de la feature, et `core` ne connaît aucune feature.
+Lui passer un rappel aurait recopié le câblage aux trois sites d'appel.
+
+Les deux phrases de la feuille ne sont pas du remplissage. La première — « la
+personne n'est pas prévenue, et ne saura pas qui a signalé » — répond à la
+première question de quelqu'un qui hésite. La seconde dit que l'effacement ne
+sauvera personne.
+
+**Signaler n'apparaît pas sur son propre message**, et le menu d'un profil ne
+s'ouvre pas sur son propre profil : `signaler` refuse `soi_meme`, et offrir le
+geste pour obtenir un refus serait promettre ce que la base refuse.
+
+### Ce que la suppression de compte en fait
+
+Trois clés étrangères, trois sorts, et **aucun n'est « supprimer »** — un
+dossier de modération ne doit pas s'effacer en fermant un compte, ni celui de
+qui a signalé, ni celui de qui est signalé.
+
+| Colonne | Sort |
+| --- | --- |
+| `signalements.auteur_id` | **`null`** — le dossier reste, son auteur devient anonyme, et l'écran affiche « Compte supprimé » |
+| `signalements.traite_par` | **`null`**, même raison |
+| `signalements.profil_id` | **conservé** : il pointe vers la pierre tombale, qui ne porte plus de nom. Le mettre à `null` ne protégerait personne et priverait le dossier de son sujet — en plus de taire au modérateur que le compte visé est déjà parti |
+| `moderateurs.user_id` | **supprimé** : « ce compte peut lire les signalements » l'identifie autant que le reste |
+
+Le `contexte` recopié n'est pas touché : c'est du **contenu**, et le contenu
+reste. Même arbitrage que pour les messages et les photos.
+
+Conséquence assumée de la dernière ligne : si le seul modérateur supprime son
+compte, plus personne ne lit la file et il faut en désigner un. L'alternative
+— garder un compte supprimé parmi les modérateurs — est pire.
+
+**C'est le filet de la tranche 14 qui a imposé tout cela**, et il a fonctionné
+exactement comme prévu : les trois nouvelles clés étrangères ont fait échouer
+le rejeu avec « ces colonnes référencent profiles et la suppression de compte
+ne dit pas ce qu'elles deviennent », puis `moderateurs.user_id` une seconde
+fois. Rien n'a été oublié parce que rien ne *pouvait* l'être.
+
+### Une contrainte qui interdit, et n'exige pas
+
+`signalements_cible_coherente` interdit les clés hors sujet et **n'exige la
+présence d'aucune**. Ce n'est pas un relâchement : les trois clés sont
+`on delete set null`, et une contrainte exigeant la présence de l'une d'elles
+serait réévaluée à la mise à `null` et **refuserait la suppression** de
+l'objet visé. Ce qui garantit la bonne clé, c'est que `signaler` est le seul
+écrivain possible — la table n'a aucun privilège —, et c'est une garantie plus
+forte qu'un `check`.
+
+Un signalement de message porte **aussi** `profil_id`, l'auteur du message :
+sans lui, la modération lirait un identifiant brut dans la recopie, et deux
+signalements visant la même personne — l'un sur son message, l'autre sur son
+profil — ne se rapprocheraient pas.
+
+### Le détecteur de textes a trouvé un vrai défaut, deux heures après
+
+Les guillemets du commentaire étaient écrits dans le widget : `'« … »'`. Ils
+sont français — l'anglais écrit « “ … ” », l'allemand « „ … “ » —, et les
+laisser là les aurait donnés aux quatre langues. C'est le défaut qu'on venait
+de corriger quatre-vingt-onze fois, recréé dans la même journée. Le séparateur
+de l'en-tête a suivi le même chemin, par précaution : un `·` est de la
+ponctuation, mais une langue pourrait vouloir l'ordre inverse.
+
+---
+
 ## Écran « Mes contacts »
 
 Quatre blocs : **en-tête**, **bande des favoris**, **carnet rangé par
@@ -4326,8 +4553,8 @@ l'en-tête : « comment j'ajoute quelqu'un ? » n'a qu'une réponse.
 
 **Quatre langues : français, anglais, espagnol, allemand.** Le français est la
 langue de référence — `template-arb-file` de `l10n.yaml` —, et les quatre
-fichiers `lib/l10n/app_{fr,en,es,de}.arb` portent les **904 mêmes clés**, dont
-156 paramétrées et 25 en pluriel ICU. `AppTexts` est la classe générée.
+fichiers `lib/l10n/app_{fr,en,es,de}.arb` portent les **967 mêmes clés**, dont
+161 paramétrées et 25 en pluriel ICU. `AppTexts` est la classe générée.
 
 Les délégués de Material et de Cupertino ne sont pas décoratifs : sans eux, un
 `showDatePicker(locale: Locale('fr'))` reste en anglais quand il ne lève pas.
@@ -4616,7 +4843,7 @@ pas.**
 
 **L'allemand est de 20 à 30 % plus long que le français**, et un débordement
 ne se voit ni à l'analyse ni dans un test qui vise un texte. `test/langues_test.dart`
-ouvre donc **27 écrans dans les quatre langues à 360 dp** — la largeur
+ouvre donc **29 écrans dans les quatre langues à 360 dp** — la largeur
 minimale que le projet se donne — et échoue sur tout `RenderFlex overflowed`.
 
 Ce n'est pas un test qui *vérifie* quelque chose en plus : c'est l'ouverture
@@ -5540,6 +5767,31 @@ sécurité.
   message, session intacte. Côté conversation : son message survit, signé
   « Compte supprimé » et **non « Membre »**, et son nom n'ouvre plus de
   profil.
+- `test/signalements_test.dart` couvre le signalement d'abus. Sans widget :
+  « déjà signalé » qui **n'est pas une réussite et n'est pas une panne**, un
+  mot d'état inconnu du client qui ne lève pas, les quatre seuls mots qui
+  comptent pour une réussite, les six motifs qui portent un libellé et une
+  aide pris dans l'ARB, et la lecture d'une ligne — la recopie, `auteur_nom`
+  nul qui **est** une information, et un média recopié qui n'a pas de texte
+  sans que ce soit un vide. Côté signalement : la feuille ouverte depuis un
+  message d'autrui avec ses deux phrases — celle qui dit que la personne n'est
+  pas prévenue, celle qui dispense de la capture d'écran —, **son propre
+  message qui ne l'offre pas**, le contrôle négatif d'un envoi sans motif qui
+  n'écrit rien, la cible et le motif qui arrivent au dépôt, « déjà signalé »
+  qui **reste dans la feuille** au lieu de se refermer, un groupe signalé
+  depuis son menu, un profil signalé — et **jamais le sien**, dont le menu
+  n'existe pas. Côté modération : la ligne des paramètres absente sans être
+  modérateur, présente avec, **l'URL forcée qui donne un écran vide et non un
+  accès**, la carte qui porte qui signale et qui est visé, un compte supprimé
+  qui signe le dossier sans le faire disparaître, un message effacé depuis le
+  signalement qui se dit — la recopie restant lisible, ce qui est toute sa
+  raison d'être —, et un groupe signalé qui annonce que la note est le seul
+  levier. Côté action : la suppression qui se confirme avec son contrôle
+  négatif, la note demandée **avant** l'écriture, la ligne qui sort de la file
+  et l'archive relue avec elle, « Annuler » sur la note qui ne traite pas —
+  le contrôle qui distingue `null` de la chaîne vide —, la réouverture qui ne
+  redemande pas de note, et une lecture qui échoue qui le dit au lieu de se
+  rendre vide.
 - `test/app_version_test.dart` confronte `AppConfig.version` au `pubspec.yaml`,
   sans widget : la version est recopiée à la main, et une version fausse est
   pire qu'une version absente.
@@ -5561,7 +5813,7 @@ sécurité.
   porte dans aucune langue. Côté salutation : le week-end, le soir qui
   l'emporte sur lui, **aucune fête nationale** — le contrôle porte sur
   l'énumération, quatre moments et pas un cinquième —, et l'après-midi
-  espagnol qui commence plus tard. Enfin **27 écrans ouverts dans les quatre
+  espagnol qui commence plus tard. Enfin **29 écrans ouverts dans les quatre
   langues à 360 dp**, où l'ouverture est le contrôle : c'est ce balayage qui a
   trouvé quatre débordements, dont deux antérieurs à la traduction.
 - `test/notifications_traduites_test.dart` couvre les notifications système
@@ -5603,14 +5855,19 @@ sécurité.
   du lien après la création, son contrôle négatif, et « Choisir dans mes
   contacts » qui ouvre le carnet entier en noms complets.
 
-Quatorze faux vivent dans `test/fakes/` — onze dépôts, l'enregistreur et le
+Quinze faux vivent dans `test/fakes/` — douze dépôts, l'enregistreur et le
 lecteur audio (`fake_voice.dart`), et le pont vers la page (`fake_pont_navigateur.dart`), sans lesquels ouvrir la conversation
 lèverait une `MissingPluginException` : un test de widget n'a ni micro ni
 haut-parleur. La liste : authentification, profil, groupes,
-contacts, notifications, tâches, agenda, disponibilités, chat, navigateur
-(`FakePushService`) et préférences de notification. **Tous les
+contacts, notifications, tâches, agenda, disponibilités, chat, signalements,
+navigateur (`FakePushService`) et préférences de notification. **Tous les
 fichiers de test les surchargent tous** — un provider oublié tombe sur
 `Supabase.instance`, absent en test.
+
+`FakeSignalementRepository` **déplace vraiment la ligne** quand on la traite,
+au lieu de se contenter de compter l'appel : sans cela, l'assertion « un
+signalement traité ne revient plus » passerait parce que rien n'a été relu, et
+non parce que la règle tient.
 
 `FakeChatRepository` simule le temps réel par un `StreamController` : un vrai
 canal Realtime demande une socket, que le harnais de test n'a pas. Ce qui est
@@ -5707,8 +5964,8 @@ sûr d'éprouver son caractère contextuel.
   au périmètre.
 - **L'application est en quatre langues** — français, anglais, espagnol,
   allemand —, elle suit celle du téléphone, retombe sur l'anglais, et le
-  choix se règle dans les paramètres et se mémorise sur l'appareil. 904 clés
-  dans quatre fichiers, 156 paramétrées, 25 pluriels ICU ;
+  choix se règle dans les paramètres et se mémorise sur l'appareil. 967 clés
+  dans quatre fichiers, 161 paramétrées, 25 pluriels ICU ;
   `tool/verifier_textes.py` fait échouer la CI si un texte en dur revient, et
   `test/langues_test.dart` si les quatre fichiers divergent.
 
@@ -5726,7 +5983,7 @@ sûr d'éprouver son caractère contextuel.
 
   Trois réserves de plus : les traductions n'ont été relues **que par
   l'auteur**, pas par un locuteur natif ; le balayage des débordements porte
-  sur 27 écrans à 360 dp, et non sur tous les états de chacun — une liste
+  sur 29 écrans à 360 dp, et non sur tous les états de chacun — une liste
   très longue ou un nom de groupe inhabituel peut encore déborder ailleurs ;
   et l'espagnol et l'allemand n'ont été vus que sur un **rendu de test**,
   jamais sur un appareil.
@@ -5735,7 +5992,7 @@ sûr d'éprouver son caractère contextuel.
   Restent hors périmètre : les notifications système, et la modification d'une
   seule occurrence d'un élément récurrent — la `rrule` vaut pour toute la
   série.
-- **Quatre prérequis manuels subsistent, et rien ne les remplace :**
+- **Cinq prérequis manuels subsistent, et rien ne les remplace :**
   0. **régénérer `SUPABASE_ACCESS_TOKEN`** — le secret existe mais est refusé
      en `401`, et la fonction Edge n'a donc **pas été déployée depuis le
      19 août** (API Supabase : `version: 9`). Supabase → Account → Access
@@ -5766,6 +6023,15 @@ sûr d'éprouver son caractère contextuel.
      avoir atteint `main`. Le prérequis reste listé parce qu'il ne tient qu'à
      ces deux réglages — le jeton expire, et le rôle se retire d'un clic.
 
+  4. **désigner un modérateur**, sans quoi personne ne lit les signalements.
+     Une ligne à passer une fois dans l'éditeur SQL du projet, prête à copier
+     dans `supabase/designer_moderateur.sql`. Elle n'est pas dans le
+     manifeste, et ne peut pas l'être : **le dépôt est public**, et elle
+     porterait une adresse e-mail ou un identifiant. Tant qu'elle n'est pas
+     passée, la ligne des paramètres n'apparaît pour personne et la file ne
+     rend rien — mais les signalements se déposent et attendent dans la table.
+     C'est l'état sûr par défaut, non une panne. Voir « Signaler un abus ».
+
   Les migrations, elles, s'appliquent seules à chaque push sur `main`.
 - **Une migration n'est éprouvée contre la vraie base qu'après fusion.** Le
   workflow qui l'applique ne peut pas tourner sur une pull request — le dépôt
@@ -5774,8 +6040,8 @@ sûr d'éprouver son caractère contextuel.
   appelle les fonctions, mais son décor est recopié de cette documentation, et
   ne dit donc rien des colonnes réelles. C'est `supabase/schema_actuel.sql`,
   relevé après coup, qui fait foi.
-- Le test de fumée couvre les tranches 3, 3b, 4, 5a, 5b, 5c, 5d, 6, 8, 13 et
-  14 — dont, pour la 13, deux contrôles qui portent sur la **signature** de
+- Le test de fumée couvre les tranches 3, 3b, 4, 5a, 5b, 5c, 5d, 6, 8, 13, 14
+  et 15 — dont, pour la 13, deux contrôles qui portent sur la **signature** de
   `profil_consultable` plutôt que sur une valeur : aucun appel ne révélerait
   une colonne de trop, qu'elle porte une adresse e-mail ou des compteurs
   retirés. Pour la 14, c'est **la confrontation du catalogue au code** : toute
@@ -5927,6 +6193,28 @@ sûr d'éprouver son caractère contextuel.
   une minute, et rien de ce qui est déjà délivré ne se rappelle. Enfin l'écran
   n'a été éprouvé que par les tests et le rejeu sur base jetable : la **vraie**
   base ne voit la migration qu'après fusion, comme toujours ici.
+- **Le signalement d'abus est livré** — voir sa section. Cinq réserves.
+  D'abord **personne n'est modérateur tant que la ligne de désignation n'a pas
+  été passée** : c'est le cinquième prérequis manuel, et jusque-là les
+  signalements s'accumulent sans être lus. Ensuite, **la modération ne sait
+  agir que sur un message** : fermer un compte et supprimer un groupe ne se
+  font pas d'ici, et la note est le seul levier pour un groupe ou un profil —
+  ce sont des décisions produit, pas un chantier technique. Puis **le fichier
+  d'un média supprimé reste dans le bucket** : seule l'API Storage l'efface, et
+  un modérateur n'a pas de session de l'auteur — même limite que pour la
+  suppression de compte, sans la parade qu'elle a (l'intéressé fait le retrait
+  lui-même avant l'appel SQL). Ensuite **rien ne prévient le modérateur** qu'un
+  signalement est arrivé : il faut ouvrir l'écran. Une notification relèverait
+  de la file de la tranche 5c et n'est pas au périmètre — et elle serait
+  trompeuse tant que la fonction Edge n'est pas déployée. Enfin l'écran n'a été
+  éprouvé que par les tests et le rejeu sur base jetable : la **vraie** base ne
+  voit la migration qu'après fusion, comme toujours ici.
+- **Les contrôles de non-contournement portent sur le rejeu, pas sur la
+  production.** Que `signalements` soit hors de portée de PostgREST est
+  éprouvé sous `authenticated` dans `fumee.sql` — `insufficient_privilege`
+  sur la lecture comme sur l'inscription d'un modérateur. Ce n'est pas la même
+  chose qu'un appel HTTP réel contre le projet, qui ne peut être fait
+  qu'**après** fusion ; c'est la limite de tout le SQL de ce dépôt.
 - **Les trois trous du détecteur sont refermés, et les 91 chaînes qu'ils
   laissaient passer sont traduites** — voir « Puis 91 de plus ». Ce qui reste
   n'est pas un trou connu mais la limite de la méthode : la détection se fait

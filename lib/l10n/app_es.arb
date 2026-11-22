@@ -2083,5 +2083,106 @@
   "notificationsDesactivees": "Desactivadas",
   "notificationsRefusees": "Rechazadas",
   "notificationsIndisponibles": "No disponibles",
-  "notificationsVoirInvitation": "Ver la invitación"
+  "notificationsVoirInvitation": "Ver la invitación",
+  "signalementMotifSpam": "Spam o publicidad",
+  "signalementMotifHarcelement": "Acoso",
+  "signalementMotifHaine": "Discurso de odio",
+  "signalementMotifSexuel": "Contenido sexual",
+  "signalementMotifViolence": "Violencia o amenazas",
+  "signalementMotifAutre": "Otra cosa",
+  "signalementAideSpam": "Mensajes repetidos, enlaces no solicitados",
+  "signalementAideHarcelement": "Insistencia, intimidación, burlas repetidas",
+  "signalementAideHaine": "Ataque por origen, religión, género u orientación",
+  "signalementAideSexuel": "Imágenes o comentarios sexuales no deseados",
+  "signalementAideViolence": "Amenazas, incitación a hacer daño",
+  "signalementAideAutre": "Descríbelo abajo",
+  "signalementEnvoye": "Informe enviado. Se revisará.",
+  "signalementDejaEnvoye": "Ya has informado de esto y aún no se ha tratado.",
+  "signalementIntrouvable": "Esto ya no existe.",
+  "signalementNonMembre": "No formas parte de este grupo.",
+  "signalementSoiMeme": "No puedes informar sobre ti mismo.",
+  "signalementMotifInconnu": "Este motivo no se reconoce.",
+  "signalementNonConnecte": "Vuelve a iniciar sesión para informar.",
+  "signalementNonModerateur": "No tienes acceso a la moderación.",
+  "signalementMarqueTraite": "Informe tratado.",
+  "signalementRouvert": "Informe reabierto.",
+  "signalementMessageSupprime": "Mensaje eliminado.",
+  "signalementMessageDejaSupprime": "Este mensaje ya estaba eliminado.",
+  "signalementSignaler": "Informar",
+  "signalementTitreMessage": "Informar de este mensaje",
+  "signalementTitreGroupe": "Informar de este grupo",
+  "signalementTitreProfil": "Informar de este perfil",
+  "signalementConfidentiel": "La persona afectada no recibe aviso y no sabrá quién informó.",
+  "signalementContenuGarde": "El contenido informado se copia, para que siga legible aunque se borre después.",
+  "signalementCommentaire": "Detalles",
+  "signalementCommentaireAide": "Opcional: lo que ayuda a entender",
+  "signalementEnvoyer": "Enviar el informe",
+  "signalementChoisirMotif": "Elige un motivo.",
+  "moderationTitre": "Informes",
+  "moderationATraiter": "Por tratar",
+  "moderationTraites": "Tratados",
+  "moderationVideTitre": "Nada por tratar",
+  "moderationVideMessage": "Ningún informe espera. Esa es la buena noticia.",
+  "moderationVideTraitesTitre": "Ningún informe tratado",
+  "moderationVideTraitesMessage": "Lo que marques como tratado se archivará aquí.",
+  "moderationCibleMessage": "Mensaje",
+  "moderationCibleGroupe": "Grupo",
+  "moderationCibleProfil": "Perfil",
+  "moderationSignalePar": "Informado por {nom}",
+  "@moderationSignalePar": {
+    "placeholders": {
+      "nom": {
+        "type": "String"
+      }
+    }
+  },
+  "moderationVise": "Sobre {nom}",
+  "@moderationVise": {
+    "placeholders": {
+      "nom": {
+        "type": "String"
+      }
+    }
+  },
+  "moderationDansGroupe": "En {groupe}",
+  "@moderationDansGroupe": {
+    "placeholders": {
+      "groupe": {
+        "type": "String"
+      }
+    }
+  },
+  "moderationContenuRecopie": "Contenido informado",
+  "moderationMessageEfface": "Este mensaje se ha borrado desde el informe.",
+  "moderationMediaImage": "Una foto",
+  "moderationMediaVideo": "Un vídeo",
+  "moderationMediaAudio": "Un mensaje de voz",
+  "moderationSupprimerMessage": "Eliminar el mensaje",
+  "moderationSupprimerConfirmation": "La burbuja se cierra como «mensaje eliminado» para todo el grupo. El informe conserva lo que se había escrito.",
+  "moderationMarquerTraite": "Marcar como tratado",
+  "moderationRouvrir": "Reabrir",
+  "moderationNote": "Nota",
+  "moderationNoteAide": "Opcional: lo que has hecho",
+  "moderationAucunLevier": "Para un grupo o un perfil, la nota es la única palanca: ni cerrar una cuenta ni eliminar un grupo se hace desde aquí.",
+  "profileSignalements": "Informes",
+  "moderationIndisponible": "Informes no disponibles",
+  "moderationEnTete": "{cible} · {motif}",
+  "@moderationEnTete": {
+    "placeholders": {
+      "cible": {
+        "type": "String"
+      },
+      "motif": {
+        "type": "String"
+      }
+    }
+  },
+  "moderationCitation": "«{texte}»",
+  "@moderationCitation": {
+    "placeholders": {
+      "texte": {
+        "type": "String"
+      }
+    }
+  }
 }

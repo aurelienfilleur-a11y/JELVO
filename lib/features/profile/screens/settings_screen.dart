@@ -6,6 +6,7 @@ import '../../../core/core.dart';
 import '../../../data/app_config.dart';
 import '../../../data/data_providers.dart';
 import '../../../router/app_routes.dart';
+import '../../signalements/providers/signalement_providers.dart';
 import '../../auth/models/auth_failure.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../notifications/models/notification_category.dart';
@@ -124,6 +125,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   valeur: 'v${AppConfig.version}',
                   onTap: () => context.pushNamed(AppRoutes.about),
                 ),
+                // **La ligne n'apparaît que pour un modérateur**, et c'est
+                // de la politesse, non de la sécurité : la règle est tenue
+                // par la base, où `signalements` n'a aucun privilège. Ce
+                // qu'on évite ici, c'est de montrer une ligne qui mènerait à
+                // un écran vide. Une panne de lecture la cache aussi — mieux
+                // vaut une ligne absente qu'une ligne qui ne mène nulle part.
+                if (ref.watch(estModerateurProvider).value ?? false)
+                  SettingsRow(
+                    icone: Icons.flag_outlined,
+                    libelle: AppTexts.of(context).profileSignalements,
+                    onTap: () => context.pushNamed(AppRoutes.moderation),
+                  ),
               ],
             ),
 

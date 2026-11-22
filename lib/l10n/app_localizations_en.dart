@@ -3375,4 +3375,216 @@ class AppTextsEn extends AppTexts {
 
   @override
   String get notificationsVoirInvitation => 'View the invitation';
+
+  @override
+  String get signalementMotifSpam => 'Spam or advertising';
+
+  @override
+  String get signalementMotifHarcelement => 'Harassment';
+
+  @override
+  String get signalementMotifHaine => 'Hate speech';
+
+  @override
+  String get signalementMotifSexuel => 'Sexual content';
+
+  @override
+  String get signalementMotifViolence => 'Violence or threats';
+
+  @override
+  String get signalementMotifAutre => 'Something else';
+
+  @override
+  String get signalementAideSpam => 'Repeated messages, unsolicited links';
+
+  @override
+  String get signalementAideHarcelement =>
+      'Persistence, intimidation, repeated mockery';
+
+  @override
+  String get signalementAideHaine =>
+      'Attack based on origin, religion, gender or orientation';
+
+  @override
+  String get signalementAideSexuel => 'Unwanted sexual images or remarks';
+
+  @override
+  String get signalementAideViolence => 'Threats, incitement to harm';
+
+  @override
+  String get signalementAideAutre => 'Describe it below';
+
+  @override
+  String get signalementEnvoye => 'Report sent. It will be reviewed.';
+
+  @override
+  String get signalementDejaEnvoye =>
+      'You have already reported this, and it is not yet handled.';
+
+  @override
+  String get signalementIntrouvable => 'This no longer exists.';
+
+  @override
+  String get signalementNonMembre => 'You are not part of this group.';
+
+  @override
+  String get signalementSoiMeme => 'You cannot report yourself.';
+
+  @override
+  String get signalementMotifInconnu => 'This reason is not recognised.';
+
+  @override
+  String get signalementNonConnecte => 'Sign in again to report.';
+
+  @override
+  String get signalementNonModerateur =>
+      'You do not have access to moderation.';
+
+  @override
+  String get signalementMarqueTraite => 'Report handled.';
+
+  @override
+  String get signalementRouvert => 'Report reopened.';
+
+  @override
+  String get signalementMessageSupprime => 'Message deleted.';
+
+  @override
+  String get signalementMessageDejaSupprime =>
+      'This message was already deleted.';
+
+  @override
+  String get signalementSignaler => 'Report';
+
+  @override
+  String get signalementTitreMessage => 'Report this message';
+
+  @override
+  String get signalementTitreGroupe => 'Report this group';
+
+  @override
+  String get signalementTitreProfil => 'Report this profile';
+
+  @override
+  String get signalementConfidentiel =>
+      'The person concerned is not notified, and will not know who reported.';
+
+  @override
+  String get signalementContenuGarde =>
+      'The reported content is copied, so it stays readable even if it is deleted afterwards.';
+
+  @override
+  String get signalementCommentaire => 'Details';
+
+  @override
+  String get signalementCommentaireAide =>
+      'Optional — what helps to understand';
+
+  @override
+  String get signalementEnvoyer => 'Send the report';
+
+  @override
+  String get signalementChoisirMotif => 'Choose a reason.';
+
+  @override
+  String get moderationTitre => 'Reports';
+
+  @override
+  String get moderationATraiter => 'To handle';
+
+  @override
+  String get moderationTraites => 'Handled';
+
+  @override
+  String get moderationVideTitre => 'Nothing to handle';
+
+  @override
+  String get moderationVideMessage =>
+      'No report is waiting. That is the good news.';
+
+  @override
+  String get moderationVideTraitesTitre => 'No handled report';
+
+  @override
+  String get moderationVideTraitesMessage =>
+      'What you mark as handled will be filed here.';
+
+  @override
+  String get moderationCibleMessage => 'Message';
+
+  @override
+  String get moderationCibleGroupe => 'Group';
+
+  @override
+  String get moderationCibleProfil => 'Profile';
+
+  @override
+  String moderationSignalePar(String nom) {
+    return 'Reported by $nom';
+  }
+
+  @override
+  String moderationVise(String nom) {
+    return 'About $nom';
+  }
+
+  @override
+  String moderationDansGroupe(String groupe) {
+    return 'In $groupe';
+  }
+
+  @override
+  String get moderationContenuRecopie => 'Reported content';
+
+  @override
+  String get moderationMessageEfface =>
+      'This message has been deleted since the report.';
+
+  @override
+  String get moderationMediaImage => 'A photo';
+
+  @override
+  String get moderationMediaVideo => 'A video';
+
+  @override
+  String get moderationMediaAudio => 'A voice message';
+
+  @override
+  String get moderationSupprimerMessage => 'Delete the message';
+
+  @override
+  String get moderationSupprimerConfirmation =>
+      'The bubble closes as “message deleted” for the whole group. The report keeps what had been written.';
+
+  @override
+  String get moderationMarquerTraite => 'Mark as handled';
+
+  @override
+  String get moderationRouvrir => 'Reopen';
+
+  @override
+  String get moderationNote => 'Note';
+
+  @override
+  String get moderationNoteAide => 'Optional — what you did';
+
+  @override
+  String get moderationAucunLevier =>
+      'For a group or a profile, the note is the only lever: neither closing an account nor deleting a group is done from here.';
+
+  @override
+  String get profileSignalements => 'Reports';
+
+  @override
+  String get moderationIndisponible => 'Reports unavailable';
+
+  @override
+  String moderationEnTete(String cible, String motif) {
+    return '$cible · $motif';
+  }
+
+  @override
+  String moderationCitation(String texte) {
+    return '“$texte”';
+  }
 }

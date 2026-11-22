@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:jelvo/features/signalements/providers/signalement_providers.dart';
 import 'package:jelvo/core/core.dart';
 import 'package:jelvo/data/clock.dart';
 import 'package:jelvo/data/data_providers.dart';
@@ -25,6 +26,7 @@ import 'package:jelvo/features/tasks/models/task.dart';
 import 'package:jelvo/features/tasks/providers/task_providers.dart';
 import 'package:jelvo/features/tasks/screens/task_assignment_screen.dart';
 
+import 'fakes/fake_signalement_repository.dart';
 import 'fakes/fake_auth_repository.dart';
 import 'fakes/fake_availability_repository.dart';
 import 'fakes/fake_chat_repository.dart';
@@ -157,6 +159,9 @@ Future<GoRouter> _pump(
         ),
         contactRepositoryProvider.overrideWithValue(FakeContactRepository()),
         chatRepositoryProvider.overrideWithValue(FakeChatRepository()),
+        signalementRepositoryProvider.overrideWithValue(
+          FakeSignalementRepository(),
+        ),
         notificationRepositoryProvider.overrideWithValue(
           notifications ?? FakeNotificationRepository(),
         ),

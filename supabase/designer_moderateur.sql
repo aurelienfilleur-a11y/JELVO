@@ -1,0 +1,57 @@
+-- ===========================================================================
+-- Désigner un modérateur — à passer une fois, dans l'éditeur SQL du projet
+-- ===========================================================================
+--
+-- **Ce fichier n'est pas une migration.** Il ne figure pas dans
+-- `migrations.txt` et ne sera jamais appliqué tout seul, comme les deux
+-- fichiers de diagnostic.
+--
+-- La raison est unique et elle est dirimante : **le dépôt est public.** Ni
+-- l'adresse e-mail ni l'identifiant du propriétaire n'ont à y figurer, et une
+-- migration qui désignerait quelqu'un devrait porter l'un des deux.
+--
+-- Tant que personne n'est désigné, `est_moderateur()` est faux pour tout le
+-- monde : la ligne de modération n'apparaît dans aucun écran de paramètres et
+-- `signalements_a_traiter()` ne rend rien. Les signalements, eux, se déposent
+-- normalement — ils attendent dans la table. C'est l'état sûr par défaut, et
+-- non une panne.
+--
+-- ---------------------------------------------------------------------------
+-- Comment faire
+-- ---------------------------------------------------------------------------
+--
+-- Tableau de bord Supabase → SQL Editor, puis coller **une** des deux formes
+-- ci-dessous en y mettant son adresse ou son identifiant. C'est idempotent :
+-- la repasser ne fait rien.
+
+-- Par adresse e-mail — la forme à préférer, on la connaît sans la chercher.
+-- `auth.users` n'est lisible que par un rôle privilégié, ce qu'est l'éditeur
+-- SQL du projet.
+--
+--   insert into public.moderateurs (user_id)
+--   select u.id from auth.users u
+--    where lower(u.email) = lower('adresse@example.com')
+--   on conflict (user_id) do nothing;
+
+-- Par identifiant, si l'on l'a déjà sous la main.
+--
+--   insert into public.moderateurs (user_id)
+--   values ('00000000-0000-0000-0000-000000000000')
+--   on conflict (user_id) do nothing;
+
+-- ---------------------------------------------------------------------------
+-- Vérifier
+-- ---------------------------------------------------------------------------
+-- Doit rendre exactement une ligne, et le pseudo attendu.
+--
+--   select m.user_id, p.pseudo, m.ajoute_le
+--     from public.moderateurs m
+--     join public.profiles p on p.id = m.user_id;
+
+-- ---------------------------------------------------------------------------
+-- Retirer
+-- ---------------------------------------------------------------------------
+--   delete from public.moderateurs where user_id = '…';
+--
+-- Rien d'autre ne change : les signalements déjà déposés restent, et le
+-- prochain modérateur désigné les voit.

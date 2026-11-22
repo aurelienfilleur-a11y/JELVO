@@ -43,6 +43,8 @@ const List<String> _ecrans = <String>[
   '/parametres',
   '/parametres/mot-de-passe',
   '/parametres/a-propos',
+  '/parametres/signalements',
+  '/parametres/supprimer-mon-compte',
   '/notifications',
   '/disponibilites',
   '/personnes/u2',

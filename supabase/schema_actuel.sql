@@ -24,6 +24,8 @@ create type public.invitation_status as enum ('pending', 'accepted', 'declined',
 create type public.invitation_type as enum ('group', 'event', 'task');
 create type public.media_type as enum ('image', 'video', 'audio');
 create type public.member_role as enum ('admin', 'member');
+create type public.signalement_cible as enum ('message', 'group', 'profile');
+create type public.signalement_motif as enum ('spam', 'harcelement', 'haine', 'sexuel', 'violence', 'autre');
 create type public.task_priority as enum ('low', 'medium', 'high');
 
 
@@ -41,6 +43,11 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 --   start_time           time without time zone       NOT NULL, sans défaut
 --   end_time             time without time zone       NOT NULL, sans défaut
 --   created_at           timestamp with time zone     NOT NULL, défaut now()
+
+-- blocages [RLS activée]
+--   bloqueur_id          uuid                         NOT NULL, sans défaut
+--   bloque_id            uuid                         NOT NULL, sans défaut
+--   cree_le              timestamp with time zone     NOT NULL, défaut now()
 
 -- contacts [RLS activée]
 --   requester_id         uuid                         NOT NULL, sans défaut
@@ -138,6 +145,10 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 --   tache_prise          boolean                      NOT NULL, défaut false
 --   media_duree_s        integer                      
 
+-- moderateurs [RLS activée]
+--   user_id              uuid                         NOT NULL, sans défaut
+--   ajoute_le            timestamp with time zone     NOT NULL, défaut now()
+
 -- notification_preferences [RLS activée]
 --   user_id              uuid                         NOT NULL, sans défaut
 --   type                 text                         NOT NULL, sans défaut
@@ -197,6 +208,21 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 --   auth_key             text                         
 --   langue               text                         
 
+-- signalements [RLS activée]
+--   id                   uuid                         NOT NULL, défaut gen_random_uuid()
+--   auteur_id            uuid                         
+--   cible_type           signalement_cible            NOT NULL, sans défaut
+--   message_id           uuid                         
+--   group_id             uuid                         
+--   profil_id            uuid                         
+--   motif                signalement_motif            NOT NULL, sans défaut
+--   commentaire          text                         
+--   contexte             jsonb                        NOT NULL, défaut '{}'::jsonb
+--   cree_le              timestamp with time zone     NOT NULL, défaut now()
+--   traite_le            timestamp with time zone     
+--   traite_par           uuid                         
+--   note                 text                         
+
 -- task_assignees [RLS activée]
 --   task_id              uuid                         NOT NULL, sans défaut
 --   user_id              uuid                         NOT NULL, sans défaut
@@ -235,6 +261,10 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 -- availabilities           availabilities_weekday_check : CHECK (((weekday >= 0) AND (weekday <= 6)))
 -- availabilities           availabilities_user_id_fkey : FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE
 -- availabilities           availabilities_pkey : PRIMARY KEY (id)
+-- blocages                 blocages_pas_soi_meme : CHECK ((bloqueur_id <> bloque_id))
+-- blocages                 blocages_bloque_id_fkey : FOREIGN KEY (bloque_id) REFERENCES profiles(id) ON DELETE CASCADE
+-- blocages                 blocages_bloqueur_id_fkey : FOREIGN KEY (bloqueur_id) REFERENCES profiles(id) ON DELETE CASCADE
+-- blocages                 blocages_pkey : PRIMARY KEY (bloqueur_id, bloque_id)
 -- contacts                 contacts_check : CHECK ((requester_id <> addressee_id))
 -- contacts                 contacts_addressee_id_fkey : FOREIGN KEY (addressee_id) REFERENCES profiles(id) ON DELETE CASCADE
 -- contacts                 contacts_requester_id_fkey : FOREIGN KEY (requester_id) REFERENCES profiles(id) ON DELETE CASCADE
@@ -281,6 +311,8 @@ create type public.task_priority as enum ('low', 'medium', 'high');
 -- messages                 messages_sender_id_fkey : FOREIGN KEY (sender_id) REFERENCES profiles(id)
 -- messages                 messages_task_id_fkey : FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
 -- messages                 messages_pkey : PRIMARY KEY (id)
+-- moderateurs              moderateurs_user_id_fkey : FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE
+-- moderateurs              moderateurs_pkey : PRIMARY KEY (user_id)
 -- notification_preferences notification_preferences_user_id_fkey : FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE
 -- notification_preferences notification_preferences_pkey : PRIMARY KEY (user_id, type)
 -- notifications            notifications_user_id_fkey : FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE
@@ -308,6 +340,20 @@ END)))))
 -- push_tokens              push_tokens_platform_check : CHECK ((platform = ANY (ARRAY['ios'::text, 'android'::text, 'web'::text])))
 -- push_tokens              push_tokens_user_id_fkey : FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE
 -- push_tokens              push_tokens_pkey : PRIMARY KEY (user_id, token)
+-- signalements             signalements_cible_coherente : CHECK (
+CASE cible_type
+    WHEN 'message'::signalement_cible THEN true
+    WHEN 'group'::signalement_cible THEN ((message_id IS NULL) AND (profil_id IS NULL))
+    WHEN 'profile'::signalement_cible THEN ((message_id IS NULL) AND (group_id IS NULL))
+    ELSE NULL::boolean
+END)
+-- signalements             signalements_commentaire_borne : CHECK (((commentaire IS NULL) OR (length(commentaire) <= 2000)))
+-- signalements             signalements_auteur_id_fkey : FOREIGN KEY (auteur_id) REFERENCES profiles(id) ON DELETE SET NULL
+-- signalements             signalements_group_id_fkey : FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE SET NULL
+-- signalements             signalements_message_id_fkey : FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE SET NULL
+-- signalements             signalements_profil_id_fkey : FOREIGN KEY (profil_id) REFERENCES profiles(id) ON DELETE SET NULL
+-- signalements             signalements_traite_par_fkey : FOREIGN KEY (traite_par) REFERENCES profiles(id) ON DELETE SET NULL
+-- signalements             signalements_pkey : PRIMARY KEY (id)
 -- task_assignees           task_assignees_task_id_fkey : FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
 -- task_assignees           task_assignees_user_id_fkey : FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE
 -- task_assignees           task_assignees_pkey : PRIMARY KEY (task_id, user_id)
@@ -433,6 +479,8 @@ END)))))
 -- apercu_groupe_par_jeton(jeton text) → TABLE(statut text, group_id uuid, nom text, description text, photo_url text, nombre_membres integer, membership_expires_at timestamp with time zone)   [security definer, postgres]
 -- appliquer_adhesions_echues() → integer   [security definer, postgres]
 -- articles_de_tache(p_task_id uuid) → TABLE(id uuid, label text, "position" integer, checked_at timestamp with time zone, checked_by uuid, coche_par text)   [security definer, postgres]
+-- bloque(p_un uuid, p_autre uuid) → boolean   [security definer, postgres]
+-- bloquer(p_user_id uuid) → text   [security definer, postgres]
 -- chercher_profils_par_pseudo(terme text) → TABLE(id uuid, pseudo text, first_name text, last_name text, avatar_url text)   [security definer, postgres]
 -- clore_notification_contact() → trigger   [security definer, postgres]
 -- clore_notification_contact_supprime() → trigger   [security definer, postgres]
@@ -444,6 +492,7 @@ END)))))
 -- creer_evenement(p_title text, p_starts_at timestamp with time zone, p_ends_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_group_id uuid DEFAULT NULL::uuid, p_description text DEFAULT NULL::text, p_location text DEFAULT NULL::text, p_rrule text DEFAULT NULL::text, p_image_url text DEFAULT NULL::text, p_reminder_minutes integer DEFAULT NULL::integer, p_participants uuid[] DEFAULT NULL::uuid[]) → events   [security definer, postgres]
 -- creer_groupe(p_name text, p_description text DEFAULT NULL::text, p_photo_url text DEFAULT NULL::text, p_is_private boolean DEFAULT true) → groups   [security definer, postgres]
 -- creer_tache(p_title text, p_group_id uuid DEFAULT NULL::uuid, p_description text DEFAULT NULL::text, p_due_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_priority text DEFAULT 'medium'::text, p_reminder_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_rrule text DEFAULT NULL::text, p_assignees uuid[] DEFAULT NULL::uuid[], p_items text[] DEFAULT NULL::text[]) → tasks   [security definer, postgres]
+-- debloquer(p_user_id uuid) → text   [security definer, postgres]
 -- definir_assignes_tache(p_task_id uuid, p_assignees uuid[]) → integer   [security definer, postgres]
 -- definir_disponibilite(p_kind text, p_start time without time zone, p_end time without time zone, p_status text DEFAULT 'available'::text, p_weekday integer DEFAULT NULL::integer, p_on_date date DEFAULT NULL::date, p_id uuid DEFAULT NULL::uuid) → availabilities   [security definer, postgres]
 -- definir_preference_notification(p_type text, p_enabled boolean) → boolean   [security definer, postgres]
@@ -458,6 +507,7 @@ END)))))
 -- envoyer_message(p_group_id uuid, p_content text DEFAULT NULL::text, p_media_url text DEFAULT NULL::text, p_media_kind text DEFAULT NULL::text, p_media_duree_s integer DEFAULT NULL::integer) → uuid   [security definer, postgres]
 -- est_admin_du_groupe(p_group_id uuid, p_user_id uuid) → boolean   [security definer, postgres]
 -- est_membre_du_groupe(p_group_id uuid, p_user_id uuid) → boolean   [security definer, postgres]
+-- est_moderateur() → boolean   [security definer, postgres]
 -- get_availability_status(target uuid, at_ts timestamp with time zone) → text   [security definer, postgres]
 -- groupe_du_chemin(p_name text) → uuid   [security invoker, postgres]
 -- has_social_link(other uuid) → boolean   [security definer, postgres]
@@ -469,6 +519,7 @@ END)))))
 -- marquer_lu(p_group_id uuid, p_jusqua timestamp with time zone DEFAULT NULL::timestamp with time zone) → timestamp with time zone   [security definer, postgres]
 -- marquer_push_traite(p_id uuid, p_erreur text DEFAULT NULL::text) → void   [security definer, postgres]
 -- membres_du_groupe(p_group_id uuid) → TABLE(user_id uuid, role text, joined_at timestamp with time zone, expires_at timestamp with time zone, pseudo text, first_name text, last_name text, avatar_url text)   [security definer, postgres]
+-- mes_blocages() → TABLE(user_id uuid, pseudo text, nom text, avatar_url text, cree_le timestamp with time zone)   [security definer, postgres]
 -- mes_contacts() → TABLE(autre_id uuid, pseudo text, first_name text, last_name text, avatar_url text, statut text, sens text, favori boolean, created_at timestamp with time zone, groupes_communs integer)   [security definer, postgres]
 -- mes_disponibilites() → TABLE(id uuid, kind text, weekday integer, on_date date, start_time time without time zone, end_time time without time zone, status text, created_at timestamp with time zone)   [security definer, postgres]
 -- mes_groupes_apercu() → TABLE(group_id uuid, nombre_membres integer, membres jsonb)   [security definer, postgres]
@@ -506,6 +557,7 @@ END)))))
 -- quitter_groupe(p_group_id uuid) → text   [security definer, postgres]
 -- reagir_message(p_message_id uuid, p_emoji text DEFAULT NULL::text) → text   [security definer, postgres]
 -- refuser_invitation(p_invitation_id uuid) → text   [security definer, postgres]
+-- refuser_si_bloque() → trigger   [security definer, postgres]
 -- rejoindre_groupe_par_jeton(jeton text) → text   [security definer, postgres]
 -- repondre_evenement(p_event_id uuid, p_reponse text) → text   [security definer, postgres]
 -- repondre_tache(p_task_id uuid, p_statut text) → text   [security definer, postgres]
@@ -513,20 +565,25 @@ END)))))
 -- retrograder_membre(p_group_id uuid, p_user_id uuid) → text   [security definer, postgres]
 -- s_attribuer_tache(p_task_id uuid, p_prendre boolean DEFAULT true) → text   [security definer, postgres]
 -- se_desister(p_task_id uuid) → text   [security definer, postgres]
+-- signalements_a_traiter(p_traites boolean DEFAULT false) → TABLE(id uuid, cible_type text, motif text, commentaire text, contexte jsonb, cree_le timestamp with time zone, traite_le timestamp with time zone, note text, message_id uuid, group_id uuid, profil_id uuid, auteur_nom text, auteur_avatar text, vise_nom text, vise_avatar text, groupe_nom text, message_efface boolean)   [security definer, postgres]
+-- signaler(p_cible_type text, p_cible_id uuid, p_motif text, p_commentaire text DEFAULT NULL::text) → text   [security definer, postgres]
 -- statuts_de_disponibilite(p_users uuid[], p_at timestamp with time zone) → TABLE(user_id uuid, statut text)   [security definer, postgres]
 -- supprimer_article(p_item_id uuid) → boolean   [security definer, postgres]
 -- supprimer_disponibilite(p_id uuid) → boolean   [security definer, postgres]
 -- supprimer_evenement(p_event_id uuid) → boolean   [security definer, postgres]
 -- supprimer_message(p_message_id uuid) → boolean   [security definer, postgres]
+-- supprimer_message_signale(p_signalement_id uuid) → text   [security definer, postgres]
 -- supprimer_mon_compte() → text   [security definer, postgres]
 -- supprimer_tache(p_task_id uuid) → boolean   [security definer, postgres]
 -- terminer_tache(p_task_id uuid, p_terminee boolean DEFAULT true) → timestamp with time zone   [security definer, postgres]
+-- traiter_signalement(p_signalement_id uuid, p_note text DEFAULT NULL::text, p_traite boolean DEFAULT true) → text   [security definer, postgres]
 -- types_de_notification() → TABLE(type text, libelle text, description text)   [security invoker, postgres]
 
 
 -- =========================================================
 -- DÉCLENCHEURS
 -- =========================================================
+-- contacts                 CREATE TRIGGER contacts_refus_blocage BEFORE INSERT ON public.contacts FOR EACH ROW EXECUTE FUNCTION refuser_si_bloque()
 -- contacts                 CREATE TRIGGER trg_clore_notification_contact AFTER UPDATE ON public.contacts FOR EACH ROW WHEN ((new.status = 'accepted'::contact_status)) EXECUTE FUNCTION clore_notification_contact()
 -- contacts                 CREATE TRIGGER trg_clore_notification_contact_supprime AFTER DELETE ON public.contacts FOR EACH ROW EXECUTE FUNCTION clore_notification_contact_supprime()
 -- contacts                 CREATE TRIGGER trg_notifier_demande_contact AFTER INSERT ON public.contacts FOR EACH ROW EXECUTE FUNCTION notifier_demande_contact()
@@ -537,10 +594,12 @@ END)))))
 -- events                   CREATE TRIGGER trg_deposer_carte_evenement AFTER INSERT ON public.events FOR EACH ROW EXECUTE FUNCTION deposer_carte_evenement()
 -- events                   CREATE TRIGGER trg_push_date_changee AFTER UPDATE ON public.events FOR EACH ROW EXECUTE FUNCTION push_date_changee()
 -- groups                   CREATE TRIGGER trg_group_creator_admin AFTER INSERT ON public.groups FOR EACH ROW EXECUTE FUNCTION add_creator_as_admin()
+-- invitations              CREATE TRIGGER invitations_refus_blocage BEFORE INSERT ON public.invitations FOR EACH ROW EXECUTE FUNCTION refuser_si_bloque()
 -- invitations              CREATE TRIGGER trg_clore_notification_invitation AFTER UPDATE ON public.invitations FOR EACH ROW EXECUTE FUNCTION clore_notification_invitation()
 -- invitations              CREATE TRIGGER trg_notifier_invitation_groupe AFTER INSERT ON public.invitations FOR EACH ROW EXECUTE FUNCTION notifier_invitation_groupe()
 -- invitations              CREATE TRIGGER trg_push_invitation AFTER INSERT ON public.invitations FOR EACH ROW EXECUTE FUNCTION push_invitation()
 -- messages                 CREATE TRIGGER trg_push_nouveau_message AFTER INSERT ON public.messages FOR EACH ROW EXECUTE FUNCTION push_nouveau_message()
+-- task_assignees           CREATE TRIGGER task_assignees_refus_blocage BEFORE INSERT ON public.task_assignees FOR EACH ROW EXECUTE FUNCTION refuser_si_bloque()
 -- task_assignees           CREATE TRIGGER trg_clore_notification_tache AFTER UPDATE ON public.task_assignees FOR EACH ROW EXECUTE FUNCTION clore_notification_tache()
 -- task_assignees           CREATE TRIGGER trg_clore_notification_tache_retiree AFTER DELETE ON public.task_assignees FOR EACH ROW EXECUTE FUNCTION clore_notification_tache_retiree()
 -- task_assignees           CREATE TRIGGER trg_notifier_attribution_tache AFTER INSERT ON public.task_assignees FOR EACH ROW EXECUTE FUNCTION notifier_attribution_tache()

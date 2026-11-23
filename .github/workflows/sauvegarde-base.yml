@@ -228,15 +228,34 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: auto
-          R2_ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
         run: |
-          for secret in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY R2_BUCKET; do
+          # `R2_ACCOUNT_ID` est contrôlé **avant** de bâtir l'URL, et non
+          # interpolé dedans. Absent, il donnait
+          # « https://.r2.cloudflarestorage.com » et l'échec parlait de
+          # résolution DNS : le journal accusait le réseau là où le secret
+          # manquait. C'est le défaut que ce projet appelle « ne pas mentir
+          # sur le coupable », rencontré dans son propre code.
+          for secret in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY R2_ACCOUNT_ID R2_BUCKET; do
             if [ -z "${!secret}" ]; then
               echo "::error title=Secret R2 absent::$secret n'est pas défini. La sauvegarde a été produite et éprouvée, mais elle n'a nulle part où aller — elle disparaîtra avec le runner. Voir supabase/sauvegarde/RESTAURER.md."
               exit 1
             fi
           done
+
+          # Un identifiant de compte R2 fait 32 caractères hexadécimaux. Le
+          # piège est de coller l'**endpoint** entier, que le dashboard donne
+          # sous la main : l'URL deviendrait
+          # « https://https://….r2.cloudflarestorage.com.r2.cloudflarestorage.com »,
+          # et le message parlerait encore de DNS.
+          case "$R2_ACCOUNT_ID" in
+            *://*|*.r2.cloudflarestorage.com*|*/*)
+              echo "::error title=R2_ACCOUNT_ID n'est pas un identifiant::Le secret porte une URL, pas l'identifiant de compte. Attendu : les 32 caractères hexadécimaux seuls, sans « https:// » ni « .r2.cloudflarestorage.com »."
+              exit 1 ;;
+          esac
+
+          R2_ENDPOINT="https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com"
 
           aws="aws s3 --endpoint-url $R2_ENDPOINT"
           $aws cp "$RUNNER_TEMP/$ARCHIVE" \

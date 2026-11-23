@@ -206,13 +206,28 @@ Réglages du dépôt → **Secrets and variables → Actions** :
 
 | Secret | Où le trouver |
 | --- | --- |
-| `SUPABASE_DB_URL` | déjà posé — celui des migrations |
+| `SUPABASE_DB_URL` | **déjà posé** — celui des migrations, rien à refaire |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API → `service_role` |
-| `R2_ACCOUNT_ID` | Cloudflare → R2 |
+| `R2_ACCOUNT_ID` | Cloudflare → R2 → **Account ID** : 32 caractères hexadécimaux, **et non l'endpoint** |
 | `R2_ACCESS_KEY_ID` | le jeton de l'étape 2 |
-| `R2_SECRET_ACCESS_KEY` | idem |
-| `R2_BUCKET` | le nom du bucket |
-| `HEALTHCHECK_URL` | l'URL de ping de l'étape 4 |
+| `R2_SECRET_ACCESS_KEY` | idem, visible **une seule fois** à la création du jeton |
+| `R2_BUCKET` | le nom du bucket, seul (`jelvo-sauvegardes`), sans `s3://` ni chemin |
+| `HEALTHCHECK_URL` | l'URL de ping de l'étape 4 — **le seul facultatif**, voir ci-dessous |
+
+**`R2_ACCOUNT_ID` n'est pas l'endpoint**, et c'est le piège de cette liste :
+le dashboard donne l'URL complète sous la main, le workflow attend seulement
+le sous-domaine. Si vous avez
+`https://3f8a…e6f7.r2.cloudflarestorage.com`, le secret vaut `3f8a…e6f7` —
+sans `https://`, sans `.r2.cloudflarestorage.com`. Le workflow refuse
+désormais une URL en le disant, plutôt que de bâtir une adresse absurde et de
+laisser l'échec parler de résolution DNS.
+
+**`HEALTHCHECK_URL` est le seul dont l'absence n'arrête rien** : le job
+avertit et continue. Les sauvegardes partent donc, et c'est l'**alerte** qui
+manque — or elle couvre les deux pannes qui n'allument jamais le rouge : le
+cron désactivé après 60 jours, et le projet Supabase mis en pause après 7
+jours d'inactivité. Sans elle, le silence ne se distingue pas du succès. À
+poser dès que le compte existe ; les six autres sont nécessaires.
 
 `SUPABASE_SERVICE_ROLE_KEY` contourne RLS : c'est la clé la plus puissante du
 projet. Elle n'est lue que par ce workflow, qui ne tourne **jamais** sur une

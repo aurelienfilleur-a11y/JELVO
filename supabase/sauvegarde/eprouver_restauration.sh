@@ -140,12 +140,73 @@ psql="$psql -d jelvo_restauree"
 # contrôle rouge en permanence.
 $psql -c 'drop schema if exists public cascade' >/dev/null
 
-# Les trois seuls rôles que les `grant` du projet citent — relevé sur
-# `supabase/*.sql` et non supposé. Sans eux, chaque `grant … to authenticated`
-# du dump échouerait, et c'est précisément ce que l'épreuve doit pouvoir juger.
-$psql -c "do \$r\$ begin create role anon;          exception when duplicate_object then null; end \$r\$;
-          do \$r\$ begin create role authenticated; exception when duplicate_object then null; end \$r\$;
-          do \$r\$ begin create role service_role;  exception when duplicate_object then null; end \$r\$;" >/dev/null
+# ---------------------------------------------------------------------------
+# Les rôles viennent du dump, pas d'une liste
+# ---------------------------------------------------------------------------
+#
+# La version précédente en créait trois — `anon`, `authenticated`,
+# `service_role` —, relevés sur `supabase/*.sql`. **C'était la mauvaise
+# source** : le dump emporte aussi les schémas `auth` et `storage`, dont les
+# ACL citent les rôles que Supabase crée pour lui-même
+# (`supabase_auth_admin`, `supabase_storage_admin`…), et qu'un cluster nu ne
+# connaît pas.
+#
+# Le défaut ne s'arrêtait pas à ces rôles-là, et c'est ce qui le rendait
+# coûteux : **`pg_dump` émet un lot d'ACL par objet**, si bien qu'un seul
+# rôle inconnu fait échouer tout le lot et emporte avec lui les `grant` à
+# `anon` et `authenticated` qui s'y trouvaient. Mesuré en production le
+# 23 novembre 2026 : 31 lignes de privilèges manquantes sur
+# `storage.objects` et `storage.buckets`, et l'épreuve déclarait la
+# sauvegarde en échec alors que le dump, lui, était complet et intact.
+#
+# C'est la méthode de la requête A0 appliquée à une restauration : partir de
+# ce que la donnée demande, et non de la liste des noms auxquels on a pensé.
+# Un rôle de plus côté Supabase est couvert sans qu'on y pense.
+#
+# `--schema-only` suffit — les ACL sont dans le schéma — et évite d'écrire
+# toutes les données en clair une seconde fois sur le disque du runner.
+pg_restore --file="$ATELIER/schema.sql" --schema-only "$CONTENU/base.dump"
+grep -oE '(GRANT|REVOKE)[^;]*|OWNER TO [^;]*|GRANTED BY [^;]*' "$ATELIER/schema.sql" \
+  | grep -oE '(TO|FROM|OWNER TO|GRANTED BY)[[:space:]]+[^;]*$' \
+  | sed -E 's/^(TO|FROM|OWNER TO|GRANTED BY)[[:space:]]+//
+             s/[[:space:]]+WITH[[:space:]]+GRANT[[:space:]]+OPTION//' \
+  | tr ',' '\n' \
+  | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//; s/^"//; s/"$//' \
+  | grep -vE '^(PUBLIC)?$' \
+  | grep -vE '^pg_' | sort -u > "$ATELIER/roles.txt"
+
+# `pg_` est écarté, et ce n'est pas de la précaution : depuis PostgreSQL 15,
+# le dump porte « grant … on schema public to pg_database_owner », un rôle
+# **intégré** que tout cluster possède et dont le nom est réservé.
+# `create role "pg_database_owner"` échoue en `reserved_name`, que le
+# `duplicate_object` n'attrape pas — le script mourait là. Trouvé en
+# exécutant la chaîne complète, pas en la relisant.
+
+# Une liste vide signifie que l'extraction ne fonctionne plus — un format de
+# sortie qui a bougé. Ce n'est pas fatal ici : la restauration échouera au
+# premier `grant` et l'inventaire le dira. Mais il faut que le journal
+# désigne *cet* endroit, sans quoi on chercherait le défaut dans le dump.
+if [ ! -s "$ATELIER/roles.txt" ]; then
+  echo "AVERT  aucun rôle relevé dans le dump : l'extraction ne reconnaît plus la sortie de pg_restore" >&2
+fi
+
+releves=0
+while IFS= read -r role; do
+  # Un nom hors de cette forme n'est pas créé, et le dire vaut mieux que de
+  # bâtir une instruction à partir d'une chaîne qu'on n'a pas comprise. La
+  # restauration échouera dessus, en le nommant.
+  case "$role" in
+    [A-Za-z_]*) : ;;
+    *) echo "AVERT  rôle ignoré, forme inattendue : $role" >&2; continue ;;
+  esac
+  case "$role" in
+    *[!A-Za-z0-9_]*) echo "AVERT  rôle ignoré, forme inattendue : $role" >&2; continue ;;
+  esac
+  $psql -c "do \$r\$ begin create role \"$role\" nologin;
+              exception when duplicate_object then null; end \$r\$;" >/dev/null
+  releves=$((releves + 1))
+done < "$ATELIER/roles.txt"
+printf '       rôles relevés dans le dump et créés : %s\n' "$releves"
 
 # ---------------------------------------------------------------------------
 # La restauration

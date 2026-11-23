@@ -5781,6 +5781,50 @@ l'inventaire**, en nommant la ligne qui manque.
   qu'il ne contrôle plus rien. Le passage à 457 lignes au lieu de 440 est la
   mesure du trou.
 
+#### Les rôles viennent du dump, et pas d'une liste
+
+**Constaté le 23 novembre 2026, à la première mise en service réelle**, et
+c'est le troisième défaut de cette famille — celui qui a fait échouer
+l'épreuve sur une sauvegarde pourtant complète et intacte.
+
+Le cluster jetable créait **trois** rôles — `anon`, `authenticated`,
+`service_role` —, relevés sur `supabase/*.sql`. C'était la mauvaise source :
+le dump emporte aussi `auth` et `storage`, dont les ACL citent les rôles que
+Supabase crée pour lui-même, `supabase_auth_admin` et
+`supabase_storage_admin` en tête.
+
+**Et le dégât dépasse largement ces rôles-là, parce que `pg_dump` émet un lot
+d'ACL par objet** :
+
+```
+pg_restore: error: role "supabase_auth_admin" does not exist
+Command was: GRANT USAGE ON SCHEMA auth TO anon;
+             GRANT USAGE ON SCHEMA auth TO authenticated;
+             GRANT USAGE ON SCHEMA auth TO service_role;
+             GRANT ALL   ON SCHEMA auth TO supabase_auth_admin;
+```
+
+Un seul rôle inconnu fait échouer **tout le lot**, et emporte avec lui les
+`grant` à `anon` et `authenticated` qui s'y trouvaient. Mesuré : 31 lignes de
+privilèges manquantes sur `storage.objects` et `storage.buckets`, 0 sur 32
+dans la reproduction locale.
+
+Le relevé part donc du **dump** — `pg_restore --schema-only`, puis les
+grantees de ses `grant`, `revoke` et `owner to` — et crée ce qui manque.
+C'est la méthode de la requête A0 appliquée à une restauration : partir de ce
+que la donnée demande, et non de la liste des noms auxquels on a pensé. Un
+rôle de plus côté Supabase est couvert sans qu'on y pense.
+
+**Le correctif a lui-même échoué au premier essai**, et c'est ce qui vaut
+d'être retenu : depuis PostgreSQL 15, le dump porte `grant … on schema public
+to pg_database_owner`, un rôle **intégré** dont le nom est réservé.
+`create role "pg_database_owner"` échoue en `reserved_name`, que le
+`duplicate_object` n'attrape pas. Les noms en `pg_` sont donc écartés — et
+cela ne s'est vu qu'en exécutant la chaîne complète, pas en la relisant.
+
+Contrôle négatif fait : en remettant les trois rôles en dur, le rejeu échoue
+sur `supabase_auth_admin` et l'inventaire redevient rouge.
+
 ### L'alerte porte sur l'absence, pas sur l'échec
 
 C'est le point qu'il ne faut pas perdre. Deux mécanismes arrêtent un workflow
